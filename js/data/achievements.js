@@ -1,0 +1,4 @@
+/*
+ * Zoznam úspechov a podmienok ich získania.
+ */
+const ACH = [['w1', 'Prvé víťazstvo', () => (G.st && G.st.w) >= 1], ['w10', 'Ostrieľaný veliteľ: 10 víťazstiev', () => (G.st && G.st.w) >= 10], ['k100', 'Sto padlých nepriateľov', () => (G.st && G.st.k) >= 100], ['nz', 'Premožiteľ Nazgûla', () => G.nzk >= 1], ['ar', 'Víťaz turnaja', () => G.tw >= 1], ['c1', 'Dobyvateľ: prvý dobytý hrad', () => (G.st && G.st.c) >= 1], ['c5', 'Pán piatich hradov', () => TW.filter(t => t.mine).length >= 5], ['king', 'Kráľ', () => G.king], ['ring', 'Nositeľ Prsteňa', () => G.ring >= 1], ['ring2', 'Osud Prsteňa naplnený', () => G.ring === 2], ['tro5', 'Zberateľ: 5 trofejí', () => (G.tro || []).length >= 5], ['lv10', 'Úroveň 10', () => G.lv >= 10], ['gold', 'Boháč: 5000 zlata', () => G.gold >= 5000], ['story', 'Koniec príbehu', () => G.q >= QS.length], ['town5', 'Honosný hrad (úroveň 5)', () => TW.some(t => t.mine && lvl(t) >= 5)]];

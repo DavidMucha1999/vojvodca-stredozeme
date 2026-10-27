@@ -1,0 +1,11 @@
+{
+  "name": "vojvodca-stredozeme",
+  "version": "1.0.0",
+  "description": "Strategická hra v prehliadači inšpirovaná Mount & Blade vo svete Pána prsteňov.",
+  "author": "Dávid Mucha",
+  "private": true,
+  "scripts": {
+    "start": "npx --yes http-server . -p 8080 -c-1",
+    "test": "node tests/sim.test.js"
+  }
+}

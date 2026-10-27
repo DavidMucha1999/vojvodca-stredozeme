@@ -1,0 +1,48 @@
+/* Vojvodca Stredozeme – štýly */
+:root{color-scheme:dark;--bg:#120e0c;--ink:#ecdfc6;--gold:#d9a441;--elf:#9fb8a0;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:"IM Fell English",Georgia,serif;display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:none}
+#wrap{position:relative;width:100%;max-width:960px;aspect-ratio:3/2;max-height:100%}
+canvas{width:100%;height:100%;display:block}
+#hud{position:absolute;top:0;left:0;right:0;display:flex;gap:1rem;flex-wrap:wrap;padding:.35rem .8rem;background:linear-gradient(rgba(18,14,12,.92),rgba(18,14,12,.7));border-bottom:1px solid #6a5a46;text-shadow:0 1px 2px #000;font-size:clamp(.75rem,2.2vw,1rem)}
+#hud b{color:var(--gold);font-weight:400}
+#ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:4%;gap:.7rem;background:radial-gradient(ellipse at center,rgba(44,32,24,.93),rgba(12,9,8,.97));overflow:auto}
+#ov.hide{display:none}
+h1{font-family:"Uncial Antiqua",Georgia,serif;font-weight:400;font-size:clamp(1.5rem,5.5vw,2.4rem);margin:0;color:var(--gold);line-height:1.15}
+p{margin:0;font-size:clamp(.9rem,2.4vw,1.15rem);line-height:1.45;max-width:46ch}
+#bt{display:grid;grid-template-columns:repeat(auto-fit,minmax(17ch,1fr));gap:.45rem;width:100%;max-width:600px}
+button{font:inherit;font-size:clamp(.9rem,2.3vw,1.1rem);color:#1a120a;background:var(--gold);border:0;border-radius:2px;padding:.5rem .9rem;cursor:pointer}
+button:hover:not(:disabled){background:#ecb957}
+button:disabled{background:#4a4036;color:#9a8c78;cursor:default}
+button:focus-visible{outline:3px solid var(--elf);outline-offset:3px}
+input,select{font:inherit;font-size:1.05rem;padding:.45rem .6rem;background:#2a211b;color:var(--ink);border:1px solid #6a5a46;border-radius:2px;max-width:100%}
+
+/* Úvodná obrazovka, encyklopédia, celá obrazovka */
+#wrap:fullscreen{max-width:none;background:#000}
+#ov{z-index:5}
+#ov.intro{background:radial-gradient(ellipse 48% 62% at 50% 46%,rgba(12,9,8,.74),rgba(12,9,8,.3) 72%,rgba(12,9,8,0))}
+#ov.intro p{text-shadow:0 1px 4px #000}
+#ov.intro h1{text-shadow:0 2px 12px #000,0 0 30px rgba(224,118,43,.45)}
+#ov.encv{justify-content:flex-start}
+.enc{width:100%;max-width:920px;text-align:left}
+.enc-top{display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap}
+.enc-top h1{font-size:clamp(1.3rem,4vw,2rem)}
+.tabs,.chips{display:flex;gap:.3rem;flex-wrap:wrap;margin:.5rem 0}
+.tabs button{font-size:.9rem;padding:.35rem .8rem}
+.tabs button.on{background:#fff0c0;box-shadow:inset 0 -3px 0 #8a5a12}
+.chips button{font-size:.78rem;padding:.2rem .6rem;background:rgba(0,0,0,.4);color:#ecdfc6;border:1px solid var(--fc);border-radius:999px}
+.chips button.on{background:var(--fc);color:#120e0c}
+.egrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(270px,100%),1fr));gap:.6rem}
+.card{background:linear-gradient(160deg,rgba(64,48,34,.96),rgba(24,18,14,.96));border:1px solid #5a4a36;border-left:4px solid var(--fc);border-radius:6px;padding:.6rem;display:flex;gap:.65rem;align-items:flex-start}
+.card.wide{grid-column:1/-1}
+.card img{flex:none;border-radius:4px;border:1px solid #6a5a46;background:#0c0907}
+.cb{min-width:0;flex:1}
+.nm{color:#ffd24a;font-size:1.05rem;line-height:1.2}
+.pill{display:inline-flex;align-items:center;gap:.3rem;font-size:.74rem;padding:.08rem .45rem;border-radius:999px;background:rgba(0,0,0,.35);border:1px solid var(--fc);color:#ecdfc6;margin:.15rem .2rem 0 0;white-space:nowrap}
+.pill i{width:.5rem;height:.5rem;border-radius:50%;background:var(--fc);display:inline-block}
+.desc{font-size:.84rem;line-height:1.38;color:#d8ccb4;margin:.3rem 0}
+.st{font-size:.78rem;color:#bfb29a;display:grid;grid-template-columns:auto 1fr;gap:.15rem .5rem;align-items:center;margin-top:.25rem}
+.bar{height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden}
+.bar b{display:block;height:100%;border-radius:3px}
+.sec{color:#d9a441;font-family:"Uncial Antiqua",Georgia,serif;font-size:1.05rem;margin:.2rem 0}
