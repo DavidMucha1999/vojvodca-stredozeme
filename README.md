@@ -6,7 +6,12 @@ Autor a vývojár hry: **Dávid Mucha**
 
 ## Spustenie
 
-Otvor `index.html` v prehliadači. Hra nepotrebuje server ani inštaláciu.
+Hra má dve verzie, ktoré zdieľajú rovnakú logiku (`js/data`, `js/sim`):
+
+- `index.html` – pôvodná verzia kreslená priamo na plátno. Funguje aj bez internetu.
+- `phaser.html` – nová verzia v hernom engine **Phaser 3** (kostra). Phaser sa načíta z CDN, preto potrebuje internet.
+
+Obe otvoríš priamo v prehliadači, server ani inštalácia nie sú potrebné.
 
 Ak chceš hru spúšťať cez lokálny server (odporúčané pri vývoji):
 
@@ -19,6 +24,7 @@ npm start          # spustí server na http://localhost:8080
 ```bash
 npm test                        # test simulácie bez prehliadača (Node.js)
 python tests/browser_test.py    # test v skutočnom prehliadači (Playwright)
+python tests/phaser_test.py     # test scén Phaser verzie (bez internetu, s náhradou Phaseru)
 ```
 
 Test simulácie odohrá vyše 60 dní hry, obliehanie aj uloženie a načítanie a skontroluje, že sa nič nepokazilo. Spusti ho po každej väčšej zmene.
@@ -65,10 +71,21 @@ js/
     menus.js          prehľad, denník, štatistiky, trofeje, úspechy, encyklopédia
     toolbar.js        panel tlačidiel a rozkazy v bitke
   input.js            myš, dotyk, klávesnica
-  main.js             hlavná slučka a spustenie
+  main.js             hlavná slučka a spustenie (iba index.html)
+  engine/             verzia v Phaseri 3 (iba phaser.html)
+    bake.js           most: staré kreslenie → textúry Phaseru
+    game.js           konfigurácia a spustenie Phaseru
+    scenes/
+      BootScene.js    príprava sveta, neskôr načítanie obrázkov a zvukov
+      IntroScene.js   úvodná obrazovka
+      MapScene.js     mapa: dlaždice, hrady, dediny, armády, kamera, minimapa
+      BattleScene.js  bitka: sprity vojakov, šípy, obliehanie, častice zbraní
+      UIScene.js      vrstva navrchu: čas, oznámenia, pauza, počasie, lišty
 tests/
   sim.test.js         test simulácie (Node.js)
   browser_test.py     test v prehliadači
+  phaser_test.py      test scén Phaser verzie
+  phaser-stub.js      náhrada Phaseru pre testy bez internetu
 ```
 
 ## Skratky v kóde
@@ -87,6 +104,21 @@ tests/
 Hlavný cyklus: `loop()` → `updMap()` / `updBattle()` → `drawMap()` / `drawBattle()`.
 `worldTick()` posúva svet o jeden krok (AI, dni, diplomacia).
 
-## Ďalší krok: herný engine
+## Phaser verzia: ako je postavená
 
-Logika (`js/data`, `js/sim`) je oddelená od kreslenia (`js/render`). Pri prechode na engine (napríklad Phaser 3) sa nahrádza hlavne `js/render` a `js/input.js`. Ďalším krokom by bolo previesť skripty na ES moduly so spoločným objektom stavu.
+Simulácia zostala nezmenená. Scény Phaseru ju volajú (`updMap`, `updBattle`) a iba zobrazujú jej stav:
+
+```
+BootScene → IntroScene → MapScene ⇄ BattleScene
+                 UIScene beží stále navrchu
+```
+
+Grafika sa zatiaľ „pečie“ zo starých kresliacich funkcií do textúr (`js/engine/bake.js`). Menu (hrady, encyklopédia, diplomacia) sú zatiaľ HTML okná z `js/ui`.
+
+### Ďalšie kroky
+
+1. **Skutočná grafika:** nahradiť funkcie v `bake.js` načítaním obrázkov v `BootScene.preload()` (sprity jednotiek, hrady, dlaždicová mapa z editora Tiled).
+2. **Animácie:** spritesheety s chôdzou, útokom a smrťou (`this.anims.create`).
+3. **Zvuk:** nahrané zvuky a hudba cez `this.load.audio` namiesto syntézy.
+4. **Rozhranie v Phaseri:** postupne presunúť menu z HTML do scény UI.
+5. **Ostrosť:** vyššie rozlíšenie plátna pre veľké obrazovky.

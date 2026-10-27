@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vojvodca Stredozeme (Phaser)</title>
+<link href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=IM+Fell+English&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<style>#c{display:none}#game{position:absolute;inset:0}</style>
+</head>
+<body>
+<div id="wrap">
+<div id="game"></div>
+<canvas id="c" aria-label="Hra Vojvodca Stredozeme"></canvas>
+<div id="hud"></div>
+<div id="ov">
+<h1>Vojvodca Stredozeme</h1>
+<p style="color:var(--gold);font-size:1rem">Autor a vývojár hry: Dávid Mucha</p>
+<p>Veď svoju družinu po veľkej mape Stredozeme, pridaj sa ku Gondoru, Rohanu, Mordoru alebo Isengardu a dobýjaj hrady. Najímaj vojakov, kupuj zbrane, brnenie, štít a koňa, porážaj nepriateľov, plň kapitoly príbehu a prepracuj sa až na kráľa.</p>
+<p>Mapa: klikni, kam chceš ísť. Bitka: šípky alebo WASD a medzerník na útok. Na dotykovom displeji drž prst tam, kam chceš bežať, a hrdina útočí sám.</p>
+<input id="pn" placeholder="Meno hrdinu" maxlength="16" value="Strážca" aria-label="Meno hrdinu"><select id="fs" aria-label="Frakcia"><option value="6">Nezávislý (vlastná družina)</option><option value="0">Gondor</option><option value="1">Rohan</option><option value="2">Mordor</option><option value="3">Isengard</option><option value="4">Haradrim</option><option value="5">Erebor</option><option value="7">Rhûn</option><option value="8">Lothlórien</option></select><button onclick="newGame()">Vyraziť do boja</button><button onclick="load()">Načítať uloženú hru</button>
+</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"></script>
+<script>window.Phaser || document.write('<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"><\/script>')</script>
+<script src="js/core/setup.js"></script>
+<script src="js/data/factions.js"></script>
+<script src="js/data/castles.js"></script>
+<script src="js/data/units.js"></script>
+<script src="js/data/equipment.js"></script>
+<script src="js/data/story.js"></script>
+<script src="js/data/achievements.js"></script>
+<script src="js/sim/diplomacy.js"></script>
+<script src="js/sim/hero.js"></script>
+<script src="js/sim/armies.js"></script>
+<script src="js/sim/world.js"></script>
+<script src="js/sim/battle.js"></script>
+<script src="js/sim/siege.js"></script>
+<script src="js/sim/politics.js"></script>
+<script src="js/sim/story.js"></script>
+<script src="js/sim/achievements.js"></script>
+<script src="js/sim/game.js"></script>
+<script src="js/render/terrain.js"></script>
+<script src="js/render/heraldry.js"></script>
+<script src="js/render/map.js"></script>
+<script src="js/render/battle.js"></script>
+<script src="js/render/intro.js"></script>
+<script src="js/render/portraits.js"></script>
+<script src="js/audio/sound.js"></script>
+<script src="js/ui/dom.js"></script>
+<script src="js/ui/hud.js"></script>
+<script src="js/ui/town.js"></script>
+<script src="js/ui/menus.js"></script>
+<script src="js/ui/toolbar.js"></script>
+<script src="js/input.js"></script>
+<script src="js/engine/bake.js"></script>
+<script src="js/engine/scenes/BootScene.js"></script>
+<script src="js/engine/scenes/IntroScene.js"></script>
+<script src="js/engine/scenes/MapScene.js"></script>
+<script src="js/engine/scenes/BattleScene.js"></script>
+<script src="js/engine/scenes/UIScene.js"></script>
+<script src="js/engine/game.js"></script>
+</body>
+</html>
