@@ -154,6 +154,13 @@ const Art = {
     /** Vojak: 12 snímok (státie, chôdza, útok, pád). */
     unit(scene, u) {
         const key = Art.unitKey(u), kind = Art.unitArt(u), base = Art.img['unit_' + kind];
+        // hrdina sa kreslí podľa výbavy: každá zbraň, brnenie, štít, prilba a kôň vyzerá inak
+        if (u.h && !scene.textures.exists(key) && typeof Soldiers !== 'undefined') {
+            const sp = Soldiers.heroSpec(G.eq);
+            Art.register(scene, key, Art.tinted(Soldiers.sheet(sp, 'base'), Soldiers.sheet(sp, 'team'), FC[G.fac]));
+            Art.anims(scene, key);
+            return key;
+        }
         if (!scene.textures.exists(key) && base) {
             const color = u.h || !u.t ? FC[G.fac] : FC[u.fc] || '#888888';
             Art.register(scene, key, Art.tinted(base, Art.img['unit_' + kind + '_team'], color));

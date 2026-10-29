@@ -11,6 +11,8 @@
  * popisky pri myši a legendu mapy. Scéna tiež posúva herný čas (tm).
  */
 const UI_C = { ink: '#ecdfc6', gold: '#d9a441', dim: '#9a8c78', panel: 0x1c1510, panel2: 0x2c2018, line: 0xd9a441, btn: 0xd9a441, btnHover: 0xf0c060, btnOff: 0x4a4036 };
+/** Tlačidlá, ktorými sa okno zatvára (v dlhých oknách sú vždy viditeľné dole). */
+const UI_EXIT = /^(Späť|Odísť|Zavrieť|Pokračovať|Rozumiem|Na cestu)/;
 const TITLE_FONT = '"Uncial Antiqua", Georgia, serif';
 
 class UIScene extends Phaser.Scene {
@@ -33,6 +35,17 @@ class UIScene extends Phaser.Scene {
         this.input.keyboard.on('keydown-ESC', () => this.dialogKey('esc'));
         this.input.keyboard.on('keydown', e => { if (this.dlg && e.key >= '1' && e.key <= '9') this.dialogKey(+e.key); });
         this.input.on('wheel', (p, o, dx, dy) => { if (this.dlg) this.scrollDialog(dy); });
+        // posúvanie dlhého okna ťahaním myšou alebo prstom
+        this.input.on('pointerdown', p => { const d = this.dlg; this.drag = d && d.CH > d.maxH ? { y: p.y, s: d.scroll, moved: false } : null; });
+        this.input.on('pointermove', p => {
+            const g = this.drag; if (!g || !p.isDown || !this.dlg) return;
+            const dy = (p.y - g.y) / RES;
+            if (Math.abs(dy) > 5) g.moved = true;
+            if (g.moved) this.scrollDialog(g.s - dy, true, true);
+        });
+        this.input.on('pointerup', () => this.time.delayedCall(0, () => { this.drag = null; }));
+        const keyScroll = { ArrowDown: 40, ArrowUp: -40, PageDown: 300, PageUp: -300, End: 1e5, Home: -1e5 };
+        this.input.keyboard.on('keydown', e => { if (this.dlg && keyScroll[e.key] && this.dlg.CH > this.dlg.maxH) this.scrollDialog(keyScroll[e.key], true); });
     }
 
     update(time, delta) {
@@ -134,14 +147,21 @@ class UIScene extends Phaser.Scene {
     button(x, y, w, h, label, fn, o = {}) {
         const off = !!o.disabled, size = o.size || 14;
         const r = this.add.rectangle(x, y, w, h, off ? UI_C.btnOff : UI_C.btn).setOrigin(0).setStrokeStyle(1, 0x5a3a12, .8).setAlpha(o.alpha ?? 1);
-        const t = this.add.text(x + w / 2, y + h / 2, label, txtStyle(size, off ? UI_C.dim : '#1a120a', { align: 'center', wordWrap: { width: w - 12, useAdvancedWrap: true } })).setOrigin(.5);
+        const iw = o.icon ? 34 : 0;
+        const t = this.add.text(x + iw + (w - iw) / 2, y + h / 2, label, txtStyle(size, off ? UI_C.dim : '#1a120a', { align: 'center', wordWrap: { width: w - 12 - iw, useAdvancedWrap: true } })).setOrigin(.5);
+        const out = [r, t];
+        if (o.icon) {
+            const ib = this.add.rectangle(x + 4, y + h / 2, 30, 30, 0xf4e6c4, off ? .35 : .55).setOrigin(0, .5).setStrokeStyle(1, 0x5a3a12, .6);
+            const im = this.add.image(x + 19, y + h / 2, o.icon).setDisplaySize(28, 28).setAlpha(off ? .75 : 1);
+            out.push(ib, im);
+        }
         if (!off && fn) {
             r.setInteractive({ useHandCursor: true });
             r.on('pointerover', () => r.setFillStyle(UI_C.btnHover));
             r.on('pointerout', () => r.setFillStyle(UI_C.btn));
-            r.on('pointerup', () => fn());
+            r.on('pointerup', () => { if (!(this.drag && this.drag.moved)) fn(); });
         }
-        return [r, t];
+        return out;
     }
 
     // ---------- Okná (zrkadlo #ov) ---------------------------------------------------
@@ -158,7 +178,7 @@ class UIScene extends Phaser.Scene {
         const sameTitle = this.dlg && m && (ov.querySelector('h1') || {}).textContent === this.dlg.title;
         const keepScroll = sameTitle ? this.dlg.scroll : 0;
         this.sig.dlg = sig;
-        if (this.dlg) { this.dlg.root.destroy(true); this.dlg.mask && this.dlg.mask.destroy(); this.dlg = null; }
+        if (this.dlg) { if (this.dlg.hold) this.dlg.hold.remove(); this.dlg.root.destroy(true); this.dlg.mask && this.dlg.mask.destroy(); this.dlg = null; }
         if (m) this.buildDialog(keepScroll);
         this.sig.bars = null;
     }
@@ -166,76 +186,126 @@ class UIScene extends Phaser.Scene {
     buildDialog(scroll) {
         const PW = 620, IW = PW - 40, root = this.add.container(0, 0).setDepth(40);
         const shade = this.add.rectangle(0, 0, W, H, 0x0c0907, .72).setOrigin(0).setInteractive();
-        const content = this.add.container(0, 0), items = [];
-        let y = 0;
         const h1 = ov.querySelector('h1'), title = h1 ? h1.textContent : '';
-        if (title) { const t = this.add.text(PW / 2, y, title, txtStyle(26, UI_C.gold, { fontFamily: TITLE_FONT, align: 'center', wordWrap: { width: IW } })).setOrigin(.5, 0); items.push(t); y += t.height + 8; }
-        ov.querySelectorAll(':scope > p').forEach(p => {
-            if (!p.textContent.trim()) return;
-            const t = this.add.text(PW / 2, y, p.textContent, txtStyle(15, p.style.color ? UI_C.gold : UI_C.ink, { align: 'center', lineSpacing: 3, wordWrap: { width: IW } })).setOrigin(.5, 0);
-            items.push(t); y += t.height + 8;
-        });
-        y += 4;
         const bt = ov.querySelector('#bt'), kids = bt ? [...bt.children] : [];
         const nBtn = kids.filter(k => k.tagName === 'BUTTON').length, cols = nBtn > 8 ? 3 : 2, bw = (IW - (cols - 1) * 8) / cols;
-        let col = 0, rowH = 0;
-        const flush = () => { if (col) { y += rowH + 6; col = 0; rowH = 0; } };
         this.dlgButtons = [];
-        kids.forEach(k => {
-            if (k.tagName === 'BUTTON') {
-                const label = k.textContent.trim() || '•';
-                const probe = this.add.text(0, 0, label, txtStyle(14, '#000', { wordWrap: { width: bw - 12, useAdvancedWrap: true } }));
-                const bh = Math.max(30, probe.height + 10); probe.destroy();
-                const swatch = k.style.background && k.textContent.trim() === '' ? k.style.background : null;
-                const parts = this.button(20 + col * (bw + 8), y, bw, bh, label, () => { if (this.inDialog()) k.click(); }, { disabled: k.disabled });
-                if (swatch) parts[0].setFillStyle(hex(swatch));
-                if (k.style.outline) parts[0].setStrokeStyle(3, 0xffffff, 1);
-                items.push(...parts); this.dlgButtons.push(k);
-                rowH = Math.max(rowH, bh); col++;
-                if (col === cols) flush();
-            } else {
-                flush();
-                const t = this.add.text(20, y, k.textContent, txtStyle(13.5, k.style.opacity && +k.style.opacity < 1 ? UI_C.dim : UI_C.ink, { wordWrap: { width: IW } }));
-                items.push(t); y += t.height + 4;
-            }
-        });
-        flush();
-        const CH = y, maxH = H - 70, PH = Math.min(CH, maxH) + 40, px = (W - PW) / 2, py = Math.max(30, (H - PH) / 2);
+        // rozloženie obsahu okna (nadpis, text, tlačidlá a riadky) od y = 0
+        const layout = list => {
+            const items = [];
+            let y = 0, col = 0, rowH = 0;
+            if (title) { const t = this.add.text(PW / 2, y, title, txtStyle(26, UI_C.gold, { fontFamily: TITLE_FONT, align: 'center', wordWrap: { width: IW } })).setOrigin(.5, 0); items.push(t); y += t.height + 8; }
+            ov.querySelectorAll(':scope > p').forEach(p => {
+                if (!p.textContent.trim()) return;
+                const t = this.add.text(PW / 2, y, p.textContent, txtStyle(15, p.style.color ? UI_C.gold : UI_C.ink, { align: 'center', lineSpacing: 3, wordWrap: { width: IW } })).setOrigin(.5, 0);
+                items.push(t); y += t.height + 8;
+            });
+            y += 4;
+            const flush = () => { if (col) { y += rowH + 6; col = 0; rowH = 0; } };
+            list.forEach(k => {
+                if (k.tagName === 'BUTTON') {
+                    const parts = this.dialogButton(k, 20 + col * (bw + 8), y, bw, () => this.inDialog());
+                    items.push(...parts);
+                    rowH = Math.max(rowH, parts.h); col++;
+                    if (col === cols) flush();
+                } else {
+                    flush();
+                    const t = this.add.text(20, y, k.textContent, txtStyle(13.5, k.style.opacity && +k.style.opacity < 1 ? UI_C.dim : UI_C.ink, { wordWrap: { width: IW - 26 } }));
+                    items.push(t); y += t.height + 4;
+                }
+            });
+            flush();
+            return { items, CH: y };
+        };
+        const maxH = H - 70;
+        let L = layout(kids), foot = [];
+        if (L.CH > maxH) {
+            // dlhé okno: tlačidlá na odchod (Späť, Zavrieť…) budú vždy viditeľné dole
+            let n = kids.length;
+            while (n > 0 && kids[n - 1].tagName === 'BUTTON' && UI_EXIT.test(kids[n - 1].textContent.trim())) n--;
+            foot = kids.slice(n);
+            if (foot.length) { L.items.forEach(o => o.destroy()); this.dlgButtons = []; L = layout(kids.slice(0, n)); }
+        }
+        const footH = foot.length ? 42 : 0, viewH = Math.min(L.CH, maxH - footH), CH = L.CH;
+        const PH = viewH + 40 + footH, px = (W - PW) / 2, py = Math.max(30, (H - PH) / 2);
         const panel = this.add.graphics();
         panel.fillStyle(UI_C.panel, .97).fillRoundedRect(px, py, PW, PH, 6);
         panel.lineStyle(2, UI_C.line, 1).strokeRoundedRect(px, py, PW, PH, 6);
         panel.lineStyle(1, UI_C.line, .35).strokeRoundedRect(px + 5, py + 5, PW - 10, PH - 10, 4);
-        content.add(items);
+        const content = this.add.container(0, 0);
+        content.add(L.items);
         content.setPosition(px, py + 20 - scroll);
         root.add([shade, panel, content]);
         const maskG = this.make.graphics({ add: false });
-        maskG.fillStyle(0xffffff).fillRect(px, py + 14, PW, PH - 28);
-        if (CH > maxH) {
+        maskG.fillStyle(0xffffff).fillRect(px, py + 14, PW, viewH + 12);
+        const d = this.dlg = { root, content, mask: maskG, px, py, PW, PH, CH, maxH: viewH, scroll: 0, title, vy0: py + 14, vy1: py + 26 + viewH };
+        if (foot.length) {
+            const fy = py + 26 + viewH + 6, fw = (IW - (foot.length - 1) * 8) / foot.length;
+            panel.lineStyle(1, UI_C.line, .4).lineBetween(px + 14, fy - 4, px + PW - 14, fy - 4);
+            foot.forEach((k, i) => root.add(this.dialogButton(k, px + 20 + i * (fw + 8), fy, fw, () => true)));
+        }
+        if (CH > viewH) {
             content.setMask(maskG.createGeometryMask());
-            const bar = this.add.graphics(); root.add(bar);
-            this.dlg = { root, content, mask: maskG, bar, px, py, PW, PH, CH, maxH, scroll, title };
-            this.scrollDialog(0);
-        } else this.dlg = { root, content, mask: maskG, px, py, PW, PH, CH, maxH, scroll: 0, title };
+            d.bar = this.add.graphics(); root.add(d.bar);
+            // šípky na posúvanie (pre myš bez kolieska)
+            const arrow = (y, dir) => {
+                const r = this.add.rectangle(px + PW - 18, y, 20, 20, UI_C.panel2).setOrigin(.5).setStrokeStyle(1, UI_C.line, .8).setInteractive({ useHandCursor: true });
+                const t = this.add.text(px + PW - 18, y, dir < 0 ? '▲' : '▼', txtStyle(11, UI_C.gold)).setOrigin(.5);
+                r.on('pointerdown', () => { this.scrollDialog(dir * 60, true); d.hold = this.time.addEvent({ delay: 90, loop: true, startAt: -250, callback: () => this.scrollDialog(dir * 25, true) }); });
+                const stop = () => { if (d.hold) { d.hold.remove(); d.hold = null; } };
+                r.on('pointerup', stop); r.on('pointerout', stop);
+                root.add([r, t]);
+            };
+            arrow(d.vy0 + 12, -1); arrow(d.vy1 - 12, 1);
+            this.scrollDialog(scroll, true, true);
+        }
     }
 
-    /** Klik je vo viditeľnej časti okna (nie na tlačidle odrolovanom mimo). */
+    /** Tlačidlo okna podľa pôvodného HTML tlačidla k (aj s ikonkou výbavy). Vráti pole objektov s výškou .h. */
+    dialogButton(k, x, y, w, allow) {
+        const label = k.textContent.trim() || '•', icon = this.iconFor(k), iw = icon ? 34 : 0;
+        const probe = this.add.text(0, 0, label, txtStyle(14, '#000', { wordWrap: { width: w - 12 - iw, useAdvancedWrap: true } }));
+        const bh = Math.max(icon ? 38 : 30, probe.height + 10); probe.destroy();
+        const swatch = k.style.background && k.textContent.trim() === '' ? k.style.background : null;
+        const parts = this.button(x, y, w, bh, label, () => { if (allow()) k.click(); }, { disabled: k.disabled, icon });
+        if (swatch) parts[0].setFillStyle(hex(swatch));
+        if (k.style.outline) parts[0].setStrokeStyle(3, 0xffffff, 1);
+        this.dlgButtons.push(k);
+        parts.h = bh;
+        return parts;
+    }
+
+    /** Ikonka výbavy z HTML tlačidla (plátno canvas.ico) ako textúra Phaseru. */
+    iconFor(k) {
+        const cv = k.querySelector && k.querySelector('canvas.ico'), key = k.dataset && k.dataset.icon;
+        if (!cv || !key) return null;
+        if (!this.textures.exists(key)) this.textures.addCanvas(key, cv);
+        return key;
+    }
+
+    /** Klik je vo viditeľnej časti okna (nie na tlačidle odrolovanom mimo) a nejde o ťahanie. */
     inDialog() {
         const d = this.dlg, y = this.input.activePointer.y / RES;
-        return !d || (y >= d.py + 10 && y <= d.py + d.PH - 10);
+        if (this.drag && this.drag.moved) return false;
+        return !d || (y >= d.vy0 && y <= d.vy1);
     }
 
-    scrollDialog(dy) {
+    /** Posunie obsah okna o dy (koliesko), alebo nastaví polohu (abs = true). */
+    scrollDialog(dy, direct, abs) {
         const d = this.dlg;
         if (!d || d.CH <= d.maxH) return;
-        d.scroll = Math.max(0, Math.min(d.CH - d.maxH, d.scroll + dy * .5));
+        const target = abs ? dy : d.scroll + (direct ? dy : dy * .5);
+        d.scroll = Math.max(0, Math.min(d.CH - d.maxH, target));
         d.content.y = d.py + 20 - d.scroll;
-        d.bar.clear().fillStyle(UI_C.line, .6).fillRect(d.px + d.PW - 8, d.py + 14 + (d.PH - 28) * d.scroll / d.CH, 3, (d.PH - 28) * d.maxH / d.CH);
+        const top = d.vy0 + 28, len = d.vy1 - d.vy0 - 56;
+        d.bar.clear().fillStyle(0x000000, .35).fillRect(d.px + d.PW - 20, top, 4, len)
+            .fillStyle(UI_C.line, .85).fillRect(d.px + d.PW - 20, top + len * d.scroll / d.CH, 4, Math.max(12, len * d.maxH / d.CH));
     }
 
     dialogKey(k) {
         if (!this.dlg) return;
         const bs = (this.dlgButtons || []).filter(b => !b.disabled);
-        if (k === 'esc') { const b = bs.find(b => /^(Späť|Odísť|Zavrieť|Pokračovať|Rozumiem|Na cestu)/.test(b.textContent.trim())); if (b) b.click(); }
+        if (k === 'esc') { const b = bs.find(b => UI_EXIT.test(b.textContent.trim())); if (b) b.click(); }
         else if (bs[k - 1]) bs[k - 1].click();
     }
 

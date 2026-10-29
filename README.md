@@ -50,6 +50,7 @@ Ulož mapu a spusti `python tools/pack_assets.py`.
 
 ### Výmena grafiky
 
+- **Hrdina:** kreslí sa priamo v hre podľa výbavy, takže každá zbraň, brnenie, štít, prilba a kôň vyzerá inak (a čím drahšia vec, tým krajšia). Vzhľad každej veci je v tabuľke `GEAR` v `js/render/soldiers.js`; tam sa kreslia aj ikonky výbavy u kováča. Vlastný obrázok hrdinu sa dá stále dodať cez `assets/sprites/` (meno podľa šablóny `hero_…`).
 - **Vojaci:** každý druh má dva pásy po 12 snímkach (`assets/textures/unit_<druh>.png` a `unit_<druh>_team.png`). Snímky: 0 státie, 1–4 chôdza, 5–7 útok, 8–11 pád; jedna snímka má 192 × 192 px, vojak je v strede a pozerá doprava. Tímová vrstva je biela a hra ju zafarbí farbou frakcie (tabard, štít, plášť, čaprák).
 - **Hrady, dediny, zástavy a iné:** ulož obrázok s rovnakým menom ako šablóna z `assets/templates/` do `assets/sprites/`. Hra použije tvoj obrázok namiesto kresleného. Šablóny obnoví `python tools/export_templates.py`.
 - **Terén a bojisko:** dlaždice `terrain.png` (8 × 5 dlaždíc po 90 px), hory `mtn_*.png`, zem bojiska `ground_*.png`, voda, hradby, stromy.
@@ -65,7 +66,7 @@ Zvuky boja sú v `assets/audio/` (`render_sfx.py` ich vie vytvoriť znova). Hra 
 | Nástroj | Čo robí |
 |---|---|
 | `pack_assets.py` | zbalí mapu, obrázky a zvuky pre hru (spusti po každej zmene v `assets/`) |
-| `generate_art.py` | vykreslí novú grafiku a terén (`art.js`, `art_world.js`, `art_build.js`) |
+| `generate_art.py` | vykreslí novú grafiku a terén (`art.js`, `art_world.js`, `art_build.js`, vojakov kreslí `js/render/soldiers.js`) |
 | `export_templates.py` | vytvorí šablóny kreslených obrázkov do `assets/templates/` |
 | `export_map.py` | vytvorí mapu pre Tiled z dát hry (bežne netreba) |
 | `render_sfx.py` | vyrenderuje zvuky boja do `assets/audio/` |
@@ -81,6 +82,7 @@ js/
   data/               čisté dáta: frakcie, hrady (map.js je generovaný z mapy), jednotky, výbava, príbeh, úspechy
   sim/                logika hry bez kreslenia: diplomacia, hrdina, armády, svet a AI, bitka, obliehanie, politika, príbeh, uloženie
   render/             pôvodné kreslenie na plátno (index.html; Phaser ho používa ako náhradnú grafiku)
+    soldiers.js       vojaci, kone a výbava pohľadom zhora: hrdina podľa výbavy, ikonky u kováča, pásy snímok pre generátor
   audio/sound.js      syntetické zvuky a hudba
   ui/                 herné menu ako HTML (v Phaser verzii ich prekresľuje UIScene)
   input.js            klávesnica a myš (pôvodná verzia)
@@ -108,7 +110,7 @@ BootScene → IntroScene → MapScene ⇄ BattleScene
                  UIScene beží stále navrchu
 ```
 
-Menu sú stále napísané v `js/ui` ako HTML (funkcie `show`/`btn`). UIScene ich „zrkadlí“: prečíta okno, nakreslí ho v Phaseri a kliknutie prepošle pôvodnému tlačidlu. V HTML ostali len okná s formulármi a obrázkami: úvod, korunovácia a encyklopédia.
+Menu sú stále napísané v `js/ui` ako HTML (funkcie `show`/`btn`). UIScene ich „zrkadlí“: prečíta okno, nakreslí ho v Phaseri a kliknutie prepošle pôvodnému tlačidlu. Dlhé okná (napr. denník) sa posúvajú kolieskom, ťahaním, šípkami ▲▼ alebo klávesmi a tlačidlo na odchod (Späť, Zavrieť…) ostáva vždy viditeľné dole. V HTML ostali len okná s formulármi a obrázkami: úvod, korunovácia a encyklopédia.
 
 ## Skratky v kóde
 

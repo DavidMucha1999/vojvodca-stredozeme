@@ -102,11 +102,11 @@ function tsub(i, c) {
         rec(t).forEach(([n, p, k]) => btn(n + ' (' + p + ' zlata)', () => { G.gold -= p; G[k]++; re(); }, G.gold < p));
     if (c === 'e')
         SH.forEach(s => {
-            const n = s.it[G.eq[s.k] + 1];
+            const i = G.eq[s.k] + 1, n = s.it[i];
             if (n)
-                btn(s.l + ': ' + n.n + ' (' + n.p + ')', () => { G.gold -= n.p; G.eq[s.k]++; re(); }, G.gold < n.p);
+                btn(s.l + ': ' + n.n + ' (' + n.p + ')', () => { G.gold -= n.p; G.eq[s.k]++; re(); }, G.gold < n.p, { k: s.k, i });
             else
-                btn(s.l + ': ' + it(s.k).n + ' (najlepšie)', null, 1);
+                btn(s.l + ': ' + it(s.k).n + ' (najlepšie)', null, 1, { k: s.k, i: i - 1 });
         });
     if (c === 'v') {
         btn('Odpočinúť si (plné zdravie)', () => { G.hp = mh(); re(); }, G.hp >= mh());
