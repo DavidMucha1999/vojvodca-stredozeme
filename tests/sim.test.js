@@ -54,6 +54,21 @@ try {
     check('Obliehanie sa skončí', run('mode') !== 'battle', k + ' snímok');
     run('mode = "map"; save(); var d = G.day; G = null; load();');
     check('Uloženie a načítanie', run('!!G && G.day === d'));
+    // výbava: kováč podľa strany hradu, inventár, staré uloženia (tlačidlá okna sú v #bt)
+    const btnRun = (t, exact) => `document.getElementById("bt").children.find(b => ${exact ? 'b.textContent === ' + JSON.stringify(t) : 'b.textContent.startsWith(' + JSON.stringify(t) + ')'}).onclick()`;
+    check('Každá vec má vzhľad', run('SH.every(s => s.it.length === Soldiers.GEAR[s.k].length)'));
+    run('mode = "map"; G.gold = 5000; var gi = TW.findIndex(t => !bloc(t.f) && t.f !== 9 && t.f !== 6), ei = TW.findIndex(t => bloc(t.f)); smithy(gi, "w"); var gw = document.getElementById("bt").children.map(b => b.textContent);');
+    check('Hrad dobra predáva len výbavu dobra', run('gw.some(t => t.startsWith("Andúril")) && !gw.some(t => t.startsWith("Sauronov"))'));
+    run('smithy(ei, "w"); var ew = document.getElementById("bt").children.map(b => b.textContent);');
+    check('Hrad zla predáva len temnú výbavu', run('ew.some(t => t.startsWith("Sauronov")) && !ew.some(t => t.startsWith("Andúril"))'));
+    run(btnRun('Orkská šabľa'));
+    check('Kúpa: vec je v inventári a hrdina ju nosí', run('it("w").n === "Orkská šabľa" && G.own.w.length === 2 && G.gold === 4910'));
+    run('mode = "map"; inv(); ' + btnRun('Železný meč'));
+    check('Inventár: výmena za kúpenú vec', run('it("w").n === "Železný meč" && G.own.w.length === 2'));
+    run(btnRun('Zavrieť', 1));
+    check('Inventár sa zavrie', run('mode === "map"'));
+    run('G.eq.a = 2; delete G.own; save(); G = null; load();');
+    check('Staré uloženie: doterajšia výbava je v inventári', run('JSON.stringify(G.own.a) === "[0,1,2]" && G.own.w.length === 1'));
 } catch (e) { fails++; console.log('CHYBA výnimka: ' + e.stack); }
 console.log(fails ? '\n' + fails + ' testov zlyhalo.' : '\nVšetky testy prešli.');
 process.exit(fails ? 1 : 0);

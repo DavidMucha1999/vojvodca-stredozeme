@@ -10,7 +10,7 @@ function setOrd(k) { ORD = k; [...od.children].forEach(b => b.style.opacity = b.
 const tb = document.createElement('div');
 tb.style.cssText = 'position:absolute;left:.5rem;bottom:.5rem;display:flex;gap:.3rem;z-index:2';
 wrapEl.appendChild(tb);
-[['−', () => { Z = Math.max(.45, Z - .15); }], ['+', () => { Z = Math.min(1.5, Z + .15); }], ['Prehľad', () => ovw()], ['Denník', () => dnk()], ['Štatistiky', () => sts()], ['Legenda', () => { LEG = !LEG; }], ['Trofeje', () => tro()], ['Úspechy', () => achs()], ['Návod', () => {
+[['−', () => { Z = Math.max(.45, Z - .15); }], ['+', () => { Z = Math.min(1.5, Z + .15); }], ['Prehľad', () => ovw()], ['Denník', () => dnk()], ['Inventár', () => inv()], ['Štatistiky', () => sts()], ['Legenda', () => { LEG = !LEG; }], ['Trofeje', () => tro()], ['Úspechy', () => achs()], ['Návod', () => {
             if (mode === 'map')
                 help();
         }], ['Zvuk', function () {

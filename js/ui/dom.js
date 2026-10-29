@@ -7,9 +7,10 @@ function btn(label, fn, off, icon) {
     const b = document.createElement('button'); b.textContent = label; b.onclick = fn; b.disabled = !!off;
     if (icon && typeof Soldiers !== 'undefined') {
         const c = Soldiers.icon(icon.k, icon.i, FC[G.fac]);
-        c.className = 'ico'; b.dataset.icon = ['ico', icon.k, icon.i, G.fac].join('_'); b.prepend(c);
+        c.className = 'ico'; b.dataset.icon = ['ico', icon.k, icon.i, G.fac].join('_'); if (b.prepend) b.prepend(c);
     }
     document.getElementById('bt').appendChild(b);
+    return b;
 }
 let LOG = [], TS = null, BI = 'g', RN = null;
 function show(h, body) {

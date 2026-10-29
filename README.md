@@ -24,6 +24,12 @@ python tests/browser_test.py      # pôvodná verzia (index.html)
 
 Testy v prehliadači potrebujú `pip install playwright && playwright install chromium`. Spusti ich po každej väčšej zmene.
 
+## Výbava a inventár
+
+- **Kováč predáva podľa strany hradu.** Hrady dobra (Gondor, Rohan, Erebor, Lothlórien) predávajú výbavu slobodných národov, hrady zla (Mordor, Isengard, Harad, Rhûn) temnú výbavu: orkské šable, morgulské zbrane, Sauronov palcát, zbroj nazgûla, štít Oka, vargy či koňa nazgûla. Tvoje vlastné hrady predávajú výbavu tvojej strany.
+- **Inventár** (tlačidlo na mape alebo u kováča) ukazuje všetky kúpené veci; kliknutím ich hrdina oblečie.
+- Zoznam vecí, ceny a sila sú v `js/data/equipment.js` (temná výbava má `z: 1`), vzhľad v `js/render/soldiers.js` (`GEAR`, rovnaké poradie). Kováč a inventár sú v `js/ui/inventory.js`.
+
 ## Grafika, mapa a zvuky (priečinok `assets/`)
 
 Všetky obrázky, mapa a zvuky sú obyčajné súbory, ktoré môžeš upraviť alebo nahradiť. Hra ich však nečíta priamo (prehliadač by ich pri otvorení dvojklikom nepustil), ale zo zbaleného súboru `js/engine/assets.js` a mapu z `js/data/map.js`. **Po každej zmene v `assets/` spusti `python tools/pack_assets.py`.**
@@ -84,7 +90,7 @@ js/
   render/             pôvodné kreslenie na plátno (index.html; Phaser ho používa ako náhradnú grafiku)
     soldiers.js       vojaci, kone a výbava pohľadom zhora: hrdina podľa výbavy, ikonky u kováča, pásy snímok pre generátor
   audio/sound.js      syntetické zvuky a hudba
-  ui/                 herné menu ako HTML (v Phaser verzii ich prekresľuje UIScene)
+  ui/                 herné menu ako HTML (v Phaser verzii ich prekresľuje UIScene), inventory.js = kováč a inventár
   input.js            klávesnica a myš (pôvodná verzia)
   main.js             hlavná slučka pôvodnej verzie
   engine/             Phaser verzia
@@ -116,7 +122,7 @@ Menu sú stále napísané v `js/ui` ako HTML (funkcie `show`/`btn`). UIScene ic
 
 | Skratka | Význam |
 |---|---|
-| `G` | hráč a stav hry (zlato, vojsko, výbava, sláva…) |
+| `G` | hráč a stav hry (zlato, vojsko, výbava `eq`, kúpené veci `own`, sláva…) |
 | `E` | armády veliteľov na mape |
 | `TW`, `VL` | hrady a dediny |
 | `U`, `LB` | jednotky v bitke a aktuálny súper |

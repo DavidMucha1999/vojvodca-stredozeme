@@ -95,19 +95,13 @@ function town(i) {
     btn('Odísť z mesta', () => { ov.classList.add('hide'); mode = 'map'; });
 }
 function tsub(i, c) {
+    if (c === 'e')
+        return smithy(i);
     const t = TW[i], re = () => { upd(); tsub(i, c); }, T = { r: 'Verbovanie vojakov', e: 'Kováč a zbrojnica', v: 'Vojsko, zajatci a odpočinok', h: 'Správa hradu', d: 'Dvor a diplomacia' };
     mode = 'town';
     show(T[c], 'Zlato: ' + G.gold + '.' + (c === 'r' ? ' Pešiaci ' + G.inf + ', jazdci ' + G.cav + ', lukostrelci ' + G.arc + ', elfovia ' + G.elf + ', rohirimi ' + G.roh + ', veteráni ' + G.vet + '.' : c === 'e' ? ' Útok ' + dmg() + ', ochrana ' + Math.round((1 - red()) * 100) + ' %.' : c === 'v' ? ' Zajatci ' + G.cap + ', skúsenosti ' + G.txp + ', zajatí velitelia ' + G.pri.length + '.' : c === 'h' ? ' Hradby stupeň ' + (t.wl || 0) + ', posádka ' + t.g + '.' : ' Hodnosť: ' + rank() + ', sláva ' + G.ren + ', frakcia: ' + FN[G.fac] + '.'));
     if (c === 'r')
         rec(t).forEach(([n, p, k]) => btn(n + ' (' + p + ' zlata)', () => { G.gold -= p; G[k]++; re(); }, G.gold < p));
-    if (c === 'e')
-        SH.forEach(s => {
-            const i = G.eq[s.k] + 1, n = s.it[i];
-            if (n)
-                btn(s.l + ': ' + n.n + ' (' + n.p + ')', () => { G.gold -= n.p; G.eq[s.k]++; re(); }, G.gold < n.p, { k: s.k, i });
-            else
-                btn(s.l + ': ' + it(s.k).n + ' (najlepšie)', null, 1, { k: s.k, i: i - 1 });
-        });
     if (c === 'v') {
         btn('Odpočinúť si (plné zdravie)', () => { G.hp = mh(); re(); }, G.hp >= mh());
         btn('Povýšiť pešiaka na veterána (20 zlata, 15 skúseností)', () => { G.gold -= 20; G.txp -= 15; G.inf--; G.vet++; re(); }, G.gold < 20 || G.txp < 15 || G.inf < 1);

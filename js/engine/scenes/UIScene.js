@@ -210,7 +210,7 @@ class UIScene extends Phaser.Scene {
                     if (col === cols) flush();
                 } else {
                     flush();
-                    const t = this.add.text(20, y, k.textContent, txtStyle(13.5, k.style.opacity && +k.style.opacity < 1 ? UI_C.dim : UI_C.ink, { wordWrap: { width: IW - 26 } }));
+                    const t = this.add.text(20, y, k.textContent, txtStyle(k.style.color ? 15 : 13.5, k.style.color ? UI_C.gold : k.style.opacity && +k.style.opacity < 1 ? UI_C.dim : UI_C.ink, { wordWrap: { width: IW - 26 } }));
                     items.push(t); y += t.height + 4;
                 }
             });
