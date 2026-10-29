@@ -112,22 +112,43 @@ class UIScene extends Phaser.Scene {
         this.sig.hud = sig;
         this.hudLayer.removeAll(true);
         if (!on) return;
-        let x = 10, y = 6;
-        const items = [];
+        // Každá položka je „štítok“: ikona vo vysokom rozlíšení + hodnota a pod ňou drobný popis.
+        const RH = 27, GAP = 12;
+        let x = 10, y = 4;
+        const items = [], seps = [];
         for (const span of hud.children) {
             const val = span.querySelector('b');                 // nulové položky (napr. Elfovia 0) lištu zbytočne zahlcujú
             if (val && val.textContent.trim() === '0' && !/Zlato|Sláva/.test(span.textContent)) continue;
-            const parts = [];
-            span.childNodes.forEach(n => { const s = n.textContent; if (s.trim()) parts.push([s, n.nodeName === 'B' ? (span.style.color || UI_C.gold) : (span.style.color || UI_C.ink)]); });
-            const texts = parts.map(([s, c]) => this.add.text(0, 0, s.replace(/\s+/g, ' '), txtStyle(12, c)));
-            const w = texts.reduce((a, t) => a + t.width, 0);
-            if (x + w > W - 10 && x > 10) { x = 10; y += 17; }
-            let xx = x; texts.forEach(t => { t.setPosition(xx, y); xx += t.width; });
-            items.push(...texts); x += w + 14;
+            const full = span.textContent.replace(/\s+/g, ' ').trim();
+            const icon = Icons.forHud(full, span === hud.children[0]);
+            const vcol = span.style.color || UI_C.gold;
+            let label = '', value = full;
+            if (val && icon) {
+                value = val.textContent.replace(/\s+/g, ' ').trim(); label = full.replace(value, '').replace(/^[,:\s]+|[:\s]+$/g, '').trim();
+                const m = !label && value.match(/^([^:]+):\s*(.+)$/); if (m) { label = m[1]; value = m[2]; }   // „Body: 5“
+            }
+            const group = [];
+            let w = 0;
+            if (icon) { const im = this.add.image(0, 0, Icons.tex(this, icon)).setDisplaySize(20, 20).setOrigin(0, .5); group.push(im); w = 23; }
+            const tv = this.add.text(0, 0, value, txtStyle(12, icon ? vcol : UI_C.ink, { fontStyle: icon ? 'bold' : 'normal' }));
+            const tl = label ? this.add.text(0, 0, label, txtStyle(8, UI_C.dim)) : null;
+            const tw = Math.max(tv.width, tl ? tl.width : 0);
+            if (x + w + tw > W - 10 && x > 10) { x = 10; y += RH; }
+            if (group[0]) group[0].setPosition(x, y + RH / 2 - 1);
+            if (tl) { tv.setPosition(x + w, y + 1); tl.setPosition(x + w, y + 15); group.push(tv, tl); }
+            else { tv.setPosition(x + w, y + RH / 2 - tv.height / 2 - 1); group.push(tv); }
+            items.push(...group);
+            x += w + tw + GAP;
+            seps.push([x - GAP / 2, y]);
         }
+        const hb = y + RH + 3;
         const bg = this.add.graphics();
-        bg.fillStyle(0x120e0c, .88).fillRect(0, 0, W, y + 20);
-        bg.lineStyle(1, 0x6a5a46, 1).lineBetween(0, y + 20, W, y + 20);
+        bg.fillGradientStyle(0x2a1e14, 0x2a1e14, 0x120e0c, 0x120e0c, .94, .94, .9, .9).fillRect(0, 0, W, hb);
+        bg.fillStyle(0xc9a24a, .9).fillRect(0, hb - 1, W, 1);          // zlatý lem
+        bg.fillStyle(0x5a3a12, .9).fillRect(0, hb + 1, W, 1);
+        bg.fillStyle(0xffffff, .05).fillRect(0, 0, W, 1);
+        bg.fillStyle(0x6a5a46, .5);
+        for (const [sx, sy] of seps.slice(0, -1)) bg.fillRect(sx, sy + 4, 1, RH - 8);   // jemné oddeľovače
         this.hudLayer.add([bg, ...items]);
     }
 
@@ -138,20 +159,24 @@ class UIScene extends Phaser.Scene {
         if (sig === this.sig.bars) return;
         this.sig.bars = sig;
         this.barLayer.removeAll(true);
+        const BH = 24;
         if (vis(tb)) {
-            let x = 6, y = H - 25;
+            let x = 6, y = H - BH - 4;
             const rows = [];
             [...tb.children].forEach(b => {
-                const w = Math.max(20, this.measure(b.textContent, 11) + 12);
-                if (x + w > W * .66) { x = 6; y -= 23; }
-                rows.push(this.button(x, y, w, 20, b.textContent, () => b.click(), { size: 11 }));
+                const ic = Icons.forButton(b.textContent), zoom = /^[−+]$/.test(b.textContent.trim());
+                const label = zoom ? '' : b.textContent;
+                const w = zoom ? BH : Math.max(20, this.measure(label, 11) + 14 + (ic ? BH + 2 : 0));
+                if (x + w > W * .68) { x = 6; y -= BH + 3; }
+                rows.push(this.button(x, y, w, BH, label, () => b.click(), { size: 11, icon: ic ? Icons.tex(this, ic) : null, bare: zoom }));
                 x += w + 3;
             });
             this.barLayer.add(rows.flat());
+            if (this.pause) this.pause.y = y - 14;                       // upozornenie na pauzu nad panelom
         }
         if (vis(od)) {
-            const bs = [...od.children], w = 64, x0 = W / 2 - (bs.length * (w + 4)) / 2;
-            bs.forEach((b, i) => this.barLayer.add(this.button(x0 + i * (w + 4), H - 25, w, 20, b.textContent, () => b.click(), { size: 11, alpha: +(b.style.opacity || 1) })));
+            const bs = [...od.children], w = 84, x0 = W / 2 - (bs.length * (w + 4)) / 2;
+            bs.forEach((b, i) => { const ic = Icons.forButton(b.textContent); this.barLayer.add(this.button(x0 + i * (w + 4), H - BH - 4, w, BH, b.textContent, () => b.click(), { size: 11, alpha: +(b.style.opacity || 1), icon: ic ? Icons.tex(this, ic) : null })); });
         }
     }
 
@@ -161,13 +186,16 @@ class UIScene extends Phaser.Scene {
     button(x, y, w, h, label, fn, o = {}) {
         const off = !!o.disabled, size = o.size || 14;
         const r = this.add.rectangle(x, y, w, h, off ? UI_C.btnOff : UI_C.btn).setOrigin(0).setStrokeStyle(1, 0x5a3a12, .8).setAlpha(o.alpha ?? 1);
-        const is = Math.min(h - 4, 24), iw = o.icon ? is + 8 : 0;
-        const t = this.add.text(x + iw + (w - iw) / 2, y + h / 2, label, txtStyle(size, off ? UI_C.dim : '#1a120a', { align: 'center', wordWrap: { width: w - 12 - iw, useAdvancedWrap: true } })).setOrigin(.5);
-        const out = [r, t];
+        const deco = this.add.graphics().setAlpha(o.alpha ?? 1);          // svetlý horný okraj a tmavší spodok – plastické tlačidlo
+        deco.fillStyle(0xffffff, off ? .08 : .22).fillRect(x + 1, y + 1, w - 2, 1);
+        deco.fillStyle(0x3a2208, off ? .15 : .35).fillRect(x + 1, y + h - 2, w - 2, 1);
+        const is = Math.min(h - 4, 24), iw = o.icon ? (o.bare ? 0 : is + 6) : 0;
+        const t = this.add.text(x + iw + (w - iw) / 2, y + h / 2, label, txtStyle(size, off ? UI_C.dim : '#1a120a', { align: 'center', wordWrap: { width: Math.max(10, w - 12 - iw), useAdvancedWrap: true } })).setOrigin(.5);
+        const out = [r, deco, t];
         if (o.icon) {
-            const ib = this.add.rectangle(x + 3, y + h / 2, is, is, 0xf4e6c4, off ? .35 : .55).setOrigin(0, .5).setStrokeStyle(1, 0x5a3a12, .6);
-            const im = this.add.image(x + 3 + is / 2, y + h / 2, o.icon).setDisplaySize(is - 2, is - 2).setAlpha(off ? .75 : 1);
-            out.push(ib, im);
+            const cx = o.bare ? x + w / 2 : x + 3 + is / 2;
+            const im = this.add.image(cx, y + h / 2, o.icon).setDisplaySize(is - 2, is - 2).setAlpha(off ? .6 : 1);
+            out.push(im);
         }
         if (!off && fn) {
             r.setInteractive({ useHandCursor: true });
