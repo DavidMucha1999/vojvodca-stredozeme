@@ -11,7 +11,7 @@ const season = () => Math.floor(G.day / 10) % 4;
 const isNight = () => (.5 - .5 * Math.cos(dayT / 600 * 6.283)) > .72;
 const nightness = () => Math.max(0, ((.5 - .5 * Math.cos(dayT / 600 * 6.283)) - .55) / .45);
 /** Kraj podľa polohy hrdinu: s = sever (sneh), a = Mordor (popol), d = juh (púšť), g = ostatné. */
-const regionAt = (x, y) => x > 6450 ? 'a' : y > 4350 && x > 5100 ? 'd' : y < 1050 ? 's' : 'g';
+const regionAt = (x, y) => y > 4350 && x > 5100 ? 'd' : x > 6450 ? 'a' : y < 1050 ? 's' : 'g';
 
 const WNAME = { clear: 'jasno', rain: 'dážď', storm: 'búrka', fog: 'hmla', snow: 'sneženie', ash: 'popolový dážď' };
 /** Vyberie nové počasie podľa ročného obdobia a kraja. */

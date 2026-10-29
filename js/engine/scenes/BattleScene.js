@@ -23,6 +23,8 @@ class BattleScene extends Phaser.Scene {
             if (tint) bg.setTint(tint);
         }
 
+        this.marks = this.add.graphics().setDepth(-6);   // trvalé stopy boja: krv, zapichnuté šípy, padlé zbrane
+        this.markN = 0;
         this.fx = this.add.graphics().setDepth(5000);
         if (WX.night) {   // noc: tma nad bojiskom a svetlo fakieľ okolo vojakov
             this.night = this.add.graphics().setDepth(4990);
@@ -56,6 +58,7 @@ class BattleScene extends Phaser.Scene {
     addUnit(u) {
         const key = Art.unit(this, u);
         const spr = Art.image(this, u.x, u.y, key, 0, true);
+        spr.setScale(spr.scaleX * 1.22);          // väčší vojak = čitateľnejší na bojisku
         const o = { spr, key, dead: false, lc: u.c, state: 'idle' };
         if (u.bn && Art.img['unit_' + Art.unitArt(u)]) {           // nové sprity nemajú zástavu: pridáme ju
             const f = u.t ? u.fc : G.fac;
@@ -106,7 +109,7 @@ class BattleScene extends Phaser.Scene {
             let o = this.units.get(u);
             if (!o) { this.addUnit(u); o = this.units.get(u); }
             if (u.hp <= 0) {
-                if (!o.dead) { o.dead = true; o.spr.play(o.key + ':death').setDepth(-4 + u.y / 1e4); }
+                if (!o.dead) { o.dead = true; o.spr.play(o.key + ':death').setDepth(-4 + u.y / 1e4); this.markDeath(u); }
                 continue;
             }
             const moving = o.px !== undefined && Math.abs(o.px - u.x) + Math.abs(o.py - u.y) > .05;
@@ -146,6 +149,21 @@ class BattleScene extends Phaser.Scene {
         if (WX.n === 'storm' && Math.floor(tm) % 160 < 3) n.fillStyle(0xffffff, .35).fillRect(0, 0, BW, BH);
     }
 
+    /** Stopa po padlom vojakovi: kaluž krvi (u orkov tmavá) a padlá zbraň. Šípy, ktoré minuli, sa zapichnú do zeme (viď update). */
+    markDeath(u) {
+        if (this.markN++ > 400) return;
+        const g = this.marks, orc = u.t && bloc(u.fc), col = orc ? 0x2a1a14 : 0x7a1a12;
+        for (let k = 0; k < 4; k++) g.fillStyle(col, .35 + k * .08).fillEllipse(u.x + (Math.random() - .5) * 14, u.y + (Math.random() - .5) * 10, 12 - k * 2, 8 - k * 1.5);
+        const a = Math.random() * 6.3; g.lineStyle(1.5, 0x9aa0a8, .9).lineBetween(u.x + Math.cos(a) * 4, u.y + Math.sin(a) * 4, u.x + Math.cos(a) * 14, u.y + Math.sin(a) * 14);
+        g.lineStyle(2, 0x3a2a1a, .9).lineBetween(u.x + Math.cos(a) * 1, u.y + Math.sin(a) * 1, u.x + Math.cos(a) * 4, u.y + Math.sin(a) * 4);
+    }
+    markArrow(a) {
+        if (this.markN++ > 400) return;
+        const g = this.marks, an = Math.atan2(a.vy, a.vx);
+        g.lineStyle(1.2, 0xd8c8a0, .9).lineBetween(a.x, a.y, a.x - Math.cos(an) * 7, a.y - Math.sin(an) * 7 - 2);
+        g.fillStyle(0xffffff, .8).fillRect(a.x - Math.cos(an) * 7 - 1, a.y - Math.sin(an) * 7 - 3, 2, 2);
+    }
+
     /** Žiarivá aura okolo hrdinu: pomaly sa otáčajúce zlaté lúče a pulzujúci kruh svetla. */
     drawAura() {
         const g = this.aura, h = U[0];
@@ -172,8 +190,9 @@ class BattleScene extends Phaser.Scene {
             g.fillStyle(u.t ? 0xc0392b : 0x6fbf5a, 1).fillRect(u.x - 7, u.y - u.r - 6, 14 * u.hp / u.mh, 3);
         }
         g.lineStyle(1.6, 0xe8d8b0, 1);
-        for (const a of AR) g.lineBetween(a.x, a.y, a.x - a.vx * 3, a.y - a.vy * 3);
-        for (const p of PT) g.fillStyle(hex(p.c), Math.max(0, p.l / 18)).fillRect(p.x, p.y, 3, 3);
+        for (const a of AR) { g.lineBetween(a.x, a.y, a.x - a.vx * 3, a.y - a.vy * 3); if (a.l <= 1 && !a.mk) { a.mk = 1; this.markArrow(a); } }
+        for (const p of PT) { const a = Math.max(0, p.l / 18); g.fillStyle(hex(p.c), a).fillRect(p.x, p.y, 3, 3); if (p.l > 14) g.fillStyle(0xfff0c0, a * .9).fillRect(p.x - 1, p.y - 1, 2, 2); }   // iskra pri zásahu
+        for (const u of U) if (u.hp > 0 && (u.k === 'c' || u.k === 'r' || (u.h && G.eq.m)) ) { const o = this.units.get(u); if (o && o.state === 'walk') for (let k = 1; k < 3; k++) g.fillStyle(0xc8b48c, .14 - k * .04).fillCircle(u.x - Math.cos(u.f) * k * 10, u.y - Math.sin(u.f) * k * 10 + 6, 4 - k); }
         if (fx > 0) g.lineStyle(3, 0xecdfc6, fx / 10).strokeCircle(U[0].x, U[0].y, it('w').r || 34);
         if (SGB) {
             if (SGB.lad) for (const l of [250, 710]) {

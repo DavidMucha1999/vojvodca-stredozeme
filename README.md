@@ -75,6 +75,7 @@ Ulož mapu a spusti `python tools/pack_assets.py`.
 - **Hrdina:** kreslí sa priamo v hre podľa výbavy, takže každá zbraň, brnenie, štít, prilba a kôň vyzerá inak (a čím drahšia vec, tým krajšia). Vzhľad každej veci je v tabuľke `GEAR` v `js/render/soldiers.js`; tam sa kreslia aj ikonky výbavy u kováča. Vlastný obrázok hrdinu sa dá stále dodať cez `assets/sprites/` (meno podľa šablóny `hero_…`).
 - **Vojaci:** každý druh má dva pásy po 12 snímkach (`assets/textures/unit_<druh>.png` a `unit_<druh>_team.png`). Snímky: 0 státie, 1–4 chôdza, 5–7 útok, 8–11 pád; jedna snímka má 192 × 192 px, vojak je v strede a pozerá doprava. Tímová vrstva je biela a hra ju zafarbí farbou frakcie (tabard, štít, plášť, čaprák).
 - **Hrady, dediny, zástavy a iné:** ulož obrázok s rovnakým menom ako šablóna z `assets/templates/` do `assets/sprites/`. Hra použije tvoj obrázok namiesto kresleného. Šablóny obnoví `python tools/export_templates.py`.
+- **Mapa:** hrady podľa frakcie `map_castle_<f>.png` (240 × 200), dediny podľa kraja a prosperity `map_village_<g|a|d|s><1–5>.png` a vypálená `map_village_burn.png` (160 × 110), polia `map_field_*`, skalky `map_rocks_*`, most `map_bridge.png`. Kreslí ich `tools/art_map.js`; ak súbory chýbajú, hra použije pôvodné kreslenie.
 - **Terén a bojisko:** dlaždice `terrain.png` (8 × 5 dlaždíc po 90 px), hory `mtn_*.png`, zem bojiska `ground_*.png`, voda, hradby, stromy.
 
 Generátor `python tools/generate_art.py` znovu vykreslí `assets/textures/` a terén mapy. **Pozor:** terén v mape prepíše; ak si ho upravil ručne, použi `python tools/generate_art.py --bez-terenu`.
@@ -88,7 +89,7 @@ Zvuky boja sú v `assets/audio/` (`render_sfx.py` ich vie vytvoriť znova). Hra 
 | Nástroj | Čo robí |
 |---|---|
 | `pack_assets.py` | zbalí mapu, obrázky a zvuky pre hru (spusti po každej zmene v `assets/`) |
-| `generate_art.py` | vykreslí novú grafiku a terén (`art.js`, `art_world.js`, `art_build.js`, vojakov kreslí `js/render/soldiers.js`) |
+| `generate_art.py` | vykreslí novú grafiku a terén (`art.js`, `art_world.js`, `art_map.js`, `art_build.js`, vojakov kreslí `js/render/soldiers.js`) |
 | `export_templates.py` | vytvorí šablóny kreslených obrázkov do `assets/templates/` |
 | `export_map.py` | vytvorí mapu pre Tiled z dát hry (bežne netreba) |
 | `render_sfx.py` | vyrenderuje zvuky boja do `assets/audio/` |

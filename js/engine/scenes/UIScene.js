@@ -243,9 +243,7 @@ class UIScene extends Phaser.Scene {
         const footH = foot.length ? 34 : 0, viewH = Math.min(L.CH, maxH - footH), CH = L.CH;
         const PH = viewH + 34 + footH, px = (W - PW) / 2, py = Math.max(44, (H - PH) / 2);
         const panel = this.add.graphics();
-        panel.fillStyle(UI_C.panel, .97).fillRoundedRect(px, py, PW, PH, 6);
-        panel.lineStyle(2, UI_C.line, 1).strokeRoundedRect(px, py, PW, PH, 6);
-        panel.lineStyle(1, UI_C.line, .35).strokeRoundedRect(px + 5, py + 5, PW - 10, PH - 10, 4);
+        this.drawFrame(panel, px, py, PW, PH);
         const content = this.add.container(0, 0);
         content.add(L.items);
         content.setPosition(px, py + 20 - scroll);
@@ -273,6 +271,23 @@ class UIScene extends Phaser.Scene {
             arrow(d.vy0 + 12, -1); arrow(d.vy1 - 12, 1);
             this.scrollDialog(scroll, true, true);
         }
+    }
+
+    /** Rám okna s ornamentom podľa strany: dobro elfské úponky a zlato, zlo ostré hroty a červeň. */
+    drawFrame(panel, px, py, PW, PH) {
+        const evil = G && heroSide() === 1, line = evil ? 0x9a2a1a : UI_C.line, line2 = evil ? 0x5a1a12 : 0x8a6a2a;
+        panel.fillStyle(evil ? 0x14100f : UI_C.panel, .97).fillRoundedRect(px, py, PW, PH, 6);
+        panel.lineStyle(2, line, 1).strokeRoundedRect(px, py, PW, PH, 6);
+        panel.lineStyle(1, line, .35).strokeRoundedRect(px + 5, py + 5, PW - 10, PH - 10, 4);
+        // rohy
+        for (const [cx, cy, sx, sy] of [[px, py, 1, 1], [px + PW, py, -1, 1], [px, py + PH, 1, -1], [px + PW, py + PH, -1, -1]]) {
+            if (evil) { panel.fillStyle(line, 1).fillTriangle(cx, cy, cx + sx * 14, cy, cx, cy + sy * 14); panel.fillStyle(line2, 1).fillTriangle(cx + sx * 4, cy + sy * 4, cx + sx * 10, cy + sy * 4, cx + sx * 4, cy + sy * 10); }
+            else { panel.lineStyle(1.5, line, .9); panel.beginPath(); panel.moveTo(cx + sx * 3, cy + sy * 16); panel.lineTo(cx + sx * 3, cy + sy * 6); panel.lineTo(cx + sx * 8, cy + sy * 3); panel.lineTo(cx + sx * 16, cy + sy * 3); panel.strokePath(); panel.fillStyle(line, 1).fillCircle(cx + sx * 9, cy + sy * 9, 2.2); panel.lineStyle(1, line, .6); panel.beginPath(); panel.moveTo(cx + sx * 9, cy + sy * 9); panel.lineTo(cx + sx * 20, cy + sy * 12); panel.strokePath(); panel.beginPath(); panel.moveTo(cx + sx * 9, cy + sy * 9); panel.lineTo(cx + sx * 12, cy + sy * 20); panel.strokePath(); }
+        }
+        // stredový ornament hore
+        const mx = px + PW / 2;
+        if (evil) { panel.fillStyle(line, 1).fillTriangle(mx - 6, py + 1, mx, py + 9, mx + 6, py + 1); }
+        else { panel.lineStyle(1.2, line, .8); panel.beginPath(); panel.moveTo(mx - 22, py + 1); panel.lineTo(mx - 8, py + 6); panel.lineTo(mx, py + 2); panel.lineTo(mx + 8, py + 6); panel.lineTo(mx + 22, py + 1); panel.strokePath(); }
     }
 
     /** Tlačidlo okna podľa pôvodného HTML tlačidla k (aj s ikonkou výbavy). Vráti pole objektov s výškou .h. */

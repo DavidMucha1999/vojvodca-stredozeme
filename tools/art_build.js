@@ -15,7 +15,7 @@ function buildAll() {
     png('textures/terrain.png', sheet);
     png('maps/teren-tiled.png', terrainSheetSmall(sheet));
     for (const kind of ['snow', 'dark']) for (let v = 0; v < 3; v++)
-        png(`textures/mtn_${kind}_${v}.png`, draw(480, 360, c => ART.mountain(c, 480, 360, kind, v * 31 + (kind === 'dark' ? 7 : 1))));
+        png(`textures/mtn_${kind}_${v}.png`, draw(560, 360, c => ART.mountain(c, 560, 360, kind, v * 31 + (kind === 'dark' ? 7 : 1))));
     png('textures/mtn_doom_0.png', draw(720, 600, c => ART.mountain(c, 720, 600, 'doom', 3)));
 
     // --- vojaci: pás 12 snímok + tímová vrstva (biela, hra ju zafarbí farbou frakcie) ---
@@ -23,6 +23,9 @@ function buildAll() {
         png(`textures/unit_${key}.png`, ART.unitSheet(key, 'base'));
         png(`textures/unit_${key}_team.png`, ART.unitSheet(key, 'team'));
     }
+
+    // --- mapa: hrady podľa frakcie, dediny, polia, skalky, most ---
+    for (const [path, cv] of MAPART.buildAll()) png(path, cv);
 
     // --- bojisko ---
     for (const b of ['g', 'a', 'd', 's']) png(`textures/ground_${b}.png`, ART.groundTex(b));

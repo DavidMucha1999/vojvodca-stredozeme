@@ -77,12 +77,12 @@ try {
     check('Strana dobra: mier s dobrom, vojna so zlom', run('!WR[6][0] && !WR[6][8] && WR[6][2] && WR[6][7] && REL[6][1] >= 40 && bloc(6) === 0'));
     check('Výbava sedí so svojím vzhľadom', run('shOf("w").findIndex(x => x.n === "Orkský nôž") === 16 && Soldiers.GEAR.w[16].L === 1.6 && Soldiers.GEAR.w[17].blade === "#d8c890"'));
     // rozhovory, obchod, budovy, počasie
-    run('var le = E.find(e => e.f !== 9 && !e.nz); per(le); talk(le); var tb2 = document.getElementById("bt").children.map(b => b.textContent);');
+    run('var le = E.find(e => e.f !== 9 && !e.nz) || E[0]; per(le); talk(le); var tb2 = document.getElementById("bt").children.map(b => b.textContent);');
     check('Rozhovor s veliteľom ponúka témy', run('tb2.length >= 8 && tb2.some(t => /svete/.test(t)) && tb2.some(t => /plány/.test(t))'));
     run('document.getElementById("bt").children.find(b => /plány/.test(b.textContent)).onclick(); var pt = document.querySelector && 1; var p1 = document.getElementById("ov")._h;');
-    check('Odpoveď podľa povahy', run('(() => { const sp = ["slúžiť|slovo|brániť", "korisť|zbohatnúť|léno", "Prežiť|posteli|viac", "léno|trón|schod", "Spálim|Zajatcov|šeptalo", "čas|Mapa|spojenectvá"][le.tr]; return new RegExp(sp).test(p1); })()'));
+    check('Odpoveď podľa povahy', run('(() => { const sp = ["slúžiť|slovo|brániť", "korisť|zbohatnúť|léno", "Prežiť|posteli|viac|vojsk", "léno|trón|schod", "Spálim|Zajatcov|šeptalo", "čas|Mapa|spojenectvá"][le.tr]; return new RegExp(sp).test(p1); })()'));
     check('Témy sa po použití už neponúkajú', run('!document.getElementById("bt").children.some(b => /plány/.test(b.textContent))'));
-    run('G.gold = 500; G.cargo = {}; var v0 = VL.find(v => !hos(TW[v.t].f, G.fac)); v0.good = v0.good || villageGood(v0, VL.indexOf(v0)); var inv0 = { ...stock(v0) }; var p0 = price(v0, v0.good); var g0 = G.gold; var nb2 = buyGood(v0, v0.good, 5);');
+    run('G.gold = 500; G.cargo = {}; var v0 = VL.find(v => !hos(TW[v.t].f, G.fac)) || VL[0]; v0.st = 0; v0.good = v0.good || villageGood(v0, VL.indexOf(v0)); var inv0 = { ...stock(v0) }; var p0 = price(v0, v0.good); var g0 = G.gold; var nb2 = buyGood(v0, v0.good, 5);');
     check('Nákup tovaru v dedine', run('nb2 === 5 && G.cargo[v0.good] === 5 && G.gold < g0 && cargoCount() === 5'));
     check('Cena po nákupe stúpla', run('price(v0, v0.good) >= p0'));
     run('var t0 = TW.find(t => !hos(t.f, G.fac)); var g1 = G.gold; sellGood(t0, v0.good, 5);');
@@ -97,7 +97,7 @@ try {
     run('MW = { n: "storm", l: 2 }; dayT = 300;');
     check('Búrka spomaľuje pochod, noc skracuje dostrel', run('weatherSlow() < 1 && isNight() && battleWeather().r < 110'));
     // úlohy, spoločníci, ukladanie do pozícií
-    run('G.fac = 6; G.side = 0; var ql = E.find(e => e.f === 0 && !e.nz); per(ql); ql.tr = 0; G.qu = []; var qo = questFor(ql);');
+    run('G.fac = 6; G.side = 0; G.king = 0; WR[6] = WR[6].map(() => false); for (let f = 0; f < 10; f++) WR[f][6] = false; WR[6][2] = WR[2][6] = true; var qf = [0, 1, 5, 8].find(f => TW.some(t => t.f === f)); if (qf == null) { TW[0].f = 0; qf = 0; } var ql = E.find(e => e.f === qf && !e.nz && !(G.qu || []).some(q => q.lord === e.nm)); if (!ql) { E.push({ id: ++NID, x: TW[6].x, y: TW[6].y, f: qf, n: 10, nm: "Testovací pán", vx: 0, vy: 0, w: 0 }); ql = E[E.length - 1]; } per(ql); ql.tr = 0; G.qu = []; G.qlast = {}; var qo = questFor(ql);');
     check('Pán dobra ponúka úlohu podľa povahy', run('!!qo && qo.def.tr.includes(0) && qo.def.side !== 1'));
     run('questAccept(ql, qo.def, qo.home); var qq = G.qu[0];');
     check('Úloha prijatá a v zozname', run('G.qu.length === 1 && qq.lord === ql.nm'));

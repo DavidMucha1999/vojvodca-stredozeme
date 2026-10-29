@@ -18,17 +18,19 @@ class MapScene extends Phaser.Scene {
         const tiled = typeof MAPDATA !== 'undefined' && MAPDATA.terrain && this.textures.exists('terrain');
         const worldObjs = tiled ? this.buildTerrain() : Art.worldTiles(this).map(t => this.add.image(t.x, t.y, t.key).setOrigin(0).setScale(t.s).setDepth(-10));
 
+        const newArt = this.textures.exists('map_castle_0');
+        this.newArt = newArt;
         this.vill = VL.map(v => ({
             v, key: '',
-            spr: Art.image(this, v.x, v.y, Art.village(this, 0)).setDepth(v.y - 1),
+            spr: newArt ? this.add.image(v.x, v.y, 'map_village_g1').setOrigin(.5, .8).setScale(.36).setDepth(v.y - 1) : Art.image(this, v.x, v.y, Art.village(this, 0)).setDepth(v.y - 1),
             txt: this.add.text(v.x, v.y + 14, v.n, txtStyle(12, '#d8ccb4', { backgroundColor: 'rgba(18,14,12,.6)', padding: { x: 4, y: 1 } })).setOrigin(.5, 0).setDepth(9000)
         }));
 
         this.towns = TW.map(t => ({
             t, f: -1,
-            spr: Art.image(this, t.x, t.y, Art.castle(this, t.f), 0, true).setDepth(t.y),
+            spr: newArt ? this.add.sprite(t.x, t.y, 'map_castle_' + t.f).setOrigin(.5, .82).setScale(.32).setDepth(t.y) : Art.image(this, t.x, t.y, Art.castle(this, t.f), 0, true).setDepth(t.y),
             txt: this.add.text(t.x, t.y + 18, '', txtStyle(15, '#ecdfc6', { backgroundColor: 'rgba(18,14,12,.82)', padding: { x: 7, y: 2 } })).setOrigin(.5, 0).setDepth(9001),
-            stars: this.add.text(t.x - 24, t.y - 46, '', { fontFamily: 'sans-serif', fontSize: '11px', color: '#ffd24a', fontStyle: 'bold', resolution: RES }).setOrigin(.5).setDepth(9001)
+            stars: this.add.text(t.x - 24, t.y - (newArt ? 60 : 46), '', { fontFamily: 'sans-serif', fontSize: '11px', color: '#ffd24a', fontStyle: 'bold', resolution: RES }).setOrigin(.5).setDepth(9001)
         }));
 
         this.hero = Art.image(this, G.x, G.y, Art.rider(this, G.fac, 1), 0, true);
@@ -82,13 +84,36 @@ class MapScene extends Phaser.Scene {
         lake(L.rx + 10, L.ry + 10, 0x2c5b73); lake(L.rx - 5, L.ry - 8, 0x4a86a0);
         const R = [[640, 0], [600, 300], [820, 420], [780, 640], [760, 800], [900, 880], [860, 1200]].map(([x, y]) => new Phaser.Math.Vector2(x * k, y * k));
         const river = new Phaser.Curves.Path(R[0].x, R[0].y).cubicBezierTo(R[3], R[1], R[2]).cubicBezierTo(R[6], R[4], R[5]).getPoints(160);
-        g.lineStyle(14 * k * .75, 0x2c5b73, 1).strokePoints(river); g.lineStyle(6 * k * .75, 0x4a86a0, 1).strokePoints(river);
-        g.lineStyle(4.5 * k * .75, 0xbea56e, .7);
-        for (const [a, b] of MAPDATA.roads) {
-            const A = TW[a], B = TW[b];
-            g.strokePoints(new Phaser.Curves.QuadraticBezier(new Phaser.Math.Vector2(A.x, A.y), new Phaser.Math.Vector2((A.x + B.x) / 2 + 30 * k, (A.y + B.y) / 2 - 25 * k), new Phaser.Math.Vector2(B.x, B.y)).getPoints(24));
-        }
+        // rieka: piesočné brehy, tmavý stred, svetlý prúd
+        g.lineStyle(22 * k * .75, 0x9a8a5a, .55).strokePoints(river);
+        g.lineStyle(14 * k * .75, 0x2c5b73, 1).strokePoints(river); g.lineStyle(7 * k * .75, 0x4a86a0, 1).strokePoints(river); g.lineStyle(2 * k * .75, 0x8ac0d8, .5).strokePoints(river);
+        // cesty: tmavší okraj, svetlý stred, vyjazdené koľaje
+        const roads = MAPDATA.roads.map(([a, b]) => { const A = TW[a], B = TW[b]; return new Phaser.Curves.QuadraticBezier(new Phaser.Math.Vector2(A.x, A.y), new Phaser.Math.Vector2((A.x + B.x) / 2 + 30 * k, (A.y + B.y) / 2 - 25 * k), new Phaser.Math.Vector2(B.x, B.y)).getPoints(28); });
+        g.lineStyle(5.5 * k * .75, 0x7a6a44, .55); roads.forEach(r => g.strokePoints(r));
+        g.lineStyle(3.6 * k * .75, 0xc4ad78, .85); roads.forEach(r => g.strokePoints(r));
+        g.lineStyle(.5 * k * .75, 0x8a7a50, .6); roads.forEach(r => { g.strokePoints(r.map(p => ({ x: p.x, y: p.y - 1.1 * k * .75 }))); g.strokePoints(r.map(p => ({ x: p.x, y: p.y + 1.1 * k * .75 }))); });
         out.push(g);
+        if (this.textures.exists('map_field_g0')) {
+            // mosty tam, kde cesta pretína rieku
+            for (const r of roads) for (let i = 1; i < r.length; i++) {
+                const p = r[i], near = river.find(q => Math.hypot(q.x - p.x, q.y - p.y) < 6 * k);
+                if (near) { const a = Math.atan2(r[i].y - r[i - 1].y, r[i].x - r[i - 1].x); out.push(this.add.image(near.x, near.y, 'map_bridge').setScale(.5).setRotation(a).setDepth(-8.5)); break; }
+            }
+            // polia okolo dedín a skalky po krajine
+            const rnd = (n) => ((n * 9301 + 49297) % 233280) / 233280;
+            VL.forEach((v, i) => { for (let f = 0; f < 2; f++) { const a = rnd(i * 3 + f) * 6.283, d = 48 + rnd(i * 7 + f) * 20; out.push(this.add.image(v.x + Math.cos(a) * d, v.y + Math.sin(a) * d * .7, 'map_field_' + regionAt(v.x, v.y) + ((i + f) % 2)).setScale(.4).setAlpha(.9).setRotation((rnd(i + f * 5) - .5) * .6).setDepth(-8.6)); } });
+            for (let i = 0; i < 160; i++) { const x = rnd(i * 11 + 1) * WW, y = rnd(i * 13 + 2) * WH; if (!TW.some(t => Math.hypot(t.x - x, t.y - y) < 150) && !VL.some(v => Math.hypot(v.x - x, v.y - y) < 90)) out.push(this.add.image(x, y, 'map_rocks_' + (i % 3)).setScale(.4).setDepth(-8.4)); }
+        }
+        // mäkký tmavý podklad pod lesmi: zjemní hranice dlaždíc a dá lesu hĺbku
+        const fc = document.createElement('canvas'); fc.width = T.cols; fc.height = T.rows;
+        const fx = fc.getContext('2d');
+        for (let j = 0; j < T.rows; j++) for (let i = 0; i < T.cols; i++) { const f = T.forest[j * T.cols + i]; if (f >= 33 && f <= 36) { fx.fillStyle = 'rgba(10,30,12,.5)'; fx.fillRect(i, j, 1, 1); } }
+        // rozmazanie: susedné dlaždice dostanú slabší odtieň, aby okraj lesa splýval s lúkou
+        const fc2 = document.createElement('canvas'); fc2.width = T.cols; fc2.height = T.rows; const fx2 = fc2.getContext('2d');
+        fx2.filter = 'blur(1px)'; fx2.drawImage(fc, 0, 0); fx2.filter = 'none'; fx2.drawImage(fc, 0, 0);
+        if (this.textures.exists('forestwash')) this.textures.remove('forestwash');
+        this.textures.addCanvas('forestwash', fc2);
+        out.push(this.add.image(-WW / T.cols * .5, -WH / T.rows * .5, 'forestwash').setOrigin(0).setScale(WW / T.cols).setAlpha(.9).setDepth(-8.7));
         layer(T.forest, -8, false);
         // hory
         for (const [x, y, size, kind, v] of T.mountains) {
@@ -155,14 +180,19 @@ class MapScene extends Phaser.Scene {
     syncTowns() {
         for (const o of this.towns) {
             const t = o.t, L = lvl(t);
-            if (o.f !== t.f) { o.f = t.f; const k = Art.castle(this, t.f); o.spr.setTexture(k, 0).play({ key: k + ':wave', startFrame: TW.indexOf(t) % 4 }); }
-            o.spr.setScale((Art.scale[o.spr.texture.key] || 1 / RES) * (.85 + L * .08));
+            if (o.f !== t.f) { o.f = t.f; if (this.newArt) o.spr.setTexture('map_castle_' + t.f); else { const k = Art.castle(this, t.f); o.spr.setTexture(k, 0).play({ key: k + ':wave', startFrame: TW.indexOf(t) % 4 }); } }
+            o.spr.setScale((this.newArt ? .32 : (Art.scale[o.spr.texture.key] || 1 / RES)) * (.85 + L * .08));
             o.txt.setText(t.n + '  ⚔' + t.g);
             o.stars.setText('★'.repeat(L));
         }
         for (const o of this.vill) {
-            const f = TW[o.v.t].f, b = o.v.st > 0, key = f + (b ? 'b' : '');
-            if (o.key !== key) { o.key = key; const k = Art.village(this, f, b); o.spr.setTexture(k).setScale(Art.scale[k] || 1 / RES); o.txt.setColor(b ? '#c08070' : FC[f]); }
+            const f = TW[o.v.t].f, b = o.v.st > 0, L = lvl(o.v), key = f + (b ? 'b' : '') + (this.newArt ? L : '');
+            if (o.key !== key) {
+                o.key = key;
+                if (this.newArt) o.spr.setTexture(b ? 'map_village_burn' : 'map_village_' + regionAt(o.v.x, o.v.y) + L).setScale(.36);
+                else { const k = Art.village(this, f, b); o.spr.setTexture(k).setScale(Art.scale[k] || 1 / RES); }
+                o.txt.setColor(b ? '#c08070' : FC[f]);
+            }
         }
     }
 
@@ -212,10 +242,16 @@ class MapScene extends Phaser.Scene {
             if (hos(e.f, G.fac)) g.lineStyle(2, e.n > pw() ? 0xe0442a : 0x6fbf5a, 1).strokeEllipse(e.x, e.y + 8, 34, 14);
             if (e.fo) { g.lineStyle(3, 0xffd27a, 1); g.lineBetween(e.x - 9, e.y - 36, e.x + 9, e.y - 20); g.lineBetween(e.x + 9, e.y - 36, e.x - 9, e.y - 20); }
         }
-        for (const v of VL) if (v.st > 0) for (let k = 0; k < 3; k++) {
-            const s = (tm * .5 + k * 20) % 60;
-            g.fillStyle(0x3c322d, .5 - s / 130).fillCircle(v.x + Math.sin(s * .2) * 5, v.y - 8 - s * .6, 4 + s * .1);
+        for (const v of VL) if (v.st > 0) {
+            // horiaca dedina: plamene pri domoch a stúpajúci dym
+            for (let k = 0; k < 5; k++) { const fx = v.x - 18 + k * 9, fl = 3 + Math.sin(tm / 2 + k * 1.3) * 1.5; g.fillStyle(0xff7a20, .8).fillTriangle(fx - 3, v.y - 6, fx, v.y - 10 - fl * 2, fx + 3, v.y - 6); g.fillStyle(0xffd060, .9).fillTriangle(fx - 1.5, v.y - 6, fx, v.y - 8 - fl, fx + 1.5, v.y - 6); }
+            for (let k = 0; k < 6; k++) { const s = (tm * .5 + k * 14) % 84; g.fillStyle(0x3c322d, .45 - s / 200).fillCircle(v.x - 10 + k * 4 + Math.sin(s * .15 + k) * 6, v.y - 14 - s * .7, 4 + s * .13); }
+            g.fillStyle(0xff6a20, .08 + .04 * Math.sin(tm / 3)).fillCircle(v.x, v.y - 6, 40);
         }
+        // Hora osudu: dym a pulz žiary
+        if (this.doom) { for (let k = 0; k < 5; k++) { const s = (tm * .3 + k * 30) % 150; g.fillStyle(0x2a1a18, .35 - s / 500).fillCircle(this.doom.x + Math.sin(s * .05 + k) * 20 - 10, this.doom.y - this.doom.displayHeight * .9 - s * 1.2, 14 + s * .25); } }
+        // prach pod armádami na pochode
+        for (const e of E) if ((e.vx || e.vy) && Math.hypot(e.x - G.x, e.y - G.y) < 900) for (let k = 1; k < 3; k++) g.fillStyle(0xc8b48c, .14 - k * .04).fillCircle(e.x - e.vx * k * 9, e.y - e.vy * k * 9 + 8, 4 - k * .5);
         if (G.camp) {
             g.fillStyle(0xc8a870, 1).fillTriangle(G.x - 30, G.y + 6, G.x - 18, G.y - 12, G.x - 6, G.y + 6);
             g.fillStyle(0xff9a3a, 1).fillCircle(G.x + 26, G.y + 4, 3 + Math.random() * 1.5);

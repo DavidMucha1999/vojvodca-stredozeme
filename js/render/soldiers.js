@@ -676,7 +676,16 @@ const Soldiers = (() => {
                 c.save(); c.globalCompositeOperation = 'source-atop'; c.fillStyle = 'rgba(20,10,10,' + (.12 + (k - 8) * .1) + ')'; c.fillRect(k * FRAME, 0, FRAME, FRAME); c.restore();
             }
         }
-        return cv;
+        return layer === 'base' ? outlined(cv) : cv;
+    }
+    /** Tmavý obrys okolo celej postavy (čitateľnosť na tráve) a mäkký vrhnutý tieň pod ňou. */
+    function outlined(src) {
+        const out = mkCanvas(src.width, src.height), c = out.getContext('2d');
+        c.save(); c.globalAlpha = .55; c.filter = 'brightness(0)';
+        for (const [dx, dy] of [[-1.5, 0], [1.5, 0], [0, -1.5], [0, 1.5], [-1, -1], [1, -1], [-1, 1], [1, 1]]) c.drawImage(src, dx, dy);
+        c.restore();
+        c.drawImage(src, 0, 0);
+        return out;
     }
 
     /* ---------- ikonky výbavy (pre kováča) ---------- */

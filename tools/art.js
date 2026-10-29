@@ -64,6 +64,13 @@ ART.groundTile = (c, bi, v) => {
     c.fillStyle = b.base; c.fillRect(0, 0, T, T);
     blobs(c, T, T, bi * 97 + v * 13 + 1, 22, b.dark, 6, 20, .28);
     blobs(c, T, T, bi * 131 + v * 17 + 5, 18, b.light, 4, 14, .22);
+    blobs(c, T, T, bi * 211 + v * 7 + 3, 40, [b.dark[0]], 1.5, 3, .35);           // jemné zrno
+    if (['lush', 'grass'].includes(b.id)) {                                       // kvety a kamienky v tráve
+        const R = rng(v * 19 + bi);
+        for (let i = 0; i < 6; i++) { c.fillStyle = ['#e8d870', '#f0f0f0', '#d890a0'][i % 3]; c.globalAlpha = .55; c.fillRect(R() * T, R() * T, 2, 2); }
+        c.globalAlpha = 1;
+    }
+    if (['dry', 'steppe', 'sand'].includes(b.id)) { const R = rng(v * 23 + bi * 3); for (let i = 0; i < 5; i++) { const x = R() * T, y = R() * T, r = 1.5 + R() * 2; ell(c, x + 1, y + 1, r, r * .6, 0, 'rgba(0,0,0,.25)'); ell(c, x, y, r, r * .7, 0, '#8a8478'); } }
     if (b.id === 'sea') {
         c.strokeStyle = b.blade; c.lineWidth = 2;
         const R = rng(v * 7 + 3);
@@ -77,7 +84,7 @@ ART.groundTile = (c, bi, v) => {
 ART.forestTile = (c, v, dead) => {
     // bezšvová dlaždica: stromy pri okraji sa nakreslia aj na protiľahlej strane, susedné dlaždice tak plynule nadväzujú
     const T = ART.TILE, R = rng(v * 77 + (dead ? 500 : 0) + 1), trees = [];
-    if (!dead) { c.fillStyle = 'rgba(18,40,16,.35)'; c.fillRect(0, 0, T, T); }
+    if (!dead) { blobs(c, T, T, v * 5 + 11, 14, ['rgba(18,40,16,1)'], 14, 30, .3); }   // tmavý podrast ako škvrny, nie plný štvorec (hranice dlaždíc nevidno)
     const n = dead ? 7 : 13;
     for (let i = 0; i < n; i++) { const x = R() * T, y = R() * T, s = .75 + R() * .45, k = dead ? 2 : (R() < .3 ? 1 : 0); for (const dx of [-T, 0, T]) for (const dy of [-T, 0, T]) trees.push([x + dx, y + dy, s, k]); }
     trees.filter(([x, y]) => x > -20 && x < T + 20 && y > -4 && y < T + 40).sort((a, b) => a[1] - b[1]).forEach(([x, y, s, k]) => ART.tree(c, x, y, s * 1.45, k));
@@ -102,41 +109,53 @@ ART.tree = (c, x, y, s, kind) => {
         return;
     }
     c.fillStyle = '#4a3420'; c.fillRect(x - 1.5 * s, y - 5 * s, 3 * s, 7 * s);
-    if (kind === 1) {           // listnatý
-        [['#2c4a22', 0, -13, 9], ['#3a5c2a', -3, -15, 6], ['#4a6e34', 2, -17, 4.5]].forEach(([col, dx, dy, r]) => ell(c, x + dx * s, y + dy * s, r * s, r * .9 * s, 0, col));
+    if (kind === 1) {           // listnatý: koruna z viacerých chumáčov so svetlom zľava hore
+        [['#243f1c', 0, -12, 10], ['#2c4a22', -4, -14, 8], ['#3a5c2a', 3, -16, 7], ['#4a6e34', -3, -18, 5], ['#5c8040', 1, -20, 3.5]].forEach(([col, dx, dy, r]) => ell(c, x + dx * s, y + dy * s, r * s, r * .85 * s, 0, col));
+        ell(c, x + 4 * s, y - 11 * s, 6 * s, 4 * s, .3, 'rgba(0,0,0,.2)');
         return;
     }
-    for (let i = 0; i < 3; i++) {   // ihličnatý
-        c.fillStyle = ['#1f4a26', '#2a5c2e', '#357038'][i];
-        c.beginPath(); c.moveTo(x, y - (24 - i * 5) * s); c.lineTo(x + (10 - i * 2) * s, y - (4 - i * 5) * s); c.lineTo(x - (10 - i * 2) * s, y - (4 - i * 5) * s); c.fill();
+    for (let i = 0; i < 4; i++) {   // ihličnatý: štyri poschodia, zubatý okraj
+        c.fillStyle = ['#1a3f22', '#224f2a', '#2c6032', '#387240'][i];
+        const top = y - (26 - i * 5) * s, bot = y - (6 - i * 5) * s, hw = (11 - i * 2) * s;
+        c.beginPath(); c.moveTo(x, top);
+        for (let k = 1; k <= 3; k++) { c.lineTo(x + hw * k / 3, bot - (k % 2) * 2 * s); } c.lineTo(x, bot + 1 * s); for (let k = 3; k >= 1; k--) { c.lineTo(x - hw * k / 3, bot - (k % 2) * 2 * s); } c.fill();
+        c.fillStyle = 'rgba(0,0,0,.22)'; c.beginPath(); c.moveTo(x, top); c.lineTo(x + hw, bot); c.lineTo(x + hw * .2, bot); c.fill();
     }
-    c.fillStyle = 'rgba(255,255,220,.12)'; c.beginPath(); c.moveTo(x, y - 24 * s); c.lineTo(x - 6 * s, y - 8 * s); c.lineTo(x, y - 9 * s); c.fill();
+    c.fillStyle = 'rgba(255,255,220,.16)'; c.beginPath(); c.moveTo(x, y - 26 * s); c.lineTo(x - 7 * s, y - 8 * s); c.lineTo(x - 1 * s, y - 9 * s); c.fill();
 };
 ART.mountain = (c, w, h, kind, seed) => {
-    const R = rng(seed), cx = w / 2, base = h * .92, top = h * .08, hw = w * .48;
-    const peaks = [[cx, top]];
-    if (kind !== 'doom') { peaks.push([cx - hw * .45, top + h * (.22 + R() * .15)]); peaks.push([cx + hw * .5, top + h * (.25 + R() * .15)]); }
-    ell(c, cx + w * .04, base, hw * 1.05, h * .06, 0, 'rgba(0,0,0,.3)');
-    const lit = kind === 'snow' ? '#9a928a' : '#5a4a44', dk = kind === 'snow' ? '#5e5650' : '#2a1c18';
-    peaks.sort((a, b) => a[1] - b[1]).reverse().forEach(([px, py], i) => {
-        const pw = hw * (i === peaks.length - 1 ? 1 : .62);
-        c.fillStyle = lit; c.beginPath(); c.moveTo(px, py); c.lineTo(px - pw, base); c.lineTo(px + pw * .08, base); c.fill();
-        c.fillStyle = dk; c.beginPath(); c.moveTo(px, py); c.lineTo(px + pw, base); c.lineTo(px + pw * .08, base); c.fill();
-        c.strokeStyle = 'rgba(0,0,0,.18)'; c.lineWidth = 2;
-        for (let k = 0; k < 4; k++) { const t = .25 + k * .17; c.beginPath(); c.moveTo(px + pw * t * .3, py + (base - py) * t); c.lineTo(px + pw * t * .7, py + (base - py) * (t + .12)); c.stroke(); }
-        if (kind === 'snow') {
-            c.fillStyle = '#f2f4f8'; c.beginPath(); c.moveTo(px, py);
-            c.lineTo(px - pw * .3, py + (base - py) * .32); c.lineTo(px - pw * .12, py + (base - py) * .26); c.lineTo(px + pw * .05, py + (base - py) * .36); c.lineTo(px + pw * .3, py + (base - py) * .28); c.fill();
-            c.fillStyle = '#c8d0dc'; c.beginPath(); c.moveTo(px, py); c.lineTo(px + pw * .3, py + (base - py) * .28); c.lineTo(px + pw * .05, py + (base - py) * .36); c.fill();
+    const R = rng(seed), cx = w / 2, base = h * .9, top = h * .1, hw = w * .48;
+    const snow = kind === 'snow', doom = kind === 'doom';
+    const lit = snow ? '#8e8a86' : doom ? '#3a2a26' : '#4e4440', mid = snow ? '#6e6a66' : doom ? '#2a1c18' : '#362e2a', dk = snow ? '#4a4642' : doom ? '#160e0c' : '#1e1816';
+    ell(c, cx + w * .05, base + h * .02, hw * 1.08, h * .07, 0, 'rgba(0,0,0,.32)');
+    // hrebeň: niekoľko vrcholov s nepravidelným obrysom
+    const peaks = doom ? [[cx, top]] : [[cx, top], [cx - hw * .5, top + h * (.22 + R() * .18)], [cx + hw * .52, top + h * (.26 + R() * .16)], [cx - hw * .85, top + h * (.5 + R() * .1)], [cx + hw * .88, top + h * (.52 + R() * .1)]];
+    peaks.sort((a, b) => b[1] - a[1]).forEach(([px, py], i) => {
+        const pw = hw * (.45 + .55 * (1 - (py - top) / (base - top)));
+        const ridge = (sd) => { c.moveTo(px, py); let x = px, y = py; for (let k = 1; k <= 5; k++) { x = px + sd * pw * k / 5; y = py + (base - py) * (k / 5) + (R() - .5) * h * .04; c.lineTo(x, y); } c.lineTo(px + sd * pw, base); };
+        c.fillStyle = lit; c.beginPath(); ridge(-1); c.lineTo(px, base); c.fill();
+        c.fillStyle = dk; c.beginPath(); ridge(1); c.lineTo(px, base); c.fill();
+        c.fillStyle = mid; c.beginPath(); c.moveTo(px, py); c.lineTo(px + pw * .35, base); c.lineTo(px + pw * .05, base); c.fill();
+        // strže
+        c.strokeStyle = 'rgba(0,0,0,.22)'; c.lineWidth = 1.5;
+        for (let k = 0; k < 5; k++) { const t = .2 + k * .15; c.beginPath(); c.moveTo(px + pw * t * .25 * (k % 2 ? -1 : 1), py + (base - py) * t); c.lineTo(px + pw * t * .8 * (k % 2 ? -1 : 1), py + (base - py) * Math.min(1, t + .18)); c.stroke(); }
+        if (snow) {
+            const sh = (base - py) * .34;
+            c.fillStyle = '#f4f6fa'; c.beginPath(); c.moveTo(px, py); c.lineTo(px - pw * .34, py + sh); c.lineTo(px - pw * .2, py + sh * .8); c.lineTo(px - pw * .1, py + sh * 1.05); c.lineTo(px + pw * .05, py + sh * .85); c.lineTo(px + pw * .18, py + sh * 1.1); c.lineTo(px + pw * .34, py + sh * .9); c.fill();
+            c.fillStyle = '#c4ccd8'; c.beginPath(); c.moveTo(px, py); c.lineTo(px + pw * .34, py + sh * .9); c.lineTo(px + pw * .18, py + sh * 1.1); c.lineTo(px + pw * .05, py + sh * .85); c.fill();
         }
     });
-    if (kind === 'doom') {
-        c.fillStyle = '#1a0c08'; c.beginPath(); c.moveTo(cx - w * .06, top); c.lineTo(cx + w * .06, top); c.lineTo(cx + w * .04, top + h * .06); c.lineTo(cx - w * .04, top + h * .06); c.fill();
-        c.strokeStyle = '#ff6a1a'; c.lineWidth = 6; c.lineCap = 'round';
-        c.beginPath(); c.moveTo(cx - w * .02, top + h * .04); c.quadraticCurveTo(cx - w * .08, top + h * .4, cx - w * .2, base - h * .05); c.stroke();
-        c.strokeStyle = '#ffc060'; c.lineWidth = 2; c.stroke();
-        const g = c.createRadialGradient(cx, top, 2, cx, top, w * .25); g.addColorStop(0, 'rgba(255,130,40,.8)'); g.addColorStop(1, 'rgba(255,60,0,0)');
-        c.fillStyle = g; c.fillRect(0, 0, w, h * .5);
+    // úpätie splýva s terénom
+    // úpätie: zubatý okraj s trávou/kameňmi, aby hora nesedela na rovnej čiare
+    const g = c.createLinearGradient(0, base - h * .14, 0, base); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.3)'); c.fillStyle = g; c.fillRect(0, base - h * .14, w, h * .14);
+    c.globalCompositeOperation = 'destination-out'; c.beginPath(); c.moveTo(0, base + 1);
+    for (let x = 0; x <= w; x += w / 24) c.lineTo(x, base - h * (.01 + .035 * R())); c.lineTo(w, h); c.lineTo(0, h); c.fill(); c.globalCompositeOperation = 'source-over';
+    const sc = snow ? '#a8aeb8' : doom ? '#4a3430' : '#5e5450'; for (let k = 0; k < 10; k++) { const x = w * .1 + R() * w * .8, r = 3 + R() * 6; ell(c, x, base - h * .02 - R() * h * .03, r, r * .6, 0, sc); }
+    if (doom) {
+        c.fillStyle = '#1a0c08'; c.beginPath(); c.moveTo(cx - w * .07, top); c.lineTo(cx + w * .07, top); c.lineTo(cx + w * .05, top + h * .06); c.lineTo(cx - w * .05, top + h * .06); c.fill();
+        for (const [dx, wd] of [[-.02, 6], [.03, 4], [-.08, 3]]) { c.strokeStyle = '#ff6a1a'; c.lineWidth = wd; c.lineCap = 'round'; c.beginPath(); c.moveTo(cx + w * dx, top + h * .05); c.quadraticCurveTo(cx + w * (dx - .06), top + h * .45, cx + w * (dx - .2), base - h * .04); c.stroke(); c.strokeStyle = '#ffc060'; c.lineWidth = wd * .35; c.stroke(); }
+        const gr = c.createRadialGradient(cx, top, 2, cx, top, w * .3); gr.addColorStop(0, 'rgba(255,130,40,.85)'); gr.addColorStop(1, 'rgba(255,60,0,0)'); c.fillStyle = gr; c.fillRect(0, 0, w, h * .55);
+        for (let k = 0; k < 4; k++) ell(c, cx + (k - 1.5) * w * .05, top - h * .04 - k * h * .05, w * (.08 + k * .04), h * (.05 + k * .02), 0, 'rgba(60,40,40,' + (.45 - k * .1) + ')');
     }
 };
 
@@ -155,7 +174,10 @@ ART.groundTex = (biome) => {
     c.fillStyle = P[0]; c.fillRect(0, 0, T, T);
     blobs(c, T, T, 11, 120, P[1], 14, 60, .4);
     blobs(c, T, T, 23, 90, P[2], 10, 44, .32);
-    strokes(c, T, T, 31, biome === 'g' ? 700 : 260, P[3], biome === 'g' ? 12 : 8, 2);
+    if (biome === 'g') { blobs(c, T, T, 41, 14, ['#6a5a3a', '#5e4e32'], 20, 48, .22); blobs(c, T, T, 43, 50, ['#3e6a30'], 5, 12, .3); }   // udupaná hlina, tmavé trsy
+    if (biome === 'd') blobs(c, T, T, 47, 30, ['#a08a50'], 2, 5, .5);
+    strokes(c, T, T, 31, biome === 'g' ? 900 : 260, P[3], biome === 'g' ? 12 : 8, 2);
+    if (biome === 'g') { const R = rng(53); for (let i = 0; i < 40; i++) { c.fillStyle = ['#e8d870', '#f0f0f0', '#d890a0', '#8ab0ff'][i % 4]; c.globalAlpha = .6; c.fillRect(R() * T, R() * T, 3, 3); } c.globalAlpha = 1; for (let i = 0; i < 18; i++) { const x = R() * T, y = R() * T, r = 2 + R() * 3; ell(c, x + 1, y + 1, r, r * .6, 0, 'rgba(0,0,0,.3)'); ell(c, x, y, r, r * .7, 0, '#8a8a80'); } }
     if (biome === 'a') { const R = rng(5); c.strokeStyle = 'rgba(255,110,30,.35)'; c.lineWidth = 3; for (let i = 0; i < 10; i++) { let x = R() * T, y = R() * T; c.beginPath(); c.moveTo(x, y); for (let k = 0; k < 5; k++) { x += (R() - .5) * 50; y += (R() - .5) * 50; c.lineTo(x, y); } c.stroke(); } }
     return cv;
 };
