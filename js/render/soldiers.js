@@ -71,14 +71,15 @@ const Soldiers = (() => {
             { t: 'sword', L: 2.8, w: .15, blade: '#dcefff', guard: '#e0e6ee', grip: '#2a3a5a', pommel: '#ffffff', shine: .9, gw: 1.45, glow: '#7ab8ff', runes: '#7ab8ff' }, // Glamdring
             { t: 'flame', L: 2.7, w: .16, blade: '#ff7a1a', edge: '#ffe070', guard: '#7a2a10', grip: '#2a1410', pommel: '#ffb030', glow: '#ff5a10', gw: 1.3 }, // Plameňový meč
             { t: 'sword', L: 3.0, w: .15, blade: '#f6f8fc', guard: '#d9a441', grip: '#2a1e14', pommel: '#d9a441', shine: 1, gw: 1.7, wing: 1, runes: '#d9a441', glow: '#cfe4ff', fuller: 1 }, // Andúril
-            // temná výbava
+            // výbava zla
             { t: 'scimitar', L: 2.2, w: .14, blade: '#8a8478', guard: '#3a2a1a', grip: '#2a1a10', pommel: '#4a3a2a', shine: .15, gw: .8, notch: 1 },   // Orkská šabľa
             { t: 'spear', L: 4.2, blade: '#6a6e74', shaft: '#2a2220', pennon: '#7a1010', trim: '#141414', barbs: 1 },                                  // Morgulská kopija
             { t: 'cleaver', L: 2.4, w: .22, blade: '#5a5e66', guard: '#2a2a2e', grip: '#1a1414', pommel: '#2a2a2e', shine: .3, gw: 1, hand: 1 },       // Uruk-haiský meč
             { t: 'axe', L: 2.5, head: '#3e4048', rim: '#8a1a10', haft: '#1e1612', single: 1, spikes: 1 },                                              // Sekera Olog-haia
             { t: 'sword', L: 2.7, w: .12, blade: '#cfe8d8', guard: '#2a2a30', grip: '#101014', pommel: '#7af0b0', shine: .6, gw: 1.2, glow: '#7af0b0', notch: 1 }, // Morgulská čepeľ
             { t: 'mace', L: 2.4, head: '#2a2a2e', spike: '#8a8e96', haft: '#3a2a1a', core: '#ff7a1a', glow: '#ff5a10' },                              // Gothmogov ohnivý palcát
-            { t: 'mace', L: 2.7, head: '#141418', spike: '#4a4a56', haft: '#1a1a1e', core: '#c060ff', glow: '#8a2ad0', big: 1.3 }                      // Sauronov palcát
+            { t: 'mace', L: 2.7, head: '#141418', spike: '#4a4a56', haft: '#1a1a1e', core: '#c060ff', glow: '#8a2ad0', big: 1.3 },                     // Sauronov palcát
+            { t: 'scimitar', L: 1.6, w: .13, blade: '#7a7068', guard: '#2a1a10', grip: '#3a2a1a', pommel: '#3a2a1a', shine: .1, gw: .6, notch: 1 }   // Orkský nôž (základná výbava zla)
         ],
         // brnenie
         a: [
@@ -88,12 +89,13 @@ const Soldiers = (() => {
             { col: '#5f7044', pat: 'scale', pad: 1.1, rim: '#c8b060' },                   // Elfská šupinová zbroj
             { col: '#6e5a3a', pat: 'dwarf', pad: 1.4, rim: '#d9a441' },                   // Trpasličí plát
             { col: '#e4ecf4', pat: 'mithril', pad: 1.15, rim: '#ffffff', glow: '#cfe4ff' }, // Mithrilová košeľa
-            // temná výbava
+            // výbava zla
             { col: '#4a4038', pat: 'mail', pad: 1, rust: 1 },                                  // Orkská krúžková zbroj
             { col: '#1c1c22', pat: 'plate', pad: 1.3, rim: '#6a6e76', hand: 1 },               // Čierny plát Uruk-haiov
             { col: '#8a2a18', pat: 'scale', pad: 1.1, rim: '#d9a441' },                        // Haradská šupinová zbroj
             { col: '#141418', pat: 'plate', pad: 1.45, rim: '#6a1a1a', spikes: 1 },            // Plát Čiernej veže
-            { col: '#0c0c10', pat: 'robe', pad: 1.15, rim: '#2e2e3a', glow: '#7a30c0', spikes: 1 } // Zbroj nazgûla
+            { col: '#0c0c10', pat: 'robe', pad: 1.15, rim: '#2e2e3a', glow: '#7a30c0', spikes: 1 }, // Zbroj nazgûla
+            { col: '#4e4232', pat: 'leather', pad: .95, rust: 1 }                             // Orkské kože (základná výbava zla)
         ],
         // štíty
         s: [
@@ -102,7 +104,7 @@ const Soldiers = (() => {
             { shape: 'kite', col: '#18181e', rim: '#c8ccd4', tree: 1 },                                   // Gondorský štít
             { shape: 'leaf', col: '#3f6a3a', rim: '#d9b85a', vein: 1 },                                   // Elfský štít
             { shape: 'round', col: '#8e969e', rim: '#d9a441', rune: 1, big: 1.12, glow: '#ffd890' },       // Štít z Ereboru
-            // temná výbava
+            // výbava zla
             { shape: 'round', col: '#3a2e24', rim: '#2a2a2a', boss: '#5a5a5a', planks: 1, paint: 1, crude: 1 }, // Orkský štít
             { shape: 'kite', col: '#141416', rim: '#6a6e76', hand: 1 },                                        // Štít Bielej ruky
             { shape: 'round', col: '#9a2a18', rim: '#d9a441', rays: 1 },                                       // Haradský štít
@@ -115,11 +117,12 @@ const Soldiers = (() => {
             { col: '#d4d8de', kind: 'gondor', wings: '#f2f4f6', plume: 1 },                               // Gondorská prilba
             { col: '#d8b860', kind: 'elf', crest: '#f4e2a0' },                                            // Elfská prilba
             { col: '#c8ccd4', kind: 'citadel', wings: '#ffffff', band: '#d9a441', plume: 1, glow: '#ffffff' }, // Prilba strážcu Citadely
-            // temná výbava
+            // výbava zla
             { col: '#3a3632', kind: 'orc' },                                   // Orkská prilba
             { col: '#1c1c22', kind: 'uruk' },                                  // Prilba Bielej ruky
             { col: '#c09030', kind: 'mask' },                                  // Maska z Rhûnu
-            { col: '#141418', kind: 'mouth', glow: '#ff3010' }                 // Prilba Saurónových úst
+            { col: '#141418', kind: 'mouth', glow: '#ff3010' },                // Prilba Saurónových úst
+            { col: '#3e3428', kind: 'cap' }                                    // Orkská kukla (základná výbava zla)
         ],
         // kone
         m: [
@@ -128,7 +131,7 @@ const Soldiers = (() => {
             { s: 1, col: '#7b4524', mane: '#eadcae', hoof: '#2a1a10', blanket: 1, blaze: 1, tack: '#3a2412', long: 1 },    // Rohanský kôň
             { s: 1.08, col: '#4e4c50', mane: '#1a1a1c', hoof: '#1e1c1e', barding: '#aab0ba', caparison: 1, tack: '#222' },  // Obrnený bojový kôň
             { s: 1.15, col: '#f2f2f6', mane: '#ffffff', hoof: '#c8ccd6', glow: '#d6e8ff', long: 1, sheen: 1 },               // Mearas
-            // temná výbava
+            // výbava zla
             { wolf: 1, s: .9, col: '#7a7064', back: '#4a4238', eye: '#e8c040' },                                                     // Mladý varg
             { wolf: 1, s: 1.15, col: '#45403a', back: '#1e1a18', eye: '#ff8a20' },                                                   // Varg
             { s: 1.08, col: '#18161a', mane: '#050505', hoof: '#000000', barding: '#3a3c42', caparison: 1, tack: '#111', horn: 1, redEye: 1 }, // Čierny kôň Mordoru

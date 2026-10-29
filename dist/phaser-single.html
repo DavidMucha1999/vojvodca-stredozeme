@@ -163,8 +163,9 @@ const FK = [['uG1', 'uG2'], ['roh', 'uR2'], ['uM1', 'uM2'], ['uI1', 'uI2'], ['uH
 <script>
 /*
  * Výbava u kováča: zbrane, brnenie, štíty, prilby a kone (aj legendárne).
- * Prvá vec v každom zozname je základná (máš ju od začiatku).
- * Ostatné predávajú len hrady jednej strany: veci bez z = hrady dobra, z: 1 = hrady zla (temná výbava).
+ * Existuje len výbava dobra (veci bez z) a výbava zla (z: 1). Hrady dobra predávajú výbavu dobra,
+ * hrady zla výbavu zla. Veci s cenou 0 sú základné: hrdina dobra začína s prvou vecou v zozname,
+ * hrdina zla so základnou vecou zla. "Bez štítu" a "Pešo" nie sú výbava, majú ich obe strany.
  * Vzhľad každej veci je v js/render/soldiers.js (GEAR) v rovnakom poradí.
  * v = sila (útok / ochrana / rýchlosť), p = cena, r = dosah, fx = žiara (glow, fire, dark).
  */
@@ -182,7 +183,7 @@ shOf('s').push({ n: 'Elfský štít', v: .21, p: 300 }, { n: 'Štít z Ereboru',
 shOf('h').push({ n: 'Elfská prilba', v: .13, p: 350 }, { n: 'Prilba strážcu Citadely', v: .14, p: 700, fx: 'glow' });
 shOf('m').push({ n: 'Obrnený bojový kôň', v: 3.2, p: 500 }, { n: 'Mearas', v: 3.6, p: 1200, fx: 'glow' });
 
-// --- temná výbava (len v hradoch Mordoru, Isengardu, Haradu a Rhûnu) ---
+// --- výbava zla (len v hradoch Mordoru, Isengardu, Haradu a Rhûnu) ---
 shOf('w').push({ n: 'Orkská šabľa', v: 20, p: 90, z: 1 }, { n: 'Morgulská kopija', v: 24, p: 160, r: 46, z: 1 }, { n: 'Uruk-haiský meč', v: 31, p: 320, z: 1 }, { n: 'Sekera Olog-haia', v: 35, p: 480, z: 1 },
     { n: 'Morgulská čepeľ', v: 42, p: 900, fx: 'dark', z: 1 }, { n: 'Gothmogov ohnivý palcát', v: 46, p: 1300, fx: 'fire', z: 1 }, { n: 'Sauronov palcát', v: 50, p: 1800, fx: 'dark', z: 1 });
 shOf('a').push({ n: 'Orkská krúžková zbroj', v: .25, p: 110, z: 1 }, { n: 'Čierny plát Uruk-haiov', v: .45, p: 300, z: 1 }, { n: 'Haradská šupinová zbroj', v: .47, p: 550, z: 1 },
@@ -191,8 +192,21 @@ shOf('s').push({ n: 'Orkský štít', v: .1, p: 50, z: 1 }, { n: 'Štít Bielej 
 shOf('h').push({ n: 'Orkská prilba', v: .06, p: 70, z: 1 }, { n: 'Prilba Bielej ruky', v: .12, p: 200, z: 1 }, { n: 'Maska z Rhûnu', v: .13, p: 350, z: 1 }, { n: 'Prilba Saurónových úst', v: .14, p: 700, fx: 'dark', z: 1 });
 shOf('m').push({ n: 'Mladý varg', v: 2.3, p: 80, z: 1 }, { n: 'Varg', v: 2.9, p: 260, z: 1 }, { n: 'Čierny kôň Mordoru', v: 3.2, p: 500, z: 1 }, { n: 'Kôň nazgûla', v: 3.6, p: 1200, fx: 'dark', z: 1 });
 
-/** Strana výbavy, ktorú predáva hrad frakcie f: 1 = zlo, 0 = dobro. Tvoje vlastné hrady predávajú výbavu tvojej strany. */
-const shopSide = f => bloc(f === 6 ? G.fac : f);
+// základná výbava zla (hrdina zla ju má od začiatku, nepredáva sa)
+shOf('w').push({ n: 'Orkský nôž', v: 15, p: 0, z: 1 });
+shOf('a').push({ n: 'Orkské kože', v: 0, p: 0, z: 1 });
+shOf('h').push({ n: 'Orkská kukla', v: 0, p: 0, z: 1 });
+
+/** Strana, ktorú hrdina zastáva: 1 = zlo, 0 = dobro. Kráľ si ju vyberá pri korunovácii (G.side). */
+const heroSide = () => G.king && G.side != null ? G.side : bloc(G.fac);
+/** Strana výbavy, ktorú predáva hrad frakcie f. Tvoje vlastné hrady predávajú výbavu tvojej strany. */
+const shopSide = f => f === 6 ? heroSide() : bloc(f);
+/** Názov strany. */
+const sideName = z => z ? 'zla' : 'dobra';
+/** Dá hrdinovi základnú výbavu strany z (na začiatku hry). */
+function startGear(z) {
+    for (const k of ['w', 'a', 'h']) { const i = shOf(k).findIndex(x => !x.p && !x.z === !z); G.eq[k] = i; G.own[k] = [i]; }
+}
 
 </script>
 <script>
@@ -1213,6 +1227,8 @@ function newGame() {
             spawnE();
         for (let i = 0; i < 4; i++)
             spawnX();
+        if (bloc(f0))
+            startGear(1);   // hrdina zla začína s orkskou výbavou
         if (f0 !== 6) {
             const t = TW.find(t => t.f === f0);
             G.fac = f0;
@@ -2983,14 +2999,15 @@ const Soldiers = (() => {
             { t: 'sword', L: 2.8, w: .15, blade: '#dcefff', guard: '#e0e6ee', grip: '#2a3a5a', pommel: '#ffffff', shine: .9, gw: 1.45, glow: '#7ab8ff', runes: '#7ab8ff' }, // Glamdring
             { t: 'flame', L: 2.7, w: .16, blade: '#ff7a1a', edge: '#ffe070', guard: '#7a2a10', grip: '#2a1410', pommel: '#ffb030', glow: '#ff5a10', gw: 1.3 }, // Plameňový meč
             { t: 'sword', L: 3.0, w: .15, blade: '#f6f8fc', guard: '#d9a441', grip: '#2a1e14', pommel: '#d9a441', shine: 1, gw: 1.7, wing: 1, runes: '#d9a441', glow: '#cfe4ff', fuller: 1 }, // Andúril
-            // temná výbava
+            // výbava zla
             { t: 'scimitar', L: 2.2, w: .14, blade: '#8a8478', guard: '#3a2a1a', grip: '#2a1a10', pommel: '#4a3a2a', shine: .15, gw: .8, notch: 1 },   // Orkská šabľa
             { t: 'spear', L: 4.2, blade: '#6a6e74', shaft: '#2a2220', pennon: '#7a1010', trim: '#141414', barbs: 1 },                                  // Morgulská kopija
             { t: 'cleaver', L: 2.4, w: .22, blade: '#5a5e66', guard: '#2a2a2e', grip: '#1a1414', pommel: '#2a2a2e', shine: .3, gw: 1, hand: 1 },       // Uruk-haiský meč
             { t: 'axe', L: 2.5, head: '#3e4048', rim: '#8a1a10', haft: '#1e1612', single: 1, spikes: 1 },                                              // Sekera Olog-haia
             { t: 'sword', L: 2.7, w: .12, blade: '#cfe8d8', guard: '#2a2a30', grip: '#101014', pommel: '#7af0b0', shine: .6, gw: 1.2, glow: '#7af0b0', notch: 1 }, // Morgulská čepeľ
             { t: 'mace', L: 2.4, head: '#2a2a2e', spike: '#8a8e96', haft: '#3a2a1a', core: '#ff7a1a', glow: '#ff5a10' },                              // Gothmogov ohnivý palcát
-            { t: 'mace', L: 2.7, head: '#141418', spike: '#4a4a56', haft: '#1a1a1e', core: '#c060ff', glow: '#8a2ad0', big: 1.3 }                      // Sauronov palcát
+            { t: 'mace', L: 2.7, head: '#141418', spike: '#4a4a56', haft: '#1a1a1e', core: '#c060ff', glow: '#8a2ad0', big: 1.3 },                     // Sauronov palcát
+            { t: 'scimitar', L: 1.6, w: .13, blade: '#7a7068', guard: '#2a1a10', grip: '#3a2a1a', pommel: '#3a2a1a', shine: .1, gw: .6, notch: 1 }   // Orkský nôž (základná výbava zla)
         ],
         // brnenie
         a: [
@@ -3000,12 +3017,13 @@ const Soldiers = (() => {
             { col: '#5f7044', pat: 'scale', pad: 1.1, rim: '#c8b060' },                   // Elfská šupinová zbroj
             { col: '#6e5a3a', pat: 'dwarf', pad: 1.4, rim: '#d9a441' },                   // Trpasličí plát
             { col: '#e4ecf4', pat: 'mithril', pad: 1.15, rim: '#ffffff', glow: '#cfe4ff' }, // Mithrilová košeľa
-            // temná výbava
+            // výbava zla
             { col: '#4a4038', pat: 'mail', pad: 1, rust: 1 },                                  // Orkská krúžková zbroj
             { col: '#1c1c22', pat: 'plate', pad: 1.3, rim: '#6a6e76', hand: 1 },               // Čierny plát Uruk-haiov
             { col: '#8a2a18', pat: 'scale', pad: 1.1, rim: '#d9a441' },                        // Haradská šupinová zbroj
             { col: '#141418', pat: 'plate', pad: 1.45, rim: '#6a1a1a', spikes: 1 },            // Plát Čiernej veže
-            { col: '#0c0c10', pat: 'robe', pad: 1.15, rim: '#2e2e3a', glow: '#7a30c0', spikes: 1 } // Zbroj nazgûla
+            { col: '#0c0c10', pat: 'robe', pad: 1.15, rim: '#2e2e3a', glow: '#7a30c0', spikes: 1 }, // Zbroj nazgûla
+            { col: '#4e4232', pat: 'leather', pad: .95, rust: 1 }                             // Orkské kože (základná výbava zla)
         ],
         // štíty
         s: [
@@ -3014,7 +3032,7 @@ const Soldiers = (() => {
             { shape: 'kite', col: '#18181e', rim: '#c8ccd4', tree: 1 },                                   // Gondorský štít
             { shape: 'leaf', col: '#3f6a3a', rim: '#d9b85a', vein: 1 },                                   // Elfský štít
             { shape: 'round', col: '#8e969e', rim: '#d9a441', rune: 1, big: 1.12, glow: '#ffd890' },       // Štít z Ereboru
-            // temná výbava
+            // výbava zla
             { shape: 'round', col: '#3a2e24', rim: '#2a2a2a', boss: '#5a5a5a', planks: 1, paint: 1, crude: 1 }, // Orkský štít
             { shape: 'kite', col: '#141416', rim: '#6a6e76', hand: 1 },                                        // Štít Bielej ruky
             { shape: 'round', col: '#9a2a18', rim: '#d9a441', rays: 1 },                                       // Haradský štít
@@ -3027,11 +3045,12 @@ const Soldiers = (() => {
             { col: '#d4d8de', kind: 'gondor', wings: '#f2f4f6', plume: 1 },                               // Gondorská prilba
             { col: '#d8b860', kind: 'elf', crest: '#f4e2a0' },                                            // Elfská prilba
             { col: '#c8ccd4', kind: 'citadel', wings: '#ffffff', band: '#d9a441', plume: 1, glow: '#ffffff' }, // Prilba strážcu Citadely
-            // temná výbava
+            // výbava zla
             { col: '#3a3632', kind: 'orc' },                                   // Orkská prilba
             { col: '#1c1c22', kind: 'uruk' },                                  // Prilba Bielej ruky
             { col: '#c09030', kind: 'mask' },                                  // Maska z Rhûnu
-            { col: '#141418', kind: 'mouth', glow: '#ff3010' }                 // Prilba Saurónových úst
+            { col: '#141418', kind: 'mouth', glow: '#ff3010' },                // Prilba Saurónových úst
+            { col: '#3e3428', kind: 'cap' }                                    // Orkská kukla (základná výbava zla)
         ],
         // kone
         m: [
@@ -3040,7 +3059,7 @@ const Soldiers = (() => {
             { s: 1, col: '#7b4524', mane: '#eadcae', hoof: '#2a1a10', blanket: 1, blaze: 1, tack: '#3a2412', long: 1 },    // Rohanský kôň
             { s: 1.08, col: '#4e4c50', mane: '#1a1a1c', hoof: '#1e1c1e', barding: '#aab0ba', caparison: 1, tack: '#222' },  // Obrnený bojový kôň
             { s: 1.15, col: '#f2f2f6', mane: '#ffffff', hoof: '#c8ccd6', glow: '#d6e8ff', long: 1, sheen: 1 },               // Mearas
-            // temná výbava
+            // výbava zla
             { wolf: 1, s: .9, col: '#7a7064', back: '#4a4238', eye: '#e8c040' },                                                     // Mladý varg
             { wolf: 1, s: 1.15, col: '#45403a', back: '#1e1a18', eye: '#ff8a20' },                                                   // Varg
             { s: 1.08, col: '#18161a', mane: '#050505', hoof: '#000000', barding: '#3a3c42', caparison: 1, tack: '#111', horn: 1, redEye: 1 }, // Čierny kôň Mordoru
@@ -4045,6 +4064,8 @@ function tsub(i, c) {
             });
         if (G.fac === 6 && !G.king && G.ren >= 14 && TW.filter(x => x.mine).length >= 3)
             btn('Korunovať sa za kráľa', () => { G.king = 1; lg(G.name + ' bol korunovaný za kráľa.'); re(); });
+        if (G.king && G.side == null)
+            btn('Vybrať stranu kráľovstva (dobro alebo zlo)', () => sideDlg(() => tsub(i, c)));
         if (G.king || G.ren >= 5)
             btn('Zvolať ťaženie na najbližší nepriateľský hrad', () => {
                 const h = TW.filter(x => hos(x.f, G.fac)).sort((p, q) => Math.hypot(p.x - G.x, p.y - G.y) - Math.hypot(q.x - G.x, q.y - G.y))[0];
@@ -4063,22 +4084,30 @@ function rec(t) {
     [t.f, ...[0, 1, 2, 3, 4, 5, 7, 8].filter(x => x !== t.f && AL[t.f][x] && !hos(x, G.fac))].forEach(f => (FK[f] || []).forEach(k => { G[k] = G[k] || 0; L.push([FU[k].n + ' (' + FN[f] + ', máš ' + G[k] + ')', FU[k].p, k]); }));
     return L;
 }
+/** Výber strany kráľovstva (pre kráľov z uložení spred tejto voľby). */
+function sideDlg(back) {
+    mode = 'town';
+    show('Strana kráľovstva', 'Vyber, ktorú stranu bude tvoje kráľovstvo zastávať. Kováči v tvojich hradoch budú predávať výbavu tejto strany.');
+    [['Strana dobra', 0], ['Strana zla', 1]].forEach(([n, v]) => btn(n, () => { G.side = v; lg('Kráľovstvo ' + (G.kn || G.name) + ' sa pridalo na stranu ' + sideName(v) + '.'); back(); }));
+    btn('Späť', back);
+}
 function kingDlg() {
     mode = 'town';
-    show('Nové kráľovstvo', 'Si kráľom! Pomenuj svoje kráľovstvo, vyber znak a farbu štítu.');
+    show('Nové kráľovstvo', 'Si kráľom! Pomenuj svoje kráľovstvo, vyber znak, farbu štítu a stranu, ktorú budeš zastávať. Podľa strany budú kováči v tvojich hradoch predávať výbavu dobra alebo zla.');
     const bt = document.getElementById('bt'), inp = document.createElement('input');
     inp.value = 'Kráľovstvo ' + G.name;
     inp.maxLength = 24;
     inp.style.gridColumn = '1/-1';
     inp.setAttribute('aria-label', 'Názov kráľovstva');
     bt.appendChild(inp);
-    let ke = 6, kc = '#6a4a12';
+    let ke = 6, kc = '#6a4a12', sd = heroSide();
     const EN = ['Biely strom', 'Kôň', 'Oko', 'Ruka', 'Had', 'Koruna', 'Hviezda', 'Slnko', 'List', 'Lebka'], KCs = ['#6a4a12', '#7a1a1a', '#1a3a6a', '#1f4a2a', '#3a1a4a', '#1a1a1a'];
-    const rr = () => [...bt.querySelectorAll('button')].forEach(b => { b.style.outline = (b.dataset.e == ke || b.dataset.c === kc) ? '3px solid #fff' : ''; });
+    const rr = () => [...bt.querySelectorAll('button')].forEach(b => { b.style.outline = (b.dataset.e == ke || b.dataset.c === kc || b.dataset.sd == sd) ? '3px solid #fff' : ''; });
+    [['Strana dobra', 0], ['Strana zla', 1]].forEach(([n, v]) => { const b = document.createElement('button'); b.textContent = n; b.dataset.sd = v; b.onclick = () => { sd = v; rr(); }; bt.appendChild(b); });
     EN.forEach((n, k) => { const b = document.createElement('button'); b.textContent = n; b.dataset.e = k; b.onclick = () => { ke = k; rr(); }; bt.appendChild(b); });
     KCs.forEach(c => { const b = document.createElement('button'); b.textContent = '\u00a0'; b.style.background = c; b.dataset.c = c; b.setAttribute('aria-label', 'Farba štítu'); b.onclick = () => { kc = c; rr(); }; bt.appendChild(b); });
     rr();
-    btn('Potvrdiť korunováciu', () => { G.kn = inp.value.trim() || 'Nové kráľovstvo'; G.ke = ke; G.kc = kc; lg('Vzniklo kráľovstvo ' + G.kn + '.'); upd(); ov.classList.add('hide'); mode = 'map'; });
+    btn('Potvrdiť korunováciu', () => { G.kn = inp.value.trim() || 'Nové kráľovstvo'; G.ke = ke; G.kc = kc; G.side = sd; lg('Vzniklo kráľovstvo ' + G.kn + ', ktoré stojí na strane ' + sideName(sd) + '.'); upd(); ov.classList.add('hide'); mode = 'map'; });
 }
 function lord(e) {
     per(e);
@@ -4127,11 +4156,14 @@ function lord(e) {
 <script>
 /*
  * Kováč a inventár.
- * Kováč predáva výbavu podľa strany hradu: hrady dobra výbavu slobodných národov,
- * hrady zla (Mordor, Isengard, Harad, Rhûn) temnú výbavu. Kúpené veci ostávajú v inventári
+ * Kováč predáva výbavu podľa strany hradu: hrady dobra výbavu dobra, hrady zla
+ * (Mordor, Isengard, Harad, Rhûn) výbavu zla. Tvoje hrady predávajú výbavu strany,
+ * ktorú si si vybral pri korunovácii. Kúpené veci ostávajú v inventári
  * (G.own) a dajú sa kedykoľvek vymeniť – tlačidlom Inventár na mape alebo u kováča.
  */
 const eqStat = (k, x) => k === 'w' ? 'útok ' + x.v + (x.r ? ', dlhý dosah' : '') : k === 'm' ? 'rýchlosť ' + x.v : x.v ? 'ochrana ' + Math.round(x.v * 100) + ' %' : 'bez ochrany';
+/** Krátky údaj o sile veci (do inventára). */
+const eqShort = (k, x) => k === 'w' ? 'útok ' + x.v : k === 'm' ? 'rýchl. ' + x.v : x.v ? Math.round(x.v * 100) + ' %' : '–';
 const eqSum = () => 'Útok ' + Math.round(dmg()) + ', ochrana ' + Math.round((1 - red()) * 100) + ' %, rýchlosť ' + it('m').v + '.';
 const owns = (k, i) => G.own[k].includes(i);
 function wear(k, i) { G.eq[k] = i; upd(); }
@@ -4149,21 +4181,21 @@ function smithy(i, k) {
     const t = TW[i], evil = shopSide(t.f), back = () => smithy(i, k);
     mode = 'town';
     if (!k) {
-        show('Kováč a zbrojnica', 'Zlato: ' + G.gold + '. ' + eqSum() + ' ' + (evil ? 'Tunajší kováči kujú temnú výbavu služobníkov Saurona a Sarumana.' : 'Tunajší kováči kujú výbavu slobodných národov.'));
+        show('Kováč a zbrojnica', 'Zlato: ' + G.gold + '. ' + eqSum() + ' ' + (evil ? 'Tunajší kováči kujú výbavu zla pre služobníkov Saurona a Sarumana.' : 'Tunajší kováči kujú výbavu dobra pre Gondor, Rohan, elfov a trpaslíkov.') + (t.f === 6 ? ' Tvoj hrad predáva výbavu tvojej strany.' : ''));
         SH.forEach(s => btn(s.l + ' (nosíš: ' + it(s.k).n + ')', () => smithy(i, s.k), 0, { k: s.k, i: G.eq[s.k] }));
         btn('Inventár', () => inv(() => smithy(i)));
         btn('Späť', () => town(i));
         return;
     }
     const s = SH.find(x => x.k === k);
-    show('Kováč: ' + s.l.toLowerCase(), 'Zlato: ' + G.gold + '. Nosíš: ' + it(k).n + ' (' + eqStat(k, it(k)) + ').' + (evil ? ' Temná výbava.' : ' Výbava slobodných národov.'));
+    show('Kováč: ' + s.l.toLowerCase(), 'Zlato: ' + G.gold + '. Nosíš: ' + it(k).n + ' (' + eqStat(k, it(k)) + ').' + ' Výbava ' + sideName(evil) + '.');
     s.it.forEach((x, j) => {
-        if (!j || !x.z !== !evil) return;             // základnú vec máš a druhá strana sa tu nepredáva
+        if (!x.p || !x.z !== !evil) return;           // základné veci sa nepredávajú a výbava druhej strany tu nie je
         if (owns(k, j)) {
-            const b = btn(x.n + (G.eq[k] === j ? ' (nosíš)' : ' (máš, obliecť)'), () => { wear(k, j); back(); }, 0, { k, i: j });
+            const b = btn(x.n + (G.eq[k] === j ? ' · nosíš' : ' · máš, obliecť'), () => { wear(k, j); back(); }, 0, { k, i: j });
             if (G.eq[k] === j) b.style.outline = '3px solid #fff';
         } else
-            btn(x.n + ': ' + x.p + ' zlata, ' + eqStat(k, x), () => { G.gold -= x.p; G.own[k].push(j); wear(k, j); back(); }, G.gold < x.p, { k, i: j });
+            btn(x.n + ' · ' + x.p + ' zl. · ' + eqShort(k, x) + (x.r ? ', dosah' : ''), () => { G.gold -= x.p; G.own[k].push(j); wear(k, j); back(); }, G.gold < x.p, { k, i: j });
     });
     btn('Späť', () => smithy(i));
 }
@@ -4177,12 +4209,12 @@ function inv(back) {
 }
 function invShow(back, close) {
     mode = 'town';
-    show('Inventár', eqSum() + ' Klikni na vec, ktorú si chceš obliecť.');
+    show('Inventár', eqSum() + ' Biely rámik = to, čo nosíš. Kliknutím vec oblečieš.');
     SH.forEach(s => {
         rowHead(s.l);
         [...G.own[s.k]].sort((a, b) => a - b).forEach(j => {
             const x = s.it[j], on = G.eq[s.k] === j;
-            const b = btn(x.n + (on ? ' (nosíš)' : '') + ', ' + eqStat(s.k, x), () => { wear(s.k, j); invShow(back, close); }, 0, { k: s.k, i: j });
+            const b = btn(x.n + ' · ' + eqShort(s.k, x), () => { wear(s.k, j); invShow(back, close); }, 0, { k: s.k, i: j });
             if (on) b.style.outline = '3px solid #fff';
         });
     });
@@ -5384,8 +5416,8 @@ class UIScene extends Phaser.Scene {
         sfxScene = this;                         // zvuky a prelínanie hudby bežia v tejto scéne
         this.g = this.add.graphics().setDepth(1);
         const t = (x, y, s, size, color, extra) => this.add.text(x, y, s, txtStyle(size, color, extra));
-        this.toast = t(W / 2, 77, '', 15, UI_C.gold, { backgroundColor: 'rgba(18,14,12,.88)', padding: { x: 12, y: 4 } }).setOrigin(.5).setDepth(50);
-        this.pause = t(W / 2, H - 92, 'Pauza: klikni na mapu alebo sa utábor, aby čas plynul', 15, '#ffd24a', { backgroundColor: 'rgba(18,14,12,.85)', padding: { x: 10, y: 3 } }).setOrigin(.5).setDepth(5);
+        this.toast = t(W / 2, 70, '', 13, UI_C.gold, { backgroundColor: 'rgba(18,14,12,.88)', padding: { x: 12, y: 4 } }).setOrigin(.5).setDepth(50);
+        this.pause = t(W / 2, H - 74, 'Pauza: klikni na mapu alebo sa utábor, aby čas plynul', 12, '#ffd24a', { backgroundColor: 'rgba(18,14,12,.85)', padding: { x: 10, y: 3 } }).setOrigin(.5).setDepth(5);
         this.gateTxt = t(W / 2, 132, '', 13, UI_C.ink, { fontFamily: 'sans-serif', stroke: '#000', strokeThickness: 3 }).setOrigin(.5).setDepth(5);
         this.hudLayer = this.add.container(0, 0).setDepth(10);
         this.barLayer = this.add.container(0, 0).setDepth(20);
@@ -5424,7 +5456,7 @@ class UIScene extends Phaser.Scene {
     // ---------- Prekryvné efekty ----------------------------------------------------
     drawOverlay(scene, dt) {
         const g = this.g; g.clear();
-        if (TS && TS.l > 0 && G) { TS.l -= dt; this.toast.setVisible(true).setText(TS.s).setAlpha(Math.min(1, TS.l / 40)); }
+        if (TS && TS.l > 0 && G) { TS.l -= dt; this.toast.setVisible(!this.dlg).setText(TS.s).setAlpha(Math.min(1, TS.l / 40)); }
         else this.toast.setVisible(false);
         this.pause.setVisible(scene === 'map' && mode === 'map' && !!PAUSE && !this.dlg);
         if (scene === 'map') {
@@ -5466,15 +5498,15 @@ class UIScene extends Phaser.Scene {
             if (val && val.textContent.trim() === '0' && !/Zlato|Sláva/.test(span.textContent)) continue;
             const parts = [];
             span.childNodes.forEach(n => { const s = n.textContent; if (s.trim()) parts.push([s, n.nodeName === 'B' ? (span.style.color || UI_C.gold) : (span.style.color || UI_C.ink)]); });
-            const texts = parts.map(([s, c]) => this.add.text(0, 0, s.replace(/\s+/g, ' '), txtStyle(13, c)));
+            const texts = parts.map(([s, c]) => this.add.text(0, 0, s.replace(/\s+/g, ' '), txtStyle(12, c)));
             const w = texts.reduce((a, t) => a + t.width, 0);
-            if (x + w > W - 10 && x > 10) { x = 10; y += 19; }
+            if (x + w > W - 10 && x > 10) { x = 10; y += 17; }
             let xx = x; texts.forEach(t => { t.setPosition(xx, y); xx += t.width; });
             items.push(...texts); x += w + 14;
         }
         const bg = this.add.graphics();
-        bg.fillStyle(0x120e0c, .88).fillRect(0, 0, W, y + 22);
-        bg.lineStyle(1, 0x6a5a46, 1).lineBetween(0, y + 22, W, y + 22);
+        bg.fillStyle(0x120e0c, .88).fillRect(0, 0, W, y + 20);
+        bg.lineStyle(1, 0x6a5a46, 1).lineBetween(0, y + 20, W, y + 20);
         this.hudLayer.add([bg, ...items]);
     }
 
@@ -5486,19 +5518,19 @@ class UIScene extends Phaser.Scene {
         this.sig.bars = sig;
         this.barLayer.removeAll(true);
         if (vis(tb)) {
-            let x = 8, y = H - 30;
+            let x = 6, y = H - 25;
             const rows = [];
             [...tb.children].forEach(b => {
-                const w = Math.max(24, this.measure(b.textContent, 12) + 14);
-                if (x + w > W * .68) { x = 8; y -= 28; }
-                rows.push(this.button(x, y, w, 24, b.textContent, () => b.click(), { size: 12 }));
-                x += w + 4;
+                const w = Math.max(20, this.measure(b.textContent, 11) + 12);
+                if (x + w > W * .66) { x = 6; y -= 23; }
+                rows.push(this.button(x, y, w, 20, b.textContent, () => b.click(), { size: 11 }));
+                x += w + 3;
             });
             this.barLayer.add(rows.flat());
         }
         if (vis(od)) {
-            const bs = [...od.children], w = 76, x0 = W / 2 - (bs.length * (w + 4)) / 2;
-            bs.forEach((b, i) => this.barLayer.add(this.button(x0 + i * (w + 4), H - 30, w, 24, b.textContent, () => b.click(), { size: 12, alpha: +(b.style.opacity || 1) })));
+            const bs = [...od.children], w = 64, x0 = W / 2 - (bs.length * (w + 4)) / 2;
+            bs.forEach((b, i) => this.barLayer.add(this.button(x0 + i * (w + 4), H - 25, w, 20, b.textContent, () => b.click(), { size: 11, alpha: +(b.style.opacity || 1) })));
         }
     }
 
@@ -5508,12 +5540,12 @@ class UIScene extends Phaser.Scene {
     button(x, y, w, h, label, fn, o = {}) {
         const off = !!o.disabled, size = o.size || 14;
         const r = this.add.rectangle(x, y, w, h, off ? UI_C.btnOff : UI_C.btn).setOrigin(0).setStrokeStyle(1, 0x5a3a12, .8).setAlpha(o.alpha ?? 1);
-        const iw = o.icon ? 34 : 0;
+        const is = Math.min(h - 4, 24), iw = o.icon ? is + 8 : 0;
         const t = this.add.text(x + iw + (w - iw) / 2, y + h / 2, label, txtStyle(size, off ? UI_C.dim : '#1a120a', { align: 'center', wordWrap: { width: w - 12 - iw, useAdvancedWrap: true } })).setOrigin(.5);
         const out = [r, t];
         if (o.icon) {
-            const ib = this.add.rectangle(x + 4, y + h / 2, 30, 30, 0xf4e6c4, off ? .35 : .55).setOrigin(0, .5).setStrokeStyle(1, 0x5a3a12, .6);
-            const im = this.add.image(x + 19, y + h / 2, o.icon).setDisplaySize(28, 28).setAlpha(off ? .75 : 1);
+            const ib = this.add.rectangle(x + 3, y + h / 2, is, is, 0xf4e6c4, off ? .35 : .55).setOrigin(0, .5).setStrokeStyle(1, 0x5a3a12, .6);
+            const im = this.add.image(x + 3 + is / 2, y + h / 2, o.icon).setDisplaySize(is - 2, is - 2).setAlpha(off ? .75 : 1);
             out.push(ib, im);
         }
         if (!off && fn) {
@@ -5545,40 +5577,40 @@ class UIScene extends Phaser.Scene {
     }
 
     buildDialog(scroll) {
-        const PW = 620, IW = PW - 40, root = this.add.container(0, 0).setDepth(40);
-        const shade = this.add.rectangle(0, 0, W, H, 0x0c0907, .72).setOrigin(0).setInteractive();
+        const PW = 440, IW = PW - 32, root = this.add.container(0, 0).setDepth(40);
+        const shade = this.add.rectangle(0, 0, W, H, 0x0c0907, .35).setOrigin(0).setInteractive();
         const h1 = ov.querySelector('h1'), title = h1 ? h1.textContent : '';
         const bt = ov.querySelector('#bt'), kids = bt ? [...bt.children] : [];
-        const nBtn = kids.filter(k => k.tagName === 'BUTTON').length, cols = nBtn > 8 ? 3 : 2, bw = (IW - (cols - 1) * 8) / cols;
+        const nBtn = kids.filter(k => k.tagName === 'BUTTON').length, cols = nBtn > 8 ? 3 : 2, bw = (IW - (cols - 1) * 6) / cols;
         this.dlgButtons = [];
         // rozloženie obsahu okna (nadpis, text, tlačidlá a riadky) od y = 0
         const layout = list => {
             const items = [];
             let y = 0, col = 0, rowH = 0;
-            if (title) { const t = this.add.text(PW / 2, y, title, txtStyle(26, UI_C.gold, { fontFamily: TITLE_FONT, align: 'center', wordWrap: { width: IW } })).setOrigin(.5, 0); items.push(t); y += t.height + 8; }
+            if (title) { const t = this.add.text(PW / 2, y, title, txtStyle(19, UI_C.gold, { fontFamily: TITLE_FONT, align: 'center', wordWrap: { width: IW } })).setOrigin(.5, 0); items.push(t); y += t.height + 5; }
             ov.querySelectorAll(':scope > p').forEach(p => {
                 if (!p.textContent.trim()) return;
-                const t = this.add.text(PW / 2, y, p.textContent, txtStyle(15, p.style.color ? UI_C.gold : UI_C.ink, { align: 'center', lineSpacing: 3, wordWrap: { width: IW } })).setOrigin(.5, 0);
-                items.push(t); y += t.height + 8;
+                const t = this.add.text(PW / 2, y, p.textContent, txtStyle(12, p.style.color ? UI_C.gold : UI_C.ink, { align: 'center', lineSpacing: 2, wordWrap: { width: IW } })).setOrigin(.5, 0);
+                items.push(t); y += t.height + 6;
             });
             y += 4;
-            const flush = () => { if (col) { y += rowH + 6; col = 0; rowH = 0; } };
+            const flush = () => { if (col) { y += rowH + 5; col = 0; rowH = 0; } };
             list.forEach(k => {
                 if (k.tagName === 'BUTTON') {
-                    const parts = this.dialogButton(k, 20 + col * (bw + 8), y, bw, () => this.inDialog());
+                    const parts = this.dialogButton(k, 16 + col * (bw + 6), y, bw, () => this.inDialog());
                     items.push(...parts);
                     rowH = Math.max(rowH, parts.h); col++;
                     if (col === cols) flush();
                 } else {
                     flush();
-                    const t = this.add.text(20, y, k.textContent, txtStyle(k.style.color ? 15 : 13.5, k.style.color ? UI_C.gold : k.style.opacity && +k.style.opacity < 1 ? UI_C.dim : UI_C.ink, { wordWrap: { width: IW - 26 } }));
-                    items.push(t); y += t.height + 4;
+                    const t = this.add.text(16, y, k.textContent, txtStyle(k.style.color ? 12.5 : 11.5, k.style.color ? UI_C.gold : k.style.opacity && +k.style.opacity < 1 ? UI_C.dim : UI_C.ink, { wordWrap: { width: IW - 26 } }));
+                    items.push(t); y += t.height + 3;
                 }
             });
             flush();
             return { items, CH: y };
         };
-        const maxH = H - 70;
+        const maxH = H - 110;
         let L = layout(kids), foot = [];
         if (L.CH > maxH) {
             // dlhé okno: tlačidlá na odchod (Späť, Zavrieť…) budú vždy viditeľné dole
@@ -5587,8 +5619,8 @@ class UIScene extends Phaser.Scene {
             foot = kids.slice(n);
             if (foot.length) { L.items.forEach(o => o.destroy()); this.dlgButtons = []; L = layout(kids.slice(0, n)); }
         }
-        const footH = foot.length ? 42 : 0, viewH = Math.min(L.CH, maxH - footH), CH = L.CH;
-        const PH = viewH + 40 + footH, px = (W - PW) / 2, py = Math.max(30, (H - PH) / 2);
+        const footH = foot.length ? 34 : 0, viewH = Math.min(L.CH, maxH - footH), CH = L.CH;
+        const PH = viewH + 34 + footH, px = (W - PW) / 2, py = Math.max(44, (H - PH) / 2);
         const panel = this.add.graphics();
         panel.fillStyle(UI_C.panel, .97).fillRoundedRect(px, py, PW, PH, 6);
         panel.lineStyle(2, UI_C.line, 1).strokeRoundedRect(px, py, PW, PH, 6);
@@ -5601,9 +5633,9 @@ class UIScene extends Phaser.Scene {
         maskG.fillStyle(0xffffff).fillRect(px, py + 14, PW, viewH + 12);
         const d = this.dlg = { root, content, mask: maskG, px, py, PW, PH, CH, maxH: viewH, scroll: 0, title, vy0: py + 14, vy1: py + 26 + viewH };
         if (foot.length) {
-            const fy = py + 26 + viewH + 6, fw = (IW - (foot.length - 1) * 8) / foot.length;
+            const fy = py + 26 + viewH + 4, fw = (IW - (foot.length - 1) * 6) / foot.length;
             panel.lineStyle(1, UI_C.line, .4).lineBetween(px + 14, fy - 4, px + PW - 14, fy - 4);
-            foot.forEach((k, i) => root.add(this.dialogButton(k, px + 20 + i * (fw + 8), fy, fw, () => true)));
+            foot.forEach((k, i) => root.add(this.dialogButton(k, px + 16 + i * (fw + 6), fy, fw, () => true)));
         }
         if (CH > viewH) {
             content.setMask(maskG.createGeometryMask());
@@ -5624,11 +5656,11 @@ class UIScene extends Phaser.Scene {
 
     /** Tlačidlo okna podľa pôvodného HTML tlačidla k (aj s ikonkou výbavy). Vráti pole objektov s výškou .h. */
     dialogButton(k, x, y, w, allow) {
-        const label = k.textContent.trim() || '•', icon = this.iconFor(k), iw = icon ? 34 : 0;
-        const probe = this.add.text(0, 0, label, txtStyle(14, '#000', { wordWrap: { width: w - 12 - iw, useAdvancedWrap: true } }));
-        const bh = Math.max(icon ? 38 : 30, probe.height + 10); probe.destroy();
+        const label = k.textContent.trim() || '•', icon = this.iconFor(k), iw = icon ? 30 : 0;
+        const probe = this.add.text(0, 0, label, txtStyle(12, '#000', { wordWrap: { width: w - 12 - iw, useAdvancedWrap: true } }));
+        const bh = Math.max(icon ? 28 : 24, probe.height + 8); probe.destroy();
         const swatch = k.style.background && k.textContent.trim() === '' ? k.style.background : null;
-        const parts = this.button(x, y, w, bh, label, () => { if (allow()) k.click(); }, { disabled: k.disabled, icon });
+        const parts = this.button(x, y, w, bh, label, () => { if (allow()) k.click(); }, { disabled: k.disabled, icon, size: 12 });
         if (swatch) parts[0].setFillStyle(hex(swatch));
         if (k.style.outline) parts[0].setStrokeStyle(3, 0xffffff, 1);
         this.dlgButtons.push(k);
@@ -5683,13 +5715,13 @@ class UIScene extends Phaser.Scene {
         if (!L && Math.hypot(G.x - w.x, G.y - w.y) < 24) L = [G.name, rank() + ', ' + FN[G.fac], 'Vojsko: ' + ar(), G.ring === 1 ? 'Nesie Jeden prsteň' : 'Zdravie ' + Math.ceil(G.hp)];
         if (!L) return;
         L = L.filter(Boolean);
-        const texts = L.map((l, i) => this.add.text(0, 0, l, txtStyle(13, i ? UI_C.ink : '#ffd24a', { fontFamily: i ? 'sans-serif' : FONT })));
-        const tw = Math.max(...texts.map(t => t.width)) + 16, th = texts.length * 17 + 8;
+        const texts = L.map((l, i) => this.add.text(0, 0, l, txtStyle(i ? 11 : 12.5, i ? UI_C.ink : '#ffd24a', { fontFamily: i ? 'sans-serif' : FONT })));
+        const tw = Math.max(...texts.map(t => t.width)) + 16, th = texts.length * 14 + 8;
         let x = s.x + 14, y = s.y + 14;
         if (x + tw > W) x = s.x - tw - 10;
         if (y + th > H) y = s.y - th - 10;
         const bg = this.add.graphics().fillStyle(0x120e0c, .93).fillRect(x, y, tw, th).lineStyle(1, UI_C.line, 1).strokeRect(x, y, tw, th);
-        texts.forEach((t, i) => t.setPosition(x + 8, y + 5 + i * 17));
+        texts.forEach((t, i) => t.setPosition(x + 8, y + 5 + i * 14));
         this.tipLayer.add([bg, ...texts]);
     }
 
@@ -5700,22 +5732,25 @@ class UIScene extends Phaser.Scene {
         this.sig.leg = on;
         this.legLayer.removeAll(true);
         if (!on) return;
-        const F = [0, 1, 2, 3, 4, 5, 7, 8, 9, 6], x = 8, y = 56, h = F.length * 21 + 130, items = [];
-        const bg = this.add.graphics().fillStyle(0x120e0c, .93).fillRect(x, y, 230, h).lineStyle(1, UI_C.line, 1).strokeRect(x, y, 230, h);
-        items.push(bg);
+        // malá legenda v ľavom hornom rohu: frakcie v dvoch stĺpcoch, pod nimi značky
+        const F = [0, 1, 5, 8, 6, 2, 3, 4, 7, 9], x = 6, y = 48, w = 196, RH = 14, items = [], ts = 10.5;
+        const txt = (tx, ty, s, col) => this.add.text(tx, ty, s, txtStyle(ts, col || UI_C.ink));
+        items.push(txt(x + 8, y + 5, 'Legenda', UI_C.gold));
         F.forEach((f, k) => {
-            items.push(Art.image(this, x + 12, y + 6 + k * 21, Art.banner(this, f)).setScale((Art.scale['banner_' + f] || 1 / RES) * .65));
-            items.push(this.add.text(x + 34, y + 9 + k * 21, FN[f], txtStyle(13, UI_C.ink)));
+            const cx = x + 8 + (k % 2) * 94, cy = y + 24 + Math.floor(k / 2) * RH;
+            items.push(Art.image(this, cx + 2, cy - 4, Art.banner(this, f)).setScale((Art.scale['banner_' + f] || 1 / RES) * .42));
+            items.push(txt(cx + 14, cy - 1, FN[f]));
         });
-        let yy = y + 14 + F.length * 21;
-        const row = (s, draw) => { const gg = this.add.graphics(); draw(gg, x + 18, yy + 4); items.push(gg, this.add.text(x + 34, yy - 3, s, txtStyle(13, UI_C.ink))); yy += 22; };
-        items.push(Art.image(this, x + 18, yy + 4, Art.crown(this)));
-        items.push(this.add.text(x + 34, yy - 3, 'Panovník frakcie', txtStyle(13, UI_C.ink))); yy += 22;
-        row('Nazgûl', (g, a, b) => g.fillStyle(0xa00000, .7).fillCircle(a, b, 8));
-        row('Silnejší nepriateľ', (g, a, b) => g.lineStyle(2, 0xe0442a, 1).strokeEllipse(a, b, 18, 8));
-        row('Slabší nepriateľ', (g, a, b) => g.lineStyle(2, 0x6fbf5a, 1).strokeEllipse(a, b, 18, 8));
-        items.push(this.add.text(x + 8, yy - 3, '★★', txtStyle(13, '#ffd24a')), this.add.text(x + 34, yy - 3, 'Úroveň prosperity hradu', txtStyle(13, UI_C.ink))); yy += 22;
-        row('Vypálená dedina', (g, a, b) => g.fillStyle(0xff7a22, 1).fillCircle(a, b, 4));
+        let yy = y + 30 + Math.ceil(F.length / 2) * RH;
+        const row = (s, draw) => { const gg = this.add.graphics(); draw(gg, x + 16, yy + 5); items.push(gg, txt(x + 30, yy - 1, s)); yy += RH; };
+        items.push(Art.image(this, x + 16, yy + 5, Art.crown(this)).setScale((Art.scale.crown || 1 / RES) * .7), txt(x + 30, yy - 1, 'Panovník frakcie')); yy += RH;
+        row('Nazgûl', (g, a, b) => g.fillStyle(0xa00000, .7).fillCircle(a, b, 5));
+        row('Silnejší nepriateľ', (g, a, b) => g.lineStyle(1.5, 0xe0442a, 1).strokeEllipse(a, b, 14, 6));
+        row('Slabší nepriateľ', (g, a, b) => g.lineStyle(1.5, 0x6fbf5a, 1).strokeEllipse(a, b, 14, 6));
+        items.push(txt(x + 8, yy - 1, '★★', '#ffd24a'), txt(x + 30, yy - 1, 'Prosperita hradu')); yy += RH;
+        row('Vypálená dedina', (g, a, b) => g.fillStyle(0xff7a22, 1).fillCircle(a, b, 3));
+        const bg = this.add.graphics().fillStyle(0x120e0c, .82).fillRoundedRect(x, y, w, yy - y + 4, 4).lineStyle(1, UI_C.line, .7).strokeRoundedRect(x, y, w, yy - y + 4, 4);
+        items.unshift(bg);
         this.legLayer.add(items);
     }
 }

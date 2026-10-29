@@ -69,6 +69,11 @@ try {
     check('Inventár sa zavrie', run('mode === "map"'));
     run('G.eq.a = 2; delete G.own; save(); G = null; load();');
     check('Staré uloženie: doterajšia výbava je v inventári', run('JSON.stringify(G.own.a) === "[0,1,2]" && G.own.w.length === 1'));
+    check('Kráľ dobra: jeho hrady predávajú výbavu dobra', run('G.king = 1; G.side = 0; shopSide(6) === 0'));
+    check('Kráľ zla: jeho hrady predávajú výbavu zla', run('G.side = 1; shopSide(6) === 1 && shopSide(0) === 0 && shopSide(2) === 1'));
+    run('G.king = 0; delete G.side; startGear(1);');
+    check('Hrdina zla začína s orkskou výbavou', run('it("w").n === "Orkský nôž" && it("a").n === "Orkské kože" && it("h").n === "Orkská kukla" && G.own.w.length === 1'));
+    check('Základná výbava sa nepredáva', run('smithy(gi, "w"); !document.getElementById("bt").children.some(b => /Železný meč|Orkský nôž/.test(b.textContent))'));
 } catch (e) { fails++; console.log('CHYBA výnimka: ' + e.stack); }
 console.log(fails ? '\n' + fails + ' testov zlyhalo.' : '\nVšetky testy prešli.');
 process.exit(fails ? 1 : 0);

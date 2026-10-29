@@ -1,7 +1,8 @@
 /*
  * Výbava u kováča: zbrane, brnenie, štíty, prilby a kone (aj legendárne).
- * Prvá vec v každom zozname je základná (máš ju od začiatku).
- * Ostatné predávajú len hrady jednej strany: veci bez z = hrady dobra, z: 1 = hrady zla (temná výbava).
+ * Existuje len výbava dobra (veci bez z) a výbava zla (z: 1). Hrady dobra predávajú výbavu dobra,
+ * hrady zla výbavu zla. Veci s cenou 0 sú základné: hrdina dobra začína s prvou vecou v zozname,
+ * hrdina zla so základnou vecou zla. "Bez štítu" a "Pešo" nie sú výbava, majú ich obe strany.
  * Vzhľad každej veci je v js/render/soldiers.js (GEAR) v rovnakom poradí.
  * v = sila (útok / ochrana / rýchlosť), p = cena, r = dosah, fx = žiara (glow, fire, dark).
  */
@@ -19,7 +20,7 @@ shOf('s').push({ n: 'Elfský štít', v: .21, p: 300 }, { n: 'Štít z Ereboru',
 shOf('h').push({ n: 'Elfská prilba', v: .13, p: 350 }, { n: 'Prilba strážcu Citadely', v: .14, p: 700, fx: 'glow' });
 shOf('m').push({ n: 'Obrnený bojový kôň', v: 3.2, p: 500 }, { n: 'Mearas', v: 3.6, p: 1200, fx: 'glow' });
 
-// --- temná výbava (len v hradoch Mordoru, Isengardu, Haradu a Rhûnu) ---
+// --- výbava zla (len v hradoch Mordoru, Isengardu, Haradu a Rhûnu) ---
 shOf('w').push({ n: 'Orkská šabľa', v: 20, p: 90, z: 1 }, { n: 'Morgulská kopija', v: 24, p: 160, r: 46, z: 1 }, { n: 'Uruk-haiský meč', v: 31, p: 320, z: 1 }, { n: 'Sekera Olog-haia', v: 35, p: 480, z: 1 },
     { n: 'Morgulská čepeľ', v: 42, p: 900, fx: 'dark', z: 1 }, { n: 'Gothmogov ohnivý palcát', v: 46, p: 1300, fx: 'fire', z: 1 }, { n: 'Sauronov palcát', v: 50, p: 1800, fx: 'dark', z: 1 });
 shOf('a').push({ n: 'Orkská krúžková zbroj', v: .25, p: 110, z: 1 }, { n: 'Čierny plát Uruk-haiov', v: .45, p: 300, z: 1 }, { n: 'Haradská šupinová zbroj', v: .47, p: 550, z: 1 },
@@ -28,5 +29,18 @@ shOf('s').push({ n: 'Orkský štít', v: .1, p: 50, z: 1 }, { n: 'Štít Bielej 
 shOf('h').push({ n: 'Orkská prilba', v: .06, p: 70, z: 1 }, { n: 'Prilba Bielej ruky', v: .12, p: 200, z: 1 }, { n: 'Maska z Rhûnu', v: .13, p: 350, z: 1 }, { n: 'Prilba Saurónových úst', v: .14, p: 700, fx: 'dark', z: 1 });
 shOf('m').push({ n: 'Mladý varg', v: 2.3, p: 80, z: 1 }, { n: 'Varg', v: 2.9, p: 260, z: 1 }, { n: 'Čierny kôň Mordoru', v: 3.2, p: 500, z: 1 }, { n: 'Kôň nazgûla', v: 3.6, p: 1200, fx: 'dark', z: 1 });
 
-/** Strana výbavy, ktorú predáva hrad frakcie f: 1 = zlo, 0 = dobro. Tvoje vlastné hrady predávajú výbavu tvojej strany. */
-const shopSide = f => bloc(f === 6 ? G.fac : f);
+// základná výbava zla (hrdina zla ju má od začiatku, nepredáva sa)
+shOf('w').push({ n: 'Orkský nôž', v: 15, p: 0, z: 1 });
+shOf('a').push({ n: 'Orkské kože', v: 0, p: 0, z: 1 });
+shOf('h').push({ n: 'Orkská kukla', v: 0, p: 0, z: 1 });
+
+/** Strana, ktorú hrdina zastáva: 1 = zlo, 0 = dobro. Kráľ si ju vyberá pri korunovácii (G.side). */
+const heroSide = () => G.king && G.side != null ? G.side : bloc(G.fac);
+/** Strana výbavy, ktorú predáva hrad frakcie f. Tvoje vlastné hrady predávajú výbavu tvojej strany. */
+const shopSide = f => f === 6 ? heroSide() : bloc(f);
+/** Názov strany. */
+const sideName = z => z ? 'zla' : 'dobra';
+/** Dá hrdinovi základnú výbavu strany z (na začiatku hry). */
+function startGear(z) {
+    for (const k of ['w', 'a', 'h']) { const i = shOf(k).findIndex(x => !x.p && !x.z === !z); G.eq[k] = i; G.own[k] = [i]; }
+}

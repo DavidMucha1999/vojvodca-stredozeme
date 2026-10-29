@@ -34,6 +34,8 @@ function newGame() {
             spawnE();
         for (let i = 0; i < 4; i++)
             spawnX();
+        if (bloc(f0))
+            startGear(1);   // hrdina zla začína s orkskou výbavou
         if (f0 !== 6) {
             const t = TW.find(t => t.f === f0);
             G.fac = f0;

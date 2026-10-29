@@ -155,6 +155,8 @@ function tsub(i, c) {
             });
         if (G.fac === 6 && !G.king && G.ren >= 14 && TW.filter(x => x.mine).length >= 3)
             btn('Korunovať sa za kráľa', () => { G.king = 1; lg(G.name + ' bol korunovaný za kráľa.'); re(); });
+        if (G.king && G.side == null)
+            btn('Vybrať stranu kráľovstva (dobro alebo zlo)', () => sideDlg(() => tsub(i, c)));
         if (G.king || G.ren >= 5)
             btn('Zvolať ťaženie na najbližší nepriateľský hrad', () => {
                 const h = TW.filter(x => hos(x.f, G.fac)).sort((p, q) => Math.hypot(p.x - G.x, p.y - G.y) - Math.hypot(q.x - G.x, q.y - G.y))[0];
@@ -173,22 +175,30 @@ function rec(t) {
     [t.f, ...[0, 1, 2, 3, 4, 5, 7, 8].filter(x => x !== t.f && AL[t.f][x] && !hos(x, G.fac))].forEach(f => (FK[f] || []).forEach(k => { G[k] = G[k] || 0; L.push([FU[k].n + ' (' + FN[f] + ', máš ' + G[k] + ')', FU[k].p, k]); }));
     return L;
 }
+/** Výber strany kráľovstva (pre kráľov z uložení spred tejto voľby). */
+function sideDlg(back) {
+    mode = 'town';
+    show('Strana kráľovstva', 'Vyber, ktorú stranu bude tvoje kráľovstvo zastávať. Kováči v tvojich hradoch budú predávať výbavu tejto strany.');
+    [['Strana dobra', 0], ['Strana zla', 1]].forEach(([n, v]) => btn(n, () => { G.side = v; lg('Kráľovstvo ' + (G.kn || G.name) + ' sa pridalo na stranu ' + sideName(v) + '.'); back(); }));
+    btn('Späť', back);
+}
 function kingDlg() {
     mode = 'town';
-    show('Nové kráľovstvo', 'Si kráľom! Pomenuj svoje kráľovstvo, vyber znak a farbu štítu.');
+    show('Nové kráľovstvo', 'Si kráľom! Pomenuj svoje kráľovstvo, vyber znak, farbu štítu a stranu, ktorú budeš zastávať. Podľa strany budú kováči v tvojich hradoch predávať výbavu dobra alebo zla.');
     const bt = document.getElementById('bt'), inp = document.createElement('input');
     inp.value = 'Kráľovstvo ' + G.name;
     inp.maxLength = 24;
     inp.style.gridColumn = '1/-1';
     inp.setAttribute('aria-label', 'Názov kráľovstva');
     bt.appendChild(inp);
-    let ke = 6, kc = '#6a4a12';
+    let ke = 6, kc = '#6a4a12', sd = heroSide();
     const EN = ['Biely strom', 'Kôň', 'Oko', 'Ruka', 'Had', 'Koruna', 'Hviezda', 'Slnko', 'List', 'Lebka'], KCs = ['#6a4a12', '#7a1a1a', '#1a3a6a', '#1f4a2a', '#3a1a4a', '#1a1a1a'];
-    const rr = () => [...bt.querySelectorAll('button')].forEach(b => { b.style.outline = (b.dataset.e == ke || b.dataset.c === kc) ? '3px solid #fff' : ''; });
+    const rr = () => [...bt.querySelectorAll('button')].forEach(b => { b.style.outline = (b.dataset.e == ke || b.dataset.c === kc || b.dataset.sd == sd) ? '3px solid #fff' : ''; });
+    [['Strana dobra', 0], ['Strana zla', 1]].forEach(([n, v]) => { const b = document.createElement('button'); b.textContent = n; b.dataset.sd = v; b.onclick = () => { sd = v; rr(); }; bt.appendChild(b); });
     EN.forEach((n, k) => { const b = document.createElement('button'); b.textContent = n; b.dataset.e = k; b.onclick = () => { ke = k; rr(); }; bt.appendChild(b); });
     KCs.forEach(c => { const b = document.createElement('button'); b.textContent = '\u00a0'; b.style.background = c; b.dataset.c = c; b.setAttribute('aria-label', 'Farba štítu'); b.onclick = () => { kc = c; rr(); }; bt.appendChild(b); });
     rr();
-    btn('Potvrdiť korunováciu', () => { G.kn = inp.value.trim() || 'Nové kráľovstvo'; G.ke = ke; G.kc = kc; lg('Vzniklo kráľovstvo ' + G.kn + '.'); upd(); ov.classList.add('hide'); mode = 'map'; });
+    btn('Potvrdiť korunováciu', () => { G.kn = inp.value.trim() || 'Nové kráľovstvo'; G.ke = ke; G.kc = kc; G.side = sd; lg('Vzniklo kráľovstvo ' + G.kn + ', ktoré stojí na strane ' + sideName(sd) + '.'); upd(); ov.classList.add('hide'); mode = 'map'; });
 }
 function lord(e) {
     per(e);

@@ -26,7 +26,8 @@ Testy v prehliadači potrebujú `pip install playwright && playwright install ch
 
 ## Výbava a inventár
 
-- **Kováč predáva podľa strany hradu.** Hrady dobra (Gondor, Rohan, Erebor, Lothlórien) predávajú výbavu slobodných národov, hrady zla (Mordor, Isengard, Harad, Rhûn) temnú výbavu: orkské šable, morgulské zbrane, Sauronov palcát, zbroj nazgûla, štít Oka, vargy či koňa nazgûla. Tvoje vlastné hrady predávajú výbavu tvojej strany.
+- **Existuje len výbava dobra a výbava zla.** Hrady dobra (Gondor, Rohan, Erebor, Lothlórien) predávajú výbavu dobra (gondorské, rohanské, elfské a trpasličie zbrane, Andúril, mithril, Mearas…), hrady zla (Mordor, Isengard, Harad, Rhûn) výbavu zla (orkské šable, morgulské zbrane, Sauronov palcát, zbroj nazgûla, štít Oka, vargy, kôň nazgûla…).
+- **Strana hrdinu:** hrdina dobra začína so železným mečom, hrdina zla s orkským nožom. Kráľ si pri korunovácii vyberie stranu dobra alebo zla a jeho vlastné hrady potom predávajú výbavu tejto strany (kráľ z uloženia spred tejto voľby si ju vyberie v hrade v časti Dvor a diplomacia).
 - **Inventár** (tlačidlo na mape alebo u kováča) ukazuje všetky kúpené veci; kliknutím ich hrdina oblečie.
 - Zoznam vecí, ceny a sila sú v `js/data/equipment.js` (temná výbava má `z: 1`), vzhľad v `js/render/soldiers.js` (`GEAR`, rovnaké poradie). Kováč a inventár sú v `js/ui/inventory.js`.
 
