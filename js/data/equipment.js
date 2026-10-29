@@ -4,7 +4,8 @@
  * hrady zla výbavu zla. Veci s cenou 0 sú základné: hrdina dobra začína s prvou vecou v zozname,
  * hrdina zla so základnou vecou zla. "Bez štítu" a "Pešo" nie sú výbava, majú ich obe strany.
  * Vzhľad každej veci je v js/render/soldiers.js (GEAR) v rovnakom poradí.
- * v = sila (útok / ochrana / rýchlosť), p = cena, r = dosah, fx = žiara (glow, light = svetlo dobra, fire, dark = temnota zla).
+ * v = sila (útok / ochrana / rýchlosť), p = cena, r = dosah, fx = iskry v bitke (glow, light = svetlo dobra, fire, dark = temnota zla),
+ * aura = žiarivá aura okolo hrdinu v bitke (len najlepšia zbraň).
  */
 const SH = [
     { k: 'w', l: 'Zbraň', it: [{ n: "Železný meč", v: 15, p: 0 }, { n: "Meč Gondorskej stráže", v: 20, p: 90 }, { n: "Rohanská kopija", v: 24, p: 160, r: 46 }, { n: "Dúnadanský meč", v: 31, p: 320 }] },
@@ -14,7 +15,7 @@ const SH = [
     { k: 'm', l: 'Kôň', it: [{ n: "Pešo", v: 1.9, p: 0 }, { n: "Poník zo Shiru", v: 2.3, p: 80 }, { n: "Rohanský kôň", v: 2.9, p: 260 }] }
 ];
 const shOf = k => SH.find(s => s.k === k).it;
-shOf('w').push({ n: 'Orcrist', v: 34, p: 450 }, { n: 'Trpasličia sekera z Ereboru', v: 37, p: 620 }, { n: 'Glamdring', v: 42, p: 900, fx: 'glow' }, { n: 'Plameň Anoru', v: 46, p: 1300, fx: 'light' }, { n: 'Andúril', v: 50, p: 1800, fx: 'light' });
+shOf('w').push({ n: 'Orcrist', v: 34, p: 450 }, { n: 'Trpasličia sekera z Ereboru', v: 37, p: 620 }, { n: 'Glamdring', v: 42, p: 900, fx: 'glow' }, { n: 'Plameň Anoru', v: 46, p: 1300, fx: 'fire' }, { n: 'Andúril', v: 50, p: 1800, fx: 'light', aura: 1 });
 shOf('a').push({ n: 'Galadrimská šupinová zbroj', v: .47, p: 550 }, { n: 'Plát z Ereboru', v: .49, p: 800 }, { n: 'Mithrilová košeľa', v: .51, p: 1500, fx: 'glow' });
 shOf('s').push({ n: 'Galadrimský štít', v: .21, p: 300 }, { n: 'Štít z Ereboru', v: .23, p: 600, fx: 'glow' });
 shOf('h').push({ n: 'Galadrimská prilba', v: .13, p: 350 }, { n: 'Okrídlená koruna Gondoru', v: .14, p: 700, fx: 'light' });

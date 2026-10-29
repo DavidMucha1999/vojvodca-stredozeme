@@ -406,6 +406,15 @@ function drawU(u) {
             ctx.fillRect(x + Math.cos(f) * r * 2 + (Math.random() - .5) * 8, y + Math.sin(f) * r * 2 + (Math.random() - .5) * 8, 2, 2);
         }
     }
+    if (w.aura) {   // aura najlepšej zbrane (Andúril)
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        for (let k = 0; k < 16; k++) {
+            const a = k * Math.PI / 8 + tm / 30, len = k % 2 ? 26 : 38;
+            ctx.strokeStyle = 'rgba(255,236,170,' + (.18 + .1 * Math.sin(tm / 9)) + ')'; ctx.lineWidth = k % 2 ? 1.5 : 2.5;
+            ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * 12, y + Math.sin(a) * 12); ctx.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len); ctx.stroke();
+        }
+        ctx.restore();
+    }
     const ag = ['a', 's', 'h', 'm'].filter(k => it(k).fx).length;
     if (ag) {
         ctx.strokeStyle = 'rgba(220,235,255,' + (.25 + .2 * Math.sin(tm / 6)) + ')';

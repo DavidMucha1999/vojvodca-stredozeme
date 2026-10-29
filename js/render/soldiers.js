@@ -63,14 +63,14 @@ const Soldiers = (() => {
         // zbrane
         w: [
             { t: 'sword', L: 2.0, w: .12, blade: '#9ba0a6', guard: '#5a5048', grip: '#4a3020', pommel: '#6a6058', shine: .2, gw: .9 },          // Železný meč
-            { t: 'sword', L: 2.3, w: .13, blade: '#e2e7ec', guard: '#2a2a32', grip: '#1a1a20', pommel: '#d8dce2', shine: .7, gw: 1.3, tree: 1 },  // Meč Gondorskej stráže (biely strom na čepeli)
-            { t: 'spear', L: 4.2, blade: '#dfe4ea', shaft: '#8a6238', pennon: '#2f6a2a', trim: '#d9a441' },                                     // Rohanská kopija
-            { t: 'sword', L: 2.6, w: .14, blade: '#eef2f6', guard: '#c8d0d8', grip: '#1e1a18', pommel: '#e8f0ff', shine: .8, gw: 1.35, fuller: 1, star: 1 }, // Dúnadanský meč
-            { t: 'elf', L: 2.8, w: .13, blade: '#e0ecf8', guard: '#c8d4e4', grip: '#2a3a5a', pommel: '#c8d4e4', shine: .9, runes: '#7ab8ff' },  // Orcrist (elfská čepeľ s modrými runami)
-            { t: 'axe', L: 2.3, head: '#b8bcc4', rim: '#d9a441', haft: '#4a2e16' },                                                             // Trpasličia sekera
-            { t: 'sword', L: 2.8, w: .15, blade: '#dcefff', guard: '#e0e6ee', grip: '#2a3a5a', pommel: '#ffffff', shine: .9, gw: 1.45, glow: '#7ab8ff', runes: '#7ab8ff' }, // Glamdring
-            { t: 'flame', L: 2.7, w: .16, base: '#e0a020', blade: '#fff0b0', edge: '#ffffff', guard: '#d9a441', grip: '#f0e8d0', pommel: '#ffffff', glow: '#ffe890', gw: 1.3 }, // Plameň Anoru (biely plameň)
-            { t: 'sword', L: 3.0, w: .15, blade: '#f6f8fc', guard: '#d9a441', grip: '#2a1e14', pommel: '#d9a441', shine: 1, gw: 1.7, wing: 1, runes: '#d9a441', glow: '#fff2c8', fuller: 1 }, // Andúril (svetlo dobra)
+            { t: 'sword', L: 2.2, w: .12, blade: '#d8dde4', guard: '#2a2a32', grip: '#1a1a20', pommel: '#d8dce2', shine: .5, gw: 1.1, tree: 1 },  // Meč Gondorskej stráže: krátky, biely strom na čepeli
+            { t: 'spear', L: 4.2, blade: '#dfe4ea', shaft: '#8a6238', pennon: '#2f6a2a', trim: '#d9a441', horse: 1 },                           // Rohanská kopija: zelená zástavka s bielym koňom
+            { t: 'sword', L: 2.6, w: .13, blade: '#c4ccd6', guard: '#7a828c', grip: '#1e1a18', pommel: '#e8f0ff', shine: .6, gw: 1.2, fuller: 1, star: 1, longGrip: 1 }, // Dúnadanský meč: tmavšia oceľ, dlhá rukoväť, hviezda
+            { t: 'curve', L: 2.7, w: .12, blade: '#e8f0f8', guard: '#c8d4e4', grip: '#2a3a5a', pommel: '#c8d4e4', shine: .9, runes: '#5aa8ff', elfGuard: 1 },  // Orcrist: zahnutá elfská čepeľ s modrými runami
+            { t: 'axe', L: 2.3, head: '#c8ccd4', rim: '#d9a441', haft: '#4a2e16', gem: '#3a8ae0' },                                             // Trpasličia sekera: zlatý lem, modrý drahokam
+            { t: 'broad', L: 2.85, w: .2, grad: ['#ffffff', '#bfe0ff'], edgeCol: '#8acbff', guard: '#e8eef6', grip: '#2a3a5a', pommel: '#ffffff', shine: 1, curl: 1, frost: 1, glow: '#6ab4ff', glowR: 1.8, gem: '#5aa8ff' }, // Glamdring: široká ľadovomodrá čepeľ, zatočená záštita, mráz
+            { t: 'flame', L: 3.0, w: .17, base: '#ff9a20', blade: '#ffe080', edge: '#ffffff', guard: '#d9a441', grip: '#5a2a10', pommel: '#ffd060', glow: '#ffb030', glowR: 2.2, gw: 1.5, tongues: 1, gem: '#ff6a10' }, // Plameň Anoru: vlnitá čepeľ, šľahajúce zlaté plamene
+            { t: 'sword', L: 3.4, w: .14, grad: ['#ffffff', '#e8f2ff'], guard: '#e8b440', grip: '#2a1e14', pommel: '#e8b440', shine: 1, gw: 1.9, wing: 1, runes: '#e8b440', glow: '#fff0c0', glowR: 2.6, fuller: 1, rays: 1, tipStar: 1, gem: '#4a8af0', star: 1 }, // Andúril: najdlhší, lúče svetla, hviezda na hrote
             // výbava zla
             { t: 'scimitar', L: 2.2, w: .14, blade: '#8a8478', guard: '#3a2a1a', grip: '#2a1a10', pommel: '#4a3a2a', shine: .15, gw: .8, notch: 1 },   // Orkská šabľa
             { t: 'spear', L: 4.2, blade: '#6a6e74', shaft: '#2a2220', pennon: '#7a1010', trim: '#141414', barbs: 1 },                                  // Morgulská kopija
@@ -128,10 +128,10 @@ const Soldiers = (() => {
         // kone
         m: [
             null,                                                                                                          // Pešo
-            { s: .8, col: '#8b6b47', mane: '#3e2a18', hoof: '#3a2a1a', blanket: 1, shaggy: 1, dapple: '#a8885e' },          // Poník zo Shiru
-            { s: 1, col: '#7b4524', mane: '#eadcae', hoof: '#2a1a10', blanket: 1, blaze: 1, tack: '#3a2412', long: 1 },    // Rohanský kôň
-            { s: 1.08, col: '#4e4c50', mane: '#1a1a1c', hoof: '#1e1c1e', barding: '#aab0ba', caparison: 1, tack: '#222', tree: 1 },  // Gondorský bojový kôň
-            { s: 1.15, col: '#f2f2f6', mane: '#ffffff', hoof: '#c8ccd6', glow: '#fff2c8', long: 1, sheen: 1 },               // Mearas (svetlo dobra)
+            { s: .78, col: '#9a7650', mane: '#4a3018', hoof: '#3a2a1a', blanket: 1, shaggy: 1, dapple: '#b8966a', chubby: 1, packs: 1 },  // Poník zo Shiru: malý, bucľatý, strapatý, s batožinou
+            { s: 1, col: '#8a4a22', mane: '#f0e2b0', hoof: '#2a1a10', blanket: 1, blaze: 1, tack: '#5a3a14', long: 1, braid: '#d9a441', socks: '#f4f0e4' },    // Rohanský kôň: gaštanový, zapletená svetlá hriva so zlatom, biele ponožky
+            { s: 1.12, col: '#1c1a20', mane: '#0a0a0c', hoof: '#0e0e10', barding: '#d4dae4', caparison: 1, tack: '#c8ccd4', tree: 1, plume: '#ffffff', crinet: 1 },  // Gondorský bojový kôň: čierny, lesklé strieborné brnenie, biely chochol
+            { s: 1.22, col: '#f8f8fc', mane: '#ffffff', hoof: '#e8ecf4', glow: '#fff2c8', long: 1, sheen: 1, flow: 1, sparkle: 1 },  // Mearas: najväčší, žiarivo biely, vlajúca hriva, iskry svetla
             // výbava zla
             { wolf: 1, s: .9, col: '#7a7064', back: '#4a4238', eye: '#e8c040' },                                                     // Mladý varg
             { wolf: 1, s: 1.15, col: '#45403a', back: '#1e1a18', eye: '#ff8a20' },                                                   // Varg
@@ -175,14 +175,17 @@ const Soldiers = (() => {
             if (H.caparison) {
                 ell(c, -r * .1, 0, r * 1.62, r * .86, 0, '#ffffff');
                 c.fillStyle = '#ffffff'; for (let k = -3; k <= 3; k++) { c.beginPath(); c.arc(k * r * .42, r * .86, r * .13, 0, Math.PI); c.fill(); c.beginPath(); c.arc(k * r * .42, -r * .86, r * .13, Math.PI, 0); c.fill(); }
-            } else if (H.blanket) ell(c, -r * .12, 0, r * (H.shaggy ? .8 : 1.02), r * .84, 0, '#ffffff');
+            } else if (H.blanket) ell(c, -r * .12, 0, r * (H.shaggy ? .75 : 1.02), r * (H.chubby ? .95 : .84), 0, '#ffffff');
             return;
         }
         if (H.glow) glow(c, () => ell(c, 0, 0, r * 1.75, r * .78, 0, col), H.glow, r * 1.6);
-        const leg = (x, y) => ell(c, x, y, r * .3, r * .18, 0, H.hoof);
+        const bw = H.chubby ? 1.5 : 1.75, bh = H.chubby ? .9 : .78;      // bucľatý poník je kratší a širší
+        if (H.sparkle) glow(c, () => ell(c, 0, 0, r * bw, r * bh, 0, col), '#ffffff', r * 2.4);
+        const leg = (x, y) => { ell(c, x, y, r * .3, r * .18, 0, H.hoof); if (H.socks) ell(c, x - r * .22, y, r * .14, r * .16, 0, H.socks); };
         leg(r * 1.2 + step, r * .55); leg(r * 1.2 - step, -r * .55); leg(-r * 1.2 - step, r * .55); leg(-r * 1.2 + step, -r * .55);
         // telo, krk, hlava
-        ell(c, 0, 0, r * 1.75, r * .78, 0, col, 'rgba(0,0,0,.35)', 1);
+        ell(c, 0, 0, r * bw, r * bh, 0, col, 'rgba(0,0,0,.35)', 1);
+        if (H.packs) for (const sd of [-1, 1]) { ell(c, -r * .75, sd * r * .82, r * .42, r * .22, 0, '#7a5a30', 'rgba(0,0,0,.4)', .7); line(c, -r * .75, sd * r * .62, -r * .75, sd * r * 1.02, '#4a3418', r * .06); }
         if (H.dapple) for (const [x, y, s] of [[-.8, .3, .2], [-.3, -.35, .16], [.4, .25, .18], [-1.2, -.1, .14], [.9, -.2, .15]]) ell(c, r * x, r * y, r * s, r * s * .8, 0, H.dapple);
         ell(c, -r * .25, -r * .28, r * 1.15, r * .28, 0, H.sheen ? 'rgba(255,255,255,.5)' : 'rgba(255,255,255,.12)');
         ell(c, r * 1.3, 0, r * .68, r * .42, 0, col);
@@ -198,6 +201,11 @@ const Soldiers = (() => {
         c.lineWidth = r * (H.long ? .3 : .22); c.beginPath(); c.moveTo(r * .75, 0); c.quadraticCurveTo(r * 1.3, Math.sin(ph) * r * .08, r * 1.85, 0); c.stroke();
         if (H.long) { c.lineWidth = r * .12; c.beginPath(); c.moveTo(r * .8, r * .1); c.quadraticCurveTo(r * 1.2, r * .32 + Math.sin(ph) * r * .1, r * 1.7, r * .18); c.stroke(); }
         if (H.shaggy) { c.lineWidth = r * .14; c.beginPath(); c.moveTo(r * 1.85, 0); c.lineTo(r * 2.2, Math.sin(ph) * r * .06); c.stroke(); }
+        if (H.braid) { c.fillStyle = H.braid; for (let k = 0; k < 4; k++) { c.beginPath(); c.arc(r * (.85 + k * .28), 0, r * .07, 0, 7); c.fill(); } }
+        if (H.flow) {   // dlhá vlajúca hriva Mearas
+            c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = r * .1;
+            for (const [y0, k] of [[-.12, 1], [.12, -1], [0, 1.6]]) { c.beginPath(); c.moveTo(r * 1.8, r * y0); c.bezierCurveTo(r * 1.2, r * (y0 + k * .35 + Math.sin(ph) * .1), r * .6, r * (y0 - k * .3), r * .1, r * (y0 + k * .4 + Math.sin(ph + 1) * .12)); c.stroke(); }
+        }
         const tl = H.long ? 2.85 : 2.5, wv = Math.sin(ph * 2) * r * .3, tw = H.long ? .24 : .17;
         c.fillStyle = H.mane; c.beginPath(); c.moveTo(-r * 1.55, -r * tw);
         c.quadraticCurveTo(-r * 2.1, -r * (tw + .1) + wv * .5, -r * tl, wv); c.quadraticCurveTo(-r * 2.1, r * (tw + .1) + wv * .5, -r * 1.55, r * tw); c.closePath(); c.fill();
@@ -207,13 +215,22 @@ const Soldiers = (() => {
             line(c, r * 2.35, -r * .27, r * 2.35, r * .27, H.tack, r * .07);
             line(c, r * 2.3, -r * .25, r * .45, -r * .3, H.tack, r * .06); line(c, r * 2.3, r * .25, r * .45, r * .3, H.tack, r * .06);
         }
+        if (H.crinet) for (let k = 0; k < 4; k++) ell(c, r * (.7 + k * .3), 0, r * .2, r * .4, 0, shade(H.barding, .85 + k * .05), 'rgba(0,0,0,.4)', .6);
         if (H.barding) {
             ell(c, r * 2.12, 0, r * .52, r * .25, 0, H.barding, 'rgba(0,0,0,.4)', .8);
             line(c, r * 1.75, 0, r * 2.55, 0, '#e8ecf2', r * .06);
             for (let k = 0; k < 3; k++) ell(c, r * (.85 + k * .32), 0, r * .2, r * .3, 0, shade(H.barding, .9 + k * .05), 'rgba(0,0,0,.35)', .7);
             c.fillStyle = '#e8ecf2'; for (const x of [1.95, 2.3]) for (const y of [-.14, .14]) { c.beginPath(); c.arc(r * x, r * y, r * .04, 0, 7); c.fill(); }
         }
-        if (H.tree) drawTree(c, -r * .3, 0, r * .3, '#f6f6f6');
+        if (H.tree) drawTree(c, r * 2.12, 0, r * .2, '#ffffff');   // biely strom na chráne hlavy
+        if (H.plume) { c.fillStyle = H.plume; c.beginPath(); c.moveTo(r * 1.8, 0); c.quadraticCurveTo(r * 1.4, -r * .35 + Math.sin(ph) * r * .08, r * 1.0, -r * .1); c.quadraticCurveTo(r * 1.4, -r * .1, r * 1.8, 0); c.fill(); }
+        if (H.sparkle) {   // iskry svetla okolo Mearas
+            c.fillStyle = '#ffffff';
+            for (let k = 0; k < 7; k++) {
+                const a = k * 2.4 + ph, d = r * (1.4 + .5 * ((k * 37) % 5) / 5), x = Math.cos(a) * d * 1.3, y = Math.sin(a) * d * .75, q = r * (.12 + .06 * Math.sin(ph * 2 + k));
+                c.beginPath(); c.moveTo(x - q, y); c.lineTo(x, y - q * .3); c.lineTo(x + q, y); c.lineTo(x, y + q * .3); c.fill(); c.beginPath(); c.moveTo(x, y - q); c.lineTo(x + q * .3, y); c.lineTo(x, y + q); c.lineTo(x - q * .3, y); c.fill();
+            }
+        }
         if (H.horn) { c.fillStyle = '#8a8e96'; c.beginPath(); c.moveTo(r * 2.95, 0); c.lineTo(r * 2.35, -r * .12); c.lineTo(r * 2.35, r * .12); c.fill(); for (let k = 0; k < 3; k++) { c.beginPath(); c.moveTo(r * (.85 + k * .32), 0); c.lineTo(r * (.75 + k * .32), -r * .42); c.lineTo(r * (.95 + k * .32), -r * .1); c.fill(); } }
         if (H.shroud) {   // čierna roztrhaná pokrývka koňa nazgûla
             c.fillStyle = '#060608'; c.beginPath();
@@ -253,6 +270,7 @@ const Soldiers = (() => {
             const wv = Math.sin(ph || 0) * r * .15;
             c.fillStyle = Wp.pennon; c.beginPath(); c.moveTo(L - r * .75, 0); c.lineTo(L - r * .75, -r * .6); c.quadraticCurveTo(L - r * 1.5, -r * .5 + wv, L - r * 2.3, -r * .35 + wv); c.lineTo(L - r * 1.6, -r * .1); c.closePath(); c.fill();
             line(c, L - r * .8, -r * .32, L - r * 1.9, -r * .3 + wv * .8, Wp.trim, r * .08);
+            if (Wp.horse) { ell(c, L - r * 1.25, -r * .28 + wv * .4, r * .17, r * .1, 0, '#f4f0e4'); ell(c, L - r * 1.05, -r * .36 + wv * .4, r * .07, r * .05, -.6, '#f4f0e4'); }
             ell(c, L - r * .72, r * .12, r * .14, r * .1, 0, '#f0e8d0');
             return;
         }
@@ -277,6 +295,7 @@ const Soldiers = (() => {
                 c.strokeStyle = Wp.rim; c.lineWidth = r * .09; c.beginPath(); c.moveTo(L - r * .2, sd * r * 1.0); c.quadraticCurveTo(L + r * .3, sd * r * .75, L + r * .45, sd * r * .9); c.stroke();
             }
             ell(c, L - r * .2, 0, r * .18, r * .18, 0, Wp.rim);
+            if (Wp.gem) glow(c, () => ell(c, L - r * .2, 0, r * .1, r * .1, 0, Wp.gem), Wp.gem, r * .4);
             line(c, -r * .45, 0, -r * .1, 0, Wp.rim, r * .3);
             return;
         }
@@ -284,16 +303,46 @@ const Soldiers = (() => {
         const blade = () => {
             c.beginPath(); c.moveTo(b0, -w);
             if (Wp.t === 'elf') { c.quadraticCurveTo(L * .65, -w * 1.7, L - r * .2, -w * .5); c.lineTo(L, 0); c.lineTo(L - r * .2, w * .5); c.quadraticCurveTo(L * .65, w * 1.7, b0, w); }
+            else if (Wp.t === 'curve') { c.quadraticCurveTo(L * .6, -w * 1.6, L, -w * 1.8); c.quadraticCurveTo(L * .65, w * 1.4, b0, w); }
+            else if (Wp.t === 'broad') { c.lineTo(L * .8, -w * 1.05); c.quadraticCurveTo(L - r * .1, -w * .6, L, 0); c.quadraticCurveTo(L - r * .1, w * .6, L * .8, w * 1.05); c.lineTo(b0, w); }
             else if (Wp.t === 'scimitar') { c.quadraticCurveTo(L * .55, -w * 1.2, L, -w * 3.2); c.quadraticCurveTo(L * .72, w * 1.9, b0, w); }
             else if (Wp.t === 'cleaver') { c.lineTo(L - r * .15, -w * 1.25); c.lineTo(L, w * .1); c.lineTo(L - r * .45, w); c.lineTo(b0, w * .8); }
             else if (Wp.t === 'flame') { const n = 6; for (let k = 1; k <= n; k++) c.lineTo(b0 + (L - r * .4 - b0) * k / n, -w * (k % 2 ? 1.45 : .85)); c.lineTo(L, 0); for (let k = n; k >= 1; k--) c.lineTo(b0 + (L - r * .4 - b0) * k / n, w * (k % 2 ? 1.45 : .85)); c.lineTo(b0, w); }
             else { c.lineTo(L - r * .35, -w); c.lineTo(L, 0); c.lineTo(L - r * .35, w); c.lineTo(b0, w); }
             c.closePath();
         };
-        if (Wp.glow) glow(c, () => { c.fillStyle = Wp.glow; blade(); c.fill(); }, Wp.glow, r * 1.4);
-        if (Wp.t === 'flame') { const g = c.createLinearGradient(b0, 0, L, 0); g.addColorStop(0, Wp.base || '#c02a0a'); g.addColorStop(.5, Wp.blade); g.addColorStop(1, Wp.edge); c.fillStyle = g; }
-        else c.fillStyle = Wp.blade;
+        const t = ph || 0;
+        if (Wp.rays) {   // lúče svetla okolo čepele
+            c.save(); c.globalAlpha = .85;
+            glow(c, () => {
+                c.fillStyle = '#fff0b8';
+                for (let k = 0; k < 14; k++) {
+                    const a = k * Math.PI / 7 + t * .15, len = r * (k % 2 ? 1.1 : 1.9), cx = b0 + (L - b0) * .62;
+                    c.beginPath(); c.moveTo(cx + Math.cos(a + .06) * r * .3, Math.sin(a + .06) * r * .3); c.lineTo(cx + Math.cos(a) * len, Math.sin(a) * len); c.lineTo(cx + Math.cos(a - .06) * r * .3, Math.sin(a - .06) * r * .3); c.fill();
+                }
+            }, Wp.glow, r);
+            c.restore();
+        }
+        if (Wp.glow) glow(c, () => { c.fillStyle = Wp.glow; blade(); c.fill(); }, Wp.glow, r * 1.4 * (Wp.glowR || 1));
+        if (Wp.glowR > 2) glow(c, () => { c.fillStyle = Wp.glow; blade(); c.fill(); }, Wp.glow, r * 2.4);   // dvojitá žiara pre najlepšie zbrane
+        if (Wp.tongues) {   // plamene šľahajúce z čepele
+            for (let k = 0; k < 7; k++) {
+                const x = b0 + (L - b0) * (.12 + k * .12), sd = k % 2 ? 1 : -1, h = r * (.45 + .25 * Math.sin(t * 2 + k * 1.7) + (k % 3) * .12);
+                glow(c, () => {
+                    c.fillStyle = 'rgba(255,170,40,.85)'; c.beginPath(); c.moveTo(x + r * .18, sd * w * .8); c.quadraticCurveTo(x - r * .05, sd * (w + h * .6), x - r * .35, sd * (w + h)); c.quadraticCurveTo(x - r * .05, sd * (w + h * .3), x - r * .2, sd * w * .8); c.fill();
+                    c.fillStyle = 'rgba(255,240,180,.9)'; c.beginPath(); c.moveTo(x + r * .08, sd * w * .9); c.quadraticCurveTo(x - r * .05, sd * (w + h * .4), x - r * .22, sd * (w + h * .6)); c.quadraticCurveTo(x - r * .06, sd * (w + h * .2), x - r * .12, sd * w * .9); c.fill();
+                }, '#ff8a10', r * .6);
+            }
+        }
+        if (Wp.t === 'flame' || Wp.grad) {
+            const g = c.createLinearGradient(b0, 0, L, 0);
+            if (Wp.grad) { g.addColorStop(0, Wp.grad[0]); g.addColorStop(1, Wp.grad[1]); }
+            else { g.addColorStop(0, Wp.base || '#c02a0a'); g.addColorStop(.5, Wp.blade); g.addColorStop(1, Wp.edge); }
+            c.fillStyle = g;
+        } else c.fillStyle = Wp.blade;
         blade(); c.fill(); c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = .7; c.stroke();
+        if (Wp.edgeCol) glow(c, () => { c.strokeStyle = Wp.edgeCol; c.lineWidth = 1.1; blade(); c.stroke(); }, Wp.edgeCol, r * .5);
+        if (Wp.frost) { c.fillStyle = '#ffffff'; for (const [f, y] of [[.3, -.4], [.45, .5], [.6, -.2], [.75, .35], [.88, -.1]]) { const x = b0 + (L - b0) * f, q = r * (.1 + .05 * Math.sin(t * 3 + f * 9)); c.beginPath(); c.moveTo(x - q, w * y); c.lineTo(x, w * y - q * .3); c.lineTo(x + q, w * y); c.lineTo(x, w * y + q * .3); c.fill(); c.beginPath(); c.moveTo(x, w * y - q); c.lineTo(x + q * .3, w * y); c.lineTo(x, w * y + q); c.lineTo(x - q * .3, w * y); c.fill(); } }
         if (Wp.t === 'flame') line(c, b0 + r * .1, 0, L - r * .4, 0, Wp.edge, w * .6);
         if (Wp.fuller) line(c, b0 + r * .15, 0, L * .7, 0, 'rgba(60,70,90,.35)', w * .45);
         if (Wp.shine) { c.globalAlpha = Wp.shine; line(c, b0 + r * .1, -w * .45, L - r * .45, -w * .45, '#ffffff', .9); c.globalAlpha = 1; }
@@ -302,12 +351,25 @@ const Soldiers = (() => {
         if (Wp.tree) drawTree(c, b0 + (L - b0) * .4, 0, w * 1.6, '#f6f6f6');
         if (Wp.runes) { c.fillStyle = Wp.runes; for (let x = b0 + r * .3; x < L * .72; x += r * .3) c.fillRect(x, -w * .18, r * .14, w * .36); }
         // rukoväť, záštita, hlavica
-        line(c, -r * .35, 0, b0, 0, Wp.grip, r * .27);
-        if (Wp.wing) { c.fillStyle = Wp.guard; for (const sd of [-1, 1]) { c.beginPath(); c.moveTo(b0 - r * .05, 0); c.quadraticCurveTo(b0 + r * .25, sd * r * .35, b0 - r * .1, sd * r * .62); c.lineTo(b0 + r * .12, sd * r * .1); c.fill(); } }
+        line(c, Wp.longGrip ? -r * .7 : -r * .35, 0, b0, 0, Wp.grip, r * .27);
+        if (Wp.longGrip) for (let k = 0; k < 4; k++) line(c, -r * (.6 - k * .2), -r * .13, -r * (.5 - k * .2), r * .13, 'rgba(120,110,100,.6)', .6);
+        if (Wp.curl) {   // zdobená zatočená záštita
+            c.strokeStyle = Wp.guard; c.lineWidth = r * .14; c.lineCap = 'round';
+            for (const sd of [-1, 1]) { c.beginPath(); c.moveTo(b0, 0); c.quadraticCurveTo(b0 - r * .15, sd * r * .55, b0 + r * .3, sd * r * .62); c.stroke(); ell(c, b0 + r * .32, sd * r * .58, r * .1, r * .1, 0, Wp.guard); }
+        } else if (Wp.elfGuard) { c.strokeStyle = Wp.guard; c.lineWidth = r * .13; c.beginPath(); c.moveTo(b0 + r * .25, -r * .42); c.quadraticCurveTo(b0 - r * .12, 0, b0 + r * .25, r * .42); c.stroke(); }
+        else if (Wp.wing) { c.fillStyle = Wp.guard; for (const sd of [-1, 1]) { c.beginPath(); c.moveTo(b0 - r * .05, 0); c.quadraticCurveTo(b0 + r * .25, sd * r * .35, b0 - r * .1, sd * r * .62); c.lineTo(b0 + r * .12, sd * r * .1); c.fill(); } }
         else if (Wp.t === 'elf') { c.strokeStyle = Wp.guard; c.lineWidth = r * .15; c.beginPath(); c.moveTo(b0 + r * .2, -r * .45); c.quadraticCurveTo(b0 - r * .1, 0, b0 + r * .2, r * .45); c.stroke(); }
         else line(c, b0, -r * .38 * Wp.gw, b0, r * .38 * Wp.gw, Wp.guard, r * .18);
-        ell(c, -r * .42, 0, r * .16, r * .16, 0, Wp.pommel);
-        if (Wp.star) { c.fillStyle = '#ffffff'; c.beginPath(); for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4, rr = k % 2 ? r * .07 : r * .2; c.lineTo(-r * .42 + Math.cos(a) * rr, Math.sin(a) * rr); } c.fill(); }
+        if (Wp.gem) glow(c, () => ell(c, b0, 0, r * .12, r * .12, 0, Wp.gem), Wp.gem, r * .5);
+        const pX = Wp.longGrip ? -r * .78 : -r * .42;
+        ell(c, pX, 0, r * .16, r * .16, 0, Wp.pommel);
+        if (Wp.tipStar) glow(c, () => {   // hviezda svetla na hrote
+            c.fillStyle = '#ffffff'; c.beginPath();
+            const q = r * (.55 + .12 * Math.sin(t * 2));
+            for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4 + Math.PI / 4, rr = k % 2 ? q * .18 : q; c.lineTo(L + r * .05 + Math.cos(a) * rr, Math.sin(a) * rr); }
+            c.fill();
+        }, '#fff0c0', r * 1.2);
+        if (Wp.star) { c.fillStyle = '#ffffff'; c.beginPath(); for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4, rr = k % 2 ? r * .07 : r * .2; c.lineTo(pX + Math.cos(a) * rr, Math.sin(a) * rr); } c.fill(); }
     }
 
     function drawWeapon(c, sp, a, lunge, layer, ph) {
@@ -722,7 +784,12 @@ const Soldiers = (() => {
             for (let k = 0; k < 3; k++) { c.fillStyle = shade(H.barding, .9 + k * .05); c.beginPath(); c.ellipse(-11 + k * 1.5, -2 + k * 9, 5, 4, 0, 0, 7); c.fill(); }
         }
         if (H.horn) { c.fillStyle = '#8a8e96'; c.beginPath(); c.moveTo(2, -14); c.lineTo(10, -30); c.lineTo(8, -12); c.fill(); }
-        if (H.tree) drawTree(c, 4, -2, 5, '#f6f6f6');
+        if (H.tree) drawTree(c, 9, -4, 4, '#ffffff');
+        if (H.plume) { c.fillStyle = H.plume; c.beginPath(); c.moveTo(-1, -20); c.quadraticCurveTo(-10, -36, -20, -30); c.quadraticCurveTo(-10, -28, -3, -17); c.fill(); }
+        if (H.braid) { c.fillStyle = H.braid; for (let k = 0; k < 5; k++) { c.beginPath(); c.arc(-7 - k * 2, -14 + k * 8, 1.6, 0, 7); c.fill(); } }
+        if (H.packs) { ell(c, -6, 24, 7, 4, 0, '#7a5a30', 'rgba(0,0,0,.4)', .7); }
+        if (H.flow) { c.strokeStyle = 'rgba(255,255,255,.9)'; c.lineWidth = 2.5; for (const d of [0, 5, 10]) { c.beginPath(); c.moveTo(-4, -20 + d); c.bezierCurveTo(-22, -12 + d, -14, 8 + d, -28, 18 + d); c.stroke(); } }
+        if (H.sparkle) { c.fillStyle = '#ffffff'; for (const [x, y, q] of [[18, -18, 4], [24, -6, 2.5], [-22, -22, 3], [14, 22, 2.5]]) glow(c, () => { c.beginPath(); c.moveTo(x - q, y); c.lineTo(x, y - q * .3); c.lineTo(x + q, y); c.lineTo(x, y + q * .3); c.fill(); c.beginPath(); c.moveTo(x, y - q); c.lineTo(x + q * .3, y); c.lineTo(x, y + q); c.lineTo(x - q * .3, y); c.fill(); }, '#fff2c8', 5); }
         if (H.shroud) { c.fillStyle = '#050507'; c.beginPath(); c.moveTo(-6, -18); c.quadraticCurveTo(-24, -4, -20, 26); c.lineTo(-14, 22); c.lineTo(-10, 27); c.lineTo(-4, 21); c.lineTo(2, 27); c.lineTo(4, 20); c.quadraticCurveTo(-8, 6, -2, -14); c.closePath(); c.fill(); }
         if (H.caparison || H.blanket) { c.fillStyle = team; c.beginPath(); c.moveTo(-14, 26); c.quadraticCurveTo(-13, 18, -6, 18); c.lineTo(12, 26); c.closePath(); c.fill(); }
         c.restore();

@@ -31,13 +31,14 @@ class BattleScene extends Phaser.Scene {
         if (w.fx) {
             const fire = w.fx === 'fire', dark = w.fx === 'dark', light = w.fx === 'light';
             this.trail = this.add.particles(0, 0, Art.spark(this), {
-                speed: { min: 6, max: fire ? 30 : 18 }, angle: fire || dark ? { min: 240, max: 300 } : { min: 0, max: 360 },
+                speed: { min: 6, max: fire ? 30 : light ? 24 : 18 }, angle: fire || dark || light ? { min: 240, max: 300 } : { min: 0, max: 360 },
                 lifespan: fire ? 380 : dark ? 700 : 520, scale: { start: fire ? .32 : dark ? .36 : .26, end: dark ? .1 : 0 }, alpha: { start: fire ? .75 : dark ? .6 : .65, end: 0 },
                 tint: fire ? [0xffd060, 0xff7a18, 0xff4010] : dark ? [0x2a1030, 0x4a1a5a, 0x7a2aa0] : light ? [0xfff4c0, 0xffffff, 0xffe080] : [0xc8e6ff, 0xffffff, 0x9fd0ff],
-                blendMode: dark ? 'NORMAL' : 'ADD', frequency: fire ? 28 : dark ? 40 : 55
+                blendMode: dark ? 'NORMAL' : 'ADD', frequency: fire ? 28 : dark ? 40 : light ? 22 : 55
             }).setDepth(4999);
             this.trail.startFollow(this.units.get(U[0]).spr, 0, 0);
         }
+        if (w.aura) this.aura = this.add.graphics().setBlendMode('ADD');   // aura najlepšej zbrane (Andúril)
 
         this.cameras.main.setBounds(0, 0, BW, BH).setZoom(RES * BZ).setBackgroundColor('#22301a');
         // simulácia počíta cieľ ako ptr + bc, preto ukladáme bod na bojisku mínus bc
@@ -120,7 +121,26 @@ class BattleScene extends Phaser.Scene {
         if (this.water) this.water.tilePositionY -= delta * .02;
         const vw = W / BZ / 2, vh = H / BZ / 2, h = U[0];
         this.cameras.main.centerOn(Math.max(vw, Math.min(BW - vw, h.x)), Math.max(vh, Math.min(BH - vh, h.y)));
+        this.drawAura();
         this.drawFx();
+    }
+
+    /** Žiarivá aura okolo hrdinu: pomaly sa otáčajúce zlaté lúče a pulzujúci kruh svetla. */
+    drawAura() {
+        const g = this.aura, h = U[0];
+        if (!g) return;
+        g.clear();
+        if (h.hp <= 0) return;
+        g.setDepth(h.y - 1);
+        const t = tm / 30, p = .5 + .5 * Math.sin(tm / 9);
+        g.fillStyle(0xfff0c0, .08 + .05 * p).fillCircle(h.x, h.y, 30 + 3 * p);
+        g.fillStyle(0xffffff, .1 + .06 * p).fillCircle(h.x, h.y, 17);
+        for (let k = 0; k < 16; k++) {
+            const a = k * Math.PI / 8 + t, len = k % 2 ? 26 + 4 * p : 38 + 6 * p, sw = k % 2 ? .05 : .08;
+            g.fillStyle(k % 2 ? 0xffe8a0 : 0xffffff, .16 + .1 * p);
+            g.fillTriangle(h.x + Math.cos(a - sw) * 12, h.y + Math.sin(a - sw) * 12, h.x + Math.cos(a) * len, h.y + Math.sin(a) * len, h.x + Math.cos(a + sw) * 12, h.y + Math.sin(a + sw) * 12);
+        }
+        g.lineStyle(1.5, 0xffe8a0, .35 + .2 * p).strokeCircle(h.x, h.y, 22 + 2 * Math.sin(tm / 7));
     }
 
     drawFx() {
