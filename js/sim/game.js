@@ -1,9 +1,22 @@
 /*
  * Nová hra, uloženie a načítanie.
  */
-function save() {
+/**
+ * Uložené pozície: 'vs1' = pozícia 1 (pôvodná), 'vs2', 'vs3' = ďalšie ručné, 'vsauto' = automatická (na konci každého dňa).
+ * slot = 1, 2, 3 alebo 'auto'.
+ */
+const SLOTS = [['1', 'Pozícia 1'], ['2', 'Pozícia 2'], ['3', 'Pozícia 3'], ['auto', 'Automatická (koniec dňa)']];
+const slotKey = slot => slot === 'auto' ? 'vsauto' : 'vs' + (slot || 1);
+/** Popis uloženej pozície alebo null, ak je prázdna. */
+function slotInfo(slot) {
     try {
-        localStorage.setItem('vs1', JSON.stringify({ G: { ...G, chase: null, talk: null }, T: TW.map(t => ({ f: t.f, g: t.g, mine: t.mine, wl: t.wl || 0, pr: t.pr, bd: t.bd, lord: t.lord, inv: t.inv })), E: E.map(e => ({ id: e.id, x: e.x, y: e.y, f: e.f, n: e.n, nm: e.nm, kr: e.kr, nz: e.nz, rl: e.rl || 0, vx: 0, vy: 0, w: 0 })), WR, REL, AL, CP, VL, MW }));
+        const s = JSON.parse(localStorage.getItem(slotKey(slot)));
+        return s && s.G ? s.G.name + ', deň ' + s.G.day + ', ' + (s.G.kn || FN[s.G.fac]) + (s.when ? ', ' + s.when : '') : null;
+    } catch (x) { return null; }
+}
+function save(slot) {
+    try {
+        localStorage.setItem(slotKey(slot), JSON.stringify({ G: { ...G, chase: null, talk: null }, T: TW.map(t => ({ f: t.f, g: t.g, mine: t.mine, wl: t.wl || 0, pr: t.pr, bd: t.bd, lord: t.lord, inv: t.inv })), E: E.map(e => ({ id: e.id, x: e.x, y: e.y, f: e.f, n: e.n, nm: e.nm, kr: e.kr, nz: e.nz, rl: e.rl || 0, vx: 0, vy: 0, w: 0 })), WR, REL, AL, CP, VL, MW, when: new Date().toLocaleString('sk-SK', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) }));
         return 1;
     }
     catch (x) {
@@ -53,11 +66,11 @@ function newGame() {
         upd();
     }
 }
-function load() {
+function load(slot) {
     L_load0: {
         initA();
         try {
-            const s = JSON.parse(localStorage.getItem('vs1'));
+            const s = JSON.parse(localStorage.getItem(slotKey(slot)));
             if (!s)
                 break L_load0;
             TW = mkTW();

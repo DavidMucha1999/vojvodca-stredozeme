@@ -80,6 +80,7 @@ function startBattle(en, al) {
             if (k[0] === 'u' && G[k])
                 for (let i = 0; i < Math.min(G[k], 15); i++)
                     U.push(mk(0, k));
+        U.push(...compUnits());    // spoločníci bojujú ako hrdinovia
     }
     if (en.siege) {
         const sg = G.sg && G.sg.t === TW.indexOf(en.t) ? G.sg : {};
@@ -91,6 +92,7 @@ function startBattle(en, al) {
         SGB = null;
 }
 function endBattle(win) {
+    compAfterBattle();
     if (SGB) {
         BG = BG0;
         SGB = null;
@@ -148,7 +150,7 @@ function endBattle(win) {
                 L.t.pr = Math.max(0, (L.t.pr ?? 40) - 15);
         }
         for (const u of U)
-            if (u.uk) {
+            if (u.uk && !u.cp) {
                 if (!u.t && u.hp <= 0 && G[u.uk] > 0)
                     G[u.uk]--;
                 u.k = 'fx';
@@ -158,13 +160,13 @@ function endBattle(win) {
                 if (k[0] === 'u' && G[k])
                     G[k] = Math.floor(G[k] / 2);
         L_endBattle0: {
-            const dI = U.filter(u => !u.t && !u.ally && u.k === 'i' && u.hp <= 0).length, dC = U.filter(u => !u.t && u.k === 'c' && u.hp <= 0).length;
+            const dI = U.filter(u => !u.t && !u.ally && !u.cp && u.k === 'i' && u.hp <= 0).length, dC = U.filter(u => !u.t && u.k === 'c' && u.hp <= 0).length;
             {
                 const S = G.st || (G.st = { b: 0, w: 0, l: 0, k: 0, d: 0, c: 0, r: 0 });
                 S.b++;
                 S[win ? 'w' : 'l']++;
                 S.k += U.filter(u => u.t && u.hp <= 0).length;
-                S.d += U.filter(u => !u.t && !u.h && !u.ally && u.hp <= 0).length;
+                S.d += U.filter(u => !u.t && !u.h && !u.ally && !u.cp && u.hp <= 0).length;
                 if (win && LB.siege)
                     S.c++;
                 if (win && LB.vil)
@@ -222,8 +224,10 @@ function endBattle(win) {
                 if (!L.siege)
                     G.cap += Math.floor(L.n * .3);
                 G.txp += L.n * 3;
-                if (!L.siege && !L.vil)
+                if (!L.siege && !L.vil) {
                     qChk('k', L.f);
+                    questEvent('k', L.f);
+                }
                 if (L.siege)
                     qChk('c', L.t.n);
                 if (L.al) {
@@ -267,6 +271,7 @@ function updBattle(dt) {
     L_updBattle0: {
         if (Math.random() < .06 * dt)
             snd('cl');
+        compBattleShout();
         if (fx > 0)
             fx -= dt;
         bc.x = Math.max(0, Math.min(BW - W, U[0].x - W / 2));

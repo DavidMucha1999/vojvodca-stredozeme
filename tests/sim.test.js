@@ -96,6 +96,22 @@ try {
     check('Počasie na severe', run('["snow", "fog", "storm", "clear"].includes(w1)'));
     run('MW = { n: "storm", l: 2 }; dayT = 300;');
     check('Búrka spomaľuje pochod, noc skracuje dostrel', run('weatherSlow() < 1 && isNight() && battleWeather().r < 110'));
+    // úlohy, spoločníci, ukladanie do pozícií
+    run('G.fac = 6; G.side = 0; var ql = E.find(e => e.f === 0 && !e.nz); per(ql); ql.tr = 0; G.qu = []; var qo = questFor(ql);');
+    check('Pán dobra ponúka úlohu podľa povahy', run('!!qo && qo.def.tr.includes(0) && qo.def.side !== 1'));
+    run('questAccept(ql, qo.def, qo.home); var qq = G.qu[0];');
+    check('Úloha prijatá a v zozname', run('G.qu.length === 1 && qq.lord === ql.nm'));
+    run('var st0 = qStep(qq); if (st0.k === "k") { for (let i = 0; i < st0.n; i++) questEvent("k", st0.a === "bandit" ? 9 : st0.a === "enemy" ? 2 : st0.a); } else if (st0.k === "v") questEvent("v", st0.a); else if (st0.k === "d") { G.cargo = {}; G.cargo[st0.a] = st0.n; questDeliver(qq); }');
+    check('Prvý krok úlohy splnený', run('!G.qu.includes(qq) || qq.step === 1'));
+    run('if (G.qu.includes(qq)) { var g2 = G.gold, r2 = ql.rl || 0; questComplete(qq); var okc = G.gold > g2 && (ql.rl || 0) > r2; } else var okc = true;');
+    check('Uzavretie úlohy dá zlato a vzťah', run('okc && G.qu.length === 0 && Object.values(G.qdone).reduce((a, b) => a + b, 0) === 1'));
+    check('Spoločníci dobra čakajú v hradoch', run('compsAt(TW.find(t => t.n === "Bree")).some(c => c.id === "aragorn") && !compsAt(TW.find(t => t.n === "Isengard")).length'));
+    run('G.gold = 1000; G.ren = 10; compJoin(compDef("aragorn")); compJoin(compDef("gimli")); G.inf = 3; mode = "map"; startBattle(E.find(e => hos(e.f, G.fac) && !e.nz));');
+    check('Spoločníci bojujú v bitke', run('U.filter(u => u.cp).length === 2 && U.find(u => u.cp === "aragorn").hp === 220'));
+    run('U[0].hp = 999; U.find(u => u.cp === "gimli").hp = 0; for (const u of U) if (u.t) u.hp = 0; updBattle(1); run2 = 0;');
+    check('Ranený spoločník sa zotavuje', run('mode !== "battle" && G.cwound.gimli > G.day && G.chp.gimli === .3 && G.inf === 3'));
+    run(closeMenus + '; mode = "map"; save(2); var d2 = G.day; G.day = 999; load(2);');
+    check('Uloženie do pozície 2 a načítanie', run('G.day === d2 && slotInfo(2) && slotInfo(2).includes("deň " + d2) && G.comp.includes("aragorn")'));
     run('G.king = 0; delete G.side; startGear(1);');
     check('Hrdina zla začína s orkskou výbavou', run('it("w").n === "Orkský nôž" && it("a").n === "Orkské kože" && it("h").n === "Orkská kukla" && G.own.w.length === 1'));
     check('Základná výbava sa nepredáva', run('smithy(gi, "w"); !document.getElementById("bt").children.some(b => /Železný meč|Orkský nôž/.test(b.textContent))'));

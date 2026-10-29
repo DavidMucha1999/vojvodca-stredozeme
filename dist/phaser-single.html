@@ -73,7 +73,7 @@ input,select{font:inherit;font-size:1.05rem;padding:.45rem .6rem;background:#2a2
 <p style="color:var(--gold);font-size:1rem">Autor a vývojár hry: Dávid Mucha</p>
 <p>Veď svoju družinu po veľkej mape Stredozeme, pridaj sa ku Gondoru, Rohanu, Mordoru alebo Isengardu a dobýjaj hrady. Najímaj vojakov, kupuj zbrane, brnenie, štít a koňa, porážaj nepriateľov, plň kapitoly príbehu a prepracuj sa až na kráľa.</p>
 <p>Mapa: klikni, kam chceš ísť. Bitka: šípky alebo WASD a medzerník na útok. Na dotykovom displeji drž prst tam, kam chceš bežať, a hrdina útočí sám.</p>
-<input id="pn" placeholder="Meno hrdinu" maxlength="16" value="Strážca" aria-label="Meno hrdinu"><select id="fs" aria-label="Frakcia"><option value="6">Nezávislý (vlastná družina)</option><option value="0">Gondor</option><option value="1">Rohan</option><option value="2">Mordor</option><option value="3">Isengard</option><option value="4">Haradrim</option><option value="5">Erebor</option><option value="7">Rhûn</option><option value="8">Lothlórien</option></select><button onclick="newGame()">Vyraziť do boja</button><button onclick="load()">Načítať uloženú hru</button>
+<input id="pn" placeholder="Meno hrdinu" maxlength="16" value="Strážca" aria-label="Meno hrdinu"><select id="fs" aria-label="Frakcia"><option value="6">Nezávislý (vlastná družina)</option><option value="0">Gondor</option><option value="1">Rohan</option><option value="2">Mordor</option><option value="3">Isengard</option><option value="4">Haradrim</option><option value="5">Erebor</option><option value="7">Rhûn</option><option value="8">Lothlórien</option></select><button onclick="newGame()">Vyraziť do boja</button><button onclick="loadMenu()">Načítať uloženú hru</button>
 </div>
 </div>
 <script>
@@ -352,6 +352,180 @@ const DLG = (() => {
     ];
     return { WORLD, PLAN, YOU, WAR, RING, FLATTER, INSULT, LIEGE, SIDE, greet, pick };
 })();
+
+</script>
+<script>
+/*
+ * Úlohy od pánov (vedľajšie úlohy s príbehom).
+ * Každá úloha má viac krokov. Krok má druh:
+ *   v = navštív hrad (a = názov alebo 'home' = hrad pána), vl = navštív dedinu,
+ *   k = poraz n armád frakcie a (a = 'bandit' banditi, 'enemy' ľubovoľný nepriateľ, inak číslo frakcie),
+ *   d = dovez tovar (a = kľúč tovaru, n = kusov) do hradu pána, t = porozprávaj sa s veliteľom frakcie a,
+ *   r = vráť sa k pánovi (uzavretie).
+ * side: 0 = len páni dobra, 1 = len páni zla, bez side = obe. tr: povahy, ktoré úlohu dávajú (TR index).
+ * Odmena r (zlato), ren (sláva), rl (vzťah s pánom; od panovníka dvojnásobok).
+ * Texty: intro (pán zadá úlohu), steps[i].s (čo robiť), done (pán pri uzavretí). {L} = meno pána, {T} = jeho hrad, {Y} = tvoje meno.
+ */
+const QUESTS = [
+    {
+        id: 'ithilien', n: 'Hliadky v Ithiliene', side: 0, tr: [0, 5],
+        intro: 'Z Ithilienu prichádzajú zlé správy. Faramirove hliadky hlásia, že haradské karavány s olifantmi prechádzajú Južnou cestou k Čiernej bráne. Nemôžeme ich zastaviť všetky, ale môžeme Mordoru ukázať, že cesta nie je voľná. Poraz dve nepriateľské armády na ceste a vráť sa.',
+        steps: [{ k: 'k', a: 'enemy', n: 2, s: 'Poraz 2 nepriateľské armády.' }, { k: 'r', s: 'Vráť sa za {L} do {T}.' }],
+        done: 'Výborne. Každý zastavený oddiel znamená o niekoľko orkov menej pod hradbami Minas Tirith. Gondor ti ďakuje, {Y}.',
+        r: 220, ren: 3, rl: 12
+    },
+    {
+        id: 'palantir', n: 'Správa pre Správcu', side: 0, tr: [5, 0, 3],
+        intro: 'Správca Denethor sa zamkol vo veži a hľadí do kameňa, ktorý by nemal mať. Potrebujem, aby sa k nemu dostala správa, ktorú sa jeho dvorania boja doručiť. Choď do Minas Tirith a potom mi prines odpoveď. Je to nebezpečnejšie, než to znie: v Bielom meste má Tieň svoje uši.',
+        steps: [{ k: 'v', a: 'Minas Tirith', s: 'Choď do Minas Tirith a odovzdaj správu.' }, { k: 'r', s: 'Vráť sa s odpoveďou za {L} do {T}.' }],
+        done: 'Denethor teda ešte počúva. To je viac, než som dúfal. Ďakujem ti. Pamätaj: kto hľadí do palantíru pridlho, vidí len to, čo mu Sauron dovolí.',
+        r: 160, ren: 2, rl: 10
+    },
+    {
+        id: 'edoras_grain', n: 'Hlad v Edorase', side: 0, tr: [0, 5, 1],
+        intro: 'Zima bola dlhá a sýpky Edorasu sú prázdne. Kráľ Théoden ochorel a Gríma Červivý jazyk rozhoduje, komu sa chlieb dostane a komu nie. Dovez do môjho hradu 10 kusov obilia; rozdelím ho sám, bez Grímových rúk.',
+        steps: [{ k: 'd', a: 'grain', n: 10, s: 'Dovez 10 kusov obilia do {T} (kúpiš ho v dedinách, Rohan a Gondor ho pestujú).' }],
+        done: 'Obilie prišlo. Ľudia sa dnes najedia a Gríma sa dnes nenaje z ich hladu. To je dobrý deň, {Y}.',
+        r: 180, ren: 2, rl: 12
+    },
+    {
+        id: 'wargs', n: 'Vargovia pri Fangorne', side: 0, tr: [0, 4, 3],
+        intro: 'Sarumanovi jazdci na vargoch pália osady na okraji Fangornu. Ľudia utekajú k nám a my nemáme kam ich dať. Nájdi a rozbi banditov a lupičov, ktorí sa pridali k drancovaniu, a potom poraz aspoň jednu armádu Isengardu.',
+        steps: [{ k: 'k', a: 'bandit', n: 2, s: 'Poraz 2 bandy lupičov.' }, { k: 'k', a: 3, n: 1, s: 'Poraz 1 armádu Isengardu.' }, { k: 'r', s: 'Vráť sa za {L}.' }],
+        done: 'Fangorn si dnes vydýchne. Stromy si to zapamätajú, a stromy majú dlhú pamäť. Aj ja.',
+        r: 260, ren: 4, rl: 14
+    },
+    {
+        id: 'dale', n: 'Obchodná cesta do Dale', side: 0, tr: [1, 5],
+        intro: 'Trpaslíci z Ereboru kujú zbrane, ale železo im dochádza. Dovez do môjho hradu 8 kusov železa a ja zaplatím lepšie než ktorýkoľvek trh. Zisk si rozdelíme, povedzme... rozumne.',
+        steps: [{ k: 'd', a: 'iron', n: 8, s: 'Dovez 8 kusov železa do {T}.' }],
+        done: 'Železo ako z Modrých hôr. Tu je tvoja časť, a nie, nerátaj ju, je to správne. Takmer.',
+        r: 240, ren: 1, rl: 10
+    },
+    {
+        id: 'ents', n: 'Posolstvo do Lothlórienu', side: 0, tr: [5, 0],
+        intro: 'Pani Galadriel vidí ďalej než ktokoľvek z nás a ja potrebujem jej radu skôr, než sa pohnú vojská. Zanes moje posolstvo do Lothlórienu. Les nepustí každého; ty máš meno, ktoré sa už šepká, možno ťa pustí.',
+        steps: [{ k: 'v', a: 'Lothlórien', s: 'Choď do Lothlórienu.' }, { k: 'r', s: 'Prines odpoveď za {L} do {T}.' }],
+        done: 'Takže Pani hovorí o troch dňoch a o Anduine. Rozumiem viac, než by som chcel. Ďakujem, {Y}, dnes si možno zachránil viac životov než v ktorejkoľvek bitke.',
+        r: 200, ren: 3, rl: 12
+    },
+    // --- zlo ---
+    {
+        id: 'morannon', n: 'Daň pre Čiernu bránu', side: 1, tr: [4, 1, 3],
+        intro: 'Pán Barad-dûru žiada železo pre kováčov Gorgorothu. Rozkaz prišiel ohňom a krvou, ako vždy. Dovez 8 kusov železa do môjho hradu. Kto nedodá, pôjde do jám sám.',
+        steps: [{ k: 'd', a: 'iron', n: 8, s: 'Dovez 8 kusov železa do {T}.' }],
+        done: 'Oko bude spokojné. A keď je spokojné Oko, spíme pokojnejšie všetci. Nezabudnem, kto dodal.',
+        r: 220, ren: 2, rl: 12
+    },
+    {
+        id: 'rohan_raid', n: 'Jazdci musia krvácať', side: 1, tr: [4, 3, 0],
+        intro: 'Saruman chce, aby Rohan pocítil, že jeho hranice nie sú hranice. Poraz dve armády Rohanu a potom sa vráť. Chcem počuť, ako kričali ich kone.',
+        steps: [{ k: 'k', a: 1, n: 2, s: 'Poraz 2 armády Rohanu.' }, { k: 'r', s: 'Vráť sa za {L} do {T}.' }],
+        done: 'Dve armády jazdcov. Théoden to pocíti, ak mu to Gríma dovolí pocítiť. Dobrá práca, {Y}.',
+        r: 260, ren: 4, rl: 14
+    },
+    {
+        id: 'spy', n: 'Oči v Bielom meste', side: 1, tr: [5, 3, 2],
+        intro: 'Mám človeka v Minas Tirith. Alebo som mal, posledné dve správy neprišli. Choď tam ako pocestný, vyzvedaj, čo sa dá, a vráť sa. Ak ťa chytia, nikdy sme sa nestretli.',
+        steps: [{ k: 'v', a: 'Minas Tirith', s: 'Choď do Minas Tirith a vyzvedaj (stačí vstúpiť).' }, { k: 'r', s: 'Vráť sa za {L} do {T}.' }],
+        done: 'Takže Denethor sa zamyká s kameňom a Faramir drží Osgiliath s polovicou mužov. To sú správy, za ktoré sa platí zlatom. Tu máš.',
+        r: 200, ren: 2, rl: 12
+    },
+    {
+        id: 'bandit_hire', n: 'Lupiči do služby', side: 1, tr: [1, 3, 4],
+        intro: 'Banditi na cestách berú korisť, ktorá patrí nám. Rozbi dve ich bandy; tí, čo prežijú, sa pridajú k mojim oddielom. Mordor neplytvá ničím, ani lotrami.',
+        steps: [{ k: 'k', a: 'bandit', n: 2, s: 'Poraz 2 bandy lupičov.' }, { k: 'r', s: 'Vráť sa za {L}.' }],
+        done: 'Cesty sú naše a lotri tiež. Tak sa buduje vojsko, {Y}: zo všetkého, čo sa hýbe.',
+        r: 180, ren: 2, rl: 10
+    },
+    {
+        id: 'harad_salt', n: 'Soľ z juhu', side: 1, tr: [1, 5],
+        intro: 'Haradské karavány vozia soľ a korenie a Mordor platí v zlate, ktoré ukradol. Dovez 6 kusov soli do môjho hradu, nech sa aj moji orkovia raz najedia niečoho, čo nie je surové.',
+        steps: [{ k: 'd', a: 'salt', n: 6, s: 'Dovez 6 kusov soli a korenia do {T} (predávajú ju dediny na juhu).' }],
+        done: 'Soľ. Konečne. Vieš, čo to znamená, keď má ork rád svoju večeru? Že zajtra bude poslúchať.',
+        r: 200, ren: 1, rl: 10
+    },
+    // --- obe strany ---
+    {
+        id: 'bandits', n: 'Cesty bez lupičov', tr: [0, 1, 2, 3, 4, 5],
+        intro: 'Kupci sa sťažujú a sťažnosti kupcov stoja zlato. Banditi prepadávajú karavány medzi dedinami. Rozbi tri bandy a cesty budú opäť moje.',
+        steps: [{ k: 'k', a: 'bandit', n: 3, s: 'Poraz 3 bandy lupičov.' }, { k: 'r', s: 'Vráť sa za {L} do {T}.' }],
+        done: 'Cesty sú čisté a kupci ticho. Tu je tvoja odmena.',
+        r: 150, ren: 2, rl: 8
+    },
+    {
+        id: 'ponies', n: 'Kone pre posádku', tr: [0, 3, 5, 1],
+        intro: 'Moja posádka má kopije, ale nemá kone. Dovez mi 6 koní a budem ti dlžný viac než zlato.',
+        steps: [{ k: 'd', a: 'horses', n: 6, s: 'Dovez 6 koní do {T} (chovajú ich najmä v Rohane).' }],
+        done: 'Dobré kone. Moji muži budú jazdiť a ja si ťa zapamätám.',
+        r: 260, ren: 2, rl: 12
+    }
+];
+
+</script>
+<script>
+/*
+ * Spoločníci: postavy z Pána prsteňov, ktoré sa dajú nájsť v hradoch a pripojiť k družine.
+ * side: 0 dobro, 1 zlo (ponúkajú sa len hrdinovi tejto strany). at: hrad, kde sa dá spoločník nájsť.
+ * p: cena za pripojenie (zlato), ren: potrebná sláva. hp, d, sp, r: sila v bitke. art: druh kreslenia
+ * (kľúč z Soldiers.UNITS alebo vlastný hrdina cez eq = výbava).
+ * Texty: join (pri pripojení), lines (hlášky na mape a v rozhovore), battle (pokriky v bitke), leave (pri odchode).
+ */
+const COMPANIONS = [
+    { id: 'aragorn', n: 'Aragorn', t: 'Dúnadan, dedič Isildura', side: 0, at: 'Bree', p: 400, ren: 6, hp: 220, d: 24, sp: 1.35, r: 9, eq: { w: 3, a: 0, s: 0, h: 0, m: 0 },
+      join: 'Ak chceš, aby som šiel s tebou, pôjdem. Ale nie všetko, čo je zlato, sa blyští, a nie každý, kto blúdi, je stratený.',
+      lines: ['Nebezpečenstvo je ešte ďaleko. Nie však tak ďaleko, ako by sme chceli.', 'Jedného dňa možno príde deň, keď odvaha ľudí zlyhá. Ale nie dnes.', 'Mám pre teba jednu radu: nikdy neopúšťaj cestu, ktorú si si vybral, kým neuvidíš, kam vedie.', 'Nie som Isildur. Jeho slabosť nenesiem, len jeho meč.', 'Arwen... nie, to nie je dôležité. Poďme ďalej.'],
+      battle: ['Za Gondor!', 'Elendil!', 'Držte šík!', 'Nie dnes! Nie dnes!'], leave: 'Rozchádzame sa, ale cesty sa možno ešte spoja. Zbohom.' },
+    { id: 'legolas', n: 'Legolas', t: 'elfský princ z Temného hvozdu', side: 0, at: 'Lothlórien', p: 380, ren: 6, hp: 150, d: 16, sp: 1.6, r: 7, art: 'uL2', archer: 1,
+      join: 'Máš moj luk. Elfovia si dlho pamätajú, kto stál pri nich.',
+      lines: ['Červené slnko vychádza. Dnes v noci tiekla krv.', 'Sú to orkovia... a nesú ich do Isengardu.', 'Niečo sa tam hýbe. Niečo, čo tam nemá byť.', 'Trpaslík chrápe tak hlasno, že ho počuť až v Mordore.', 'Mám dobrý zrak. Vidím, že sa usmievaš. To je zriedkavé.'],
+      battle: ['Yrch!', 'Strieľajte!', 'Mám ich sedemnásť!', 'Vpred!'], leave: 'Les ma volá. Nech ťa hviezdy chránia.' },
+    { id: 'gimli', n: 'Gimli', t: 'syn Glóinov z Ereboru', side: 0, at: 'Erebor', p: 350, ren: 5, hp: 240, d: 22, sp: 1.0, r: 8, art: 'uE1',
+      join: 'Moja sekera je tvoja! A ak si myslíš, že budem jazdiť na koni, tak si sa zmýlil.',
+      lines: ['Nikto nehádže trpaslíka! Okrem... no dobre, bola to výnimka.', 'Toto sa počíta ako jeden! Aj keď bol veľký.', 'Elf má lepší zrak, ale ja mám lepšiu sekeru.', 'Keby som mal pivo z Ereboru, bolo by to ľahšie. Ale aj tak to zvládnem.', 'Mal som štyridsaťtri. Legolas má len štyridsaťdva. Chi chi.'],
+      battle: ['Baruk Khazâd!', 'Khazâd ai-mênu!', 'Toto sa počíta ako jeden!', 'Na nich!'], leave: 'Dobrá bitka, dobrí ľudia. Trpaslík nezabúda.' },
+    { id: 'boromir', n: 'Boromir', t: 'kapitán Bielej veže', side: 0, at: 'Minas Tirith', p: 360, ren: 5, hp: 230, d: 23, sp: 1.2, r: 9, eq: { w: 3, a: 2, s: 2, h: 0, m: 0 },
+      join: 'Gondor nemá kráľa. Gondor nepotrebuje kráľa. Ale potrebuje spojencov. Pôjdem s tebou.',
+      lines: ['Jeden nie len tak vojde do Mordoru.', 'Je to zvláštny osud, že máme trpieť toľko strachu kvôli takej malej veci.', 'Môj otec je ušľachtilý muž. Ale jeho vláda zlyháva.', 'Videl som Biele mesto, ako žiari za úsvitu. Pre to bojujem.', 'Roh Gondoru zaznie, keď bude treba. Vždy zaznel.'],
+      battle: ['Za Gondor!', 'Biele mesto!', 'Ku mne!', 'Držte sa!'], leave: 'Moja cesta vedie do Minas Tirith. Možno sa ešte stretneme pod bielym stromom.' },
+    { id: 'eowyn', n: 'Éowyn', t: 'štítonosička Rohanu', side: 0, at: 'Edoras', p: 300, ren: 4, hp: 170, d: 20, sp: 1.3, r: 8, eq: { w: 2, a: 1, s: 1, h: 1, m: 2 },
+      join: 'Nebojím sa smrti ani bolesti. Bojím sa klietky. Vezmi ma so sebou.',
+      lines: ['Ženy tejto krajiny sa dávno naučili, že kto nemá meč, môže naň zomrieť.', 'Nie som muž. A to je jeho smola.', 'Edoras je krásny z diaľky. Zblízka je plný šepotu.', 'Strýko bol veľký kráľ. Bude ním znova.', 'Kone ma poznajú. Ľudia menej.'],
+      battle: ['Za Rohan!', 'Smrť!', 'Eorlingovia!', 'Vpred, za kráľa!'], leave: 'Vraciam sa do Edorasu. Ale už nie do klietky.' },
+    { id: 'faramir', n: 'Faramir', t: 'kapitán Ithilienu', side: 0, at: 'Osgiliath', p: 320, ren: 4, hp: 180, d: 18, sp: 1.3, r: 7, art: 'uG2', archer: 1,
+      join: 'Nemilujem meč pre jeho ostrosť ani šíp pre jeho rýchlosť. Milujem to, čo bránia. Ak brániš to isté, pôjdem s tebou.',
+      lines: ['Vojna urobí z nás všetkých mŕtvoly.', 'Otec... môj otec miluje Boromira. Ja som sa naučil s tým žiť.', 'Ithilien bol kedysi záhradou Gondoru. Bude ňou znova.', 'Nezobral by som tú vec, ani keby ležala pri ceste.', 'Hraničiari vidia všetko a hovoria málo. Učím sa od nich.'],
+      battle: ['Za Ithilien!', 'Šípy!', 'Držte brod!', 'Gondor!'], leave: 'Hliadky ma potrebujú. Nech ťa cesta vedie bezpečne.' },
+    { id: 'sam', n: 'Samved Gamdží', t: 'záhradník z Hobitova', side: 0, at: 'Hobitov', p: 120, ren: 1, hp: 110, d: 10, sp: 1.1, r: 6, eq: { w: 0, a: 0, s: 0, h: 0, m: 0 },
+      join: 'Sľúbil som, že neodídem. Tak neodídem. A varím lepšie než ktokoľvek v tvojej družine.',
+      lines: ['Zemiaky. Uvar ich, rozpuč, daj do gulášu.', 'Je ešte nejaké dobro na tomto svete. A oplatí sa zaň bojovať.', 'Rosie Cottonová... prepáč, zamyslel som sa.', 'Ak urobím ešte jeden krok, budem najďalej od domova, ako som kedy bol.', 'Pán Frodo by vedel, čo povedať. Ja viem len to, že ideme ďalej.'],
+      battle: ['Za Kraj!', 'Nechaj ho!', 'Tu máš!', 'Pán Frodo!'], leave: 'Idem domov. Záhrada čaká. Zbohom.' },
+    // --- zlo ---
+    { id: 'lurtz', n: 'Lurtz', t: 'prvý z Uruk-hai', side: 1, at: 'Isengard', p: 380, ren: 5, hp: 260, d: 24, sp: 1.2, r: 9, art: 'uI1',
+      join: 'Saruman ma stvoril, aby som zabíjal. Ty mi dáš koho. To je celá dohoda.',
+      lines: ['Nájdite polovičíkov. A ostatných zabite.', 'Mäso. Je na jedálnom lístku.', 'Rohan padne a ja budem stáť na jeho kostiach.', 'Uruk-hai nepozná strach. Nepozná ani únavu. Pozná len rozkaz.', 'Biela ruka ukáže a my ideme.'],
+      battle: ['Zabite ich!', 'Uruk-hai!', 'Žiadne zajatce!', 'Vpred!'], leave: 'Isengard volá. Nabudúce možno budeš ty na jedálnom lístku.' },
+    { id: 'gothmog', n: 'Gothmog', t: 'poručík Morgulu', side: 1, at: 'Minas Morgul', p: 420, ren: 6, hp: 240, d: 23, sp: 1.1, r: 9, art: 'orc',
+      join: 'Vek ľudí sa skončil. Nastal čas orka. Ak bojuješ za Tieň, bojuješ so mnou.',
+      lines: ['Ohnivé strely! Pošlite tie krysy do kameňa!', 'Netreba sa báť tmy. Tma je naša.', 'Biele mesto zhorí. Videl som to v plameňoch Oka.', 'Čarodejník ich zachráni? Nikto ich nezachráni.', 'Bolesť je len slabosť, ktorá opúšťa telo. Mne už dávno opustila.'],
+      battle: ['Vek orka!', 'Pošlite ich do kameňa!', 'Zabite všetko!', 'Za Oko!'], leave: 'Morgul ma čaká. Oko ťa bude sledovať.' },
+    { id: 'grima', n: 'Gríma Červivý jazyk', t: 'radca v Sarumanových službách', side: 1, at: 'Edoras', p: 200, ren: 2, hp: 90, d: 8, sp: 1.2, r: 6, eq: { w: 9, a: 0, s: 0, h: 0, m: 0 }, talker: 1,
+      join: 'Môj pane... som len skromný radca. Ale radca, ktorý pozná každé tajomstvo Zlatej siene. Môžem byť užitočný.',
+      lines: ['Zbroj by vám slušala, pane. Ale slová sú ostrejšie.', 'Théoden starne. Každý deň o kúsok. Zariadil som to.', 'Éowyn... Nie. Nič.', 'Saruman sľúbil. Saruman vždy sľubuje.', 'Nikdy nestojte v prvom rade, pane. Prvý rad je pre hlupákov s mečom.'],
+      battle: ['Ochráňte ma!', 'Zabite toho!', 'Nie ja, oni!', 'Pane, pozor!'], leave: 'Vraciam sa k Sarumanovi. Alebo k Théodenovi. Podľa toho, kto platí.' },
+    { id: 'shagrat', n: 'Šagrat', t: 'kapitán Cirith Ungolu', side: 1, at: 'Barad-dûr', p: 260, ren: 3, hp: 190, d: 19, sp: 1.25, r: 8, art: 'uM1',
+      join: 'Veliteľ veže. To som ja. Teraz som tvoj veliteľ veže, ak platíš lepšie než Lugbúrz.',
+      lines: ['Tá košeľa z mithrilu... ten malý krysák ju mal. Ešte ju nájdem.', 'Gorbag bol kamarát. Potom chcel môj poklad. Už nie je kamarát.', 'Pavúčica dostane svoje. Vždy dostane svoje.', 'Nazgûli sú hore, my sme dole. Tak to má byť.', 'Elfské špinavé čepele. Nenávidím ich lesk.'],
+      battle: ['Za Lugbúrz!', 'Roztrhám vás!', 'Chyťte ich!', 'Krv!'], leave: 'Cirith Ungol volá. Netráp sa, veža ma potrebuje viac než ty.' },
+    { id: 'suladan', n: 'Suladân', t: 'náčelník Haradu', side: 1, at: 'Umbar', p: 340, ren: 4, hp: 200, d: 21, sp: 1.3, r: 8, art: 'uH1',
+      join: 'Juh pôjde s tebou, kým pôjdeš s juhom. Moji jazdci počúvajú môj hlas a môj hlas počúva zlato.',
+      lines: ['Olifanty nepotrebujú cestu. Cesta potrebuje olifanty.', 'Sauron sľúbil juhu sever. Ja chcem len dobré pastviny.', 'V Harade slnko páli. Tu len svieti. Slabé.', 'Gondorčania majú hradby. My máme trpezlivosť.', 'Hadí znak na mojom štíte je starší než Gondor. Pamätaj si to.'],
+      battle: ['Za Harad!', 'Had uštipne!', 'Vpred, jazdci!', 'Juh!'], leave: 'Slnko ma volá domov. Zbohom, severan.' },
+    { id: 'mouth', n: 'Ústa Saurona', t: 'posol Barad-dûru', side: 1, at: 'Morannon', p: 450, ren: 7, hp: 200, d: 22, sp: 1.2, r: 9, eq: { w: 15, a: 13, s: 0, h: 8, m: 7 },
+      join: 'Môj Pán Sauron Veľký ťa víta. Ja som jeho hlas. Budem hovoriť za teba, kým budeš slúžiť.',
+      lines: ['Som Ústa Saurona. Meno som zabudol. Nepotrebujem ho.', 'Starý sivák. Myslí si, že slová ho zachránia.', 'Mithrilová košeľa polovičíka. Pán ju má. Alebo mal.', 'Pán Mordoru ponúka podmienky. Vždy ponúka podmienky. Potom ich zmení.', 'Čierna reč je krásna, ak ju vieš čítať. Ty ju nevieš.'],
+      battle: ['Za Saurona!', 'Oko vidí!', 'Zomrite!', 'Lugbúrz!'], leave: 'Pán ma volá k Čiernej bráne. Nezabudne na teba. Nikdy.' }
+];
 
 </script>
 <script>
@@ -678,6 +852,9 @@ function daily2() {
         G.gold += lvl(t) * 4 + (t.bd && t.bd.t ? lvl(t) * 2 : 0); });
     dailyTrade();
     dailyWeather();
+    compDaily();
+    if (mode === 'map' && save('auto')) TS = TS && TS.l > 0 ? TS : { s: 'Hra automaticky uložená (deň ' + G.day + ').', l: 150 };
+    if (G.comp && G.comp.length && Math.random() < .5) { const c = compDef(G.comp[Math.floor(Math.random() * G.comp.length)]); if (c) TS = { s: c.n + ': „' + compLine(c) + '“', l: 320 }; }
     VL.forEach(v => { v.pr = Math.max(0, Math.min(100, (v.pr ?? 40) + (v.st > 0 ? -2 : 1))); if (TW[v.t].mine)
         G.gold += lvl(v) * 2; });
     if (G.ring === 1) {
@@ -911,6 +1088,148 @@ function battleWeather() {
 </script>
 <script>
 /*
+ * Vedľajšie úlohy od pánov (dáta v js/data/quests.js).
+ * G.qu = zoznam aktívnych úloh: { id, lord (meno pána), lf (frakcia pána), t (hrad pána), step, cnt, day }.
+ * G.qdone = počet splnených úloh podľa id (tá istá úloha sa dá splniť znova až po 20 dňoch, G.qlast).
+ * Postup kontrolujú háčiky: questEvent('k', frakcia) po bitke, questEvent('v', hrad) pri vstupe do hradu,
+ * questEvent('t', frakcia) po rozhovore; tovar sa odovzdáva v hrade pána tlačidlom.
+ */
+const MAX_QUESTS = 3;
+const qText = (q, s) => s.replace(/\{L\}/g, q.lord).replace(/\{T\}/g, q.t).replace(/\{Y\}/g, G.name);
+const qDef = q => QUESTS.find(d => d.id === q.id);
+const qStep = q => qDef(q).steps[q.step];
+const qLordKing = q => E.some(e => e.nm === q.lord && e.kr);
+
+/** Úloha, ktorú by pán e mohol ponúknuť (podľa strany a povahy), alebo null. */
+function questFor(e) {
+    per(e);
+    G.qu = G.qu || []; G.qlast = G.qlast || {};
+    if (G.qu.length >= MAX_QUESTS || G.qu.some(q => q.lord === e.nm)) return null;
+    const home = TW.find(t => t.f === e.f && !hos(t.f, G.fac)) || TW.find(t => t.f === e.f);
+    if (!home) return null;
+    const side = bloc(e.f), pool = QUESTS.filter(d => (d.side == null || d.side === side) && d.tr.includes(e.tr) && !G.qu.some(q => q.id === d.id) && (G.qlast[d.id] == null || G.day - G.qlast[d.id] > 20));
+    if (!pool.length) return null;
+    const h = ((e.id || 1) * 7919 + G.day) % pool.length;
+    return { def: pool[h], home };
+}
+/** Pán e zadá úlohu def. */
+function questAccept(e, def, home) {
+    G.qu.push({ id: def.id, lord: e.nm, lf: e.f, t: home.n, step: 0, cnt: 0, day: G.day });
+    lg('Nová úloha od ' + e.nm + ': ' + def.n + '.');
+    upd();
+}
+/** Posun kroku; pri poslednom kroku sa úloha uzavrie u pána (krok r) alebo rovno (ak r nie je). */
+function questAdvance(q) {
+    q.step++; q.cnt = 0;
+    const d = qDef(q);
+    if (q.step >= d.steps.length) questComplete(q);
+    else { lg('Úloha ' + d.n + ': ' + qText(q, d.steps[q.step].s)); TS = { s: 'Úloha: ' + qText(q, d.steps[q.step].s), l: 240 }; }
+}
+function questComplete(q) {
+    const d = qDef(q), lord = E.find(e => e.nm === q.lord), king = lord && lord.kr;
+    G.gold += d.r; G.ren += d.ren;
+    if (lord) lord.rl = (lord.rl || 0) + d.rl * (king ? 2 : 1);
+    if (king) rl(G.fac, q.lf, 8);
+    G.qu = G.qu.filter(x => x !== q);
+    G.qdone = G.qdone || {}; G.qdone[q.id] = (G.qdone[q.id] || 0) + 1;
+    G.qlast[q.id] = G.day;
+    G.st.q = (G.st.q || 0) + 1;
+    lg('Splnená úloha ' + d.n + ': ' + d.r + ' zlata, sláva +' + d.ren + (king ? ', panovník ' + q.lord + ' si ťa váži' : '') + '.');
+    upd();
+    return d;
+}
+/** Udalosť pre úlohy: k = porazená armáda frakcie a (9 = banditi), v = vstup do hradu a, t = rozhovor s veliteľom frakcie a. */
+function questEvent(k, a) {
+    if (!G || !G.qu) return;
+    for (const q of [...G.qu]) {
+        const s = qStep(q);
+        if (!s || s.k === 'r' || s.k === 'd') continue;
+        if (s.k === 'k' && k === 'k') {
+            const ok = s.a === 'bandit' ? a === 9 : s.a === 'enemy' ? a !== 9 && hos(a, G.fac) : a === s.a;
+            if (ok && ++q.cnt >= s.n) questAdvance(q); else if (ok) { lg('Úloha ' + qDef(q).n + ': ' + q.cnt + '/' + s.n); TS = { s: qDef(q).n + ': ' + q.cnt + '/' + s.n, l: 180 }; }
+        }
+        if (s.k === 'v' && k === 'v' && a === s.a) questAdvance(q);
+        if (s.k === 't' && k === 't' && a === s.a) questAdvance(q);
+    }
+}
+/** Úlohy, ktoré sa dajú uzavrieť alebo odovzdať v hrade t (pán tam má sídlo). */
+const questsAt = t => (G.qu || []).filter(q => q.t === t.n && (qStep(q).k === 'r' || qStep(q).k === 'd'));
+/** Odovzdá tovar pre krok d, ak ho hráč vezie dosť. */
+function questDeliver(q) {
+    const s = qStep(q), have = (G.cargo || {})[s.a] || 0;
+    if (have < s.n) return false;
+    G.cargo[s.a] -= s.n;
+    questAdvance(q);
+    return true;
+}
+/** Zruší úlohu (vzťah s pánom klesne). */
+function questAbandon(q) {
+    const lord = E.find(e => e.nm === q.lord);
+    if (lord) lord.rl = (lord.rl || 0) - 6;
+    G.qu = G.qu.filter(x => x !== q);
+    lg('Vzdal si sa úlohy ' + qDef(q).n + '.');
+    upd();
+}
+
+</script>
+<script>
+/*
+ * Spoločníci (dáta v js/data/companions.js).
+ * G.comp = zoznam id spoločníkov v družine, G.chp = ich zdravie mimo bitky (0–1), G.cgone = id tých, čo odišli navždy.
+ * Spoločník sa dá nájsť v krčme svojho hradu (ak je hrad priateľský a máš dosť slávy), v bitke bojuje ako silný
+ * hrdina s vlastným vzhľadom a po bitke sa lieči. Ak v bitke padne, je ranený a niekoľko dní nebojuje.
+ */
+const compDef = id => COMPANIONS.find(c => c.id === id);
+const myComps = () => (G.comp || []).map(compDef).filter(Boolean);
+/** Spoločníci, ktorí čakajú v hrade t. */
+const compsAt = t => COMPANIONS.filter(c => c.at === t.n && c.side === heroSide() && !(G.comp || []).includes(c.id) && !(G.cgone || []).includes(c.id));
+function compJoin(c) {
+    G.comp = G.comp || []; G.chp = G.chp || {};
+    G.comp.push(c.id); G.chp[c.id] = 1;
+    lg(c.n + ' sa pridal k tvojej družine.');
+    upd();
+}
+function compLeave(c) {
+    G.comp = (G.comp || []).filter(id => id !== c.id);
+    lg(c.n + ' opustil družinu.');
+    upd();
+}
+/** Náhodná hláška spoločníka. */
+const compLine = c => c.lines[Math.floor(Math.random() * c.lines.length)];
+/** Jednotky spoločníkov do bitky (volá startBattle). */
+function compUnits() {
+    return myComps().filter(c => (G.chp && G.chp[c.id] != null ? G.chp[c.id] : 1) > .25 && !(G.cwound && G.cwound[c.id] > G.day)).map(c => ({
+        cp: c.id, t: 0, x: 120 + Math.random() * 40, y: BH / 2 - 60 + Math.random() * 120, hp: c.hp * (G.chp[c.id] || 1), mh: c.hp, sp: c.sp, d: c.d, c: 0, r: c.r, k: c.archer ? 'a' : 'i', uk: c.art && FU[c.art] ? c.art : undefined, f: 0, fc: G.fac, nm: c.n, bn: 0
+    }));
+}
+/** Po bitke: zdravie spoločníkov, zranenie pri páde. */
+function compAfterBattle() {
+    if (!U) return;
+    G.chp = G.chp || {}; G.cwound = G.cwound || {};
+    for (const u of U) if (u.cp) {
+        const c = compDef(u.cp);
+        if (u.hp <= 0) { G.chp[u.cp] = .3; G.cwound[u.cp] = G.day + 3; lg(c.n + ' bol v bitke ranený a tri dni sa bude zotavovať.'); }
+        else G.chp[u.cp] = Math.max(.3, u.hp / u.mh);
+    }
+}
+/** Denné liečenie spoločníkov. */
+function compDaily() {
+    if (!G.chp) return;
+    for (const id in G.chp) G.chp[id] = Math.min(1, G.chp[id] + (G.camp ? .35 : .2));
+}
+/** Hláška spoločníka v bitke (každých pár sekúnd jeden pokrik). */
+let compShout = 0;
+function compBattleShout() {
+    const alive = U.filter(u => u.cp && u.hp > 0);
+    if (!alive.length || tm < compShout) return;
+    compShout = tm + 400 + Math.random() * 500;
+    const u = alive[Math.floor(Math.random() * alive.length)], c = compDef(u.cp);
+    TS = { s: c.n + ': „' + c.battle[Math.floor(Math.random() * c.battle.length)] + '“', l: 150 };
+}
+
+</script>
+<script>
+/*
  * Bitka: tvorba jednotiek, začiatok a koniec bitky, boj, šípy, rozkazy a hradby pri obliehaní.
  */
 function mkBase(t, k, f) {
@@ -992,6 +1311,7 @@ function startBattle(en, al) {
             if (k[0] === 'u' && G[k])
                 for (let i = 0; i < Math.min(G[k], 15); i++)
                     U.push(mk(0, k));
+        U.push(...compUnits());    // spoločníci bojujú ako hrdinovia
     }
     if (en.siege) {
         const sg = G.sg && G.sg.t === TW.indexOf(en.t) ? G.sg : {};
@@ -1003,6 +1323,7 @@ function startBattle(en, al) {
         SGB = null;
 }
 function endBattle(win) {
+    compAfterBattle();
     if (SGB) {
         BG = BG0;
         SGB = null;
@@ -1060,7 +1381,7 @@ function endBattle(win) {
                 L.t.pr = Math.max(0, (L.t.pr ?? 40) - 15);
         }
         for (const u of U)
-            if (u.uk) {
+            if (u.uk && !u.cp) {
                 if (!u.t && u.hp <= 0 && G[u.uk] > 0)
                     G[u.uk]--;
                 u.k = 'fx';
@@ -1070,13 +1391,13 @@ function endBattle(win) {
                 if (k[0] === 'u' && G[k])
                     G[k] = Math.floor(G[k] / 2);
         L_endBattle0: {
-            const dI = U.filter(u => !u.t && !u.ally && u.k === 'i' && u.hp <= 0).length, dC = U.filter(u => !u.t && u.k === 'c' && u.hp <= 0).length;
+            const dI = U.filter(u => !u.t && !u.ally && !u.cp && u.k === 'i' && u.hp <= 0).length, dC = U.filter(u => !u.t && u.k === 'c' && u.hp <= 0).length;
             {
                 const S = G.st || (G.st = { b: 0, w: 0, l: 0, k: 0, d: 0, c: 0, r: 0 });
                 S.b++;
                 S[win ? 'w' : 'l']++;
                 S.k += U.filter(u => u.t && u.hp <= 0).length;
-                S.d += U.filter(u => !u.t && !u.h && !u.ally && u.hp <= 0).length;
+                S.d += U.filter(u => !u.t && !u.h && !u.ally && !u.cp && u.hp <= 0).length;
                 if (win && LB.siege)
                     S.c++;
                 if (win && LB.vil)
@@ -1134,8 +1455,10 @@ function endBattle(win) {
                 if (!L.siege)
                     G.cap += Math.floor(L.n * .3);
                 G.txp += L.n * 3;
-                if (!L.siege && !L.vil)
+                if (!L.siege && !L.vil) {
                     qChk('k', L.f);
+                    questEvent('k', L.f);
+                }
                 if (L.siege)
                     qChk('c', L.t.n);
                 if (L.al) {
@@ -1179,6 +1502,7 @@ function updBattle(dt) {
     L_updBattle0: {
         if (Math.random() < .06 * dt)
             snd('cl');
+        compBattleShout();
         if (fx > 0)
             fx -= dt;
         bc.x = Math.max(0, Math.min(BW - W, U[0].x - W / 2));
@@ -1467,9 +1791,22 @@ function ach() { if (!G)
 /*
  * Nová hra, uloženie a načítanie.
  */
-function save() {
+/**
+ * Uložené pozície: 'vs1' = pozícia 1 (pôvodná), 'vs2', 'vs3' = ďalšie ručné, 'vsauto' = automatická (na konci každého dňa).
+ * slot = 1, 2, 3 alebo 'auto'.
+ */
+const SLOTS = [['1', 'Pozícia 1'], ['2', 'Pozícia 2'], ['3', 'Pozícia 3'], ['auto', 'Automatická (koniec dňa)']];
+const slotKey = slot => slot === 'auto' ? 'vsauto' : 'vs' + (slot || 1);
+/** Popis uloženej pozície alebo null, ak je prázdna. */
+function slotInfo(slot) {
     try {
-        localStorage.setItem('vs1', JSON.stringify({ G: { ...G, chase: null, talk: null }, T: TW.map(t => ({ f: t.f, g: t.g, mine: t.mine, wl: t.wl || 0, pr: t.pr, bd: t.bd, lord: t.lord, inv: t.inv })), E: E.map(e => ({ id: e.id, x: e.x, y: e.y, f: e.f, n: e.n, nm: e.nm, kr: e.kr, nz: e.nz, rl: e.rl || 0, vx: 0, vy: 0, w: 0 })), WR, REL, AL, CP, VL, MW }));
+        const s = JSON.parse(localStorage.getItem(slotKey(slot)));
+        return s && s.G ? s.G.name + ', deň ' + s.G.day + ', ' + (s.G.kn || FN[s.G.fac]) + (s.when ? ', ' + s.when : '') : null;
+    } catch (x) { return null; }
+}
+function save(slot) {
+    try {
+        localStorage.setItem(slotKey(slot), JSON.stringify({ G: { ...G, chase: null, talk: null }, T: TW.map(t => ({ f: t.f, g: t.g, mine: t.mine, wl: t.wl || 0, pr: t.pr, bd: t.bd, lord: t.lord, inv: t.inv })), E: E.map(e => ({ id: e.id, x: e.x, y: e.y, f: e.f, n: e.n, nm: e.nm, kr: e.kr, nz: e.nz, rl: e.rl || 0, vx: 0, vy: 0, w: 0 })), WR, REL, AL, CP, VL, MW, when: new Date().toLocaleString('sk-SK', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) }));
         return 1;
     }
     catch (x) {
@@ -1519,11 +1856,11 @@ function newGame() {
         upd();
     }
 }
-function load() {
+function load(slot) {
     L_load0: {
         initA();
         try {
-            const s = JSON.parse(localStorage.getItem('vs1'));
+            const s = JSON.parse(localStorage.getItem(slotKey(slot)));
             if (!s)
                 break L_load0;
             TW = mkTW();
@@ -4258,7 +4595,7 @@ function show(h, body) {
 function upd() {
     {
         {
-            hud.innerHTML = `<span><b>${G.name}</b>, ${rank()} (${FN[G.fac]})</span><span>Zlato <b>${G.gold}</b></span><span>Pešiaci <b>${G.inf}</b></span><span>Jazdci <b>${G.cav}</b></span><span>Lukostrelci <b>${G.arc}</b></span><span>Elfovia <b>${G.elf}</b></span><span>Rohirimi <b>${G.roh}</b></span><span>Veteráni <b>${G.vet}</b></span><span>Zajatci <b>${G.cap}</b></span><span>Skúsenosti <b>${G.txp}</b></span>${QS[G.q] ? '<span>Kapitola <b>' + (G.q + 1) + '/' + QS.length + '</b></span>' : ''}<span>Zdravie <b>${Math.ceil(G.hp)}/${mh()}</b></span><span>Úroveň <b>${G.lv}</b> (${G.xp}/${G.lv * 30})</span>${G.sk ? '<span><b>Body: ' + G.sk + '</b></span>' : ''}<span>Sláva <b>${G.ren}</b></span><span>Deň <b>${G.day}</b> (${SEASONS[season()]}${MW && MW.n !== 'clear' ? ', ' + WNAME[MW.n] : ''})</span>${cargoCount() ? '<span>Voz <b>' + cargoCount() + '/' + CARGO_MAX + '</b></span>' : ''}`;
+            hud.innerHTML = `<span><b>${G.name}</b>, ${rank()} (${FN[G.fac]})</span><span>Zlato <b>${G.gold}</b></span><span>Pešiaci <b>${G.inf}</b></span><span>Jazdci <b>${G.cav}</b></span><span>Lukostrelci <b>${G.arc}</b></span><span>Elfovia <b>${G.elf}</b></span><span>Rohirimi <b>${G.roh}</b></span><span>Veteráni <b>${G.vet}</b></span><span>Zajatci <b>${G.cap}</b></span><span>Skúsenosti <b>${G.txp}</b></span>${QS[G.q] ? '<span>Kapitola <b>' + (G.q + 1) + '/' + QS.length + '</b></span>' : ''}<span>Zdravie <b>${Math.ceil(G.hp)}/${mh()}</b></span><span>Úroveň <b>${G.lv}</b> (${G.xp}/${G.lv * 30})</span>${G.sk ? '<span><b>Body: ' + G.sk + '</b></span>' : ''}<span>Sláva <b>${G.ren}</b></span><span>Deň <b>${G.day}</b> (${SEASONS[season()]}${MW && MW.n !== 'clear' ? ', ' + WNAME[MW.n] : ''})</span>${cargoCount() ? '<span>Voz <b>' + cargoCount() + '/' + CARGO_MAX + '</b></span>' : ''}${G.qu && G.qu.length ? '<span>Úlohy <b>' + G.qu.length + '</b></span>' : ''}${G.comp && G.comp.length ? '<span>Družina <b>' + myComps().map(c => c.n.split(' ')[0]).join(', ') + '</b></span>' : ''}`;
         }
         const us = uS();
         if (us)
@@ -4369,14 +4706,21 @@ function town(i) {
         return;
     }
     qChk('v', t.n);
+    questEvent('v', t.n);
     show(t.n + ' (' + FN[t.f] + ')', 'Zlato ' + G.gold + ', vojsko ' + ar() + ', zdravie ' + Math.ceil(G.hp) + '/' + mh() + '. Posádka hradu: ' + t.g + (t.lord ? ', léno drží ' + t.lord : '') + '.');
     [['r', 'Verbovanie vojakov'], ['e', 'Kováč a zbrojnica'], ['v', 'Vojsko, zajatci a odpočinok'], ...(t.mine ? [['h', 'Správa hradu']] : []), ['d', 'Dvor a diplomacia']].forEach(([c, n]) => btn(n, () => tsub(i, c)));
     btn('Trh', () => market(t, () => town(i)));
+    btn('Krčma' + (compsAt(t).length ? ' (niekto tu čaká)' : ''), () => tavern(i));
+    questsAt(t).forEach(q => {
+        const d = qDef(q), s = qStep(q);
+        if (s.k === 'r') btn('Úloha: uzavrieť „' + d.n + '“ u ' + q.lord, () => { questComplete(q); msg('„' + qText(q, d.done) + '“', () => town(i)); });
+        else btn('Úloha: odovzdať ' + s.n + '× ' + goodOf(s.a).n + ' (' + d.n + ')', () => { if (questDeliver(q)) msg(q.step >= d.steps.length ? '„' + qText(q, d.done) + '“' : 'Tovar odovzdaný.', () => town(i)); }, ((G.cargo || {})[s.a] || 0) < s.n);
+    });
     btn('Hrdina a schopnosti' + (G.sk ? ' (' + G.sk + ' bodov)' : ''), () => skills(i));
     btn('Turnaj v aréne (vstupné 20)', () => { G.gold -= 20; upd(); ov.classList.add('hide'); startBattle({ n: 3 + Math.floor(G.lv / 2), f: t.f, ar: 1, t }); }, G.gold < 20);
     if (G.ring === 1 && t.n === 'Barad-dûr' && bloc(G.fac) === 1)
         btn('Odovzdať Prsteň Sauronovi', () => { G.ring = 2; G.gold += 1000; G.ren += 10; lg('Odovzdal si Jeden prsteň Sauronovi.'); ach(); upd(); town(i); });
-    btn('Uložiť hru', () => msg(save() ? 'Hra uložená.' : 'Ukladanie nie je v tomto prostredí dostupné.', () => town(i)));
+    btn('Uložiť hru', () => saveMenu(() => town(i)));
     btn('Odísť z mesta', () => { ov.classList.add('hide'); mode = 'map'; });
 }
 function tsub(i, c) {
@@ -4551,9 +4895,58 @@ function talk(e, line, used = {}) {
     topic('liege', c.king ? 'Aké je to vládnuť?' : 'Čo si myslíš o svojom pánovi?', c => DLG.LIEGE[e.tr](c));
     topic('side', c.evil ? 'Prečo slúžiš Tieňu?' : 'Prečo bojuješ za dobro?', c => DLG.SIDE[e.tr](c));
     if (c.ring) topic('ring', 'Všimol si si niečo?', c => DLG.RING[e.tr](c));
+    if (!c.war) {   // úloha od pána
+        const qo = questFor(e), mine = (G.qu || []).find(q => q.lord === e.nm);
+        if (mine) btn('O úlohe: ' + qDef(mine).n, () => talk(e, qStep(mine).k === 'r' ? 'Splnil si, o čo som žiadal? Príď za mnou do ' + mine.t + ', tam to uzavrieme.' : qText(mine, qStep(mine).s) + ' Nenechaj ma čakať pridlho.', used));
+        else if (qo && (c.rl >= -5)) btn('Máš pre mňa úlohu?', () => questOffer(e, qo));
+    }
+    questEvent('t', e.f);
     topic('flatter', 'Zalichotiť', c => DLG.FLATTER[e.tr](c));
     topic('insult', 'Uraziť', c => DLG.INSULT[e.tr](c));
     btn('Späť k rokovaniu', () => lord(e));
+}
+
+/** Pán ponúkne úlohu: text zadania a prijatie alebo odmietnutie. */
+function questOffer(e, qo) {
+    mode = 'town';
+    const d = qo.def, king = e.kr;
+    show(d.n, '„' + d.intro.replace(/\{Y\}/g, G.name) + '“\n\nOdmena: ' + d.r + ' zlata, sláva +' + d.ren + ', vzťah (' + e.nm + ') +' + d.rl * (king ? 2 : 1) + (king ? ', panovník: zlepší sa aj vzťah s frakciou ' + FN[e.f] : '') + '.');
+    btn('Prijať úlohu', () => { questAccept(e, d, qo.home); talk(e, ['Dobre. Viem, že slovo dodržíš.', 'Výborne. Zlato čaká, keď bude hotovo.', 'Ďakujem. Naozaj ďakujem.', 'Dobre. Nesklam ma, mám na teba plány.', 'Tak choď. A nevracaj sa s prázdnymi rukami.', 'Múdra voľba. Budem sledovať, ako si počínaš.'][e.tr]); });
+    btn('Odmietnuť', () => talk(e, ['Škoda. Ale vážim si, že si to povedal rovno.', 'Tvoja strata. Zlato si nájde iné ruky.', 'Ach... dobre. Chápem.', 'Zapamätám si, že si odmietol.', 'Zbabelec. Choď mi z očí.', 'Rozumiem. Možno inokedy.'][e.tr]));
+}
+/** Okno Úlohy: aktívne úlohy, postup a čo robiť ďalej. */
+function questLog() {
+    if (mode !== 'map') return;
+    mode = 'town';
+    const Q = G.qu || [], chap = QS[G.q];
+    show('Úlohy', Q.length ? 'Máš ' + Q.length + ' z ' + MAX_QUESTS + ' úloh. Splnených: ' + Object.values(G.qdone || {}).reduce((a, b) => a + b, 0) + '.' : 'Nemáš žiadnu vedľajšiu úlohu. Porozprávaj sa s veliteľmi na mape, ponúknu ti prácu.');
+    if (chap) { rowHead('Príbeh: kapitola ' + (G.q + 1) + '/' + QS.length); const d = document.createElement('div'); d.style.cssText = 'grid-column:1/-1;text-align:left;font-size:.9rem'; d.textContent = chap.t + (chap.k === 'k' ? ' (' + G.qc + '/' + chap.n + ')' : ''); document.getElementById('bt').appendChild(d); }
+    Q.forEach(q => {
+        const d = qDef(q), s = qStep(q);
+        rowHead(d.n + ' · od ' + q.lord + ' (' + FN[q.lf] + ')');
+        const el = document.createElement('div'); el.style.cssText = 'grid-column:1/-1;text-align:left;font-size:.9rem';
+        el.textContent = 'Krok ' + (q.step + 1) + '/' + d.steps.length + ': ' + qText(q, s.s) + (s.k === 'k' ? ' Zatiaľ ' + q.cnt + '/' + s.n + '.' : s.k === 'd' ? ' Vezieš ' + ((G.cargo || {})[s.a] || 0) + '/' + s.n + '.' : '') + ' Odmena ' + d.r + ' zlata.';
+        document.getElementById('bt').appendChild(el);
+        btn('Vzdať sa úlohy: ' + d.n, () => { questAbandon(q); questLog(); });
+    });
+    btn('Zavrieť', () => { ov.classList.add('hide'); mode = 'map'; });
+}
+
+/** Výber pozície na uloženie. */
+function saveMenu(back) {
+    mode = 'town';
+    show('Uložiť hru', 'Vyber pozíciu. Hra sa okrem toho sama ukladá na konci každého dňa do automatickej pozície.');
+    SLOTS.filter(([k]) => k !== 'auto').forEach(([k, n]) => { const info = slotInfo(k); btn(n + ': ' + (info || 'prázdna'), () => msg(save(k) ? 'Hra uložená do pozície ' + k + '.' : 'Ukladanie nie je v tomto prostredí dostupné.', back)); });
+    btn('Späť', back);
+}
+/** Výber pozície na načítanie (z úvodu). */
+function loadMenu() {
+    const any = SLOTS.some(([k]) => slotInfo(k));
+    if (!any) return load(1);
+    show('Načítať hru', 'Vyber uloženú pozíciu.');
+    ov.classList.add('intro');
+    SLOTS.forEach(([k, n]) => { const info = slotInfo(k); btn(n + ': ' + (info || 'prázdna'), () => load(k), !info); });
+    btn('Späť', () => location.reload());
 }
 
 </script>
@@ -4645,6 +5038,49 @@ function market(o, back) {
         btn(have > 1 ? 'Predať všetko (' + have + ')' : 'Predať', () => { sellGood(o, g.k, have); upd(); market(o, back); }, !have);
     });
     btn('Späť', back);
+}
+
+</script>
+<script>
+/*
+ * Spoločníci: krčma v hrade (pripojenie) a okno Družina (rozhovor, prepustenie).
+ * Logika v js/sim/companions.js, postavy v js/data/companions.js.
+ */
+/** Krčma hradu i: spoločníci, ktorí tu čakajú. */
+function tavern(i) {
+    const t = TW[i], list = compsAt(t);
+    mode = 'town';
+    show('Krčma v ' + t.n, list.length ? 'Pri ohni sedí niekto, kto vyzerá, že hľadá prácu alebo spoločnosť.' : 'V krčme je dnes len obyčajný ľud. Hrdinovia sa tu objavujú podľa toho, kam ťa cesty zavedú a aká je tvoja sláva.');
+    list.forEach(c => {
+        rowHead(c.n + ', ' + c.t);
+        const d = document.createElement('div'); d.style.cssText = 'grid-column:1/-1;text-align:left;font-size:.9rem'; d.textContent = '„' + c.join + '“'; document.getElementById('bt').appendChild(d);
+        const ok = G.ren >= c.ren && G.gold >= c.p && (G.comp || []).length < 4;
+        btn('Pripojiť ' + c.n + ' (' + c.p + ' zlata' + (G.ren < c.ren ? ', treba slávu ' + c.ren : '') + ((G.comp || []).length >= 4 ? ', družina je plná' : '') + ')', () => { G.gold -= c.p; compJoin(c); msg(c.n + ' sa pridáva k tvojej družine. V bitke bude bojovať po tvojom boku.', () => town(i)); }, !ok);
+    });
+    btn('Späť', () => town(i));
+}
+/** Okno Družina (z mapy): spoločníci, ich stav, rozhovor a prepustenie. */
+function party(back) {
+    const fromMap = !back;
+    if (fromMap) { if (mode !== 'map' && mode !== 'town') return; back = () => { ov.classList.add('hide'); mode = 'map'; }; }
+    mode = 'town';
+    const C = myComps();
+    show('Družina', C.length ? 'Tvoji spoločníci (' + C.length + '/4). V bitke bojujú po tvojom boku; ranený spoločník sa pár dní zotavuje.' : 'Zatiaľ cestuješ sám. Spoločníkov nájdeš v krčmách hradov: hrdinovia dobra v Bree, Lothlóriene, Erebore, Minas Tirith, Edorase, Osgiliathe a Hobitove; služobníci Tieňa v Isengarde, Minas Morgul, Edorase, Barad-dûre, Umbare a pri Morannone.');
+    C.forEach(c => {
+        const hp = Math.round((G.chp && G.chp[c.id] != null ? G.chp[c.id] : 1) * 100), w = G.cwound && G.cwound[c.id] > G.day;
+        rowHead(c.n + ', ' + c.t + ' · zdravie ' + hp + ' %' + (w ? ' · ranený, zotaví sa o ' + (G.cwound[c.id] - G.day) + ' d.' : ''));
+        btn('Porozprávať sa s ' + c.n, () => compTalk(c, fromMap ? null : back));
+        btn('Prepustiť ' + c.n, () => { compLeave(c); msg('„' + c.leave + '“', () => party(fromMap ? null : back)); });
+    });
+    btn(fromMap ? 'Zavrieť' : 'Späť', back);
+}
+function compTalk(c, back, line) {
+    mode = 'town';
+    show(c.n, '„' + (line || compLine(c)) + '“');
+    btn('Povedz niečo', () => compTalk(c, back, compLine(c)));
+    btn('Ako sa ti darí?', () => { const hp = G.chp && G.chp[c.id] != null ? G.chp[c.id] : 1; compTalk(c, back, hp > .8 ? 'Som pripravený. Kam ideme?' : hp > .5 ? 'Rany sa hoja. Ešte deň či dva a budem ako nový.' : 'Zle. Potrebujem odpočinok, nie ďalšiu bitku.'); });
+    btn('Čo si myslíš o našej ceste?', () => compTalk(c, back, G.ren > 15 ? 'Ľudia o tebe hovoria. To je dobre, kým hovoria dobre.' : G.ring === 1 ? 'Nesieš to so sebou. Cítim to každý deň. Daj si pozor.' : 'Je to dlhá cesta. Ale dlhé cesty majú dobré konce, ak ich človek dojde.'));
+    btn('Späť', () => party(back));
 }
 
 </script>
@@ -4809,7 +5245,7 @@ function setOrd(k) { ORD = k; [...od.children].forEach(b => b.style.opacity = b.
 const tb = document.createElement('div');
 tb.style.cssText = 'position:absolute;left:.5rem;bottom:.5rem;display:flex;gap:.3rem;z-index:2';
 wrapEl.appendChild(tb);
-[['−', () => { Z = Math.max(.45, Z - .15); }], ['+', () => { Z = Math.min(1.5, Z + .15); }], ['Prehľad', () => ovw()], ['Denník', () => dnk()], ['Inventár', () => inv()], ['Štatistiky', () => sts()], ['Legenda', () => { LEG = !LEG; }], ['Trofeje', () => tro()], ['Úspechy', () => achs()], ['Návod', () => {
+[['−', () => { Z = Math.max(.45, Z - .15); }], ['+', () => { Z = Math.min(1.5, Z + .15); }], ['Prehľad', () => ovw()], ['Denník', () => dnk()], ['Úlohy', () => questLog()], ['Družina', () => party()], ['Inventár', () => inv()], ['Štatistiky', () => sts()], ['Legenda', () => { LEG = !LEG; }], ['Trofeje', () => tro()], ['Úspechy', () => achs()], ['Návod', () => {
             if (mode === 'map')
                 help();
         }], ['Zvuk', function () {
@@ -5123,6 +5559,7 @@ const Art = {
     /** Druh kreslenia vojaka v assets/textures/unit_<druh>.png. */
     unitArt(u) {
         if (u.h) return it('w').r ? 'hero_spear' : 'hero';
+        if (u.cp) return compDef(u.cp).art || 'hero';
         if (u.uk) return u.uk;
         if (u.k === 'o') return bloc(u.fc) ? 'orc' : 'i';
         if (u.k === 'a') return u.t && bloc(u.fc) ? 'orc_a' : 'a';
@@ -5169,6 +5606,7 @@ const Art = {
 
     unitKey(u) {
         if (u.h) return 'hero_' + [G.eq.w, G.eq.a, G.eq.s, G.eq.h, G.eq.m, G.fac, G.king ? 1 : 0, G.ke ?? ''].join('_');
+        if (u.cp) { const c = compDef(u.cp); return c.eq ? 'hero_cp_' + u.cp + '_' + G.fac : 'u_' + c.art + '_0_' + G.fac; }
         return 'u_' + (u.uk || u.k) + '_' + (u.t ? 1 : 0) + '_' + (u.t ? u.fc : G.fac) + (u.bn ? '_b' : '');
     },
 
@@ -5176,8 +5614,8 @@ const Art = {
     unit(scene, u) {
         const key = Art.unitKey(u), kind = Art.unitArt(u), base = Art.img['unit_' + kind];
         // hrdina sa kreslí podľa výbavy: každá zbraň, brnenie, štít, prilba a kôň vyzerá inak
-        if (u.h && !scene.textures.exists(key) && typeof Soldiers !== 'undefined') {
-            const sp = Soldiers.heroSpec(G.eq);
+        if ((u.h || (u.cp && compDef(u.cp).eq)) && !scene.textures.exists(key) && typeof Soldiers !== 'undefined') {
+            const sp = Soldiers.heroSpec(u.h ? G.eq : compDef(u.cp).eq);
             Art.register(scene, key, Art.tinted(Soldiers.sheet(sp, 'base'), Soldiers.sheet(sp, 'team'), FC[G.fac]));
             Art.anims(scene, key);
             return key;
@@ -5360,6 +5798,67 @@ const SoundFX = {
     mus = function () {
         if (!SoundFX.music()) musSynth();
     };
+}
+
+</script>
+<script>
+/*
+ * Zvuky prostredia (syntetizované, nezávislé od hudby): dážď, vietor a sneh, hrom pri búrke,
+ * praskanie fakieľ v noci, ruch trhu a krčmy. Hudba na mape ostáva bez zmeny (sound.js).
+ * Bežia ako slučky šumu s filtrom a plynulou hlasitosťou; každých 200 ms sa podľa stavu hry
+ * rozhodne, ktoré majú hrať (ambTick).
+ */
+let AMB = null, thunderAt = 0, crackleAt = 0;
+function ambInit() {
+    if (AMB || !ac) return;
+    bus();
+    AMB = { g: ac.createGain(), src: {} };
+    AMB.g.gain.value = .9;
+    AMB.g.connect(ac.destination);
+    const mkLoop = (type, fq, q) => {
+        const n = ac.sampleRate * 3 | 0, b = ac.createBuffer(1, n, ac.sampleRate), a = b.getChannelData(0);
+        for (let i = 0; i < n; i++) a[i] = Math.random() * 2 - 1;
+        const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+        s.buffer = b; s.loop = true; f.type = type; f.frequency.value = fq; f.Q.value = q; g.gain.value = 0;
+        s.connect(f); f.connect(g); g.connect(AMB.g); s.start();
+        return { f, g };
+    };
+    AMB.src.rain = mkLoop('bandpass', 2600, .5);      // dážď: jemný vysoký šum
+    AMB.src.wind = mkLoop('lowpass', 420, .8);        // vietor: hlboký šum, ktorý sa vlní
+    AMB.src.fire = mkLoop('bandpass', 900, 1.2);      // fakle: šum, ktorý praská
+    AMB.src.crowd = mkLoop('bandpass', 600, .9);      // trh a krčma: ruch
+}
+/** Plynulá zmena hlasitosti slučky. */
+const ambSet = (k, v) => { const s = AMB.src[k]; if (!s) return; s.g.gain.setTargetAtTime(v, ac.currentTime, .6); };
+/** Hrom: hlboký úder so zadunením. */
+function thunder() {
+    const t = ac.currentTime, d = 1.6 + Math.random() * 1.2;
+    noi(t, d, .55, 'lowpass', 140 + Math.random() * 80, AMB.g, .7);
+    noi(t + .05, .4, .35, 'lowpass', 400, AMB.g, 1);
+    const o = osc(55, t, d, 'sine', .35, AMB.g, .01); o.frequency.exponentialRampToValueAtTime(28, t + d);
+}
+/** Praskanie fakle: krátke tlesknutie. */
+function crackle() { noi(ac.currentTime, .05 + Math.random() * .05, .18, 'highpass', 1800 + Math.random() * 2000, AMB.g, 2); }
+/** Rozhodne podľa stavu hry, ktoré zvuky prostredia znejú. Volá sa každých 200 ms zo zvukového intervalu. */
+function ambTick() {
+    if (!ac || !G || mode === 'intro') { if (AMB) for (const k in AMB.src) ambSet(k, 0); return; }
+    ambInit();
+    if (mu) { for (const k in AMB.src) ambSet(k, 0); return; }
+    const battle = mode === 'battle', w = battle ? WX.n : MW.n, night = battle ? WX.night : isNight();
+    const se = season(), shop = mode === 'town' && ov && /^(Trh|Krčma)/.test((ov.querySelector('h1') || {}).textContent || '');
+    ambSet('rain', w === 'rain' ? .22 : w === 'storm' ? .4 : w === 'ash' ? .08 : 0);
+    const windy = w === 'snow' || w === 'storm' || se === 3 || (w === 'fog' ? .5 : 0);
+    ambSet('wind', w === 'snow' ? .3 : w === 'storm' ? .22 : se === 3 ? .12 : w === 'fog' ? .08 : 0);
+    if (windy) AMB.src.wind.f.frequency.setTargetAtTime(300 + 250 * (.5 + .5 * Math.sin(tm / 90)), ac.currentTime, .5);
+    ambSet('fire', battle && night ? .12 : 0);
+    ambSet('crowd', shop ? .14 : 0);
+    const now = ac.currentTime;
+    if (w === 'storm' && now > thunderAt) { thunder(); thunderAt = now + 5 + Math.random() * 10; }
+    if (battle && night && now > crackleAt) { crackle(); crackleAt = now + .15 + Math.random() * .5; }
+}
+{   // napojenie na zvukový interval hry
+    const mus0 = mus;
+    mus = function () { mus0(); try { ambTick(); } catch (e) { } };
 }
 
 </script>

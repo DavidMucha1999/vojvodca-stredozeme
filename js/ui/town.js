@@ -88,14 +88,21 @@ function town(i) {
         return;
     }
     qChk('v', t.n);
+    questEvent('v', t.n);
     show(t.n + ' (' + FN[t.f] + ')', 'Zlato ' + G.gold + ', vojsko ' + ar() + ', zdravie ' + Math.ceil(G.hp) + '/' + mh() + '. Posádka hradu: ' + t.g + (t.lord ? ', léno drží ' + t.lord : '') + '.');
     [['r', 'Verbovanie vojakov'], ['e', 'Kováč a zbrojnica'], ['v', 'Vojsko, zajatci a odpočinok'], ...(t.mine ? [['h', 'Správa hradu']] : []), ['d', 'Dvor a diplomacia']].forEach(([c, n]) => btn(n, () => tsub(i, c)));
     btn('Trh', () => market(t, () => town(i)));
+    btn('Krčma' + (compsAt(t).length ? ' (niekto tu čaká)' : ''), () => tavern(i));
+    questsAt(t).forEach(q => {
+        const d = qDef(q), s = qStep(q);
+        if (s.k === 'r') btn('Úloha: uzavrieť „' + d.n + '“ u ' + q.lord, () => { questComplete(q); msg('„' + qText(q, d.done) + '“', () => town(i)); });
+        else btn('Úloha: odovzdať ' + s.n + '× ' + goodOf(s.a).n + ' (' + d.n + ')', () => { if (questDeliver(q)) msg(q.step >= d.steps.length ? '„' + qText(q, d.done) + '“' : 'Tovar odovzdaný.', () => town(i)); }, ((G.cargo || {})[s.a] || 0) < s.n);
+    });
     btn('Hrdina a schopnosti' + (G.sk ? ' (' + G.sk + ' bodov)' : ''), () => skills(i));
     btn('Turnaj v aréne (vstupné 20)', () => { G.gold -= 20; upd(); ov.classList.add('hide'); startBattle({ n: 3 + Math.floor(G.lv / 2), f: t.f, ar: 1, t }); }, G.gold < 20);
     if (G.ring === 1 && t.n === 'Barad-dûr' && bloc(G.fac) === 1)
         btn('Odovzdať Prsteň Sauronovi', () => { G.ring = 2; G.gold += 1000; G.ren += 10; lg('Odovzdal si Jeden prsteň Sauronovi.'); ach(); upd(); town(i); });
-    btn('Uložiť hru', () => msg(save() ? 'Hra uložená.' : 'Ukladanie nie je v tomto prostredí dostupné.', () => town(i)));
+    btn('Uložiť hru', () => saveMenu(() => town(i)));
     btn('Odísť z mesta', () => { ov.classList.add('hide'); mode = 'map'; });
 }
 function tsub(i, c) {
@@ -270,7 +277,56 @@ function talk(e, line, used = {}) {
     topic('liege', c.king ? 'Aké je to vládnuť?' : 'Čo si myslíš o svojom pánovi?', c => DLG.LIEGE[e.tr](c));
     topic('side', c.evil ? 'Prečo slúžiš Tieňu?' : 'Prečo bojuješ za dobro?', c => DLG.SIDE[e.tr](c));
     if (c.ring) topic('ring', 'Všimol si si niečo?', c => DLG.RING[e.tr](c));
+    if (!c.war) {   // úloha od pána
+        const qo = questFor(e), mine = (G.qu || []).find(q => q.lord === e.nm);
+        if (mine) btn('O úlohe: ' + qDef(mine).n, () => talk(e, qStep(mine).k === 'r' ? 'Splnil si, o čo som žiadal? Príď za mnou do ' + mine.t + ', tam to uzavrieme.' : qText(mine, qStep(mine).s) + ' Nenechaj ma čakať pridlho.', used));
+        else if (qo && (c.rl >= -5)) btn('Máš pre mňa úlohu?', () => questOffer(e, qo));
+    }
+    questEvent('t', e.f);
     topic('flatter', 'Zalichotiť', c => DLG.FLATTER[e.tr](c));
     topic('insult', 'Uraziť', c => DLG.INSULT[e.tr](c));
     btn('Späť k rokovaniu', () => lord(e));
+}
+
+/** Pán ponúkne úlohu: text zadania a prijatie alebo odmietnutie. */
+function questOffer(e, qo) {
+    mode = 'town';
+    const d = qo.def, king = e.kr;
+    show(d.n, '„' + d.intro.replace(/\{Y\}/g, G.name) + '“\n\nOdmena: ' + d.r + ' zlata, sláva +' + d.ren + ', vzťah (' + e.nm + ') +' + d.rl * (king ? 2 : 1) + (king ? ', panovník: zlepší sa aj vzťah s frakciou ' + FN[e.f] : '') + '.');
+    btn('Prijať úlohu', () => { questAccept(e, d, qo.home); talk(e, ['Dobre. Viem, že slovo dodržíš.', 'Výborne. Zlato čaká, keď bude hotovo.', 'Ďakujem. Naozaj ďakujem.', 'Dobre. Nesklam ma, mám na teba plány.', 'Tak choď. A nevracaj sa s prázdnymi rukami.', 'Múdra voľba. Budem sledovať, ako si počínaš.'][e.tr]); });
+    btn('Odmietnuť', () => talk(e, ['Škoda. Ale vážim si, že si to povedal rovno.', 'Tvoja strata. Zlato si nájde iné ruky.', 'Ach... dobre. Chápem.', 'Zapamätám si, že si odmietol.', 'Zbabelec. Choď mi z očí.', 'Rozumiem. Možno inokedy.'][e.tr]));
+}
+/** Okno Úlohy: aktívne úlohy, postup a čo robiť ďalej. */
+function questLog() {
+    if (mode !== 'map') return;
+    mode = 'town';
+    const Q = G.qu || [], chap = QS[G.q];
+    show('Úlohy', Q.length ? 'Máš ' + Q.length + ' z ' + MAX_QUESTS + ' úloh. Splnených: ' + Object.values(G.qdone || {}).reduce((a, b) => a + b, 0) + '.' : 'Nemáš žiadnu vedľajšiu úlohu. Porozprávaj sa s veliteľmi na mape, ponúknu ti prácu.');
+    if (chap) { rowHead('Príbeh: kapitola ' + (G.q + 1) + '/' + QS.length); const d = document.createElement('div'); d.style.cssText = 'grid-column:1/-1;text-align:left;font-size:.9rem'; d.textContent = chap.t + (chap.k === 'k' ? ' (' + G.qc + '/' + chap.n + ')' : ''); document.getElementById('bt').appendChild(d); }
+    Q.forEach(q => {
+        const d = qDef(q), s = qStep(q);
+        rowHead(d.n + ' · od ' + q.lord + ' (' + FN[q.lf] + ')');
+        const el = document.createElement('div'); el.style.cssText = 'grid-column:1/-1;text-align:left;font-size:.9rem';
+        el.textContent = 'Krok ' + (q.step + 1) + '/' + d.steps.length + ': ' + qText(q, s.s) + (s.k === 'k' ? ' Zatiaľ ' + q.cnt + '/' + s.n + '.' : s.k === 'd' ? ' Vezieš ' + ((G.cargo || {})[s.a] || 0) + '/' + s.n + '.' : '') + ' Odmena ' + d.r + ' zlata.';
+        document.getElementById('bt').appendChild(el);
+        btn('Vzdať sa úlohy: ' + d.n, () => { questAbandon(q); questLog(); });
+    });
+    btn('Zavrieť', () => { ov.classList.add('hide'); mode = 'map'; });
+}
+
+/** Výber pozície na uloženie. */
+function saveMenu(back) {
+    mode = 'town';
+    show('Uložiť hru', 'Vyber pozíciu. Hra sa okrem toho sama ukladá na konci každého dňa do automatickej pozície.');
+    SLOTS.filter(([k]) => k !== 'auto').forEach(([k, n]) => { const info = slotInfo(k); btn(n + ': ' + (info || 'prázdna'), () => msg(save(k) ? 'Hra uložená do pozície ' + k + '.' : 'Ukladanie nie je v tomto prostredí dostupné.', back)); });
+    btn('Späť', back);
+}
+/** Výber pozície na načítanie (z úvodu). */
+function loadMenu() {
+    const any = SLOTS.some(([k]) => slotInfo(k));
+    if (!any) return load(1);
+    show('Načítať hru', 'Vyber uloženú pozíciu.');
+    ov.classList.add('intro');
+    SLOTS.forEach(([k, n]) => { const info = slotInfo(k); btn(n + ': ' + (info || 'prázdna'), () => load(k), !info); });
+    btn('Späť', () => location.reload());
 }

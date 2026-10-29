@@ -102,6 +102,7 @@ const Art = {
     /** Druh kreslenia vojaka v assets/textures/unit_<druh>.png. */
     unitArt(u) {
         if (u.h) return it('w').r ? 'hero_spear' : 'hero';
+        if (u.cp) return compDef(u.cp).art || 'hero';
         if (u.uk) return u.uk;
         if (u.k === 'o') return bloc(u.fc) ? 'orc' : 'i';
         if (u.k === 'a') return u.t && bloc(u.fc) ? 'orc_a' : 'a';
@@ -148,6 +149,7 @@ const Art = {
 
     unitKey(u) {
         if (u.h) return 'hero_' + [G.eq.w, G.eq.a, G.eq.s, G.eq.h, G.eq.m, G.fac, G.king ? 1 : 0, G.ke ?? ''].join('_');
+        if (u.cp) { const c = compDef(u.cp); return c.eq ? 'hero_cp_' + u.cp + '_' + G.fac : 'u_' + c.art + '_0_' + G.fac; }
         return 'u_' + (u.uk || u.k) + '_' + (u.t ? 1 : 0) + '_' + (u.t ? u.fc : G.fac) + (u.bn ? '_b' : '');
     },
 
@@ -155,8 +157,8 @@ const Art = {
     unit(scene, u) {
         const key = Art.unitKey(u), kind = Art.unitArt(u), base = Art.img['unit_' + kind];
         // hrdina sa kreslí podľa výbavy: každá zbraň, brnenie, štít, prilba a kôň vyzerá inak
-        if (u.h && !scene.textures.exists(key) && typeof Soldiers !== 'undefined') {
-            const sp = Soldiers.heroSpec(G.eq);
+        if ((u.h || (u.cp && compDef(u.cp).eq)) && !scene.textures.exists(key) && typeof Soldiers !== 'undefined') {
+            const sp = Soldiers.heroSpec(u.h ? G.eq : compDef(u.cp).eq);
             Art.register(scene, key, Art.tinted(Soldiers.sheet(sp, 'base'), Soldiers.sheet(sp, 'team'), FC[G.fac]));
             Art.anims(scene, key);
             return key;
