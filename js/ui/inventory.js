@@ -33,7 +33,7 @@ function smithy(i, k) {
     }
     const s = SH.find(x => x.k === k);
     show('Kováč: ' + s.l.toLowerCase(), 'Zlato: ' + G.gold + '. Nosíš: ' + it(k).n + ' (' + eqStat(k, it(k)) + ').' + ' Výbava ' + sideName(evil) + '.');
-    s.it.forEach((x, j) => {
+    s.it.map((x, j) => [x, j]).sort((a, b) => a[0].p - b[0].p).forEach(([x, j]) => {
         if (!x.p || !x.z !== !evil) return;           // základné veci sa nepredávajú a výbava druhej strany tu nie je
         if (owns(k, j)) {
             const b = btn(x.n + (G.eq[k] === j ? ' · nosíš' : ' · máš, obliecť'), () => { wear(k, j); back(); }, 0, { k, i: j });

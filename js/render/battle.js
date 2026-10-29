@@ -395,7 +395,7 @@ function drawU(u) {
                 ctx.fill();
             }
             else {
-                ctx.fillStyle = (w.fx === 'dark' ? 'rgba(90,30,120,' : 'rgba(200,230,255,') + (.35 + .3 * Math.sin(tm / 4 + k)) + ')';
+                ctx.fillStyle = (w.fx === 'dark' ? 'rgba(90,30,120,' : w.fx === 'light' ? 'rgba(255,240,190,' : 'rgba(200,230,255,') + (.35 + .3 * Math.sin(tm / 4 + k)) + ')';
                 ctx.beginPath();
                 ctx.arc(px, py, 2, 0, 7);
                 ctx.fill();

@@ -71,6 +71,11 @@ try {
     check('Staré uloženie: doterajšia výbava je v inventári', run('JSON.stringify(G.own.a) === "[0,1,2]" && G.own.w.length === 1'));
     check('Kráľ dobra: jeho hrady predávajú výbavu dobra', run('G.king = 1; G.side = 0; shopSide(6) === 0'));
     check('Kráľ zla: jeho hrady predávajú výbavu zla', run('G.side = 1; shopSide(6) === 1 && shopSide(0) === 0 && shopSide(2) === 1'));
+    run('G.fac = 6; G.king = 1; chooseSide(1);');
+    check('Strana zla: mier so zlom, vojna s dobrom', run('!WR[6][2] && !WR[6][3] && WR[6][0] && WR[6][1] && REL[6][2] >= 40 && REL[6][0] <= -60 && bloc(6) === 1'));
+    run('chooseSide(0);');
+    check('Strana dobra: mier s dobrom, vojna so zlom', run('!WR[6][0] && !WR[6][8] && WR[6][2] && WR[6][7] && REL[6][1] >= 40 && bloc(6) === 0'));
+    check('Výbava sedí so svojím vzhľadom', run('shOf("w").findIndex(x => x.n === "Orkský nôž") === 16 && Soldiers.GEAR.w[16].L === 1.6 && Soldiers.GEAR.w[17].blade === "#d8c890"'));
     run('G.king = 0; delete G.side; startGear(1);');
     check('Hrdina zla začína s orkskou výbavou', run('it("w").n === "Orkský nôž" && it("a").n === "Orkské kože" && it("h").n === "Orkská kukla" && G.own.w.length === 1'));
     check('Základná výbava sa nepredáva', run('smithy(gi, "w"); !document.getElementById("bt").children.some(b => /Železný meč|Orkský nôž/.test(b.textContent))'));

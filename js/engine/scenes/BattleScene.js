@@ -29,11 +29,11 @@ class BattleScene extends Phaser.Scene {
 
         const w = it('w');
         if (w.fx) {
-            const fire = w.fx === 'fire', dark = w.fx === 'dark';
+            const fire = w.fx === 'fire', dark = w.fx === 'dark', light = w.fx === 'light';
             this.trail = this.add.particles(0, 0, Art.spark(this), {
                 speed: { min: 6, max: fire ? 30 : 18 }, angle: fire || dark ? { min: 240, max: 300 } : { min: 0, max: 360 },
                 lifespan: fire ? 380 : dark ? 700 : 520, scale: { start: fire ? .32 : dark ? .36 : .26, end: dark ? .1 : 0 }, alpha: { start: fire ? .75 : dark ? .6 : .65, end: 0 },
-                tint: fire ? [0xffd060, 0xff7a18, 0xff4010] : dark ? [0x2a1030, 0x4a1a5a, 0x7a2aa0] : [0xc8e6ff, 0xffffff, 0x9fd0ff],
+                tint: fire ? [0xffd060, 0xff7a18, 0xff4010] : dark ? [0x2a1030, 0x4a1a5a, 0x7a2aa0] : light ? [0xfff4c0, 0xffffff, 0xffe080] : [0xc8e6ff, 0xffffff, 0x9fd0ff],
                 blendMode: dark ? 'NORMAL' : 'ADD', frequency: fire ? 28 : dark ? 40 : 55
             }).setDepth(4999);
             this.trail.startFollow(this.units.get(U[0]).spr, 0, 0);

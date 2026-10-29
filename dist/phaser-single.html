@@ -167,23 +167,24 @@ const FK = [['uG1', 'uG2'], ['roh', 'uR2'], ['uM1', 'uM2'], ['uI1', 'uI2'], ['uH
  * hrady zla výbavu zla. Veci s cenou 0 sú základné: hrdina dobra začína s prvou vecou v zozname,
  * hrdina zla so základnou vecou zla. "Bez štítu" a "Pešo" nie sú výbava, majú ich obe strany.
  * Vzhľad každej veci je v js/render/soldiers.js (GEAR) v rovnakom poradí.
- * v = sila (útok / ochrana / rýchlosť), p = cena, r = dosah, fx = žiara (glow, fire, dark).
+ * v = sila (útok / ochrana / rýchlosť), p = cena, r = dosah, fx = žiara (glow, light = svetlo dobra, fire, dark = temnota zla).
  */
 const SH = [
-    { k: 'w', l: 'Zbraň', it: [{ n: "Železný meč", v: 15, p: 0 }, { n: "Oceľový meč", v: 20, p: 90 }, { n: "Rohanská kopija", v: 24, p: 160, r: 46 }, { n: "Dúnadanský meč", v: 31, p: 320 }] },
-    { k: 'a', l: 'Brnenie', it: [{ n: "Kožený odev", v: 0, p: 0 }, { n: "Kolčuha", v: .25, p: 110 }, { n: "Gondorský plát", v: .45, p: 300 }] },
-    { k: 's', l: 'Štít', it: [{ n: "Bez štítu", v: 0, p: 0 }, { n: "Drevený štít", v: .1, p: 50 }, { n: "Gondorský štít", v: .2, p: 140 }] },
-    { k: 'h', l: 'Prilba', it: [{ n: "Kožená čiapka", v: 0, p: 0 }, { n: "Oceľová prilba", v: .06, p: 70 }, { n: "Gondorská prilba", v: .12, p: 200 }] },
-    { k: 'm', l: 'Kôň', it: [{ n: "Pešo", v: 1.9, p: 0 }, { n: "Poník", v: 2.3, p: 80 }, { n: "Rohanský kôň", v: 2.9, p: 260 }] }
+    { k: 'w', l: 'Zbraň', it: [{ n: "Železný meč", v: 15, p: 0 }, { n: "Meč Gondorskej stráže", v: 20, p: 90 }, { n: "Rohanská kopija", v: 24, p: 160, r: 46 }, { n: "Dúnadanský meč", v: 31, p: 320 }] },
+    { k: 'a', l: 'Brnenie', it: [{ n: "Kožený odev", v: 0, p: 0 }, { n: "Rohanská krúžková zbroj", v: .25, p: 110 }, { n: "Gondorský plát", v: .45, p: 300 }] },
+    { k: 's', l: 'Štít', it: [{ n: "Bez štítu", v: 0, p: 0 }, { n: "Rohanský štít", v: .1, p: 50 }, { n: "Gondorský štít", v: .2, p: 140 }] },
+    { k: 'h', l: 'Prilba', it: [{ n: "Kožená čiapka", v: 0, p: 0 }, { n: "Rohanská prilba", v: .06, p: 70 }, { n: "Gondorská prilba", v: .12, p: 200 }] },
+    { k: 'm', l: 'Kôň', it: [{ n: "Pešo", v: 1.9, p: 0 }, { n: "Poník zo Shiru", v: 2.3, p: 80 }, { n: "Rohanský kôň", v: 2.9, p: 260 }] }
 ];
 const shOf = k => SH.find(s => s.k === k).it;
-shOf('w').push({ n: 'Elfský dlhý meč', v: 34, p: 450 }, { n: 'Trpasličia sekera z Ereboru', v: 37, p: 620 }, { n: 'Glamdring', v: 42, p: 900, fx: 'glow' }, { n: 'Plameňový meč', v: 46, p: 1300, fx: 'fire' }, { n: 'Andúril', v: 50, p: 1800, fx: 'glow' });
-shOf('a').push({ n: 'Elfská šupinová zbroj', v: .47, p: 550 }, { n: 'Trpasličí plát', v: .49, p: 800 }, { n: 'Mithrilová košeľa', v: .51, p: 1500, fx: 'glow' });
-shOf('s').push({ n: 'Elfský štít', v: .21, p: 300 }, { n: 'Štít z Ereboru', v: .23, p: 600, fx: 'glow' });
-shOf('h').push({ n: 'Elfská prilba', v: .13, p: 350 }, { n: 'Prilba strážcu Citadely', v: .14, p: 700, fx: 'glow' });
-shOf('m').push({ n: 'Obrnený bojový kôň', v: 3.2, p: 500 }, { n: 'Mearas', v: 3.6, p: 1200, fx: 'glow' });
+shOf('w').push({ n: 'Orcrist', v: 34, p: 450 }, { n: 'Trpasličia sekera z Ereboru', v: 37, p: 620 }, { n: 'Glamdring', v: 42, p: 900, fx: 'glow' }, { n: 'Plameň Anoru', v: 46, p: 1300, fx: 'light' }, { n: 'Andúril', v: 50, p: 1800, fx: 'light' });
+shOf('a').push({ n: 'Galadrimská šupinová zbroj', v: .47, p: 550 }, { n: 'Plát z Ereboru', v: .49, p: 800 }, { n: 'Mithrilová košeľa', v: .51, p: 1500, fx: 'glow' });
+shOf('s').push({ n: 'Galadrimský štít', v: .21, p: 300 }, { n: 'Štít z Ereboru', v: .23, p: 600, fx: 'glow' });
+shOf('h').push({ n: 'Galadrimská prilba', v: .13, p: 350 }, { n: 'Okrídlená koruna Gondoru', v: .14, p: 700, fx: 'light' });
+shOf('m').push({ n: 'Gondorský bojový kôň', v: 3.2, p: 500 }, { n: 'Mearas', v: 3.6, p: 1200, fx: 'light' });
 
-// --- výbava zla (len v hradoch Mordoru, Isengardu, Haradu a Rhûnu) ---
+// --- výbava dobra (vyššie): len v hradoch Gondoru, Rohanu, Ereboru a Lothlórienu ---
+// --- výbava zla: hrady Mordoru, Isengardu, Haradu a Rhûnu ---
 shOf('w').push({ n: 'Orkská šabľa', v: 20, p: 90, z: 1 }, { n: 'Morgulská kopija', v: 24, p: 160, r: 46, z: 1 }, { n: 'Uruk-haiský meč', v: 31, p: 320, z: 1 }, { n: 'Sekera Olog-haia', v: 35, p: 480, z: 1 },
     { n: 'Morgulská čepeľ', v: 42, p: 900, fx: 'dark', z: 1 }, { n: 'Gothmogov ohnivý palcát', v: 46, p: 1300, fx: 'fire', z: 1 }, { n: 'Sauronov palcát', v: 50, p: 1800, fx: 'dark', z: 1 });
 shOf('a').push({ n: 'Orkská krúžková zbroj', v: .25, p: 110, z: 1 }, { n: 'Čierny plát Uruk-haiov', v: .45, p: 300, z: 1 }, { n: 'Haradská šupinová zbroj', v: .47, p: 550, z: 1 },
@@ -197,8 +198,11 @@ shOf('w').push({ n: 'Orkský nôž', v: 15, p: 0, z: 1 });
 shOf('a').push({ n: 'Orkské kože', v: 0, p: 0, z: 1 });
 shOf('h').push({ n: 'Orkská kukla', v: 0, p: 0, z: 1 });
 
-/** Strana, ktorú hrdina zastáva: 1 = zlo, 0 = dobro. Kráľ si ju vyberá pri korunovácii (G.side). */
-const heroSide = () => G.king && G.side != null ? G.side : bloc(G.fac);
+// doplnené neskôr: nové veci sa pridávajú vždy na koniec, aby sedeli uložené hry (kováč ich zoradí podľa ceny)
+shOf('w').push({ n: 'Haradský zahnutý meč', v: 37, p: 620, z: 1 });
+
+/** Strana, ktorú hrdina zastáva: 1 = zlo, 0 = dobro. Kráľ si ju vyberá pri korunovácii (G.side, pozri bloc v diplomacy.js). */
+const heroSide = () => bloc(G.fac);
 /** Strana výbavy, ktorú predáva hrad frakcie f. Tvoje vlastné hrady predávajú výbavu tvojej strany. */
 const shopSide = f => f === 6 ? heroSide() : bloc(f);
 /** Názov strany. */
@@ -242,7 +246,8 @@ const ACH = [['w1', 'Prvé víťazstvo', () => (G.st && G.st.w) >= 1], ['w10', '
 /*
  * Diplomacia: tábory dobra a zla, vojny, spojenectvá a vzťahy medzi frakciami.
  */
-const bloc = f => f > 1 && f < 5 || f === 7 ? 1 : 0, hos = (a, b) => a !== b && (a === 9 || b === 9 || WR[a][b]);
+/** Tábor frakcie: 1 = zlo, 0 = dobro. Vlastná družina (6) patrí k dobru, kým si kráľ pri korunovácii nevyberie stranu (G.side). */
+const bloc = f => f === 6 ? (G && G.side != null ? G.side : 0) : f > 1 && f < 5 || f === 7 ? 1 : 0, hos = (a, b) => a !== b && (a === 9 || b === 9 || WR[a][b]);
 const mkWR = () => Array.from({ length: 10 }, (_, i) => Array.from({ length: 10 }, (_, j) => i !== j && bloc(i) !== bloc(j)));
 let WR = mkWR();
 const mkREL = () => Array.from({ length: 10 }, (_, i) => Array.from({ length: 10 }, (_, j) => i === j ? 100 : bloc(i) !== bloc(j) ? -60 : 20)), mkAL = () => Array.from({ length: 10 }, () => Array(10).fill(false));
@@ -253,6 +258,22 @@ const rl = (a, b, d) => {
     REL[a][b] = REL[b][a] = Math.max(-100, Math.min(100, REL[a][b] + d));
 };
 const a0x = [0, 1, 2, 3, 4, 5, 7, 8];
+/**
+ * Kráľ si vybral stranu z (0 dobro, 1 zlo): frakcie tej istej strany uzavrú mier a vzťahy sa zlepšia,
+ * frakcie druhej strany vyhlásia vojnu a vzťahy klesnú. Vráti zoznam zmien pre denník.
+ */
+function chooseSide(z) {
+    G.side = z;
+    const out = [];
+    for (const f of a0x) {
+        const same = bloc(f) === z;
+        AL[6][f] = AL[f][6] = false;
+        if (same) { if (WR[6][f]) out.push(FN[f] + ' uzavrel mier'); WR[6][f] = WR[f][6] = false; REL[6][f] = REL[f][6] = Math.max(REL[6][f], 40); }
+        else { if (!WR[6][f]) out.push(FN[f] + ' vyhlásil vojnu'); WR[6][f] = WR[f][6] = true; REL[6][f] = REL[f][6] = Math.min(REL[6][f], -60); }
+    }
+    lg('Kráľovstvo sa postavilo na stranu ' + sideName(z) + (out.length ? ': ' + out.join(', ') + '.' : '.'));
+    return out;
+}
 
 </script>
 <script>
@@ -2544,7 +2565,7 @@ function drawU(u) {
                 ctx.fill();
             }
             else {
-                ctx.fillStyle = (w.fx === 'dark' ? 'rgba(90,30,120,' : 'rgba(200,230,255,') + (.35 + .3 * Math.sin(tm / 4 + k)) + ')';
+                ctx.fillStyle = (w.fx === 'dark' ? 'rgba(90,30,120,' : w.fx === 'light' ? 'rgba(255,240,190,' : 'rgba(200,230,255,') + (.35 + .3 * Math.sin(tm / 4 + k)) + ')';
                 ctx.beginPath();
                 ctx.arc(px, py, 2, 0, 7);
                 ctx.fill();
@@ -2991,14 +3012,14 @@ const Soldiers = (() => {
         // zbrane
         w: [
             { t: 'sword', L: 2.0, w: .12, blade: '#9ba0a6', guard: '#5a5048', grip: '#4a3020', pommel: '#6a6058', shine: .2, gw: .9 },          // Železný meč
-            { t: 'sword', L: 2.3, w: .13, blade: '#e2e7ec', guard: '#b8bec6', grip: '#3a2a1a', pommel: '#b8bec6', shine: .7, gw: 1.2 },         // Oceľový meč
+            { t: 'sword', L: 2.3, w: .13, blade: '#e2e7ec', guard: '#2a2a32', grip: '#1a1a20', pommel: '#d8dce2', shine: .7, gw: 1.3, tree: 1 },  // Meč Gondorskej stráže (biely strom na čepeli)
             { t: 'spear', L: 4.2, blade: '#dfe4ea', shaft: '#8a6238', pennon: '#2f6a2a', trim: '#d9a441' },                                     // Rohanská kopija
             { t: 'sword', L: 2.6, w: .14, blade: '#eef2f6', guard: '#c8d0d8', grip: '#1e1a18', pommel: '#e8f0ff', shine: .8, gw: 1.35, fuller: 1, star: 1 }, // Dúnadanský meč
-            { t: 'elf', L: 2.8, w: .13, blade: '#e6f0e4', guard: '#d9b85a', grip: '#3a5a32', pommel: '#d9b85a', shine: .8, runes: '#c8a040' },  // Elfský dlhý meč
+            { t: 'elf', L: 2.8, w: .13, blade: '#e0ecf8', guard: '#c8d4e4', grip: '#2a3a5a', pommel: '#c8d4e4', shine: .9, runes: '#7ab8ff' },  // Orcrist (elfská čepeľ s modrými runami)
             { t: 'axe', L: 2.3, head: '#b8bcc4', rim: '#d9a441', haft: '#4a2e16' },                                                             // Trpasličia sekera
             { t: 'sword', L: 2.8, w: .15, blade: '#dcefff', guard: '#e0e6ee', grip: '#2a3a5a', pommel: '#ffffff', shine: .9, gw: 1.45, glow: '#7ab8ff', runes: '#7ab8ff' }, // Glamdring
-            { t: 'flame', L: 2.7, w: .16, blade: '#ff7a1a', edge: '#ffe070', guard: '#7a2a10', grip: '#2a1410', pommel: '#ffb030', glow: '#ff5a10', gw: 1.3 }, // Plameňový meč
-            { t: 'sword', L: 3.0, w: .15, blade: '#f6f8fc', guard: '#d9a441', grip: '#2a1e14', pommel: '#d9a441', shine: 1, gw: 1.7, wing: 1, runes: '#d9a441', glow: '#cfe4ff', fuller: 1 }, // Andúril
+            { t: 'flame', L: 2.7, w: .16, base: '#e0a020', blade: '#fff0b0', edge: '#ffffff', guard: '#d9a441', grip: '#f0e8d0', pommel: '#ffffff', glow: '#ffe890', gw: 1.3 }, // Plameň Anoru (biely plameň)
+            { t: 'sword', L: 3.0, w: .15, blade: '#f6f8fc', guard: '#d9a441', grip: '#2a1e14', pommel: '#d9a441', shine: 1, gw: 1.7, wing: 1, runes: '#d9a441', glow: '#fff2c8', fuller: 1 }, // Andúril (svetlo dobra)
             // výbava zla
             { t: 'scimitar', L: 2.2, w: .14, blade: '#8a8478', guard: '#3a2a1a', grip: '#2a1a10', pommel: '#4a3a2a', shine: .15, gw: .8, notch: 1 },   // Orkská šabľa
             { t: 'spear', L: 4.2, blade: '#6a6e74', shaft: '#2a2220', pennon: '#7a1010', trim: '#141414', barbs: 1 },                                  // Morgulská kopija
@@ -3007,15 +3028,16 @@ const Soldiers = (() => {
             { t: 'sword', L: 2.7, w: .12, blade: '#cfe8d8', guard: '#2a2a30', grip: '#101014', pommel: '#7af0b0', shine: .6, gw: 1.2, glow: '#7af0b0', notch: 1 }, // Morgulská čepeľ
             { t: 'mace', L: 2.4, head: '#2a2a2e', spike: '#8a8e96', haft: '#3a2a1a', core: '#ff7a1a', glow: '#ff5a10' },                              // Gothmogov ohnivý palcát
             { t: 'mace', L: 2.7, head: '#141418', spike: '#4a4a56', haft: '#1a1a1e', core: '#c060ff', glow: '#8a2ad0', big: 1.3 },                     // Sauronov palcát
-            { t: 'scimitar', L: 1.6, w: .13, blade: '#7a7068', guard: '#2a1a10', grip: '#3a2a1a', pommel: '#3a2a1a', shine: .1, gw: .6, notch: 1 }   // Orkský nôž (základná výbava zla)
+            { t: 'scimitar', L: 1.6, w: .13, blade: '#7a7068', guard: '#2a1a10', grip: '#3a2a1a', pommel: '#3a2a1a', shine: .1, gw: .6, notch: 1 },  // Orkský nôž (základná výbava zla)
+            { t: 'scimitar', L: 2.5, w: .15, blade: '#d8c890', guard: '#8a1a10', grip: '#3a1a10', pommel: '#d9a441', shine: .5, gw: .9 }   // Haradský zahnutý meč
         ],
         // brnenie
         a: [
             { col: '#7a5636', pat: 'leather', pad: .95 },                                 // Kožený odev
-            { col: '#8c9096', pat: 'mail', pad: 1.05 },                                   // Kolčuha
+            { col: '#5a6a3a', pat: 'mail', pad: 1.05, rim: '#d9c070', horse: 1 },        // Rohanská krúžková zbroj
             { col: '#3a3c44', pat: 'plate', pad: 1.3, rim: '#9aa0aa' },                   // Gondorský plát
-            { col: '#5f7044', pat: 'scale', pad: 1.1, rim: '#c8b060' },                   // Elfská šupinová zbroj
-            { col: '#6e5a3a', pat: 'dwarf', pad: 1.4, rim: '#d9a441' },                   // Trpasličí plát
+            { col: '#b8a050', pat: 'scale', pad: 1.1, rim: '#f0e0a0', mantle: '#5a7a5a' }, // Galadrimská šupinová zbroj (zlaté šupiny, elfský plášť)
+            { col: '#6e5a3a', pat: 'dwarf', pad: 1.4, rim: '#d9a441' },                   // Plát z Ereboru
             { col: '#e4ecf4', pat: 'mithril', pad: 1.15, rim: '#ffffff', glow: '#cfe4ff' }, // Mithrilová košeľa
             // výbava zla
             { col: '#4a4038', pat: 'mail', pad: 1, rust: 1 },                                  // Orkská krúžková zbroj
@@ -3028,9 +3050,9 @@ const Soldiers = (() => {
         // štíty
         s: [
             null,                                                                                         // Bez štítu
-            { shape: 'round', col: '#7a5230', rim: '#3e3a36', boss: '#9aa0a8', planks: 1, paint: 1 },     // Drevený štít
+            { shape: 'round', col: '#2f5a2a', rim: '#d9a441', boss: '#d9a441', sun: 1 },                   // Rohanský štít (zelený so slnkom)
             { shape: 'kite', col: '#18181e', rim: '#c8ccd4', tree: 1 },                                   // Gondorský štít
-            { shape: 'leaf', col: '#3f6a3a', rim: '#d9b85a', vein: 1 },                                   // Elfský štít
+            { shape: 'leaf', col: '#3f6a3a', rim: '#d9b85a', vein: 1 },                                   // Galadrimský štít
             { shape: 'round', col: '#8e969e', rim: '#d9a441', rune: 1, big: 1.12, glow: '#ffd890' },       // Štít z Ereboru
             // výbava zla
             { shape: 'round', col: '#3a2e24', rim: '#2a2a2a', boss: '#5a5a5a', planks: 1, paint: 1, crude: 1 }, // Orkský štít
@@ -3041,10 +3063,10 @@ const Soldiers = (() => {
         // prilby
         h: [
             { col: '#6a4a2e', kind: 'cap' },                                                              // Kožená čiapka
-            { col: '#9aa0a8', kind: 'nasal' },                                                            // Oceľová prilba
+            { col: '#b89a50', kind: 'rohan', tail: '#e8e0c0' },                                           // Rohanská prilba (s konským chvostom)
             { col: '#d4d8de', kind: 'gondor', wings: '#f2f4f6', plume: 1 },                               // Gondorská prilba
-            { col: '#d8b860', kind: 'elf', crest: '#f4e2a0' },                                            // Elfská prilba
-            { col: '#c8ccd4', kind: 'citadel', wings: '#ffffff', band: '#d9a441', plume: 1, glow: '#ffffff' }, // Prilba strážcu Citadely
+            { col: '#d8b860', kind: 'elf', crest: '#f4e2a0' },                                            // Galadrimská prilba
+            { col: '#eef0f4', kind: 'citadel', wings: '#ffffff', band: '#d9a441', gems: 1, plume: 1, glow: '#fff4c0' }, // Okrídlená koruna Gondoru
             // výbava zla
             { col: '#3a3632', kind: 'orc' },                                   // Orkská prilba
             { col: '#1c1c22', kind: 'uruk' },                                  // Prilba Bielej ruky
@@ -3055,10 +3077,10 @@ const Soldiers = (() => {
         // kone
         m: [
             null,                                                                                                          // Pešo
-            { s: .8, col: '#8b6b47', mane: '#3e2a18', hoof: '#3a2a1a', blanket: 1, shaggy: 1, dapple: '#a8885e' },          // Poník
+            { s: .8, col: '#8b6b47', mane: '#3e2a18', hoof: '#3a2a1a', blanket: 1, shaggy: 1, dapple: '#a8885e' },          // Poník zo Shiru
             { s: 1, col: '#7b4524', mane: '#eadcae', hoof: '#2a1a10', blanket: 1, blaze: 1, tack: '#3a2412', long: 1 },    // Rohanský kôň
-            { s: 1.08, col: '#4e4c50', mane: '#1a1a1c', hoof: '#1e1c1e', barding: '#aab0ba', caparison: 1, tack: '#222' },  // Obrnený bojový kôň
-            { s: 1.15, col: '#f2f2f6', mane: '#ffffff', hoof: '#c8ccd6', glow: '#d6e8ff', long: 1, sheen: 1 },               // Mearas
+            { s: 1.08, col: '#4e4c50', mane: '#1a1a1c', hoof: '#1e1c1e', barding: '#aab0ba', caparison: 1, tack: '#222', tree: 1 },  // Gondorský bojový kôň
+            { s: 1.15, col: '#f2f2f6', mane: '#ffffff', hoof: '#c8ccd6', glow: '#fff2c8', long: 1, sheen: 1 },               // Mearas (svetlo dobra)
             // výbava zla
             { wolf: 1, s: .9, col: '#7a7064', back: '#4a4238', eye: '#e8c040' },                                                     // Mladý varg
             { wolf: 1, s: 1.15, col: '#45403a', back: '#1e1a18', eye: '#ff8a20' },                                                   // Varg
@@ -3140,6 +3162,7 @@ const Soldiers = (() => {
             for (let k = 0; k < 3; k++) ell(c, r * (.85 + k * .32), 0, r * .2, r * .3, 0, shade(H.barding, .9 + k * .05), 'rgba(0,0,0,.35)', .7);
             c.fillStyle = '#e8ecf2'; for (const x of [1.95, 2.3]) for (const y of [-.14, .14]) { c.beginPath(); c.arc(r * x, r * y, r * .04, 0, 7); c.fill(); }
         }
+        if (H.tree) drawTree(c, -r * .3, 0, r * .3, '#f6f6f6');
         if (H.horn) { c.fillStyle = '#8a8e96'; c.beginPath(); c.moveTo(r * 2.95, 0); c.lineTo(r * 2.35, -r * .12); c.lineTo(r * 2.35, r * .12); c.fill(); for (let k = 0; k < 3; k++) { c.beginPath(); c.moveTo(r * (.85 + k * .32), 0); c.lineTo(r * (.75 + k * .32), -r * .42); c.lineTo(r * (.95 + k * .32), -r * .1); c.fill(); } }
         if (H.shroud) {   // čierna roztrhaná pokrývka koňa nazgûla
             c.fillStyle = '#060608'; c.beginPath();
@@ -3217,7 +3240,7 @@ const Soldiers = (() => {
             c.closePath();
         };
         if (Wp.glow) glow(c, () => { c.fillStyle = Wp.glow; blade(); c.fill(); }, Wp.glow, r * 1.4);
-        if (Wp.t === 'flame') { const g = c.createLinearGradient(b0, 0, L, 0); g.addColorStop(0, '#c02a0a'); g.addColorStop(.5, Wp.blade); g.addColorStop(1, Wp.edge); c.fillStyle = g; }
+        if (Wp.t === 'flame') { const g = c.createLinearGradient(b0, 0, L, 0); g.addColorStop(0, Wp.base || '#c02a0a'); g.addColorStop(.5, Wp.blade); g.addColorStop(1, Wp.edge); c.fillStyle = g; }
         else c.fillStyle = Wp.blade;
         blade(); c.fill(); c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = .7; c.stroke();
         if (Wp.t === 'flame') line(c, b0 + r * .1, 0, L - r * .4, 0, Wp.edge, w * .6);
@@ -3225,6 +3248,7 @@ const Soldiers = (() => {
         if (Wp.shine) { c.globalAlpha = Wp.shine; line(c, b0 + r * .1, -w * .45, L - r * .45, -w * .45, '#ffffff', .9); c.globalAlpha = 1; }
         if (Wp.notch) { c.fillStyle = 'rgba(20,16,14,.85)'; for (const f of [.45, .62, .8]) { const x = b0 + (L - b0) * f; c.beginPath(); c.moveTo(x - r * .1, w * 1.1); c.lineTo(x, w * .25); c.lineTo(x + r * .1, w * 1.1); c.fill(); } }
         if (Wp.hand) drawHand(c, b0 + (L - b0) * .45, 0, w * 1.3, '#f2f2f2');
+        if (Wp.tree) drawTree(c, b0 + (L - b0) * .4, 0, w * 1.6, '#f6f6f6');
         if (Wp.runes) { c.fillStyle = Wp.runes; for (let x = b0 + r * .3; x < L * .72; x += r * .3) c.fillRect(x, -w * .18, r * .14, w * .36); }
         // rukoväť, záštita, hlavica
         line(c, -r * .35, 0, b0, 0, Wp.grip, r * .27);
@@ -3302,6 +3326,14 @@ const Soldiers = (() => {
         c.beginPath(); c.moveTo(-s * .38, s * .25); c.lineTo(-s * .7, -s * .05); c.lineTo(-s * .55, -s * .15); c.lineTo(-s * .25, s * .1); c.fill();
         c.restore();
     }
+    /** Biely strom Gondoru (koruna smerom hore), stred x, y, veľkosť s. */
+    function drawTree(c, x, y, s, col) {
+        c.save(); c.translate(x, y);
+        line(c, 0, s * .9, 0, -s * .6, col, Math.max(.6, s * .18));
+        for (const [yy, l] of [[.4, .7], [0, .85], [-.35, .6]]) { line(c, 0, s * yy, -s * l, s * (yy - .4), col, Math.max(.5, s * .14)); line(c, 0, s * yy, s * l, s * (yy - .4), col, Math.max(.5, s * .14)); }
+        c.fillStyle = col; for (const [dx, dy] of [[0, -.95], [-.55, -.85], [.55, -.85]]) { c.beginPath(); c.arc(s * dx, s * dy, s * .13, 0, 7); c.fill(); }
+        c.restore();
+    }
     /** Červené plamenné Oko. */
     function drawEye(c, x, y, rx, ry) {
         glow(c, () => { c.fillStyle = '#ff6a10'; c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, 7); c.fill(); }, '#ff4a10', rx * 1.5);
@@ -3332,6 +3364,10 @@ const Soldiers = (() => {
         ell(c, 0, 0, rr * .72, rr, 0, A.col, 'rgba(0,0,0,.55)', 1.2);
         armorPattern(c, rr, A);
         ell(c, -rr * .2, -rr * .3, rr * .3, rr * .55, 0, 'rgba(255,255,255,.14)');
+        if (A.mantle) {   // elfský plášť cez plecia (hladký lem)
+            c.fillStyle = A.mantle; c.beginPath(); c.ellipse(-rr * .25, 0, rr * .7, rr * 1.2, 0, Math.PI * .5, Math.PI * 1.5); c.fill();
+            line(c, -rr * .25, -rr * 1.15, -rr * .25, rr * 1.15, shade(A.mantle, 1.3), .7);
+        }
         if (A.pat === 'robe') {   // roztrhaný plášť nazgûla cez plecia
             c.fillStyle = A.col; c.beginPath();
             for (let k = 0; k <= 14; k++) { const a = Math.PI * .35 + Math.PI * 1.3 * k / 14, q = k % 2 ? 1.05 : 1.28; c.lineTo(Math.cos(a) * rr * .9 * q, Math.sin(a) * rr * 1.15 * q); }
@@ -3342,6 +3378,7 @@ const Soldiers = (() => {
             if (A.spikes) { c.fillStyle = A.rim; for (const dx of [-.15, .2]) { c.beginPath(); c.moveTo(rr * (.1 + dx) - rr * .08, sd * rr * 1.05); c.lineTo(rr * (.1 + dx), sd * rr * (1.05 + .38 * A.pad)); c.lineTo(rr * (.1 + dx) + rr * .08, sd * rr * 1.05); c.fill(); } }
         }
         if (A.hand) drawHand(c, rr * .1, -rr * .95, rr * .24, '#f2f2f2');
+        if (A.horse) { c.fillStyle = A.rim; c.beginPath(); c.arc(0, 0, rr * .28, 0, 7); c.fill(); for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; line(c, Math.cos(a) * rr * .3, Math.sin(a) * rr * .3, Math.cos(a) * rr * .5, Math.sin(a) * rr * .5, A.rim, rr * .06); } }
     }
     function shieldPath(c, Sh, rx, ry) {
         c.beginPath();
@@ -3369,6 +3406,7 @@ const Soldiers = (() => {
         }
         if (Sh.vein) { line(c, 0, -ry * .85, 0, ry * .85, Sh.rim, Math.max(.6, rx * .1)); for (const y of [-.4, 0, .4]) { line(c, 0, ry * y, -rx * .55, ry * (y - .25), Sh.rim, Math.max(.5, rx * .06)); line(c, 0, ry * y, rx * .55, ry * (y - .25), Sh.rim, Math.max(.5, rx * .06)); } }
         if (Sh.hand) drawHand(c, 0, 0, Math.min(rx, ry) * .65, '#f2f2f2');
+        if (Sh.sun) { ell(c, 0, 0, rx * .3, ry * .3, 0, '#f4e2a0'); for (let k = 0; k < 10; k++) { const a = k * Math.PI / 5; line(c, Math.cos(a) * rx * .38, Math.sin(a) * ry * .38, Math.cos(a) * rx * .72, Math.sin(a) * ry * .72, '#f4e2a0', Math.max(.6, rx * .09)); } }
         if (Sh.rays) { for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6; line(c, Math.cos(a) * rx * .25, Math.sin(a) * ry * .25, Math.cos(a) * rx * .8, Math.sin(a) * ry * .8, Sh.rim, Math.max(.6, rx * .08)); } ell(c, 0, 0, rx * .25, ry * .25, 0, Sh.rim); }
         if (Sh.eye) drawEye(c, 0, -ry * .05, rx * .6, ry * .22);
         if (Sh.crude) { c.fillStyle = '#8a8e96'; for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3 + .3; c.beginPath(); c.arc(Math.cos(a) * rx * .8, Math.sin(a) * ry * .8, Math.max(.5, rx * .07), 0, 7); c.fill(); } }
@@ -3416,7 +3454,8 @@ const Soldiers = (() => {
         c.beginPath(); c.arc(0, 0, hr * 1.08, Math.PI * .4, Math.PI * 1.6); c.closePath(); c.fill();
         c.beginPath(); c.arc(0, 0, hr * 1.08, Math.PI * 1.6, Math.PI * 2.4); c.fill();
         c.fillStyle = 'rgba(255,255,255,.4)'; c.beginPath(); c.ellipse(-hr * .25, -hr * .3, hr * .35, hr * .2, -.5, 0, 7); c.fill();
-        if (Hm.kind === 'nasal') { c.fillStyle = shade(Hm.col, .8); c.fillRect(hr * .55, -hr * .1, hr * .55, hr * .2); line(c, -hr, 0, hr * .6, 0, shade(Hm.col, .8), hr * .12); }
+        if (Hm.kind === 'nasal' || Hm.kind === 'rohan') { c.fillStyle = shade(Hm.col, .8); c.fillRect(hr * .55, -hr * .1, hr * .55, hr * .2); line(c, -hr, 0, hr * .6, 0, shade(Hm.col, .8), hr * .12); }
+        if (Hm.tail) { c.fillStyle = Hm.tail; c.beginPath(); c.moveTo(-hr * .5, -hr * .3); c.quadraticCurveTo(-hr * 1.6, -hr * .5, -hr * 2.2, 0); c.quadraticCurveTo(-hr * 1.6, hr * .5, -hr * .5, hr * .3); c.fill(); line(c, -hr * .6, 0, -hr * 2, 0, shade(Hm.tail, .8), .6); }
         if (Hm.kind === 'gondor' || Hm.kind === 'citadel') {
             const big = Hm.kind === 'citadel' ? 1.35 : 1;
             c.fillStyle = Hm.wings;
@@ -3430,6 +3469,7 @@ const Soldiers = (() => {
             c.fillStyle = '#2a2a32'; for (let k = 0; k < 9; k++) { const a = Math.PI * .55 + k * Math.PI * .9 / 8 + Math.PI * .5; c.beginPath(); c.moveTo(Math.cos(a - .15) * hr, Math.sin(a - .15) * hr); c.lineTo(Math.cos(a) * hr * 1.9, Math.sin(a) * hr * 1.9); c.lineTo(Math.cos(a + .15) * hr, Math.sin(a + .15) * hr); c.fill(); }
             line(c, hr * .2, -hr * .7, hr * .2, hr * .7, '#8a1a10', hr * .15);
         }
+        if (Hm.gems) for (const y of [-.5, 0, .5]) glow(c, () => ell(c, hr * .3, hr * y, hr * .12, hr * .12, 0, '#ffffff'), '#fff4c0', hr * .6);
         if (Hm.band) { line(c, -hr * .9, 0, hr * .9, 0, Hm.band, hr * .25); ell(c, hr * .7, 0, hr * .18, hr * .18, 0, Hm.band); }
         if (Hm.kind === 'elf') { c.fillStyle = Hm.crest; c.beginPath(); c.moveTo(hr * .7, 0); c.quadraticCurveTo(-hr * .2, -hr * .35, -hr * 1.7, 0); c.quadraticCurveTo(-hr * .2, hr * .35, hr * .7, 0); c.fill(); line(c, hr * .6, 0, -hr * 1.5, 0, '#a08030', .6); }
     }
@@ -3561,12 +3601,14 @@ const Soldiers = (() => {
         c.save(); torso(); c.clip(); c.scale(1.25, 1); c.rotate(Math.PI / 2); armorPattern(c, 24, A); c.restore();
         c.save(); torso(); c.clip(); c.fillStyle = team; c.fillRect(-5, -16, 10, 38); c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(-14, 8, 28, 4); c.restore();
         c.strokeStyle = 'rgba(0,0,0,.6)'; c.lineWidth = 1.2; torso(); c.stroke();
+        if (A.mantle) { c.fillStyle = A.mantle; for (const sd of [-1, 1]) { c.beginPath(); c.moveTo(sd * 15, -20); c.quadraticCurveTo(sd * 26, 0, sd * 22, 28); c.lineTo(sd * 14, 26); c.lineTo(sd * 14, -4); c.closePath(); c.fill(); } }
         if (A.pat === 'robe') { c.fillStyle = A.col; c.beginPath(); c.moveTo(-15, 20); for (let k = 0; k <= 10; k++) c.lineTo(-15 + k * 3, k % 2 ? 30 : 22); c.lineTo(15, 20); c.fill(); c.beginPath(); c.moveTo(-11, -18); c.quadraticCurveTo(0, -32, 11, -18); c.quadraticCurveTo(0, -12, -11, -18); c.fill(); }
         for (const sd of [-1, 1]) {
             ell(c, sd * 16, -15, 7 * A.pad, 5.5 * A.pad, sd * .3, shade(A.col, 1.15), A.rim || 'rgba(0,0,0,.5)', 1);
             if (A.spikes) { c.fillStyle = A.rim; for (const dx of [-3, 3]) { c.beginPath(); c.moveTo(sd * 16 + dx - 2, -18); c.lineTo(sd * 16 + dx * 1.6, -28); c.lineTo(sd * 16 + dx + 2, -18); c.fill(); } }
         }
         if (A.hand) drawHand(c, -10, 4, 6, '#f2f2f2');
+        if (A.horse) { c.fillStyle = A.rim; c.beginPath(); c.arc(0, 2, 5, 0, 7); c.fill(); for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; line(c, Math.cos(a) * 6, 2 + Math.sin(a) * 6, Math.cos(a) * 10, 2 + Math.sin(a) * 10, A.rim, 1.4); } }
     }
     function iconHelm(c, Hm, team) {
         if (Hm.glow) glow(c, () => ell(c, 0, 2, 16, 18, 0, Hm.col), Hm.glow, 10);
@@ -3582,7 +3624,8 @@ const Soldiers = (() => {
         c.closePath(); c.fill(); c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = 1; c.stroke();
         ell(c, -6, -8, 4, 8, .3, 'rgba(255,255,255,.4)');
         if (Hm.kind === 'cap') { line(c, -18, 7, 18, 7, shade(Hm.col, .7), 3); c.setLineDash([2, 2]); line(c, 0, -12, 0, 6, shade(Hm.col, .65), 1); c.setLineDash([]); }
-        if (Hm.kind === 'nasal') { c.fillStyle = shade(Hm.col, .75); c.fillRect(-2, 2, 4, 15); line(c, -16, 2, 16, 2, shade(Hm.col, .75), 2.5); }
+        if (Hm.kind === 'nasal' || Hm.kind === 'rohan') { c.fillStyle = shade(Hm.col, .75); c.fillRect(-2, 2, 4, 15); line(c, -16, 2, 16, 2, shade(Hm.col, .75), 2.5); }
+        if (Hm.tail) { c.strokeStyle = Hm.tail; c.lineWidth = 5; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, -22); c.quadraticCurveTo(-14, -30, -26, -6); c.stroke(); c.lineWidth = 2; c.beginPath(); c.moveTo(-6, -24); c.quadraticCurveTo(-20, -24, -28, -2); c.stroke(); }
         if (Hm.kind === 'elf') { line(c, 0, -26, 0, 2, Hm.crest, 2); line(c, -15, 2, 15, 2, Hm.crest, 1.5); }
         if (Hm.kind === 'orc') { c.fillStyle = '#7a7e86'; c.beginPath(); c.moveTo(-3, -21); c.lineTo(0, -31); c.lineTo(3, -21); c.fill(); for (const sd of [-1, 1]) { c.fillStyle = shade(Hm.col, .8); c.fillRect(sd * 15 - 4, 0, 8, 16); } ell(c, -9, 16, 3, 2, 0, 'rgba(120,60,20,.6)'); ell(c, 8, -10, 3, 2, 0, 'rgba(120,60,20,.5)'); }
         if (Hm.kind === 'uruk') drawHand(c, 0, -6, 11, '#f2f2f2');
@@ -3592,6 +3635,7 @@ const Soldiers = (() => {
             c.fillStyle = '#d8b090'; c.beginPath(); c.moveTo(-7, 6); c.lineTo(7, 6); c.lineTo(5, 18); c.lineTo(-5, 18); c.closePath(); c.fill();
             line(c, -5, 12, 5, 12, '#8a1010', 2.5); line(c, -15, 4, 15, 4, '#8a1a10', 2);
         }
+        if (Hm.gems) for (const x of [-8, 0, 8]) glow(c, () => ell(c, x, -2, 2.2, 2.2, 0, '#ffffff'), '#fff4c0', 5);
         if (Hm.band) { line(c, -16, -2, 16, -2, Hm.band, 3.5); c.fillStyle = Hm.band; c.beginPath(); c.moveTo(-5, -4); c.lineTo(0, -14); c.lineTo(5, -4); c.fill(); }
     }
     function iconWolf(c, H, team) {
@@ -3627,6 +3671,7 @@ const Soldiers = (() => {
             for (let k = 0; k < 3; k++) { c.fillStyle = shade(H.barding, .9 + k * .05); c.beginPath(); c.ellipse(-11 + k * 1.5, -2 + k * 9, 5, 4, 0, 0, 7); c.fill(); }
         }
         if (H.horn) { c.fillStyle = '#8a8e96'; c.beginPath(); c.moveTo(2, -14); c.lineTo(10, -30); c.lineTo(8, -12); c.fill(); }
+        if (H.tree) drawTree(c, 4, -2, 5, '#f6f6f6');
         if (H.shroud) { c.fillStyle = '#050507'; c.beginPath(); c.moveTo(-6, -18); c.quadraticCurveTo(-24, -4, -20, 26); c.lineTo(-14, 22); c.lineTo(-10, 27); c.lineTo(-4, 21); c.lineTo(2, 27); c.lineTo(4, 20); c.quadraticCurveTo(-8, 6, -2, -14); c.closePath(); c.fill(); }
         if (H.caparison || H.blanket) { c.fillStyle = team; c.beginPath(); c.moveTo(-14, 26); c.quadraticCurveTo(-13, 18, -6, 18); c.lineTo(12, 26); c.closePath(); c.fill(); }
         c.restore();
@@ -4087,13 +4132,13 @@ function rec(t) {
 /** Výber strany kráľovstva (pre kráľov z uložení spred tejto voľby). */
 function sideDlg(back) {
     mode = 'town';
-    show('Strana kráľovstva', 'Vyber, ktorú stranu bude tvoje kráľovstvo zastávať. Kováči v tvojich hradoch budú predávať výbavu tejto strany.');
-    [['Strana dobra', 0], ['Strana zla', 1]].forEach(([n, v]) => btn(n, () => { G.side = v; lg('Kráľovstvo ' + (G.kn || G.name) + ' sa pridalo na stranu ' + sideName(v) + '.'); back(); }));
+    show('Strana kráľovstva', 'Vyber, ktorú stranu bude tvoje kráľovstvo zastávať. Frakcie tejto strany uzavrú mier a frakcie druhej strany ti vyhlásia vojnu. Kováči v tvojich hradoch budú predávať výbavu tejto strany.');
+    [['Strana dobra', 0], ['Strana zla', 1]].forEach(([n, v]) => btn(n, () => { chooseSide(v); upd(); back(); }));
     btn('Späť', back);
 }
 function kingDlg() {
     mode = 'town';
-    show('Nové kráľovstvo', 'Si kráľom! Pomenuj svoje kráľovstvo, vyber znak, farbu štítu a stranu, ktorú budeš zastávať. Podľa strany budú kováči v tvojich hradoch predávať výbavu dobra alebo zla.');
+    show('Nové kráľovstvo', 'Si kráľom! Pomenuj svoje kráľovstvo, vyber znak, farbu štítu a stranu, ktorú budeš zastávať. Frakcie tvojej strany uzavrú mier, frakcie druhej strany ti vyhlásia vojnu a kováči v tvojich hradoch budú predávať výbavu tvojej strany.');
     const bt = document.getElementById('bt'), inp = document.createElement('input');
     inp.value = 'Kráľovstvo ' + G.name;
     inp.maxLength = 24;
@@ -4107,7 +4152,7 @@ function kingDlg() {
     EN.forEach((n, k) => { const b = document.createElement('button'); b.textContent = n; b.dataset.e = k; b.onclick = () => { ke = k; rr(); }; bt.appendChild(b); });
     KCs.forEach(c => { const b = document.createElement('button'); b.textContent = '\u00a0'; b.style.background = c; b.dataset.c = c; b.setAttribute('aria-label', 'Farba štítu'); b.onclick = () => { kc = c; rr(); }; bt.appendChild(b); });
     rr();
-    btn('Potvrdiť korunováciu', () => { G.kn = inp.value.trim() || 'Nové kráľovstvo'; G.ke = ke; G.kc = kc; G.side = sd; lg('Vzniklo kráľovstvo ' + G.kn + ', ktoré stojí na strane ' + sideName(sd) + '.'); upd(); ov.classList.add('hide'); mode = 'map'; });
+    btn('Potvrdiť korunováciu', () => { G.kn = inp.value.trim() || 'Nové kráľovstvo'; G.ke = ke; G.kc = kc; lg('Vzniklo kráľovstvo ' + G.kn + '.'); chooseSide(sd); upd(); ov.classList.add('hide'); mode = 'map'; });
 }
 function lord(e) {
     per(e);
@@ -4189,7 +4234,7 @@ function smithy(i, k) {
     }
     const s = SH.find(x => x.k === k);
     show('Kováč: ' + s.l.toLowerCase(), 'Zlato: ' + G.gold + '. Nosíš: ' + it(k).n + ' (' + eqStat(k, it(k)) + ').' + ' Výbava ' + sideName(evil) + '.');
-    s.it.forEach((x, j) => {
+    s.it.map((x, j) => [x, j]).sort((a, b) => a[0].p - b[0].p).forEach(([x, j]) => {
         if (!x.p || !x.z !== !evil) return;           // základné veci sa nepredávajú a výbava druhej strany tu nie je
         if (owns(k, j)) {
             const b = btn(x.n + (G.eq[k] === j ? ' · nosíš' : ' · máš, obliecť'), () => { wear(k, j); back(); }, 0, { k, i: j });
@@ -5264,11 +5309,11 @@ class BattleScene extends Phaser.Scene {
 
         const w = it('w');
         if (w.fx) {
-            const fire = w.fx === 'fire', dark = w.fx === 'dark';
+            const fire = w.fx === 'fire', dark = w.fx === 'dark', light = w.fx === 'light';
             this.trail = this.add.particles(0, 0, Art.spark(this), {
                 speed: { min: 6, max: fire ? 30 : 18 }, angle: fire || dark ? { min: 240, max: 300 } : { min: 0, max: 360 },
                 lifespan: fire ? 380 : dark ? 700 : 520, scale: { start: fire ? .32 : dark ? .36 : .26, end: dark ? .1 : 0 }, alpha: { start: fire ? .75 : dark ? .6 : .65, end: 0 },
-                tint: fire ? [0xffd060, 0xff7a18, 0xff4010] : dark ? [0x2a1030, 0x4a1a5a, 0x7a2aa0] : [0xc8e6ff, 0xffffff, 0x9fd0ff],
+                tint: fire ? [0xffd060, 0xff7a18, 0xff4010] : dark ? [0x2a1030, 0x4a1a5a, 0x7a2aa0] : light ? [0xfff4c0, 0xffffff, 0xffe080] : [0xc8e6ff, 0xffffff, 0x9fd0ff],
                 blendMode: dark ? 'NORMAL' : 'ADD', frequency: fire ? 28 : dark ? 40 : 55
             }).setDepth(4999);
             this.trail.startFollow(this.units.get(U[0]).spr, 0, 0);
