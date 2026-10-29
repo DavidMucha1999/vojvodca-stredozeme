@@ -1,64 +1,131 @@
 /*
  * ENGINE: mapa sveta.
  * Logika (pohyb, AI, diplomacia, dni) beží v js/sim cez updMap(dt).
- * Táto scéna ju iba zobrazuje: dlaždice mapy, hrady, dediny, armády,
- * kameru so zoomom a minimapu ako druhú kameru Phaseru.
+ * Scéna ju iba zobrazuje: dlaždice mapy, hrady a dediny, armády s viajúcimi
+ * zástavami, kameru so zoomom a minimapu ako druhú kameru.
+ * Súradnice obrazovky sú logické (720×480), plátno má rozlíšenie RES-krát väčšie.
  */
 const MM = { x: W - 186, y: H - 126, w: 180, h: 120 };
+const FONT = '"IM Fell English", Georgia, serif';
+const txtStyle = (size, color, extra) => Object.assign({ fontFamily: FONT, fontSize: size + 'px', color, resolution: RES }, extra);
 
 class MapScene extends Phaser.Scene {
     constructor() { super('Map'); }
 
     create() {
-        this.armies = new Map();      // id armády -> { spr, txt, crown }
-        this.tiles = this.add.group();
-        for (const t of Bake.worldTiles(this))
-            this.tiles.add(this.add.image(t.x, t.y, t.key).setOrigin(0).setScale(t.s).setDepth(-10));
+        this.armies = new Map();
+        this.hover = null;
+        const tiled = typeof MAPDATA !== 'undefined' && MAPDATA.terrain && this.textures.exists('terrain');
+        const worldObjs = tiled ? this.buildTerrain() : Art.worldTiles(this).map(t => this.add.image(t.x, t.y, t.key).setOrigin(0).setScale(t.s).setDepth(-10));
 
-        // Dediny
-        this.vill = VL.map(v => {
-            const spr = this.add.image(v.x, v.y, Bake.village(this, 0)).setDepth(v.y - 1);
-            const txt = this.add.text(v.x, v.y + 14, v.n, { fontFamily: '"IM Fell English", Georgia, serif', fontSize: '12px', color: '#d8ccb4', backgroundColor: 'rgba(18,14,12,.6)', padding: { x: 4, y: 1 } }).setOrigin(.5, 0).setDepth(9000);
-            return { v, spr, txt, key: '' };
-        });
+        this.vill = VL.map(v => ({
+            v, key: '',
+            spr: Art.image(this, v.x, v.y, Art.village(this, 0)).setDepth(v.y - 1),
+            txt: this.add.text(v.x, v.y + 14, v.n, txtStyle(12, '#d8ccb4', { backgroundColor: 'rgba(18,14,12,.6)', padding: { x: 4, y: 1 } })).setOrigin(.5, 0).setDepth(9000)
+        }));
 
-        // Hrady
-        this.towns = TW.map(t => {
-            const spr = this.add.image(t.x, t.y, Bake.castle(this, t.f)).setOrigin(52 / 120, 80 / 110).setDepth(t.y);
-            const txt = this.add.text(t.x, t.y + 18, '', { fontFamily: '"IM Fell English", Georgia, serif', fontSize: '15px', color: '#ecdfc6', backgroundColor: 'rgba(18,14,12,.82)', padding: { x: 7, y: 2 } }).setOrigin(.5, 0).setDepth(9001);
-            const stars = this.add.text(t.x - 24, t.y - 46, '', { fontFamily: 'sans-serif', fontSize: '11px', color: '#ffd24a', fontStyle: 'bold' }).setOrigin(.5).setDepth(9001);
-            return { t, spr, txt, stars, f: -1 };
-        });
+        this.towns = TW.map(t => ({
+            t, f: -1,
+            spr: Art.image(this, t.x, t.y, Art.castle(this, t.f), 0, true).setDepth(t.y),
+            txt: this.add.text(t.x, t.y + 18, '', txtStyle(15, '#ecdfc6', { backgroundColor: 'rgba(18,14,12,.82)', padding: { x: 7, y: 2 } })).setOrigin(.5, 0).setDepth(9001),
+            stars: this.add.text(t.x - 24, t.y - 46, '', { fontFamily: 'sans-serif', fontSize: '11px', color: '#ffd24a', fontStyle: 'bold', resolution: RES }).setOrigin(.5).setDepth(9001)
+        }));
 
-        // Hrdina
-        this.hero = this.add.image(G.x, G.y, Bake.rider(this, G.fac, 1)).setOrigin(22 / 60, 52 / 70);
-        this.heroTxt = this.add.text(0, 0, '', { fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold', color: '#ffd24a', backgroundColor: 'rgba(18,14,12,.85)', padding: { x: 5, y: 1 } }).setOrigin(.5, 0).setDepth(9002);
-        this.heroCrown = this.add.image(0, 0, Bake.crown(this)).setDepth(9002);
-
-        // Kruhy, cieľ, tábor, Nazgûli a súboje – prekresľujú sa každý snímok
+        this.hero = Art.image(this, G.x, G.y, Art.rider(this, G.fac, 1), 0, true);
+        this.heroTxt = this.add.text(0, 0, '', { fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold', color: '#ffd24a', backgroundColor: 'rgba(18,14,12,.85)', padding: { x: 5, y: 1 }, resolution: RES }).setOrigin(.5, 0).setDepth(9002);
+        this.heroCrown = Art.image(this, 0, 0, Art.crown(this)).setDepth(9002);
         this.fx = this.add.graphics().setDepth(8999);
 
-        // Kamera
-        const cam0 = this.cameras.main;
-        cam0.setBounds(0, 0, WW, WH).setBackgroundColor('#1e2a16');
-
-        // Minimapa: druhá kamera nad celým svetom
+        this.cameras.main.setBounds(0, 0, WW, WH).setBackgroundColor('#1e2a16');
         this.mini = this.add.graphics().setDepth(9500);
-        this.mmCam = this.cameras.add(MM.x, MM.y, MM.w, MM.h).setZoom(MM.w / WW).setBounds(0, 0, WW, WH).setBackgroundColor('#120e0c');
+        this.mmCam = this.cameras.add(MM.x * RES, MM.y * RES, MM.w * RES, MM.h * RES).setZoom(MM.w * RES / WW).setBounds(0, 0, WW, WH).setBackgroundColor('#120e0c');
         this.mmCam.centerOn(WW / 2, WH / 2);
-        cam0.ignore(this.mini);
-        this.mmCam.ignore([this.fx, this.heroTxt, this.heroCrown, ...this.vill.flatMap(o => [o.spr, o.txt]), ...this.towns.flatMap(o => [o.txt, o.stars, o.spr]), this.hero]);
+        this.cameras.main.ignore(this.mini);
+        if (tiled) {
+            const mm = this.add.image(0, 0, this.minimapTexture()).setOrigin(0).setScale(WW / 360).setDepth(-20);
+            this.cameras.main.ignore(mm);
+            this.mmCam.ignore(worldObjs);
+        }
+        this.mmCam.ignore([this.fx, this.heroTxt, this.heroCrown, this.hero, ...this.vill.flatMap(o => [o.spr, o.txt]), ...this.towns.flatMap(o => [o.spr, o.txt, o.stars])]);
 
         this.input.on('pointerdown', p => this.click(p));
+        this.input.on('pointermove', p => { this.hover = this.cameras.main.getWorldPoint(p.x, p.y); this.hoverScreen = { x: p.x / RES, y: p.y / RES }; });
+        this.input.on('gameout', () => this.hover = null);
         this.input.on('wheel', (p, o, dx, dy) => { if (mode === 'map') Z = Math.max(.45, Math.min(1.5, Z - Math.sign(dy) * .1)); });
         this.events.once('shutdown', () => this.input.removeAllListeners());
+    }
+
+    /** Terén z editora Tiled: dlaždice zeme a lesov, voda, cesty a hory. Vráti objekty sveta. */
+    buildTerrain() {
+        const T = MAPDATA.terrain, tw = this.textures.get('terrain').getSourceImage().width / 8, sc = WW / (T.cols * tw), out = [];
+        const rows = (data, empty) => Array.from({ length: T.rows }, (_, j) => Array.from({ length: T.cols }, (_, i) => { const g = data[j * T.cols + i]; return g ? g - 1 : empty; }));
+        const layer = (data, depth, tint) => {
+            const map = this.make.tilemap({ data: rows(data, -1), tileWidth: tw, tileHeight: tw });
+            const ly = map.createLayer(0, map.addTilesetImage('terrain', 'terrain', tw, tw, 0, 0), 0, 0).setScale(sc).setDepth(depth);
+            if (tint) ly.forEachTile(t => { if (t.index >= 0) { const b = .9 + .1 * Math.sin(t.x * .31 + Math.cos(t.y * .27) * 2) * Math.cos(t.y * .19 - t.x * .07), c = Math.round(255 * Math.min(1, b)); t.tint = (c << 16) | (c << 8) | c; } });
+            out.push(ly);
+        };
+        layer(T.ground, -10, false);
+        // jemný farebný závoj: rozmaže hranice krajín, aby nebolo vidno mriežku dlaždíc
+        const wc = document.createElement('canvas'); wc.width = T.cols; wc.height = T.rows;
+        const wx = wc.getContext('2d'), wcol = ['#4a6d33', '#5a6a36', '#6e6a3e', '#76603e', '#3a2a26', '#b8955a', '#d8dee6', '#24526a'];
+        for (let j = 0; j < T.rows; j++) for (let i = 0; i < T.cols; i++) { wx.fillStyle = wcol[Math.floor((T.ground[j * T.cols + i] - 1) / 4)] || wcol[0]; wx.fillRect(i, j, 1, 1); }
+        if (this.textures.exists('wash')) this.textures.remove('wash');
+        this.textures.addCanvas('wash', wc);
+        out.push(this.add.image(0, 0, 'wash').setOrigin(0).setScale(WW / T.cols).setAlpha(.42).setDepth(-9.5));
+        // voda a cesty (vektorovo, ostré pri každom priblížení)
+        const g = this.add.graphics().setDepth(-9), k = K;
+        g.fillStyle(0x24526a, 1).fillRect(0, 0, 30 * k, WH);
+        g.fillStyle(0xffffff, .35).fillRect(30 * k, 0, 3 * k, WH);
+        const L = { x: 1195, y: 326, rx: 110, ry: 60, rot: .2 };
+        const lake = (rx, ry, col) => { const pts = []; for (let a = 0; a < 6.3; a += .1) { const x = Math.cos(a) * rx, y = Math.sin(a) * ry; pts.push({ x: (L.x + x * Math.cos(L.rot) - y * Math.sin(L.rot)) * k, y: (L.y + x * Math.sin(L.rot) + y * Math.cos(L.rot)) * k }); } g.fillStyle(col, 1).fillPoints(pts, true); };
+        lake(L.rx + 10, L.ry + 10, 0x2c5b73); lake(L.rx - 5, L.ry - 8, 0x4a86a0);
+        const R = [[640, 0], [600, 300], [820, 420], [780, 640], [760, 800], [900, 880], [860, 1200]].map(([x, y]) => new Phaser.Math.Vector2(x * k, y * k));
+        const river = new Phaser.Curves.Path(R[0].x, R[0].y).cubicBezierTo(R[3], R[1], R[2]).cubicBezierTo(R[6], R[4], R[5]).getPoints(160);
+        g.lineStyle(14 * k * .75, 0x2c5b73, 1).strokePoints(river); g.lineStyle(6 * k * .75, 0x4a86a0, 1).strokePoints(river);
+        g.lineStyle(4.5 * k * .75, 0xbea56e, .7);
+        for (const [a, b] of MAPDATA.roads) {
+            const A = TW[a], B = TW[b];
+            g.strokePoints(new Phaser.Curves.QuadraticBezier(new Phaser.Math.Vector2(A.x, A.y), new Phaser.Math.Vector2((A.x + B.x) / 2 + 30 * k, (A.y + B.y) / 2 - 25 * k), new Phaser.Math.Vector2(B.x, B.y)).getPoints(24));
+        }
+        out.push(g);
+        layer(T.forest, -8, false);
+        // hory
+        for (const [x, y, size, kind, v] of T.mountains) {
+            const key = 'mtn_' + kind + '_' + (kind === 'doom' ? 0 : v % 3);
+            if (!this.textures.exists(key)) continue;
+            const img = this.add.image(x * k, y * k, key).setOrigin(.5, .92), w = img.width;
+            img.setScale(2 * size * k / .96 / w).setDepth(-7 + y / 1e4);      // pod hradmi a armádami, ako na pôvodnej mape
+            out.push(img);
+            if (kind === 'doom') this.doom = img;
+        }
+        return out;
+    }
+
+    /** Minimapa ako jeden obrázok (360 × 240) z dát terénu. */
+    minimapTexture() {
+        const T = MAPDATA.terrain, c = document.createElement('canvas'); c.width = 360; c.height = 240;
+        const x = c.getContext('2d'), sx = 360 / T.cols, sy = 240 / T.rows;
+        const col = ['#4a6d33', '#5a6a36', '#6e6a3e', '#76603e', '#3a2a26', '#b8955a', '#d8dee6', '#24526a'];
+        for (let j = 0; j < T.rows; j++) for (let i = 0; i < T.cols; i++) {
+            const n = j * T.cols + i; x.fillStyle = col[Math.floor((T.ground[n] - 1) / 4)] || '#4a6d33'; x.fillRect(i * sx, j * sy, sx + .5, sy + .5);
+            const f = T.forest[n]; if (f >= 33 && f <= 38) { x.fillStyle = f >= 37 ? 'rgba(40,30,20,.5)' : 'rgba(20,50,20,.55)'; x.fillRect(i * sx, j * sy, sx + .5, sy + .5); }
+        }
+        const s = 360 / 1800;
+        x.strokeStyle = '#3a7a96'; x.lineWidth = 2.5; x.beginPath(); x.moveTo(640 * s, 0); x.bezierCurveTo(600 * s, 300 * s, 820 * s, 420 * s, 780 * s, 640 * s); x.bezierCurveTo(760 * s, 800 * s, 900 * s, 880 * s, 860 * s, 1200 * s); x.stroke();
+        x.fillStyle = '#3a7a96'; x.beginPath(); x.ellipse(1195 * s, 326 * s, 110 * s, 60 * s, .2, 0, 7); x.fill();
+        for (const [mx, my, , kind] of T.mountains) { x.fillStyle = kind === 'snow' ? '#e8ecf2' : kind === 'doom' ? '#ff6a1a' : '#1a1210'; x.beginPath(); x.moveTo(mx * s, my * s - 4); x.lineTo(mx * s - 4, my * s + 3); x.lineTo(mx * s + 4, my * s + 3); x.fill(); }
+        if (this.textures.exists('minimap')) this.textures.remove('minimap');
+        this.textures.addCanvas('minimap', c);
+        return 'minimap';
     }
 
     click(p) {
         if (mode !== 'map' || !G) return;
         if (G.camp) { G.camp = 0; const b = [...tb.children].find(x => /tábor/i.test(x.textContent)); if (b) b.textContent = 'Tábor'; upd(); }
         G.dest = -1; G.vd = -1; G.chase = null; G.talk = null;
-        if (p.x > MM.x && p.y > MM.y) { G.tx = (p.x - MM.x) / MM.w * WW; G.ty = (p.y - MM.y) / MM.h * WH; return; }
+        const sx = p.x / RES, sy = p.y / RES;
+        if (sx > MM.x && sy > MM.y) { G.tx = (sx - MM.x) / MM.w * WW; G.ty = (sy - MM.y) / MM.h * WH; return; }
         const w = this.cameras.main.getWorldPoint(p.x, p.y);
         G.tx = w.x; G.ty = w.y;
         E.forEach(e => { if (Math.hypot(e.x - w.x, e.y - w.y) < 34) { if (hos(e.f, G.fac)) G.chase = e; else G.talk = e; } });
@@ -69,13 +136,11 @@ class MapScene extends Phaser.Scene {
 
     update(time, delta) {
         if (!G) return;
-        const dt = Math.min(2, delta / 16.67);
-        if (mode === 'map') updMap(dt);
+        if (mode === 'map') updMap(Math.min(2, delta / 16.67));
         if (mode === 'battle') { this.scene.start('Battle'); return; }
 
-        // Kamera nasleduje hrdinu (rovnaký prepočet ako simulácia, aby sedeli kliky)
         const c = this.cameras.main;
-        c.setZoom(Z);
+        c.setZoom(Z * RES);
         cam.x = Math.max(0, Math.min(WW - W / Z, G.x - W / Z / 2));
         cam.y = Math.max(0, Math.min(WH - H / Z, G.y - H / Z / 2));
         c.centerOn(cam.x + W / Z / 2, cam.y + H / Z / 2);
@@ -90,14 +155,14 @@ class MapScene extends Phaser.Scene {
     syncTowns() {
         for (const o of this.towns) {
             const t = o.t, L = lvl(t);
-            if (o.f !== t.f) { o.f = t.f; o.spr.setTexture(Bake.castle(this, t.f)); o.txt.setStyle({ backgroundColor: 'rgba(18,14,12,.82)' }); }
-            o.spr.setScale(.85 + L * .08);
+            if (o.f !== t.f) { o.f = t.f; const k = Art.castle(this, t.f); o.spr.setTexture(k, 0).play({ key: k + ':wave', startFrame: TW.indexOf(t) % 4 }); }
+            o.spr.setScale((Art.scale[o.spr.texture.key] || 1 / RES) * (.85 + L * .08));
             o.txt.setText(t.n + '  ⚔' + t.g);
             o.stars.setText('★'.repeat(L));
         }
         for (const o of this.vill) {
             const f = TW[o.v.t].f, b = o.v.st > 0, key = f + (b ? 'b' : '');
-            if (o.key !== key) { o.key = key; o.spr.setTexture(Bake.village(this, f, b)); o.txt.setColor(b ? '#c08070' : FC[f]); }
+            if (o.key !== key) { o.key = key; const k = Art.village(this, f, b); o.spr.setTexture(k).setScale(Art.scale[k] || 1 / RES); o.txt.setColor(b ? '#c08070' : FC[f]); }
         }
     }
 
@@ -109,14 +174,14 @@ class MapScene extends Phaser.Scene {
             if (!o) {
                 o = {
                     f: -1,
-                    spr: this.add.image(e.x, e.y, Bake.rider(this, e.f)).setOrigin(22 / 60, 52 / 70),
-                    txt: this.add.text(0, 0, '', { fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold', color: '#ecdfc6', backgroundColor: 'rgba(18,14,12,.78)', padding: { x: 5, y: 1 } }).setOrigin(.5, 0).setDepth(9002),
-                    crown: this.add.image(0, 0, Bake.crown(this)).setDepth(9002)
+                    spr: Art.image(this, e.x, e.y, Art.rider(this, e.f), 0, true),
+                    txt: this.add.text(0, 0, '', { fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold', color: '#ecdfc6', backgroundColor: 'rgba(18,14,12,.78)', padding: { x: 5, y: 1 }, resolution: RES }).setOrigin(.5, 0).setDepth(9002),
+                    crown: Art.image(this, 0, 0, Art.crown(this)).setDepth(9002)
                 };
                 this.mmCam.ignore([o.spr, o.txt, o.crown]);
                 this.armies.set(e.id, o);
             }
-            if (o.f !== e.f) { o.f = e.f; o.spr.setTexture(Bake.rider(this, e.f)); }
+            if (o.f !== e.f) { o.f = e.f; const k = Art.rider(this, e.f); o.spr.setTexture(k, 0).play({ key: k + ':wave', startFrame: e.id % 4 }); }
             o.spr.setPosition(e.x, e.y).setDepth(e.y);
             o.txt.setPosition(e.x, e.y + 19).setText(e.nm + ' ' + Math.ceil(e.n))
                 .setColor(hos(e.f, G.fac) ? '#ff8a70' : (AL[G.fac][e.f] || e.f === G.fac) ? '#9fe08a' : '#ecdfc6');
@@ -127,9 +192,11 @@ class MapScene extends Phaser.Scene {
     }
 
     syncHero() {
-        const key = Bake.rider(this, G.fac, 1);
-        if (this.hero.texture.key !== key) this.hero.setTexture(key);
-        this.hero.setPosition(G.x, G.y).setDepth(G.y + 1);
+        const key = Art.rider(this, G.fac, 1);
+        if (this.hero.texture.key !== key) this.hero.setTexture(key, 0).setScale(Art.scale[key] || 1 / RES).play(key + ':wave');
+        if (!this.hero.anims.isPlaying) this.hero.play(key + ':wave');
+        const moving = Math.hypot(G.tx - G.x, G.ty - G.y) > 3;
+        this.hero.setPosition(G.x, G.y + (moving ? Math.sin(tm * .4) * 1.2 : 0)).setDepth(G.y + 1);
         this.heroTxt.setPosition(G.x, G.y + 38).setText(G.name + ' ' + ar());
         this.heroCrown.setVisible(!!G.king).setPosition(G.x + 17, G.y - 46);
     }
@@ -137,12 +204,17 @@ class MapScene extends Phaser.Scene {
     drawFx() {
         const g = this.fx; g.clear();
         const moving = Math.hypot(G.tx - G.x, G.ty - G.y) > 3;
+        if (moving) for (let k = 1; k < 5; k++) g.fillStyle(0xc8b48c, .22 - k * .04).fillCircle(G.x - Math.cos(G.f || 0) * k * 7, G.y - Math.sin(G.f || 0) * k * 7 + 8, 5 - k * .6);
         g.lineStyle(2, 0xd9a441, .7).strokeEllipse(G.x, G.y + 8, 38, 16);
         if (moving) g.lineStyle(1.5, 0xecdfc6, .6).strokeRect(G.tx - 5, G.ty - 5, 10, 10);
         for (const e of E) {
-            if (e.nz) { g.fillStyle(0x780000, .28).fillCircle(e.x, e.y, 26 + Math.sin(tm / 6) * 3); }
+            if (e.nz) g.fillStyle(0x780000, .28).fillCircle(e.x, e.y, 26 + Math.sin(tm / 6) * 3);
             if (hos(e.f, G.fac)) g.lineStyle(2, e.n > pw() ? 0xe0442a : 0x6fbf5a, 1).strokeEllipse(e.x, e.y + 8, 34, 14);
             if (e.fo) { g.lineStyle(3, 0xffd27a, 1); g.lineBetween(e.x - 9, e.y - 36, e.x + 9, e.y - 20); g.lineBetween(e.x + 9, e.y - 36, e.x - 9, e.y - 20); }
+        }
+        for (const v of VL) if (v.st > 0) for (let k = 0; k < 3; k++) {
+            const s = (tm * .5 + k * 20) % 60;
+            g.fillStyle(0x3c322d, .5 - s / 130).fillCircle(v.x + Math.sin(s * .2) * 5, v.y - 8 - s * .6, 4 + s * .1);
         }
         if (G.camp) {
             g.fillStyle(0xc8a870, 1).fillTriangle(G.x - 30, G.y + 6, G.x - 18, G.y - 12, G.x - 6, G.y + 6);
@@ -152,9 +224,9 @@ class MapScene extends Phaser.Scene {
 
     drawMini() {
         const g = this.mini; g.clear();
-        for (const t of TW) { g.fillStyle(hex(FC[t.f]), .28).fillCircle(t.x, t.y, 220); g.fillStyle(hex(FC[t.f]), 1).fillRect(t.x - 55, t.y - 55, 110, 110); }
-        for (const e of E) g.fillStyle(hos(e.f, G.fac) ? 0xff4030 : hex(FC[e.f]), 1).fillCircle(e.x, e.y, 45);
-        g.fillStyle(0xffffff, 1).fillCircle(G.x, G.y, 70);
+        if (MF.t) for (const t of TW) { g.fillStyle(hex(FC[t.f]), .28).fillCircle(t.x, t.y, 220); g.fillStyle(hex(FC[t.f]), 1).fillRect(t.x - 55, t.y - 55, 110, 110); }
+        if (MF.e) for (const e of E) g.fillStyle(hos(e.f, G.fac) ? 0xff4030 : hex(FC[e.f]), 1).fillCircle(e.x, e.y, 45);
+        g.fillStyle(0xffffff, 1).fillCircle(G.x, G.y, 70 + Math.sin(tm / 10) * 20);
         g.lineStyle(40, 0xffffff, .7).strokeRect(cam.x, cam.y, W / Z, H / Z);
     }
 }

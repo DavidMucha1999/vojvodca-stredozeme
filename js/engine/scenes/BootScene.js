@@ -1,24 +1,27 @@
 /*
  * ENGINE: štartovacia scéna.
- * Pripraví svet (mapu, bojisko), skryje lištu a spustí úvod a scénu rozhrania.
- * Neskôr tu bude načítanie obrázkov a zvukov (this.load.image, this.load.audio).
+ * Pripraví svet (mapu, bojisko), načíta textúry, vlastné obrázky a zvuky z js/engine/assets.js,
+ * počká na písma a spustí úvod spolu so scénou rozhrania.
  */
 class BootScene extends Phaser.Scene {
     constructor() { super('Boot'); }
-
-    preload() {
-        // Sem pôjdu skutočné grafické a zvukové súbory, napr.:
-        // this.load.image('castle_gondor', 'assets/castles/gondor.png');
-        // this.load.spritesheet('uruk', 'assets/units/uruk.png', { frameWidth: 64, frameHeight: 64 });
-    }
 
     create() {
         ov.classList.add('intro');
         tb.style.display = 'none';
         hud.style.visibility = 'hidden';
+        tb.id = 'tb'; od.id = 'od';
+        cv.width = W * RES; cv.height = H * RES;          // pomocné plátno pre kreslenie vo vysokom rozlíšení
         buildMap();
-        Bake.dot(this, 'spark', 3, '#ffffff');
-        this.scene.launch('UI');
-        this.scene.start('Intro');
+        SoundFX.init(this);
+        const txt = this.add.text(W * RES / 2, H * RES / 2, 'Načítavam Stredozem…', { fontFamily: 'Georgia, serif', fontSize: 18 * RES + 'px', color: '#d9a441' }).setOrigin(.5);
+        const fonts = document.fonts && document.fonts.load
+            ? Promise.race([Promise.all([document.fonts.load('15px "IM Fell English"'), document.fonts.load('26px "Uncial Antiqua"')]), new Promise(r => setTimeout(r, 2500))])
+            : Promise.resolve();
+        Promise.all([Art.loadTextures(this), Art.loadOverrides(this), fonts]).then(() => {
+            txt.destroy();
+            this.scene.launch('UI');
+            this.scene.start('Intro');
+        });
     }
 }

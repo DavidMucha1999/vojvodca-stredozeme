@@ -6,7 +6,11 @@
 <title>Vojvodca Stredozeme (Phaser)</title>
 <link href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=IM+Fell+English&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
-<style>#c{display:none}#game{position:absolute;inset:0}</style>
+<style>
+#c{display:none}#game{position:absolute;inset:0}
+/* Rozhranie kreslí Phaser: HTML predlohy ostávajú, len sú skryté */
+.phaser-ui #hud,.phaser-ui #tb,.phaser-ui #od,#ov.mirror{visibility:hidden!important}
+</style>
 </head>
 <body>
 <div id="wrap">
@@ -21,10 +25,11 @@
 <input id="pn" placeholder="Meno hrdinu" maxlength="16" value="Strážca" aria-label="Meno hrdinu"><select id="fs" aria-label="Frakcia"><option value="6">Nezávislý (vlastná družina)</option><option value="0">Gondor</option><option value="1">Rohan</option><option value="2">Mordor</option><option value="3">Isengard</option><option value="4">Haradrim</option><option value="5">Erebor</option><option value="7">Rhûn</option><option value="8">Lothlórien</option></select><button onclick="newGame()">Vyraziť do boja</button><button onclick="load()">Načítať uloženú hru</button>
 </div>
 </div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"></script>
-<script>window.Phaser || document.write('<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"><\/script>')</script>
+<script src="vendor/phaser.min.js"></script>
+<script>window.Phaser || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"><\/script>')</script>
 <script src="js/core/setup.js"></script>
 <script src="js/data/factions.js"></script>
+<script src="js/data/map.js"></script>
 <script src="js/data/castles.js"></script>
 <script src="js/data/units.js"></script>
 <script src="js/data/equipment.js"></script>
@@ -53,7 +58,9 @@
 <script src="js/ui/menus.js"></script>
 <script src="js/ui/toolbar.js"></script>
 <script src="js/input.js"></script>
-<script src="js/engine/bake.js"></script>
+<script src="js/engine/assets.js"></script>
+<script src="js/engine/art.js"></script>
+<script src="js/engine/audio.js"></script>
 <script src="js/engine/scenes/BootScene.js"></script>
 <script src="js/engine/scenes/IntroScene.js"></script>
 <script src="js/engine/scenes/MapScene.js"></script>

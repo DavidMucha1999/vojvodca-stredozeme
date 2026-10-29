@@ -1,14 +1,13 @@
 /*
  * ENGINE: úvodná obrazovka.
- * Zatiaľ prenáša pôvodnú animovanú bojovú scénu (js/render/intro.js) cez plátno.
- * Neskôr ju nahradí ilustrácia s parallaxou a časticami.
+ * Animovaná bojová scéna z js/render/intro.js kreslená vo vysokom rozlíšení.
  */
 class IntroScene extends Phaser.Scene {
     constructor() { super('Intro'); }
 
     create() {
         const c = document.createElement('canvas');
-        c.width = W; c.height = H;
+        c.width = W * RES; c.height = H * RES;
         this.cctx = c.getContext('2d');
         if (this.textures.exists('intro')) this.textures.remove('intro');
         this.tex = this.textures.addCanvas('intro', c);
@@ -17,9 +16,12 @@ class IntroScene extends Phaser.Scene {
 
     update() {
         if (G) { this.scene.start('Map'); return; }
+        ctx.save();
+        ctx.setTransform(RES, 0, 0, RES, 0, 0);
         introScene();
-        this.cctx.clearRect(0, 0, W, H);
-        this.cctx.drawImage(cv, 0, 0);
+        ctx.restore();
+        this.cctx.clearRect(0, 0, W * RES, H * RES);
+        this.cctx.drawImage(cv, 0, 0, W * RES, H * RES, 0, 0, W * RES, H * RES);
         this.tex.refresh();
     }
 }

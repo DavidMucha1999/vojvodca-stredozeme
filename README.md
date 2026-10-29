@@ -8,85 +8,107 @@ Autor a vývojár hry: **Dávid Mucha**
 
 Hra má dve verzie, ktoré zdieľajú rovnakú logiku (`js/data`, `js/sim`):
 
-- `index.html` – pôvodná verzia kreslená priamo na plátno. Funguje aj bez internetu.
-- `phaser.html` – nová verzia v hernom engine **Phaser 3** (kostra). Phaser sa načíta z CDN, preto potrebuje internet.
+- **`phaser.html`** – hlavná verzia v hernom engine **Phaser 3**: ostrý obraz, dlaždicová mapa, animovaní vojaci, zvuky zo súborov a rozhranie v Phaseri. Phaser je v projekte (`vendor/phaser.min.js`), takže hra beží aj bez internetu.
+- `index.html` – pôvodná verzia kreslená priamo na plátno.
 
-Obe otvoríš priamo v prehliadači, server ani inštalácia nie sú potrebné.
-
-Ak chceš hru spúšťať cez lokálny server (odporúčané pri vývoji):
-
-```bash
-npm start          # spustí server na http://localhost:8080
-```
+Obe otvoríš dvojklikom, server ani inštalácia nie sú potrebné. Celú hru v jednom súbore vytvorí `python tools/build_single.py` (výsledok je v `dist/phaser-single.html`).
 
 ## Testy
 
 ```bash
-npm test                        # test simulácie bez prehliadača (Node.js)
-python tests/browser_test.py    # test v skutočnom prehliadači (Playwright)
-python tests/phaser_test.py     # test scén Phaser verzie (bez internetu, s náhradou Phaseru)
+npm test                          # simulácia bez prehliadača: 60+ dní hry, obliehanie, uloženie
+python tests/phaser_test.py       # Phaser verzia: scény, okná v Phaseri, animácie, zvuky
+python tests/real_phaser_test.py  # Phaser verzia: prejde hru a uloží snímky obrazovky do tests/screens/
+python tests/browser_test.py      # pôvodná verzia (index.html)
 ```
 
-Test simulácie odohrá vyše 60 dní hry, obliehanie aj uloženie a načítanie a skontroluje, že sa nič nepokazilo. Spusti ho po každej väčšej zmene.
+Testy v prehliadači potrebujú `pip install playwright && playwright install chromium`. Spusti ich po každej väčšej zmene.
 
-## Štruktúra projektu
+## Grafika, mapa a zvuky (priečinok `assets/`)
 
-Skripty sa načítavajú v poradí uvedenom v `index.html` a zdieľajú globálny priestor premenných. Poradie je dôležité: dáta, potom simulácia, vykresľovanie, zvuk, rozhranie a nakoniec `main.js`.
+Všetky obrázky, mapa a zvuky sú obyčajné súbory, ktoré môžeš upraviť alebo nahradiť. Hra ich však nečíta priamo (prehliadač by ich pri otvorení dvojklikom nepustil), ale zo zbaleného súboru `js/engine/assets.js` a mapu z `js/data/map.js`. **Po každej zmene v `assets/` spusti `python tools/pack_assets.py`.**
 
 ```
-index.html            stránka hry a poradie skriptov
-css/style.css         všetky štýly
+assets/
+  maps/stredozem.json    mapa pre editor Tiled: terén, lesy, hory, hrady, dediny, cesty
+  maps/teren-tiled.png   zmenšené dlaždice terénu, iba na úpravu v Tiled
+  textures/              nová grafika z generátora: terén, hory, vojaci, bojisko
+  sprites/               tvoje vlastné obrázky; nahradia kreslené (mená podľa assets/templates/)
+  templates/             šablóny všetkých kreslených obrázkov na prekreslenie
+  audio/                 zvuky boja (sfx_<druh>_<n>.wav) a voliteľne hudba (music_*.ogg/mp3)
+```
+
+### Úprava mapy v editore Tiled
+
+Otvor `assets/maps/stredozem.json` v [Tiled](https://www.mapeditor.org/). Vrstvy:
+
+- **zem** – krajina (tráva, step, popol Mordoru, piesok, sneh, more), **lesy** – lesy a mŕtve stromy: maľuj dlaždicami.
+- **hory** – body s vlastnosťami `druh` (snow, dark, doom), `velkost` a `variant`.
+- **hrady**, **dediny**, **cesty** – polohy a vlastnosti (frakcia, ku ktorému hradu dedina patrí, odkiaľ kam vedie cesta).
+
+Ulož mapu a spusti `python tools/pack_assets.py`.
+
+### Výmena grafiky
+
+- **Vojaci:** každý druh má dva pásy po 12 snímkach (`assets/textures/unit_<druh>.png` a `unit_<druh>_team.png`). Snímky: 0 státie, 1–4 chôdza, 5–7 útok, 8–11 pád; jedna snímka má 192 × 192 px, vojak je v strede a pozerá doprava. Tímová vrstva je biela a hra ju zafarbí farbou frakcie (tabard, štít, plášť, čaprák).
+- **Hrady, dediny, zástavy a iné:** ulož obrázok s rovnakým menom ako šablóna z `assets/templates/` do `assets/sprites/`. Hra použije tvoj obrázok namiesto kresleného. Šablóny obnoví `python tools/export_templates.py`.
+- **Terén a bojisko:** dlaždice `terrain.png` (8 × 5 dlaždíc po 90 px), hory `mtn_*.png`, zem bojiska `ground_*.png`, voda, hradby, stromy.
+
+Generátor `python tools/generate_art.py` znovu vykreslí `assets/textures/` a terén mapy. **Pozor:** terén v mape prepíše; ak si ho upravil ručne, použi `python tools/generate_art.py --bez-terenu`.
+
+### Zvuky a hudba
+
+Zvuky boja sú v `assets/audio/` (`render_sfx.py` ich vie vytvoriť znova). Hra vyberá náhodný variant, mení výšku tónu a v bitke nastavuje hlasitosť a stereo podľa miesta. Ak pridáš `music_kraj`, `music_stred`, `music_mordor` alebo `music_bitka` (ogg/mp3), nahradia syntetickú hudbu v danej oblasti.
+
+## Nástroje (`tools/`)
+
+| Nástroj | Čo robí |
+|---|---|
+| `pack_assets.py` | zbalí mapu, obrázky a zvuky pre hru (spusti po každej zmene v `assets/`) |
+| `generate_art.py` | vykreslí novú grafiku a terén (`art.js`, `art_world.js`, `art_build.js`) |
+| `export_templates.py` | vytvorí šablóny kreslených obrázkov do `assets/templates/` |
+| `export_map.py` | vytvorí mapu pre Tiled z dát hry (bežne netreba) |
+| `render_sfx.py` | vyrenderuje zvuky boja do `assets/audio/` |
+| `build_single.py` | zostaví celú hru do jedného HTML súboru v `dist/` |
+
+## Štruktúra kódu
+
+Skripty sa načítavajú v poradí uvedenom v `phaser.html` (resp. `index.html`) a zdieľajú globálny priestor premenných.
+
+```
 js/
   core/setup.js       plátno, rozmery sveta, globálny stav hry
-  data/               čisté dáta (bez logiky)
-    factions.js       frakcie, farby, erby, panovníci, povahy
-    castles.js        hrady a dediny
-    units.js          elitné jednotky frakcií
-    equipment.js      výbava u kováča
-    story.js          kapitoly príbehu (dobro aj zlo)
-    achievements.js   úspechy
-  sim/                logika hry (bez kreslenia)
-    diplomacy.js      vojny, spojenectvá, vzťahy
-    hero.js           hodnosti a štatistiky hrdinu
-    armies.js         velitelia, banditi, Nazgûli
-    world.js          krok sveta, dni, AI, strategická AI, Prsteň, pauza a tábor
-    battle.js         bitka a obliehanie hradieb
-    siege.js          tábor obliehateľov
-    politics.js       rada šľachticov
-    story.js          plnenie kapitol
-    achievements.js   udeľovanie úspechov
-    game.js           nová hra, uloženie, načítanie
-  render/             vykresľovanie na plátno
-    terrain.js        generovanie mapy a bojiska
-    heraldry.js       erby, zástavy, koruna
-    map.js            mapa, hrady, dediny, armády, minimapa, legenda
-    battle.js         bitka, hrad pri obliehaní, vojaci, efekty
-    intro.js          animovaná úvodná scéna
-    portraits.js      portréty veliteľov pre encyklopédiu
-  audio/sound.js      zvuky a hudba (syntéza v prehliadači)
-  ui/                 rozhranie (HTML okná)
-    dom.js            okná, tlačidlá, správy
-    hud.js            horná lišta
-    town.js           menu hradu, verbovanie, kováč, dvor, diplomacia
-    menus.js          prehľad, denník, štatistiky, trofeje, úspechy, encyklopédia
-    toolbar.js        panel tlačidiel a rozkazy v bitke
-  input.js            myš, dotyk, klávesnica
-  main.js             hlavná slučka a spustenie (iba index.html)
-  engine/             verzia v Phaseri 3 (iba phaser.html)
-    bake.js           most: staré kreslenie → textúry Phaseru
-    game.js           konfigurácia a spustenie Phaseru
+  data/               čisté dáta: frakcie, hrady (map.js je generovaný z mapy), jednotky, výbava, príbeh, úspechy
+  sim/                logika hry bez kreslenia: diplomacia, hrdina, armády, svet a AI, bitka, obliehanie, politika, príbeh, uloženie
+  render/             pôvodné kreslenie na plátno (index.html; Phaser ho používa ako náhradnú grafiku)
+  audio/sound.js      syntetické zvuky a hudba
+  ui/                 herné menu ako HTML (v Phaser verzii ich prekresľuje UIScene)
+  input.js            klávesnica a myš (pôvodná verzia)
+  main.js             hlavná slučka pôvodnej verzie
+  engine/             Phaser verzia
+    art.js            grafika: textúry, zafarbovanie vojakov, vlastné obrázky, animácie
+    assets.js         zbalené obrázky a zvuky (generuje pack_assets.py)
+    audio.js          zvuky zo súborov, priestorový zvuk v bitke
+    game.js           spustenie Phaseru (rozlíšenie 1440 × 960)
     scenes/
-      BootScene.js    príprava sveta, neskôr načítanie obrázkov a zvukov
+      BootScene.js    načítanie textúr, obrázkov, zvukov a písma
       IntroScene.js   úvodná obrazovka
-      MapScene.js     mapa: dlaždice, hrady, dediny, armády, kamera, minimapa
-      BattleScene.js  bitka: sprity vojakov, šípy, obliehanie, častice zbraní
-      UIScene.js      vrstva navrchu: čas, oznámenia, pauza, počasie, lišty
-tests/
-  sim.test.js         test simulácie (Node.js)
-  browser_test.py     test v prehliadači
-  phaser_test.py      test scén Phaser verzie
-  phaser-stub.js      náhrada Phaseru pre testy bez internetu
+      MapScene.js     mapa: dlaždicový terén, voda, cesty, hory, hrady, dediny, armády, minimapa
+      BattleScene.js  bitka: bojisko z textúr, animovaní vojaci, zástavy, šípy, obliehanie, častice
+      UIScene.js      rozhranie v Phaseri: lišta, tlačidlá, okná, popisky, legenda, počasie
+vendor/phaser.min.js  Phaser 3.80.1
 ```
+
+### Ako funguje Phaser verzia
+
+Simulácia (`js/sim`) je rovnaká pre obe verzie. Scény ju volajú (`updMap`, `updBattle`) a iba zobrazujú jej stav:
+
+```
+BootScene → IntroScene → MapScene ⇄ BattleScene
+                 UIScene beží stále navrchu
+```
+
+Menu sú stále napísané v `js/ui` ako HTML (funkcie `show`/`btn`). UIScene ich „zrkadlí“: prečíta okno, nakreslí ho v Phaseri a kliknutie prepošle pôvodnému tlačidlu. V HTML ostali len okná s formulármi a obrázkami: úvod, korunovácia a encyklopédia.
 
 ## Skratky v kóde
 
@@ -100,25 +122,4 @@ tests/
 | `WR`, `AL`, `REL` | vojny, spojenectvá a vzťahy medzi frakciami |
 | `FU`, `FK`, `SH` | elitné jednotky, jednotky frakcií, výbava |
 | `QS`, `CP`, `SGB` | kapitoly príbehu, ciele ťažení, stav obliehania |
-
-Hlavný cyklus: `loop()` → `updMap()` / `updBattle()` → `drawMap()` / `drawBattle()`.
-`worldTick()` posúva svet o jeden krok (AI, dni, diplomacia).
-
-## Phaser verzia: ako je postavená
-
-Simulácia zostala nezmenená. Scény Phaseru ju volajú (`updMap`, `updBattle`) a iba zobrazujú jej stav:
-
-```
-BootScene → IntroScene → MapScene ⇄ BattleScene
-                 UIScene beží stále navrchu
-```
-
-Grafika sa zatiaľ „pečie“ zo starých kresliacich funkcií do textúr (`js/engine/bake.js`). Menu (hrady, encyklopédia, diplomacia) sú zatiaľ HTML okná z `js/ui`.
-
-### Ďalšie kroky
-
-1. **Skutočná grafika:** nahradiť funkcie v `bake.js` načítaním obrázkov v `BootScene.preload()` (sprity jednotiek, hrady, dlaždicová mapa z editora Tiled).
-2. **Animácie:** spritesheety s chôdzou, útokom a smrťou (`this.anims.create`).
-3. **Zvuk:** nahrané zvuky a hudba cez `this.load.audio` namiesto syntézy.
-4. **Rozhranie v Phaseri:** postupne presunúť menu z HTML do scény UI.
-5. **Ostrosť:** vyššie rozlíšenie plátna pre veľké obrazovky.
+| `RES`, `BZ` | rozlíšenie plátna (2×) a priblíženie kamery v bitke |

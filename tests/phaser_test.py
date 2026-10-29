@@ -1,30 +1,72 @@
-# Test Phaser verzie bez internetu: namiesto Phaseru z CDN sa podstrčí tests/phaser-stub.js.
-# Overuje scény a prechody Úvod → Mapa → Bitka → Mapa a obliehanie.
+# Podrobný test Phaser verzie so skutočným Phaserom (vendor/phaser.min.js).
+# Overuje scény, prechody, animácie, zvuky a zrkadlenie rozhrania do Phaseru.
+# Snímky obrazovky a vzhľad overuje tests/real_phaser_test.py.
 # Spustenie: python tests/phaser_test.py
-import os
+import os, sys
 from playwright.sync_api import sync_playwright
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-STUB = open(os.path.join(ROOT, 'tests', 'phaser-stub.js'), encoding='utf-8').read()
+fails = []
+def check(name, ok, info=''):
+    print(('OK   ' if ok else 'CHYBA') + ' ' + name + (' – ' + str(info) if info != '' else ''))
+    if not ok: fails.append(name)
+
 with sync_playwright() as p:
-    b = p.chromium.launch(); pg = b.new_page(viewport={'width': 960, 'height': 640})
+    b = p.chromium.launch(args=['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist']); pg = b.new_page(viewport={'width': 960, 'height': 640})
     errs = []; pg.on('pageerror', lambda e: errs.append(str(e)))
-    pg.route('**/phaser.min.js', lambda r: r.fulfill(status=200, content_type='application/javascript', body=STUB))
     pg.route('**/fonts.googleapis.com/**', lambda r: r.abort())
-    pg.goto('file://' + os.path.join(ROOT, 'phaser.html')); pg.wait_for_timeout(800)
+    pg.on('console', lambda m: m.type == 'error' and 'ERR_' not in m.text and errs.append('console: ' + m.text))
+    pg.goto('file://' + os.path.join(ROOT, 'phaser.html')); pg.wait_for_timeout(4000)
+    pg.evaluate("window.__played = 0; { const p0 = SoundFX.play; SoundFX.play = k => { const r = p0(k); if (r) __played++; return r; }; }")
     E = pg.evaluate
-    print('scény po štarte:', E("[...__game.active.keys()].join(',')"))
-    pg.click('text=Vyraziť do boja'); pg.wait_for_timeout(300); pg.click('text=Rozumiem'); pg.wait_for_timeout(200); pg.click('text=Na cestu'); pg.wait_for_timeout(500)
-    print('po novej hre:', E("[...__game.active.keys()].join(',')"), 'textúr', E("__STUB.tex.size"))
-    E("G.camp=1"); pg.wait_for_timeout(3000)
-    print('mapa beží, deň', E("G.day"), 'armád v scéne', E("__game.active.get('Map').armies.size"), 'E', E("E.length"))
-    E("startBattle(E.find(e=>hos(e.f,G.fac)&&!e.nz))"); pg.wait_for_timeout(600)
-    print('bitka:', E("[...__game.active.keys()].join(',')"), 'spritov', E("__game.active.get('Battle') ? __game.active.get('Battle').units.size : -1"))
-    E("for(const u of U) if(u.t) u.hp=0"); pg.wait_for_timeout(600)
-    print('po bitke:', E("mode"), E("[...__game.active.keys()].join(',')"))
-    E("ov.classList.add('hide'); mode='map'; G.eq.w = SH[0].it.length-2; G.inf=30; const i=TW.findIndex(t=>hos(t.f,G.fac)&&t.f!==9); siege(i); [...document.querySelectorAll('#bt button')].find(b=>/rebríky/.test(b.textContent)).click(); [...document.querySelectorAll('#bt button')].find(b=>/Zaútočiť/.test(b.textContent)).click()")
-    pg.wait_for_timeout(600)
-    print('obliehanie:', E("[...__game.active.keys()].join(',')"), 'SGB', E("JSON.stringify(SGB)"))
-    E("U[0].hp=1e9; for(const u of U) u.t && (u.hp = Math.min(u.hp, 1))"); pg.wait_for_timeout(4000)
-    print('koniec obliehania:', E("mode"), E("[...__game.active.keys()].join(',')"))
-    print('chyby:', errs[:5], E("__STUB.log.slice(0,3)"))
+    def waitfor(cond, ms=3000):
+        try: pg.wait_for_function(cond, timeout=ms)
+        except Exception: pass
+    scenes = lambda: E("game.scene.getScenes(true).map(s => s.sys.settings.key).sort((a, b) => a === 'UI' ? 1 : b === 'UI' ? -1 : 0).join(',')")
+    check('Úvod a rozhranie bežia', scenes() == 'Intro,UI', scenes())
+    check('Zvuky dekódované', E("Object.values(SFX).flat().length") >= 20, E("Object.values(SFX).flat().length"))
+    pg.click('text=Vyraziť do boja'); pg.wait_for_timeout(400)
+    waitfor("!!game.scene.getScene('UI').dlg")
+    check('Návod je okno v Phaseri', E("!!game.scene.getScene('UI').dlg && ov.classList.contains('mirror')"))
+    clk = lambda t: E("t => { const b = [...document.querySelectorAll('#bt button')].find(b => b.textContent.trim().startsWith(t)); if (!b) return false; b.click(); return true; }", t)
+    check('Klik na Rozumiem', clk('Rozumiem')); pg.wait_for_timeout(200)
+    check('Klik na Na cestu', clk('Na cestu')); pg.wait_for_timeout(400)
+    check('Mapa beží', scenes() == 'Map,UI', scenes())
+    for cond in ["game.scene.getScene('UI').hudLayer.list.length > 10", "game.scene.getScene('UI').barLayer.list.length >= 26"]:
+        try: pg.wait_for_function(cond, timeout=3000)
+        except Exception: pass
+    check('Horná lišta v Phaseri', E("game.scene.getScene('UI').hudLayer.list.length") > 10, E("game.scene.getScene('UI').hudLayer.list.length"))
+    check('Panel tlačidiel v Phaseri', E("game.scene.getScene('UI').barLayer.list.length") >= 26, E("game.scene.getScene('UI').barLayer.list.length"))
+    E("G.camp = 1"); pg.wait_for_timeout(2500)
+    check('Armády na mape', E("game.scene.getScene('Map').armies.size") == E("E.length"), E("E.length"))
+    E("ov.classList.add('hide'); mode = 'map'; town(0)"); pg.wait_for_timeout(300)
+    try: pg.wait_for_function("game.scene.getScene('UI').dlgButtons && game.scene.getScene('UI').dlgButtons.length === document.querySelectorAll('#bt button').length", timeout=3000)
+    except Exception: pass
+    check('Menu hradu v Phaseri', E("game.scene.getScene('UI').dlgButtons.length") == E("document.querySelectorAll('#bt button').length"), (E("game.scene.getScene('UI').dlgButtons.length"), E("document.querySelectorAll('#bt button').length"), E("document.querySelector('#ov h1').textContent")))
+    for c in 'revhd':
+        E(f"tsub(0, '{c}')"); pg.wait_for_timeout(120)
+    check('Podmenu hradu bez chýb', not errs, errs[:2])
+    E("ov.classList.add('hide'); mode = 'map'; ency('l')"); pg.wait_for_timeout(300)
+    check('Encyklopédia ostáva v HTML', E("!game.scene.getScene('UI').dlg && !ov.classList.contains('mirror')"))
+    E("ov.classList.add('hide'); ov.classList.remove('encv'); mode = 'map'; LEG = true; G.eq.w = SH[0].it.length - 2"); pg.wait_for_timeout(300)
+    waitfor("game.scene.getScene('UI').legLayer.list.length > 20")
+    check('Legenda v Phaseri', E("game.scene.getScene('UI').legLayer.list.length") > 20)
+    E("LEG = false; startBattle(E.find(e => hos(e.f, G.fac) && !e.nz))"); pg.wait_for_timeout(1500)
+    check('Bitka beží', scenes() == 'Battle,UI', scenes())
+    check('Vojaci ako animované sprity', E("game.scene.getScene('Battle').units.size") == E("U.length"), E("U.length"))
+    check('Animácie chôdze a útoku', E("[...game.scene.getScene('Battle').units.values()].some(o => o.state === 'walk' || o.state === 'attack')"))
+    E("U[0].hp = 1e9; for (const u of U) if (u.t) u.hp = Math.min(u.hp, 2)"); pg.wait_for_timeout(5000)
+    check('Zvuky zo súborov hrajú', E("__played") > 0, E("__played"))
+    E("for (const u of U) if (u.t) u.hp = 0"); pg.wait_for_timeout(500)
+    waitfor("mode === 'over' && !!game.scene.getScene('UI').dlg")
+    check('Koniec bitky: okno v Phaseri', E("mode") == 'over' and E("!!game.scene.getScene('UI').dlg"), E("mode"))
+    clk('Prepustiť'); clk('Zajať'); clk('Pokračovať'); pg.wait_for_timeout(300)
+    E("ov.classList.add('hide'); mode = 'map'; G.inf = 30; const i = TW.findIndex(t => hos(t.f, G.fac) && t.f !== 9); siege(i)"); pg.wait_for_timeout(200)
+    clk('Postaviť rebríky'); pg.wait_for_timeout(200); clk('Zaútočiť'); pg.wait_for_timeout(800)
+    check('Obliehanie', scenes() == 'Battle,UI' and E("!!SGB"), E("JSON.stringify(SGB)"))
+    E("G.king = 1; KD = 0; for (const u of U) if (u.t) u.hp = 0"); pg.wait_for_timeout(600)
+    clk('Pokračovať'); pg.wait_for_timeout(400)
+    check('Korunovácia ostáva v HTML (formulár)', E("ov.classList.contains('mirror')") == False and E("!!document.querySelector('#bt input')"))
+    check('Žiadne chyby na stránke', not errs, errs[:3])
     b.close()
+print('\nVšetky testy prešli.' if not fails else '\nZlyhalo: ' + ', '.join(fails))
+sys.exit(1 if fails else 0)
