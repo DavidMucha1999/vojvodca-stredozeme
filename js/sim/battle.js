@@ -38,15 +38,17 @@ function startBattleBase(en, al) {
     setOrd('a');
     od.style.display = 'flex';
     tb.style.display = 'none';
-    WX = [{ n: 'clear', r: 190 }, { n: 'rain', r: 130 }, { n: 'fog', r: 150 }][Math.floor(Math.random() * 3)];
+    WX = battleWeather();       // počasie z mapy, v noci kratší dostrel
     snd('horn');
     roar(1);
-    BI = G.x > 6450 ? 'a' : G.y > 4350 && G.x > 5100 ? 'd' : G.y < 1050 ? 's' : 'g';
-    if (BI === 's')
-        WX = { n: 'snow', r: 160 };
+    BI = regionAt(G.x, G.y);
+    if (BI === 's' && WX.n === 'clear')
+        WX = { ...WX, n: 'snow', r: Math.round(WX.r * .85) };
 }
+/** Chrám v niektorom z tvojich hradov: tvoji vojaci sú pevnejší (o 10 % menej zranení). */
+const temple = () => TW.some(t => t.mine && t.bd && t.bd.c);
 function hit(b, d, from) {
-    b.hp -= d * (b.h ? red() : 1);
+    b.hp -= d * (b.h ? red() : !b.t && temple() ? .9 : 1);
     snd(b.hp <= 0 ? 'dy' : b.h ? 'sh' : Math.random() < .5 ? 'sw' : 'hb');
     for (let i = 0; i < 4; i++)
         PT.push({ x: b.x, y: b.y, vx: Math.random() * 3 - 1.5, vy: Math.random() * 3 - 1.5, l: 18, c: b.t ? '#8a2a1a' : '#d9a441' });

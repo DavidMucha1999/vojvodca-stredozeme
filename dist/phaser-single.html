@@ -245,6 +245,117 @@ const ACH = [['w1', 'Prvé víťazstvo', () => (G.st && G.st.w) >= 1], ['w10', '
 </script>
 <script>
 /*
+ * Rozhovory s veliteľmi na mape.
+ * Každý veliteľ má povahu (TR: 0 čestný, 1 chamtivý, 2 zbabelý, 3 ambiciózny, 4 krutý, 5 múdry) a frakciu.
+ * Odpovede sú zoradené podľa povahy, takže ten istý pán odpovedá stále v rovnakom duchu.
+ * Funkcie dostávajú kontext c = { e (veliteľ), f (frakcia), same (tvoja frakcia), war (vojna s tebou),
+ *   rl (vzťah), evil (strana zla), king (je panovník), you (tvoje meno), ren (sláva), ring (nesieš Prsteň) }.
+ * Texty sa dajú ľubovoľne dopĺňať: stačí pridať ďalší reťazec do zoznamu, hra z neho náhodne vyberá.
+ */
+const DLG = (() => {
+    const pick = a => a[Math.floor(Math.random() * a.length)];
+    // ako frakcie vnímajú svet (nezávisle od povahy)
+    const WORLD = {
+        0: ['Tieň na východe rastie každým rokom. Gondor stojí na stráži, ako stál vždy, ale naše rady rednú.', 'Minas Tirith ešte stojí a kým stojí, Západ má nádej. Správca však nespí dobre.', 'Osgiliath je v troskách a Ithilien patrí hliadkam. Dlho to tak nezostane, jedným či druhým smerom.'],
+        1: ['Kone sú nepokojné a to býva znamenie. V Riddermarku hovoríme, že vietor od východu nosí vojnu.', 'Théoden je starý, ale Rohan je mladý. Keď zaznie roh, Eorlingovia pôjdu.', 'Orkovia pália dediny pri Fangorne. Hliadky jazdia vo dne v noci.'],
+        2: ['Oko všetko vidí. Všetko. Aj teba, aj mňa. Slobodné národy sú len dobytok, ktorý ešte nevie, že ide na porážku.', 'Pán Mordoru zhromažďuje vojská. Deň, keď Západ padne, je bližšie, než si myslíš.', 'Minas Morgul sa znova rozsvietila. To nie je mesiac, to je naša sila.'],
+        3: ['Saruman má plán a Isengard má Uruk-hai. Starý svet sa láme a nový sa kuje v našich jamách.', 'Mordor nás potrebuje viac, než si Sauron priznáva. Biela ruka má vlastné cesty.', 'Rohan je slabý a Gondor ďaleko. Isengard to vidí a koná.'],
+        4: ['Juh je horúci a bohatý. Sever je studený a chudobný, ale Pán nám ho sľúbil.', 'Naše olifanty prejdú cez Ithilien ako cez trávu. Gondor ešte nevidel skutočnú vojnu.', 'Harad slúži Sauronovi, lebo Sauron víťazí. To je celá múdrosť juhu.'],
+        5: ['Osamelá hora stojí a kováčske vyhne horia. Trpaslíci si pamätajú Smauga aj Azoga, nezabúdame nikdy.', 'Dol Guldur bol vyčistený, ale tiene sa vracajú do Temného hvozdu. Dáin drží stráž.', 'Zlato Ereboru nie je na míňanie, ale na zbrane. Prichádza vojna a my budeme pripravení.'],
+        7: ['Východ je veľký a ľudia Rhûnu sú mnohí. Sauron nám sľúbil polovicu Západu, a Sauron svoje sľuby plní.', 'Ľudia zo severu nás volajú divochmi. Uvidíme, kto bude divoch, keď naše vozy prejdú cez Dale.', 'Khamûl vidí ďaleko. Rhûn pôjde tam, kam ukáže.'],
+        8: ['Zlatý les si pamätá vek, keď ešte nebolo Mordoru. Pamätá si aj to, že nič netrvá večne. Ani Tieň.', 'Pani Galadriel vidí ďalej než my všetci. Hovorí, že prichádza rozhodnutie.', 'Elfovia odchádzajú na Západ, ale Lothlórien ešte stojí. Kým stojí, Tieň neprejde cez Anduin.']
+    };
+    // vlastné plány podľa povahy
+    const PLAN = [
+        c => pick([`Môj plán je jednoduchý: slúžiť ${FN[c.f]} verne a padnúť s mečom v ruke, ak to osud bude chcieť.`, 'Dal som slovo svojmu pánovi a slovo držím. Kam ma pošle, tam pôjdem.', 'Chcem brániť tých, ktorí sa brániť nevedia. Nič viac a nič menej.']),
+        c => pick(['Vojna je drahá, ale korisť je lacná. Každý hrad má pokladnicu a každá pokladnica má dvere.', `Plánujem zbohatnúť. ${FN[c.f]} mi platí, nepriateľ mi platí korisťou. Výborný obchod.`, 'Keď skončí vojna, kúpim si léno pri rieke. Kým neskončí, beriem všetko, čo sa dá.']),
+        c => pick(['Plán? Prežiť. Hrdinovia ležia pod kopcami, ja mienim ležať v posteli.', 'Držím sa veľkých vojsk a ďaleko od prvého radu. Nehanbím sa za to, mám deti.', 'Pôjdem tam, kde nás bude viac. Nikde inde ma neuvidíš.']),
+        c => pick(['Chcem léno. Potom druhé. Raz budú hovoriť o mojom rode tak, ako dnes hovoria o Správcoch.', `Môj pán je starý a trón neostane prázdny. ${FN[c.f]} potrebuje silnú ruku a ja mám dve.`, 'Každá bitka je schod. Rátam schody, nie mŕtvych.']),
+        c => pick(['Spálim každú dedinu, ktorá nás nenakŕmi. Strach je lacnejší než posádka.', 'Zajatcov neberiem. Kto raz zdvihol zbraň proti mne, už ju nezdvihne.', 'Plánujem, aby sa moje meno šeptalo. Potom ho nebude treba kričať.']),
+        c => pick(['Vojny vyhráva ten, kto vie, kedy nebojovať. Čakám na svoj čas a zbieram správy.', 'Mapa hovorí viac než meč. Kto ovláda cesty a brody, ovláda krajinu.', 'Plánujem spojenectvá. Osamelý hrad padne, desať hradov spolu nie.'])
+    ];
+    // názor na teba podľa povahy a vzťahu
+    const YOU = [
+        c => c.rl > 30 ? `Si človek cti, ${c.you}. Takých je málo a ja si ich vážim.` : c.rl < -10 ? 'Počul som o tebe veci, ktoré sa mi nepáčia. Česť sa nedá kúpiť späť.' : 'Zatiaľ o tebe viem málo. Česť sa ukáže v skutkoch, nie v slovách.',
+        c => c.rl > 30 ? 'Si môj priateľ, kým máš plný mešec. A ty ho máš plný, však?' : c.ren > 15 ? 'Slávny vojvodca. Sláva sa síce nedá jesť, ale priťahuje zlato.' : 'Nemáš veľa a nemáš meno. Zatiaľ.',
+        c => c.ren > 15 ? 'Prosím, nehnevaj sa na mňa. Nič proti tebe nemám. Naozaj.' : 'Vyzeráš nebezpečne. Ale nie až tak, aby som utekal. Zatiaľ.',
+        c => c.ren > c.e.n ? 'Stúpaš rýchlo. Dúfam, že si pamätáš, kto stál vedľa teba.' : 'Si ambiciózny, to vidím. Len si daj pozor, aby si nepredbehol mňa.',
+        c => c.ren > 20 ? 'Máš silu, to rešpektujem. Slabí ma nezaujímajú.' : 'Nie si nič. Dokáž mi opak, alebo mi nestoj v ceste.',
+        c => c.rl > 20 ? `Veľa som o tebe premýšľal, ${c.you}. Myslím, že vieš, kam ideš. To je vzácne.` : 'Pozorujem ťa. Každý človek je kniha, len treba čítať pomaly.'
+    ];
+    // vojna a mier podľa povahy
+    const WAR = [
+        c => c.war ? 'Stojíme proti sebe, ale ak sa stretneme v boji, bude to čestný boj. To ti sľubujem.' : 'Mier je dar, ktorý si málokto váži. Ja si ho vážim.',
+        c => c.war ? 'Vojna s tebou mi zatiaľ nepriniesla nič. Ak chceš mier, vieš, ako sa kupuje.' : 'Mier je dobrý pre obchod a obchod je dobrý pre mňa.',
+        c => c.war ? 'Vojna? Áno, vraj sme vo vojne. Dúfam, že ju vedú iní.' : 'Som rád, že sme v mieri. Veľmi rád.',
+        c => c.war ? 'Táto vojna niekoho vynesie hore. Postarám sa, aby som to bol ja.' : 'Mier dlho nevydrží. Nikdy nevydrží. Buď pripravený.',
+        c => c.war ? 'Dobre. Nenávidím mier. V mieri hrdzavejú meče a mäknú ľudia.' : 'Mier je len prestávka medzi dvoma bitkami.',
+        c => c.war ? 'Vojny sa začínajú ľahko a končia ťažko. Dúfam, že obaja prežijeme, aby sme videli, kto mal pravdu.' : 'Mier treba udržiavať každý deň, ako oheň. Nechaj ho a vyhasne.'
+    ];
+    // Prsteň
+    const RING = [
+        c => 'Nesieš niečo temné. Cítim to. Zbav sa toho, kým to nezbaví teba.',
+        c => 'Niečo cenné máš pri sebe, cítim to v kostiach. Predáš to?',
+        c => 'Máš... niečo. Niečo, čo ma desí. Prosím, odíď.',
+        c => 'Taká moc v rukách jedného človeka. Zaujímavé. Veľmi zaujímavé.',
+        c => 'Ak je to to, čo si myslím, patrí to Pánovi. Alebo mne.',
+        c => 'Ten predmet je starší než naše kráľovstvá. Nikto ho neovládne, ani ty. Vráť ho ohňu.'
+    ];
+    // pozdrav podľa vzťahu, vojny a povahy
+    function greet(c) {
+        if (c.war) return pick([`Ty. ${c.you}. Nemáme si čo povedať, ale nech je po tvojom.`, 'Sme vo vojne. Hovor rýchlo, kým sa moji muži neznudia.', 'Prišiel si vyjednávať, alebo zomrieť? Rozhodni sa.'])[c.e.tr === 2 ? 0 : 1 + (c.e.tr % 2)] ?? 'Sme vo vojne. Hovor.';
+        if (c.rl > 40) return pick([`Priateľ ${c.you}! Rád ťa vidím. Čo ťa privádza?`, `Vitaj, ${c.you}. Moji muži ťa poznajú a ja tiež. Poď, porozprávajme sa.`]);
+        if (c.rl < -10) return pick(['Čo chceš? Nemám na teba čas ani náladu.', 'Hovor a potom choď. Nestojím o tvoju spoločnosť.']);
+        return [
+            `Buď pozdravený, ${c.you}. Hovor otvorene, mám rád priame slová.`,
+            `${c.you}, však? Počul som o tebe. Ak máš obchod, počúvam.`,
+            'Och. To si ty. Nemáš so sebou veľa mužov, však?',
+            `Vojvodca ${c.you}. Tvoje meno sa šíri. Buď opatrný, komu to vadí.`,
+            'Hovor. A nemrhaj mojím časom.',
+            `Zdravím ťa, ${c.you}. Sadni si, cesty sú dlhé a slová krátke.`
+        ][c.e.tr];
+    }
+    // reakcia na kompliment / urážku
+    const FLATTER = [
+        c => ({ t: 'Lichôtky mi nič nehovoria. Skutky áno. Ale ďakujem za zdvorilosť.', d: 2 }),
+        c => ({ t: 'Pekné slová sú lacné. Ale lacné veci mám rád.', d: 4 }),
+        c => ({ t: 'Naozaj? Ty si o mne počul dobré veci? To... to ma teší.', d: 6 }),
+        c => ({ t: 'Vieš, s kým hovoríš. To je dobré. Pamätaj si to.', d: 4 }),
+        c => ({ t: 'Lichotíš mi, lebo sa ma bojíš. To je správne.', d: 3 }),
+        c => ({ t: 'Zdvorilosť ťa nič nestojí a mňa poteší. Múdry ťah.', d: 3 })
+    ];
+    const INSULT = [
+        c => ({ t: 'Také slová sa medzi mužmi cti nehovoria. Zapamätám si to.', d: -8 }),
+        c => ({ t: 'Urážky nič nestoja, preto ich nepočúvam. Vráť sa, keď budeš mať zlato.', d: -4 }),
+        c => ({ t: 'Ne... nemusíš byť hrubý. Odchádzam.', d: -5 }),
+        c => ({ t: 'Pamätaj si: ja si pamätám všetko. A raz budem mať moc ti to vrátiť.', d: -10 }),
+        c => ({ t: 'Ha! Konečne niekto, kto má odvahu. Páčiš sa mi. Ale nabudúce to oľutuješ.', d: -2 }),
+        c => ({ t: 'Hnev je zlý radca. Ale dobre, chápem, čo si chcel povedať.', d: -5 })
+    ];
+    // o vlastnom panovníkovi
+    const LIEGE = [
+        c => c.king ? 'Ja som panovník. Moji ľudia sú moja zodpovednosť a moje bremeno.' : `${KN[c.f]} je môj pán a ja mu slúžim bez otázok. Tak to má byť.`,
+        c => c.king ? 'Vládnuť znamená mať plnú pokladnicu. Moja je plná.' : `${KN[c.f]} platí málo a žiada veľa. Ale platí.`,
+        c => c.king ? 'Byť panovníkom je nebezpečné. Všetci chcú môj trón.' : `${KN[c.f]} je mocný a ja stojím v jeho tieni. Je tam bezpečne.`,
+        c => c.king ? 'Vládnem, lebo som to chcel viac než ostatní. Taký je svet.' : `${KN[c.f]}... je starý. Raz bude trón potrebovať niekoho mladšieho.`,
+        c => c.king ? 'Vládnem strachom a vládnem dobre. Nikto sa nebúri.' : `${KN[c.f]} je silný. Keď prestane byť silný, prestane byť mojím pánom.`,
+        c => c.king ? 'Vládnuť je ťažšie než bojovať. Každé rozhodnutie má cenu.' : `${KN[c.f]} načúva radám, aspoň niekedy. To je viac, než sa dá povedať o väčšine vládcov.`
+    ];
+    // o strane dobra a zla
+    const SIDE = [
+        c => c.evil ? 'Slúžim Tieňu, lebo moji otcovia mu slúžili. Česť je aj v tom, dodržať prísahu, ktorú by si radšej nedal.' : 'Dobro nie je slabosť. Dobro je stáť, keď ostatní utekajú.',
+        c => c.evil ? 'Sauron platí lepšie. To je celé. Keby platil Gondor, slúžil by som Gondoru.' : 'Dobro a zlo? Ja poznám len dlžníkov a veriteľov.',
+        c => c.evil ? 'Som na strane, ktorá vyhráva. Zatiaľ to vyzerá na Mordor.' : 'Som na strane dobra, lebo tu je menej orkov. Orkovia hryzú.',
+        c => c.evil ? 'Tieň ponúka moc tým, ktorí si ju vezmú. Ja si ju vezmem.' : 'Západ potrebuje nových vodcov. Starí zlyhali. Ja nezlyhám.',
+        c => c.evil ? 'Zlo? Volaj to, ako chceš. Ja to volám sila a sila má vždy pravdu.' : 'Bojujem za dobro, ale bojujem tvrdo. Dobrý človek nemusí byť mäkký.',
+        c => c.evil ? 'Tieň víťazí trpezlivosťou. Slobodné národy sa hádajú, kým my pochodujeme.' : 'Svetlo a tieň sa striedajú ako deň a noc. Dôležité je nebyť sám, keď príde tma.'
+    ];
+    return { WORLD, PLAN, YOU, WAR, RING, FLATTER, INSULT, LIEGE, SIDE, greet, pick };
+})();
+
+</script>
+<script>
+/*
  * Diplomacia: tábory dobra a zla, vojny, spojenectvá a vzťahy medzi frakciami.
  */
 /** Tábor frakcie: 1 = zlo, 0 = dobro. Vlastná družina (6) patrí k dobru, kým si kráľ pri korunovácii nevyberie stranu (G.side). */
@@ -367,7 +478,7 @@ function worldTick(dt) {
         else
             G.talk = null;
     }
-    const dx = G.tx - G.x, dy = G.ty - G.y, d = Math.hypot(dx, dy), v = it('m').v * (Math.floor(G.day / 10) % 4 === 3 ? .8 : 1) * (G.day % 5 === 0 ? .9 : 1);
+    const dx = G.tx - G.x, dy = G.ty - G.y, d = Math.hypot(dx, dy), v = it('m').v * (season() === 3 ? .85 : 1) * weatherSlow() * (isNight() ? .85 : 1);
     if (d > 3) {
         G.x += dx / d * v * dt;
         G.y += dy / d * v * dt;
@@ -391,6 +502,8 @@ function worldTick(dt) {
                     G.gold += 10;
                 if (t.bd.k)
                     G.inf++;
+                if (t.bd.j && G.day % 3 === 0)
+                    G.cav++;
             }
         });
         E.forEach(e => {
@@ -554,9 +667,17 @@ function worldTick(dt) {
     cam.y = Math.max(0, Math.min(WH - H / Z, G.y - H / Z / 2));
 }
 const lvl = o => Math.min(5, 1 + Math.floor((o.pr ?? 40) / 20)), DOOM = { x: 1690 * K, y: 600 * K };
+/** Denný príjem z vlastného hradu podľa prosperity a budov. */
+const castleIncome = t => lvl(t) * 4 + (G.king ? 20 : 10) + (t.bd && t.bd.m ? 10 : 0) + (t.bd && t.bd.t ? lvl(t) * 2 : 0);
+/** Budovy vlastného hradu: [kľúč, názov, cena]. Účinky: mlyn zlato, kasárne pešiaci, veža obrancovia,
+ *  kováčska dielňa lacnejšia výbava, stajňa lacnejšie kone a jazdci, chrám morálka v bitke, trhovisko tovar a prosperita. */
+const BUILDINGS = [['m', 'Mlyn (+10 zlata denne)', 200], ['k', 'Kasárne (+1 pešiak denne)', 250], ['v', 'Strážna veža (+8 obrancov)', 180],
+    ['s', 'Kováčska dielňa (výbava o 20 % lacnejšia)', 300], ['j', 'Stajňa (kone o 25 % lacnejšie, +1 jazdec za 3 dni)', 320], ['c', 'Chrám (tvoji vojaci sú v bitke pevnejší)', 260], ['t', 'Trhovisko (viac tovaru, +prosperita, +zlato)', 280]];
 function daily2() {
-    TW.forEach(t => { t.pr = Math.min(100, (t.pr ?? 40) + 1 + (t.bd && t.bd.m ? 1 : 0)); if (t.mine)
-        G.gold += lvl(t) * 4; });
+    TW.forEach(t => { t.pr = Math.min(100, (t.pr ?? 40) + 1 + (t.bd && t.bd.m ? 1 : 0) + (t.bd && t.bd.t ? 1 : 0)); if (t.mine)
+        G.gold += lvl(t) * 4 + (t.bd && t.bd.t ? lvl(t) * 2 : 0); });
+    dailyTrade();
+    dailyWeather();
     VL.forEach(v => { v.pr = Math.max(0, Math.min(100, (v.pr ?? 40) + (v.st > 0 ? -2 : 1))); if (TW[v.t].mine)
         G.gold += lvl(v) * 2; });
     if (G.ring === 1) {
@@ -662,6 +783,134 @@ function updMap(dt) {
 </script>
 <script>
 /*
+ * Hospodárstvo a obchod.
+ * Každá dedina a hrad majú tovar. Dedina vyrába jeden hlavný tovar podľa kraja (obilie na rovinách,
+ * železo pri horách, kone v Rohane, soľ a korenie na juhu…). Cena tovaru závisí od toho, koľko ho
+ * miesto má (veľa = lacno, málo = draho) a od prosperity. Hráč vozí tovar vo voze (G.cargo, najviac
+ * CARGO_MAX kusov) a zarába na rozdiele cien. Vypálená dedina nevyrába a nepredáva.
+ */
+const GOODS = [
+    { k: 'grain', n: 'Obilie', p: 10, ico: '🌾' },
+    { k: 'wool', n: 'Vlna', p: 14, ico: '🧶' },
+    { k: 'wood', n: 'Drevo', p: 12, ico: '🪵' },
+    { k: 'iron', n: 'Železo', p: 26, ico: '⛏' },
+    { k: 'horses', n: 'Kone', p: 45, ico: '🐎' },
+    { k: 'wine', n: 'Víno', p: 30, ico: '🍷' },
+    { k: 'salt', n: 'Soľ a korenie', p: 36, ico: '🧂' },
+    { k: 'mithril', n: 'Trpasličie zlato', p: 90, ico: '💎' }
+];
+const CARGO_MAX = 40;
+const goodOf = k => GOODS.find(g => g.k === k);
+
+/** Hlavný tovar dediny podľa frakcie hradu a polohy (deterministicky podľa poradia). */
+function villageGood(v, i) {
+    const f = TW[v.t].f, h = (i * 7 + 3) % 5;
+    if (f === 1) return ['horses', 'grain', 'wool', 'horses', 'grain'][h];
+    if (f === 5) return ['iron', 'mithril', 'iron', 'wood', 'iron'][h];
+    if (f === 8) return ['wine', 'wood', 'wool', 'wine', 'wood'][h];
+    if (f === 4 || f === 7) return ['salt', 'salt', 'grain', 'horses', 'wine'][h];
+    if (f === 2 || f === 3) return ['iron', 'wood', 'iron', 'grain', 'wood'][h];
+    return ['grain', 'wine', 'wool', 'iron', 'wood'][h];     // Gondor, vlastná družina, banditi
+}
+
+/** Zásoby miesta o (dedina alebo hrad); pri prvom použití sa vytvoria. */
+function stock(o) {
+    if (!o.inv) {
+        o.inv = {};
+        GOODS.forEach(g => o.inv[g.k] = 2 + Math.floor(Math.random() * 4));
+        if (o.good) o.inv[o.good] = 14 + Math.floor(Math.random() * 10);
+        if (o.g != null) GOODS.forEach(g => o.inv[g.k] += 4);      // hrad: väčší trh
+    }
+    return o.inv;
+}
+/** Cena tovaru k v mieste o: základ × (nedostatok alebo nadbytok) × prosperita. */
+function price(o, k) {
+    const g = goodOf(k), n = stock(o)[k], pr = (o.pr ?? 40) / 100;
+    const scarcity = Math.max(.45, Math.min(2.2, 12 / (n + 4)));
+    return Math.max(1, Math.round(g.p * scarcity * (.8 + pr * .5)));
+}
+const cargoCount = () => Object.values(G.cargo || {}).reduce((a, b) => a + b, 0);
+function buyGood(o, k, n) {
+    const inv = stock(o); n = Math.min(n, inv[k], CARGO_MAX - cargoCount());
+    let cost = 0;
+    for (let i = 0; i < n; i++) { cost += price(o, k); inv[k]--; }
+    if (G.gold < cost) { inv[k] += n; return 0; }
+    G.gold -= cost; G.cargo = G.cargo || {}; G.cargo[k] = (G.cargo[k] || 0) + n;
+    G.st.tr = (G.st.tr || 0) + cost;
+    return n;
+}
+function sellGood(o, k, n) {
+    const inv = stock(o); n = Math.min(n, (G.cargo || {})[k] || 0);
+    let gain = 0;
+    for (let i = 0; i < n; i++) { gain += price(o, k); inv[k]++; }
+    G.gold += gain; G.cargo[k] -= n;
+    G.st.tr = (G.st.tr || 0) + gain;
+    if (o.pr != null) o.pr = Math.min(100, o.pr + n * .1);      // obchod pomáha prosperite
+    return gain;
+}
+/** Denná výroba a spotreba: dediny vyrábajú svoj tovar, hrady spotrebúvajú; trh sa pomaly vracia k rovnováhe. */
+function dailyTrade() {
+    VL.forEach((v, i) => {
+        if (!v.good) v.good = villageGood(v, i);
+        const inv = stock(v);
+        if (v.st <= 0) inv[v.good] = Math.min(40, inv[v.good] + 2 + Math.floor(lvl(v) / 2));
+        GOODS.forEach(g => { if (g.k !== v.good && inv[g.k] > 3 && Math.random() < .3) inv[g.k]--; });
+    });
+    TW.forEach(t => {
+        const inv = stock(t);
+        GOODS.forEach(g => { if (inv[g.k] > 2 && Math.random() < .5) inv[g.k]--; if (inv[g.k] < 6 && Math.random() < .25) inv[g.k]++; });
+        if (t.mine && t.bd && t.bd.t) GOODS.forEach(g => { if (inv[g.k] < 10) inv[g.k]++; });     // trhovisko priťahuje tovar
+    });
+}
+
+</script>
+<script>
+/*
+ * Počasie a deň/noc na mape.
+ * MW = { n: druh, l: zostávajúci čas } – druh: clear, rain, storm, fog, snow. Mení sa každých pár dní
+ * podľa ročného obdobia (jar, leto, jeseň, zima) a kraja (na severe sneží, v Mordore sú búrky popola).
+ * Počasie na mape spomaľuje pochod a prenáša sa do bitky; bitka v noci má fakle a kratší dostrel lukostrelcov.
+ */
+let MW = { n: 'clear', l: 0 };
+const SEASONS = ['jar', 'leto', 'jeseň', 'zima'];
+const season = () => Math.floor(G.day / 10) % 4;
+/** Je noc? (podľa dennej doby dayT 0–600: noc je okolo polovice dňa, keď je mapa najtmavšia) */
+const isNight = () => (.5 - .5 * Math.cos(dayT / 600 * 6.283)) > .72;
+const nightness = () => Math.max(0, ((.5 - .5 * Math.cos(dayT / 600 * 6.283)) - .55) / .45);
+/** Kraj podľa polohy hrdinu: s = sever (sneh), a = Mordor (popol), d = juh (púšť), g = ostatné. */
+const regionAt = (x, y) => x > 6450 ? 'a' : y > 4350 && x > 5100 ? 'd' : y < 1050 ? 's' : 'g';
+
+const WNAME = { clear: 'jasno', rain: 'dážď', storm: 'búrka', fog: 'hmla', snow: 'sneženie', ash: 'popolový dážď' };
+/** Vyberie nové počasie podľa ročného obdobia a kraja. */
+function rollWeather() {
+    const se = season(), reg = regionAt(G.x, G.y), r = Math.random();
+    let n = 'clear';
+    if (reg === 'a') n = r < .35 ? 'ash' : r < .55 ? 'storm' : r < .7 ? 'fog' : 'clear';
+    else if (reg === 's' || se === 3) n = r < .45 ? 'snow' : r < .6 ? 'fog' : r < .7 ? 'storm' : 'clear';
+    else if (reg === 'd') n = r < .12 ? 'storm' : 'clear';
+    else if (se === 0) n = r < .35 ? 'rain' : r < .45 ? 'storm' : r < .6 ? 'fog' : 'clear';
+    else if (se === 1) n = r < .15 ? 'rain' : r < .25 ? 'storm' : 'clear';
+    else n = r < .3 ? 'rain' : r < .4 ? 'storm' : r < .65 ? 'fog' : 'clear';
+    MW = { n, l: 1 + Math.floor(Math.random() * 3) };
+    if (n !== 'clear') lg('Počasie: ' + WNAME[n] + '.');
+}
+/** Denná zmena počasia (volá sa raz za deň). */
+function dailyWeather() {
+    if (!MW || MW.l <= 0) rollWeather();
+    else MW.l--;
+}
+/** Spomalenie pochodu na mape podľa počasia. */
+const weatherSlow = () => ({ clear: 1, rain: .9, storm: .75, fog: .9, snow: .7, ash: .85 })[MW.n] || 1;
+/** Počasie do bitky: podľa počasia na mape a noci. WX.r = dostrel lukostrelcov, WX.night = noc. */
+function battleWeather() {
+    const map = { clear: ['clear', 190], rain: ['rain', 130], storm: ['storm', 110], fog: ['fog', 120], snow: ['snow', 150], ash: ['ash', 125] }[MW.n] || ['clear', 190];
+    const night = isNight();
+    return { n: map[0], r: Math.round(map[1] * (night ? .7 : 1)), night };
+}
+
+</script>
+<script>
+/*
  * Bitka: tvorba jednotiek, začiatok a koniec bitky, boj, šípy, rozkazy a hradby pri obliehaní.
  */
 function mkBase(t, k, f) {
@@ -701,15 +950,17 @@ function startBattleBase(en, al) {
     setOrd('a');
     od.style.display = 'flex';
     tb.style.display = 'none';
-    WX = [{ n: 'clear', r: 190 }, { n: 'rain', r: 130 }, { n: 'fog', r: 150 }][Math.floor(Math.random() * 3)];
+    WX = battleWeather();       // počasie z mapy, v noci kratší dostrel
     snd('horn');
     roar(1);
-    BI = G.x > 6450 ? 'a' : G.y > 4350 && G.x > 5100 ? 'd' : G.y < 1050 ? 's' : 'g';
-    if (BI === 's')
-        WX = { n: 'snow', r: 160 };
+    BI = regionAt(G.x, G.y);
+    if (BI === 's' && WX.n === 'clear')
+        WX = { ...WX, n: 'snow', r: Math.round(WX.r * .85) };
 }
+/** Chrám v niektorom z tvojich hradov: tvoji vojaci sú pevnejší (o 10 % menej zranení). */
+const temple = () => TW.some(t => t.mine && t.bd && t.bd.c);
 function hit(b, d, from) {
-    b.hp -= d * (b.h ? red() : 1);
+    b.hp -= d * (b.h ? red() : !b.t && temple() ? .9 : 1);
     snd(b.hp <= 0 ? 'dy' : b.h ? 'sh' : Math.random() < .5 ? 'sw' : 'hb');
     for (let i = 0; i < 4; i++)
         PT.push({ x: b.x, y: b.y, vx: Math.random() * 3 - 1.5, vy: Math.random() * 3 - 1.5, l: 18, c: b.t ? '#8a2a1a' : '#d9a441' });
@@ -1218,7 +1469,7 @@ function ach() { if (!G)
  */
 function save() {
     try {
-        localStorage.setItem('vs1', JSON.stringify({ G: { ...G, chase: null, talk: null }, T: TW.map(t => ({ f: t.f, g: t.g, mine: t.mine, wl: t.wl || 0, pr: t.pr, bd: t.bd, lord: t.lord })), E: E.map(e => ({ id: e.id, x: e.x, y: e.y, f: e.f, n: e.n, nm: e.nm, kr: e.kr, nz: e.nz, rl: e.rl || 0, vx: 0, vy: 0, w: 0 })), WR, REL, AL, CP, VL }));
+        localStorage.setItem('vs1', JSON.stringify({ G: { ...G, chase: null, talk: null }, T: TW.map(t => ({ f: t.f, g: t.g, mine: t.mine, wl: t.wl || 0, pr: t.pr, bd: t.bd, lord: t.lord, inv: t.inv })), E: E.map(e => ({ id: e.id, x: e.x, y: e.y, f: e.f, n: e.n, nm: e.nm, kr: e.kr, nz: e.nz, rl: e.rl || 0, vx: 0, vy: 0, w: 0 })), WR, REL, AL, CP, VL, MW }));
         return 1;
     }
     catch (x) {
@@ -1240,6 +1491,7 @@ function newGame() {
         REL = mkREL();
         AL = mkAL();
         CP = {};
+        MW = { n: 'clear', l: 0 };
         G = { name: nm, king: 0, arc: 0, elf: 0, roh: 0, pri: [], sk: 0, q: 0, qc: 0, qs: 0, qd: 0, cap: 0, vet: 0, txp: 0, wed: -1, heir: 0, s: { st: 0, od: 0, ob: 0, pr: 0, ls: 0 }, gold: 150, inf: 6, cav: 0, hp: 100, lv: 1, xp: 0, ren: 0, day: 1, x: 720, y: 4050, tx: 720, ty: 4050, dest: -1, fac: 6, chase: null, eq: { w: 0, a: 0, s: 0, m: 0, h: 0 }, own: { w: [0], a: [0], s: [0], m: [0], h: [0] } };
         E = [];
         sp = 150;
@@ -1286,6 +1538,7 @@ function load() {
             AL = s.AL.length < 10 ? mkAL() : s.AL;
             CP = s.CP || {};
             VL = s.VL || mkVL();
+            MW = s.MW || { n: 'clear', l: 0 };
             NID = 1e5;
             sp = 100;
             dayT = 0;
@@ -2047,18 +2300,8 @@ function drawMap() {
                         ctx.fillRect((k * 113 + tm * .8 + Math.sin(tm / 30 + k) * 10) % W, (k * 71 + tm * 1.6) % H, 2, 2);
                 }
             }
-            if (G.day % 5 === 0) {
-                ctx.strokeStyle = 'rgba(180,200,230,.35)';
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                for (let k = 0; k < 90; k++) {
-                    const x = (k * 97 + tm * 6) % W, y = (k * 53 + tm * 14) % H;
-                    ctx.moveTo(x, y);
-                    ctx.lineTo(x - 3, y + 10);
-                }
-                ctx.stroke();
-            }
-            ctx.fillStyle = 'rgba(8,14,40,' + (.18 * (.5 - .5 * Math.cos(dayT / 600 * 6.283))) + ')';
+            drawWeather(MW.n, 1);
+            ctx.fillStyle = 'rgba(8,14,40,' + (.18 * (.5 - .5 * Math.cos(dayT / 600 * 6.283)) + nightness() * .22) + ')';
             ctx.fillRect(0, 0, W, H);
             ctx.drawImage(VG, 0, 0);
             const mx = W - 186, my = H - 126, k = 180 / WW;
@@ -2167,6 +2410,21 @@ function drawMap() {
     }
 }
 
+/** Počasie cez celú obrazovku (pôvodná verzia): dážď, búrka s bleskom, hmla, sneh, popol. */
+function drawWeather(n, k) {
+    if (n === 'rain' || n === 'storm') {
+        const cnt = Math.round((n === 'storm' ? 170 : 100) * k), sp = n === 'storm' ? 22 : 16;
+        if (n === 'storm') { ctx.fillStyle = 'rgba(24,32,48,.25)'; ctx.fillRect(0, 0, W, H); }
+        ctx.strokeStyle = 'rgba(180,200,230,.4)'; ctx.lineWidth = 1; ctx.beginPath();
+        for (let i = 0; i < cnt; i++) { const x = (i * 89 + tm * (sp / 2)) % W, y = (i * 61 + tm * sp) % H; ctx.moveTo(x, y); ctx.lineTo(x - (n === 'storm' ? 6 : 3), y + 11); }
+        ctx.stroke();
+        if (n === 'storm' && Math.floor(tm) % 160 < 3) { ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(0, 0, W, H); }
+    }
+    if (n === 'snow') { ctx.fillStyle = 'rgba(220,230,255,.12)'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = '#fff'; for (let i = 0; i < 110 * k; i++) ctx.fillRect((i * 97 + tm * .9 + Math.sin(tm / 25 + i) * 12) % W, (i * 59 + tm * 1.8) % H, 2, 2); }
+    if (n === 'fog') { ctx.fillStyle = 'rgba(190,200,210,.38)'; ctx.fillRect(0, 0, W, H); }
+    if (n === 'ash') { ctx.fillStyle = 'rgba(58,42,36,.22)'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = 'rgba(106,90,82,.9)'; for (let i = 0; i < 90 * k; i++) ctx.fillRect((i * 101 + tm * .5 + Math.sin(tm / 20 + i) * 15) % W, (i * 67 + tm * 1.2) % H, 2, 2); }
+}
+
 </script>
 <script>
 /*
@@ -2273,26 +2531,18 @@ function drawBattle() {
             ctx.stroke();
         }
         ctx.restore();
-        if (WX.n === 'rain') {
-            ctx.strokeStyle = 'rgba(180,200,230,.4)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            for (let k = 0; k < 120; k++) {
-                const x = (k * 89 + tm * 7) % W, y = (k * 61 + tm * 16) % H;
-                ctx.moveTo(x, y);
-                ctx.lineTo(x - 3, y + 11);
-            }
-            ctx.stroke();
+        if (WX.night) {   // noc: tma a fakle
+            ctx.fillStyle = 'rgba(6,10,28,.5)'; ctx.fillRect(0, 0, W, H);
+            ctx.save(); ctx.globalCompositeOperation = 'lighter';
+            U.forEach((u, i) => {
+                if (u.hp <= 0 || (i % 5 && !u.h)) return;
+                const x = u.x - bc.x, y = u.y - bc.y, R = (u.h ? 70 : 48) * (.85 + .15 * Math.sin(tm / 3 + i * 1.7));
+                ctx.fillStyle = 'rgba(255,154,48,.13)'; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.fill();
+                ctx.fillStyle = 'rgba(255,192,96,.18)'; ctx.beginPath(); ctx.arc(x, y, R * .55, 0, 7); ctx.fill();
+            });
+            ctx.restore();
         }
-        if (WX.n === 'snow') {
-            ctx.fillStyle = '#fff';
-            for (let k = 0; k < 110; k++)
-                ctx.fillRect((k * 97 + tm * .9 + Math.sin(tm / 25 + k) * 12) % W, (k * 59 + tm * 1.8) % H, 2, 2);
-        }
-        if (WX.n === 'fog') {
-            ctx.fillStyle = 'rgba(190,200,210,.38)';
-            ctx.fillRect(0, 0, W, H);
-        }
+        drawWeather(WX.n, 1.3);
         ctx.drawImage(VG, 0, 0);
         ctx.fillStyle = 'rgba(0,0,0,.55)';
         ctx.fillRect(W / 2 - 82, 58, 164, 10);
@@ -4008,7 +4258,7 @@ function show(h, body) {
 function upd() {
     {
         {
-            hud.innerHTML = `<span><b>${G.name}</b>, ${rank()} (${FN[G.fac]})</span><span>Zlato <b>${G.gold}</b></span><span>Pešiaci <b>${G.inf}</b></span><span>Jazdci <b>${G.cav}</b></span><span>Lukostrelci <b>${G.arc}</b></span><span>Elfovia <b>${G.elf}</b></span><span>Rohirimi <b>${G.roh}</b></span><span>Veteráni <b>${G.vet}</b></span><span>Zajatci <b>${G.cap}</b></span><span>Skúsenosti <b>${G.txp}</b></span>${QS[G.q] ? '<span>Kapitola <b>' + (G.q + 1) + '/' + QS.length + '</b></span>' : ''}<span>Zdravie <b>${Math.ceil(G.hp)}/${mh()}</b></span><span>Úroveň <b>${G.lv}</b> (${G.xp}/${G.lv * 30})</span>${G.sk ? '<span><b>Body: ' + G.sk + '</b></span>' : ''}<span>Sláva <b>${G.ren}</b></span><span>Deň <b>${G.day}</b> (${['jar', 'leto', 'jeseň', 'zima'][Math.floor(G.day / 10) % 4]})</span>`;
+            hud.innerHTML = `<span><b>${G.name}</b>, ${rank()} (${FN[G.fac]})</span><span>Zlato <b>${G.gold}</b></span><span>Pešiaci <b>${G.inf}</b></span><span>Jazdci <b>${G.cav}</b></span><span>Lukostrelci <b>${G.arc}</b></span><span>Elfovia <b>${G.elf}</b></span><span>Rohirimi <b>${G.roh}</b></span><span>Veteráni <b>${G.vet}</b></span><span>Zajatci <b>${G.cap}</b></span><span>Skúsenosti <b>${G.txp}</b></span>${QS[G.q] ? '<span>Kapitola <b>' + (G.q + 1) + '/' + QS.length + '</b></span>' : ''}<span>Zdravie <b>${Math.ceil(G.hp)}/${mh()}</b></span><span>Úroveň <b>${G.lv}</b> (${G.xp}/${G.lv * 30})</span>${G.sk ? '<span><b>Body: ' + G.sk + '</b></span>' : ''}<span>Sláva <b>${G.ren}</b></span><span>Deň <b>${G.day}</b> (${SEASONS[season()]}${MW && MW.n !== 'clear' ? ', ' + WNAME[MW.n] : ''})</span>${cargoCount() ? '<span>Voz <b>' + cargoCount() + '/' + CARGO_MAX + '</b></span>' : ''}`;
         }
         const us = uS();
         if (us)
@@ -4091,7 +4341,10 @@ function vill(i) {
     const v = VL[i], f = TW[v.t].f;
     mode = 'town';
     G.dest = -1;
-    show(v.n + ' (' + FN[f] + ')', v.st > 0 ? 'Dedina je vypálená, obnoví sa o ' + v.st + ' dní.' : 'Dedina patrí k hradu ' + TW[v.t].n + '.');
+    if (!v.good) v.good = villageGood(v, i);
+    show(v.n + ' (' + FN[f] + ')', v.st > 0 ? 'Dedina je vypálená, obnoví sa o ' + v.st + ' dní.' : 'Dedina patrí k hradu ' + TW[v.t].n + '. Vyrába: ' + goodOf(v.good).n + ' (' + goodOf(v.good).ico + '), prosperita úroveň ' + lvl(v) + '.');
+    if (v.st <= 0 && !hos(f, G.fac))
+        btn('Trh (kúpiť a predať tovar)', () => market(v, () => vill(i)));
     if (v.st <= 0 && hos(f, G.fac))
         btn('Vyrabovať dedinu (bráni ju domáca stráž)', () => { ov.classList.add('hide'); startBattle({ n: 5 + Math.floor(Math.random() * 6), f, vil: v }); });
     if (v.st <= 0 && !hos(f, G.fac))
@@ -4118,6 +4371,7 @@ function town(i) {
     qChk('v', t.n);
     show(t.n + ' (' + FN[t.f] + ')', 'Zlato ' + G.gold + ', vojsko ' + ar() + ', zdravie ' + Math.ceil(G.hp) + '/' + mh() + '. Posádka hradu: ' + t.g + (t.lord ? ', léno drží ' + t.lord : '') + '.');
     [['r', 'Verbovanie vojakov'], ['e', 'Kováč a zbrojnica'], ['v', 'Vojsko, zajatci a odpočinok'], ...(t.mine ? [['h', 'Správa hradu']] : []), ['d', 'Dvor a diplomacia']].forEach(([c, n]) => btn(n, () => tsub(i, c)));
+    btn('Trh', () => market(t, () => town(i)));
     btn('Hrdina a schopnosti' + (G.sk ? ' (' + G.sk + ' bodov)' : ''), () => skills(i));
     btn('Turnaj v aréne (vstupné 20)', () => { G.gold -= 20; upd(); ov.classList.add('hide'); startBattle({ n: 3 + Math.floor(G.lv / 2), f: t.f, ar: 1, t }); }, G.gold < 20);
     if (G.ring === 1 && t.n === 'Barad-dûr' && bloc(G.fac) === 1)
@@ -4146,7 +4400,10 @@ function tsub(i, c) {
             btn('Vylepšiť hradby na stupeň ' + (w + 1) + ' (' + cw + ')', () => { G.gold -= cw; t.wl = w + 1; re(); }, G.gold < cw);
         else
             btn('Hradby: maximum', null, 1);
-        [['m', 'Mlyn (+10 zlata denne)', 200], ['k', 'Kasárne (+1 pešiak denne)', 250], ['v', 'Strážna veža (+8 obrancov)', 180]].forEach(([k, n, c2]) => {
+        const d = document.createElement('div'); d.style.cssText = 'grid-column:1/-1;text-align:left;font-size:.9rem;opacity:.85';
+        d.textContent = 'Prosperita: úroveň ' + lvl(t) + ' (' + Math.round(t.pr ?? 40) + ' %), denný príjem ' + castleIncome(t) + ' zlata. ' + (bd.s ? 'Kováč predáva o 20 % lacnejšie. ' : '') + (bd.j ? 'Kone sú tu o 25 % lacnejšie a hrad dáva 1 jazdca za 3 dni. ' : '') + (bd.c ? 'Chrám: tvoji vojaci sú v bitke pevnejší (menej zranení). ' : '') + (bd.t ? 'Trhovisko priťahuje tovar a zvyšuje prosperitu. ' : '');
+        document.getElementById('bt').appendChild(d);
+        BUILDINGS.forEach(([k, n, c2]) => {
             if (bd[k])
                 btn('Postavené: ' + n, null, 1);
             else
@@ -4237,6 +4494,7 @@ function lord(e) {
         mode = 'town';
         e.rl = e.rl || 0;
         show(e.nm + ' (' + FN[e.f] + ')', 'Vzťah: ' + e.rl + '. Vojakov: ' + Math.ceil(e.n) + '. Tvoja sláva: ' + G.ren + '.');
+        btn('Porozprávať sa', () => talk(e));
         btn('Darovať 50 zlata (+8 vzťah)', () => { G.gold -= 50; e.rl += 8; upd(); lord(e); }, G.gold < 50);
         if (e.f !== G.fac && !e.kr)
             btn('Presvedčiť k prestúpeniu (100 zlata)', () => {
@@ -4274,6 +4532,30 @@ function lord(e) {
     }
 }
 
+/** Kontext pre rozhovor s veliteľom e (pozri js/data/dialogue.js). */
+const dlgCtx = e => ({ e, f: e.f, same: e.f === G.fac, war: hos(e.f, G.fac), rl: e.rl || 0, evil: bloc(e.f), king: !!e.kr, you: G.name, ren: G.ren, ring: G.ring === 1 });
+/**
+ * Rozhovor s veliteľom: pán hovorí podľa svojej povahy a frakcie, hráč vyberá témy.
+ * line = čo pán práve povedal (bez neho pozdraví). Témy sa po použití už neponúkajú, kým sa okno nezavrie.
+ */
+function talk(e, line, used = {}) {
+    per(e);
+    const c = dlgCtx(e), say = s => '„' + s + '“';
+    mode = 'town';
+    show(e.nm + ', ' + TR[e.tr][0] + ' veliteľ ' + FN[e.f], say(line || DLG.greet(c)));
+    const topic = (key, label, fn) => { if (used[key]) return; btn(label, () => { used[key] = 1; const r = fn(c); if (typeof r === 'string') talk(e, r, used); else { e.rl = (e.rl || 0) + r.d; upd(); talk(e, r.t, used); } }); };
+    topic('world', 'Čo sa deje vo svete?', c => DLG.pick(DLG.WORLD[c.f] || DLG.WORLD[0]));
+    topic('plan', 'Aké máš plány?', c => DLG.PLAN[e.tr](c));
+    topic('you', 'Čo si myslíš o mne?', c => DLG.YOU[e.tr](c));
+    topic('war', c.war ? 'Prečo medzi nami vládne vojna?' : 'Čo si myslíš o mieri medzi nami?', c => DLG.WAR[e.tr](c));
+    topic('liege', c.king ? 'Aké je to vládnuť?' : 'Čo si myslíš o svojom pánovi?', c => DLG.LIEGE[e.tr](c));
+    topic('side', c.evil ? 'Prečo slúžiš Tieňu?' : 'Prečo bojuješ za dobro?', c => DLG.SIDE[e.tr](c));
+    if (c.ring) topic('ring', 'Všimol si si niečo?', c => DLG.RING[e.tr](c));
+    topic('flatter', 'Zalichotiť', c => DLG.FLATTER[e.tr](c));
+    topic('insult', 'Uraziť', c => DLG.INSULT[e.tr](c));
+    btn('Späť k rokovaniu', () => lord(e));
+}
+
 </script>
 <script>
 /*
@@ -4300,10 +4582,11 @@ function rowHead(text) {
 
 /** Kováč v hrade i. Bez k ukáže prehľad, s k (w, a, s, h, m) ponuku jedného druhu výbavy. */
 function smithy(i, k) {
-    const t = TW[i], evil = shopSide(t.f), back = () => smithy(i, k);
+    const t = TW[i], evil = shopSide(t.f), back = () => smithy(i, k), bd = t.bd || {};
+    const cost = (k, x) => Math.round(x.p * (bd.s ? .8 : 1) * (k === 'm' && bd.j ? .75 : 1));   // zľava z kováčskej dielne a stajne
     mode = 'town';
     if (!k) {
-        show('Kováč a zbrojnica', 'Zlato: ' + G.gold + '. ' + eqSum() + ' ' + (evil ? 'Tunajší kováči kujú výbavu zla pre služobníkov Saurona a Sarumana.' : 'Tunajší kováči kujú výbavu dobra pre Gondor, Rohan, elfov a trpaslíkov.') + (t.f === 6 ? ' Tvoj hrad predáva výbavu tvojej strany.' : ''));
+        show('Kováč a zbrojnica', 'Zlato: ' + G.gold + '. ' + eqSum() + ' ' + (bd.s ? 'Kováčska dielňa: výbava o 20 % lacnejšia. ' : '') + (bd.j ? 'Stajňa: kone o 25 % lacnejšie. ' : '') + (evil ? 'Tunajší kováči kujú výbavu zla pre služobníkov Saurona a Sarumana.' : 'Tunajší kováči kujú výbavu dobra pre Gondor, Rohan, elfov a trpaslíkov.') + (t.f === 6 ? ' Tvoj hrad predáva výbavu tvojej strany.' : ''));
         SH.forEach(s => btn(s.l + ' (nosíš: ' + it(s.k).n + ')', () => smithy(i, s.k), 0, { k: s.k, i: G.eq[s.k] }));
         btn('Inventár', () => inv(() => smithy(i)));
         btn('Späť', () => town(i));
@@ -4317,7 +4600,7 @@ function smithy(i, k) {
             const b = btn(x.n + (G.eq[k] === j ? ' · nosíš' : ' · máš, obliecť'), () => { wear(k, j); back(); }, 0, { k, i: j });
             if (G.eq[k] === j) b.style.outline = '3px solid #fff';
         } else
-            btn(x.n + ' · ' + x.p + ' zl. · ' + eqShort(k, x) + (x.r ? ', dosah' : ''), () => { G.gold -= x.p; G.own[k].push(j); wear(k, j); back(); }, G.gold < x.p, { k, i: j });
+            btn(x.n + ' · ' + cost(k, x) + ' zl. · ' + eqShort(k, x) + (x.r ? ', dosah' : ''), () => { G.gold -= cost(k, x); G.own[k].push(j); wear(k, j); back(); }, G.gold < cost(k, x), { k, i: j });
     });
     btn('Späť', () => smithy(i));
 }
@@ -4341,6 +4624,27 @@ function invShow(back, close) {
         });
     });
     btn(close, back);
+}
+
+</script>
+<script>
+/*
+ * Trh: nákup a predaj tovaru v dedine alebo hrade (logika v js/sim/trade.js).
+ * back = kam sa vrátiť po zatvorení trhu.
+ */
+function market(o, back) {
+    mode = 'town';
+    const inv = stock(o), cargo = G.cargo || {}, cc = cargoCount();
+    const carry = GOODS.filter(g => cargo[g.k]).map(g => g.ico + ' ' + g.n + ' ' + cargo[g.k]).join(', ');
+    show('Trh: ' + o.n, 'Zlato ' + G.gold + '. Voz: ' + cc + '/' + CARGO_MAX + (carry ? ' (' + carry + ')' : ' (prázdny)') + '.' + (o.good ? ' Dedina vyrába: ' + goodOf(o.good).n + '.' : ' Hrad kupuje všetko, draho predáva, čo mu chýba.'));
+    GOODS.forEach(g => {
+        const p = price(o, g.k), n = inv[g.k], have = cargo[g.k] || 0, cheap = p < g.p * .85, dear = p > g.p * 1.25;
+        rowHead(g.ico + ' ' + g.n + ' · tu ' + n + ' ks · cena ' + p + (cheap ? ' (lacno)' : dear ? ' (draho)' : '') + (have ? ' · vezieš ' + have : ''));
+        btn('Kúpiť 1', () => { buyGood(o, g.k, 1); upd(); market(o, back); }, !n || G.gold < p || cc >= CARGO_MAX);
+        btn('Kúpiť 5', () => { buyGood(o, g.k, 5); upd(); market(o, back); }, n < 1 || G.gold < p || cc >= CARGO_MAX);
+        btn(have > 1 ? 'Predať všetko (' + have + ')' : 'Predať', () => { sellGood(o, g.k, have); upd(); market(o, back); }, !have);
+    });
+    btn('Späť', back);
 }
 
 </script>
@@ -5381,6 +5685,10 @@ class BattleScene extends Phaser.Scene {
         }
 
         this.fx = this.add.graphics().setDepth(5000);
+        if (WX.night) {   // noc: tma nad bojiskom a svetlo fakieľ okolo vojakov
+            this.night = this.add.graphics().setDepth(4990);
+            this.torch = this.add.graphics().setDepth(4991).setBlendMode('ADD');
+        }
         this.units = new Map();
         for (const u of U) this.addUnit(u);
 
@@ -5397,7 +5705,7 @@ class BattleScene extends Phaser.Scene {
         }
         if (w.aura) this.aura = this.add.graphics().setBlendMode('ADD');   // aura najlepšej zbrane (Andúril)
 
-        this.cameras.main.setBounds(0, 0, BW, BH).setZoom(RES * BZ).setBackgroundColor('#22301a');
+        this.cameras.main.setBounds(0, 0, BW, BH).setZoom(RES * BZ).setBackgroundColor(WX.night ? '#0c1018' : '#22301a');
         // simulácia počíta cieľ ako ptr + bc, preto ukladáme bod na bojisku mínus bc
         const set = p => { const w = this.cameras.main.getWorldPoint(p.x, p.y); ptr.x = w.x - bc.x; ptr.y = w.y - bc.y; };
         this.input.on('pointerdown', p => { set(p); ptr.down = true; });
@@ -5479,7 +5787,24 @@ class BattleScene extends Phaser.Scene {
         const vw = W / BZ / 2, vh = H / BZ / 2, h = U[0];
         this.cameras.main.centerOn(Math.max(vw, Math.min(BW - vw, h.x)), Math.max(vh, Math.min(BH - vh, h.y)));
         this.drawAura();
+        this.drawNight();
         this.drawFx();
+    }
+
+    /** Noc: bojisko stmavne, každý piaty vojak nesie fakľu, ktorá bliká a osvetľuje okolie. */
+    drawNight() {
+        if (!this.night) return;
+        const n = this.night, t = this.torch;
+        n.clear().fillStyle(0x060a1c, .55).fillRect(0, 0, BW, BH);
+        t.clear();
+        for (let i = 0; i < U.length; i++) {
+            const u = U[i];
+            if (u.hp <= 0 || (i % 5 && !u.h)) continue;
+            const fl = .85 + .15 * Math.sin(tm / 3 + i * 1.7), R = (u.h ? 64 : 44) * fl;
+            for (let k = 5; k >= 1; k--) t.fillStyle(k > 3 ? 0xff8a20 : 0xffc060, .035 + (5 - k) * .012).fillCircle(u.x, u.y, R * k / 5);   // mäkký prechod svetla
+            t.fillStyle(0xfff0b0, .9).fillCircle(u.x - Math.sin(u.f) * 6, u.y + Math.cos(u.f) * 6 - 4, 1.8);
+        }
+        if (WX.n === 'storm' && Math.floor(tm) % 160 < 3) n.fillStyle(0xffffff, .35).fillRect(0, 0, BW, BH);
     }
 
     /** Žiarivá aura okolo hrdinu: pomaly sa otáčajúce zlaté lúče a pulzujúci kruh svetla. */
@@ -5602,18 +5927,19 @@ class UIScene extends Phaser.Scene {
         else this.toast.setVisible(false);
         this.pause.setVisible(scene === 'map' && mode === 'map' && !!PAUSE && !this.dlg);
         if (scene === 'map') {
-            g.fillStyle(0x080e28, .18 * (.5 - .5 * Math.cos(dayT / 600 * 6.283))).fillRect(0, 0, W, H);
-            const se = G ? Math.floor(G.day / 10) % 4 : 0;
+            const se = G ? season() : 0;
             if (se === 2) g.fillStyle(0xc86e1e, .1).fillRect(0, 0, W, H);
-            if (se === 3) { g.fillStyle(0xdce6ff, .14).fillRect(0, 0, W, H); g.fillStyle(0xffffff, 1); for (let k = 0; k < 70; k++) g.fillRect((k * 113 + tm * .8 + Math.sin(tm / 30 + k) * 10) % W, (k * 71 + tm * 1.6) % H, 1.5, 1.5); }
-            if (G && G.day % 5 === 0) { g.lineStyle(1, 0xb4c8e6, .35); for (let k = 0; k < 90; k++) { const x = (k * 97 + tm * 6) % W, y = (k * 53 + tm * 14) % H; g.lineBetween(x, y, x - 3, y + 10); } }
+            if (se === 3) g.fillStyle(0xdce6ff, .14).fillRect(0, 0, W, H);
+            this.drawWeather(g, MW.n, 1);
+            // noc: modré stmavenie, v hlbokej noci hviezdy
+            const nn = nightness();
+            g.fillStyle(0x080e28, .18 * (.5 - .5 * Math.cos(dayT / 600 * 6.283)) + nn * .22).fillRect(0, 0, W, H);
+            if (nn > .3 && MW.n === 'clear') { g.fillStyle(0xffffff, (nn - .3) * .9); for (let k = 0; k < 40; k++) g.fillRect((k * 173 + 31) % W, (k * 97 + 11) % (H * .6), 1.2, 1.2); }
             g.lineStyle(3, UI_C.line, 1).strokeRect(MM.x - 1.5, MM.y - 1.5, MM.w + 3, MM.h + 3);
         }
         this.gateTxt.setVisible(false);
         if (scene === 'battle' && U && U[0]) {
-            if (WX.n === 'rain') { g.lineStyle(1, 0xb4c8e6, .4); for (let k = 0; k < 120; k++) { const x = (k * 89 + tm * 7) % W, y = (k * 61 + tm * 16) % H; g.lineBetween(x, y, x - 3, y + 11); } }
-            if (WX.n === 'snow') { g.fillStyle(0xffffff, 1); for (let k = 0; k < 110; k++) g.fillRect((k * 97 + tm * .9 + Math.sin(tm / 25 + k) * 12) % W, (k * 59 + tm * 1.8) % H, 2, 2); }
-            if (WX.n === 'fog') g.fillStyle(0xbec8d2, .38).fillRect(0, 0, W, H);
+            this.drawWeather(g, WX.n, 1.3);
             const h = U[0];
             g.fillStyle(0x000000, .55).fillRect(W / 2 - 82, 58, 164, 10);
             g.fillStyle(0xb8402a, 1).fillRect(W / 2 - 80, 60, 160 * Math.max(0, h.hp) / h.mh, 6);
@@ -5623,6 +5949,19 @@ class UIScene extends Phaser.Scene {
                 this.gateTxt.setVisible(true).setText(SGB.gate > 0 ? 'Brána hradu' : 'Brána je zničená!');
             }
         }
+    }
+
+    /** Počasie cez celú obrazovku: dážď, búrka s bleskom, hmla, sneh, popolový dážď Mordoru. k = hustota. */
+    drawWeather(g, n, k) {
+        if (n === 'rain' || n === 'storm') {
+            const cnt = Math.round((n === 'storm' ? 170 : 100) * k), sp = n === 'storm' ? 22 : 16;
+            if (n === 'storm') g.fillStyle(0x182030, .25).fillRect(0, 0, W, H);
+            g.lineStyle(1, 0xb4c8e6, .4); for (let i = 0; i < cnt; i++) { const x = (i * 89 + tm * (sp / 2)) % W, y = (i * 61 + tm * sp) % H; g.lineBetween(x, y, x - (n === 'storm' ? 6 : 3), y + 11); }
+            if (n === 'storm' && Math.floor(tm) % 160 < 3) g.fillStyle(0xffffff, .55).fillRect(0, 0, W, H);   // blesk
+        }
+        if (n === 'snow') { g.fillStyle(0xdce6ff, .12).fillRect(0, 0, W, H); g.fillStyle(0xffffff, 1); for (let i = 0; i < 110 * k; i++) g.fillRect((i * 97 + tm * .9 + Math.sin(tm / 25 + i) * 12) % W, (i * 59 + tm * 1.8) % H, 2, 2); }
+        if (n === 'fog') { g.fillStyle(0xbec8d2, .38).fillRect(0, 0, W, H); for (let i = 0; i < 5; i++) g.fillStyle(0xd8dee6, .08).fillEllipse((i * 230 + tm * (.6 + i * .1)) % (W + 300) - 150, 90 + i * 85, 420, 70); }
+        if (n === 'ash') { g.fillStyle(0x3a2a24, .22).fillRect(0, 0, W, H); g.fillStyle(0x6a5a52, .9); for (let i = 0; i < 90 * k; i++) g.fillRect((i * 101 + tm * .5 + Math.sin(tm / 20 + i) * 15) % W, (i * 67 + tm * 1.2) % H, 2, 2); g.fillStyle(0xff6a20, .7); for (let i = 0; i < 12; i++) g.fillRect((i * 331 + tm * .3) % W, (i * 211 + tm * 1.4) % H, 1.5, 1.5); }
     }
 
     // ---------- Horná lišta (zrkadlo #hud) -----------------------------------------
@@ -5723,7 +6062,7 @@ class UIScene extends Phaser.Scene {
         const shade = this.add.rectangle(0, 0, W, H, 0x0c0907, .35).setOrigin(0).setInteractive();
         const h1 = ov.querySelector('h1'), title = h1 ? h1.textContent : '';
         const bt = ov.querySelector('#bt'), kids = bt ? [...bt.children] : [];
-        const nBtn = kids.filter(k => k.tagName === 'BUTTON').length, cols = nBtn > 8 ? 3 : 2, bw = (IW - (cols - 1) * 6) / cols;
+        const nBtn = kids.filter(k => k.tagName === 'BUTTON').length, cols = nBtn > 8 || /^Trh:/.test(title) ? 3 : 2, bw = (IW - (cols - 1) * 6) / cols;
         this.dlgButtons = [];
         // rozloženie obsahu okna (nadpis, text, tlačidlá a riadky) od y = 0
         const layout = list => {

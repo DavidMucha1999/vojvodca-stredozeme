@@ -27,7 +27,7 @@ function worldTick(dt) {
         else
             G.talk = null;
     }
-    const dx = G.tx - G.x, dy = G.ty - G.y, d = Math.hypot(dx, dy), v = it('m').v * (Math.floor(G.day / 10) % 4 === 3 ? .8 : 1) * (G.day % 5 === 0 ? .9 : 1);
+    const dx = G.tx - G.x, dy = G.ty - G.y, d = Math.hypot(dx, dy), v = it('m').v * (season() === 3 ? .85 : 1) * weatherSlow() * (isNight() ? .85 : 1);
     if (d > 3) {
         G.x += dx / d * v * dt;
         G.y += dy / d * v * dt;
@@ -51,6 +51,8 @@ function worldTick(dt) {
                     G.gold += 10;
                 if (t.bd.k)
                     G.inf++;
+                if (t.bd.j && G.day % 3 === 0)
+                    G.cav++;
             }
         });
         E.forEach(e => {
@@ -214,9 +216,17 @@ function worldTick(dt) {
     cam.y = Math.max(0, Math.min(WH - H / Z, G.y - H / Z / 2));
 }
 const lvl = o => Math.min(5, 1 + Math.floor((o.pr ?? 40) / 20)), DOOM = { x: 1690 * K, y: 600 * K };
+/** Denný príjem z vlastného hradu podľa prosperity a budov. */
+const castleIncome = t => lvl(t) * 4 + (G.king ? 20 : 10) + (t.bd && t.bd.m ? 10 : 0) + (t.bd && t.bd.t ? lvl(t) * 2 : 0);
+/** Budovy vlastného hradu: [kľúč, názov, cena]. Účinky: mlyn zlato, kasárne pešiaci, veža obrancovia,
+ *  kováčska dielňa lacnejšia výbava, stajňa lacnejšie kone a jazdci, chrám morálka v bitke, trhovisko tovar a prosperita. */
+const BUILDINGS = [['m', 'Mlyn (+10 zlata denne)', 200], ['k', 'Kasárne (+1 pešiak denne)', 250], ['v', 'Strážna veža (+8 obrancov)', 180],
+    ['s', 'Kováčska dielňa (výbava o 20 % lacnejšia)', 300], ['j', 'Stajňa (kone o 25 % lacnejšie, +1 jazdec za 3 dni)', 320], ['c', 'Chrám (tvoji vojaci sú v bitke pevnejší)', 260], ['t', 'Trhovisko (viac tovaru, +prosperita, +zlato)', 280]];
 function daily2() {
-    TW.forEach(t => { t.pr = Math.min(100, (t.pr ?? 40) + 1 + (t.bd && t.bd.m ? 1 : 0)); if (t.mine)
-        G.gold += lvl(t) * 4; });
+    TW.forEach(t => { t.pr = Math.min(100, (t.pr ?? 40) + 1 + (t.bd && t.bd.m ? 1 : 0) + (t.bd && t.bd.t ? 1 : 0)); if (t.mine)
+        G.gold += lvl(t) * 4 + (t.bd && t.bd.t ? lvl(t) * 2 : 0); });
+    dailyTrade();
+    dailyWeather();
     VL.forEach(v => { v.pr = Math.max(0, Math.min(100, (v.pr ?? 40) + (v.st > 0 ? -2 : 1))); if (TW[v.t].mine)
         G.gold += lvl(v) * 2; });
     if (G.ring === 1) {

@@ -60,7 +60,10 @@ function vill(i) {
     const v = VL[i], f = TW[v.t].f;
     mode = 'town';
     G.dest = -1;
-    show(v.n + ' (' + FN[f] + ')', v.st > 0 ? 'Dedina je vypálená, obnoví sa o ' + v.st + ' dní.' : 'Dedina patrí k hradu ' + TW[v.t].n + '.');
+    if (!v.good) v.good = villageGood(v, i);
+    show(v.n + ' (' + FN[f] + ')', v.st > 0 ? 'Dedina je vypálená, obnoví sa o ' + v.st + ' dní.' : 'Dedina patrí k hradu ' + TW[v.t].n + '. Vyrába: ' + goodOf(v.good).n + ' (' + goodOf(v.good).ico + '), prosperita úroveň ' + lvl(v) + '.');
+    if (v.st <= 0 && !hos(f, G.fac))
+        btn('Trh (kúpiť a predať tovar)', () => market(v, () => vill(i)));
     if (v.st <= 0 && hos(f, G.fac))
         btn('Vyrabovať dedinu (bráni ju domáca stráž)', () => { ov.classList.add('hide'); startBattle({ n: 5 + Math.floor(Math.random() * 6), f, vil: v }); });
     if (v.st <= 0 && !hos(f, G.fac))
@@ -87,6 +90,7 @@ function town(i) {
     qChk('v', t.n);
     show(t.n + ' (' + FN[t.f] + ')', 'Zlato ' + G.gold + ', vojsko ' + ar() + ', zdravie ' + Math.ceil(G.hp) + '/' + mh() + '. Posádka hradu: ' + t.g + (t.lord ? ', léno drží ' + t.lord : '') + '.');
     [['r', 'Verbovanie vojakov'], ['e', 'Kováč a zbrojnica'], ['v', 'Vojsko, zajatci a odpočinok'], ...(t.mine ? [['h', 'Správa hradu']] : []), ['d', 'Dvor a diplomacia']].forEach(([c, n]) => btn(n, () => tsub(i, c)));
+    btn('Trh', () => market(t, () => town(i)));
     btn('Hrdina a schopnosti' + (G.sk ? ' (' + G.sk + ' bodov)' : ''), () => skills(i));
     btn('Turnaj v aréne (vstupné 20)', () => { G.gold -= 20; upd(); ov.classList.add('hide'); startBattle({ n: 3 + Math.floor(G.lv / 2), f: t.f, ar: 1, t }); }, G.gold < 20);
     if (G.ring === 1 && t.n === 'Barad-dûr' && bloc(G.fac) === 1)
@@ -115,7 +119,10 @@ function tsub(i, c) {
             btn('Vylepšiť hradby na stupeň ' + (w + 1) + ' (' + cw + ')', () => { G.gold -= cw; t.wl = w + 1; re(); }, G.gold < cw);
         else
             btn('Hradby: maximum', null, 1);
-        [['m', 'Mlyn (+10 zlata denne)', 200], ['k', 'Kasárne (+1 pešiak denne)', 250], ['v', 'Strážna veža (+8 obrancov)', 180]].forEach(([k, n, c2]) => {
+        const d = document.createElement('div'); d.style.cssText = 'grid-column:1/-1;text-align:left;font-size:.9rem;opacity:.85';
+        d.textContent = 'Prosperita: úroveň ' + lvl(t) + ' (' + Math.round(t.pr ?? 40) + ' %), denný príjem ' + castleIncome(t) + ' zlata. ' + (bd.s ? 'Kováč predáva o 20 % lacnejšie. ' : '') + (bd.j ? 'Kone sú tu o 25 % lacnejšie a hrad dáva 1 jazdca za 3 dni. ' : '') + (bd.c ? 'Chrám: tvoji vojaci sú v bitke pevnejší (menej zranení). ' : '') + (bd.t ? 'Trhovisko priťahuje tovar a zvyšuje prosperitu. ' : '');
+        document.getElementById('bt').appendChild(d);
+        BUILDINGS.forEach(([k, n, c2]) => {
             if (bd[k])
                 btn('Postavené: ' + n, null, 1);
             else
@@ -206,6 +213,7 @@ function lord(e) {
         mode = 'town';
         e.rl = e.rl || 0;
         show(e.nm + ' (' + FN[e.f] + ')', 'Vzťah: ' + e.rl + '. Vojakov: ' + Math.ceil(e.n) + '. Tvoja sláva: ' + G.ren + '.');
+        btn('Porozprávať sa', () => talk(e));
         btn('Darovať 50 zlata (+8 vzťah)', () => { G.gold -= 50; e.rl += 8; upd(); lord(e); }, G.gold < 50);
         if (e.f !== G.fac && !e.kr)
             btn('Presvedčiť k prestúpeniu (100 zlata)', () => {
@@ -241,4 +249,28 @@ function lord(e) {
         b.onclick = () => { G.gold -= 300; e.rl = (e.rl || 0) + 30; upd(); lord(e); };
         bt.insertBefore(b, bt.lastChild);
     }
+}
+
+/** Kontext pre rozhovor s veliteľom e (pozri js/data/dialogue.js). */
+const dlgCtx = e => ({ e, f: e.f, same: e.f === G.fac, war: hos(e.f, G.fac), rl: e.rl || 0, evil: bloc(e.f), king: !!e.kr, you: G.name, ren: G.ren, ring: G.ring === 1 });
+/**
+ * Rozhovor s veliteľom: pán hovorí podľa svojej povahy a frakcie, hráč vyberá témy.
+ * line = čo pán práve povedal (bez neho pozdraví). Témy sa po použití už neponúkajú, kým sa okno nezavrie.
+ */
+function talk(e, line, used = {}) {
+    per(e);
+    const c = dlgCtx(e), say = s => '„' + s + '“';
+    mode = 'town';
+    show(e.nm + ', ' + TR[e.tr][0] + ' veliteľ ' + FN[e.f], say(line || DLG.greet(c)));
+    const topic = (key, label, fn) => { if (used[key]) return; btn(label, () => { used[key] = 1; const r = fn(c); if (typeof r === 'string') talk(e, r, used); else { e.rl = (e.rl || 0) + r.d; upd(); talk(e, r.t, used); } }); };
+    topic('world', 'Čo sa deje vo svete?', c => DLG.pick(DLG.WORLD[c.f] || DLG.WORLD[0]));
+    topic('plan', 'Aké máš plány?', c => DLG.PLAN[e.tr](c));
+    topic('you', 'Čo si myslíš o mne?', c => DLG.YOU[e.tr](c));
+    topic('war', c.war ? 'Prečo medzi nami vládne vojna?' : 'Čo si myslíš o mieri medzi nami?', c => DLG.WAR[e.tr](c));
+    topic('liege', c.king ? 'Aké je to vládnuť?' : 'Čo si myslíš o svojom pánovi?', c => DLG.LIEGE[e.tr](c));
+    topic('side', c.evil ? 'Prečo slúžiš Tieňu?' : 'Prečo bojuješ za dobro?', c => DLG.SIDE[e.tr](c));
+    if (c.ring) topic('ring', 'Všimol si si niečo?', c => DLG.RING[e.tr](c));
+    topic('flatter', 'Zalichotiť', c => DLG.FLATTER[e.tr](c));
+    topic('insult', 'Uraziť', c => DLG.INSULT[e.tr](c));
+    btn('Späť k rokovaniu', () => lord(e));
 }

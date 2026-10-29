@@ -22,10 +22,11 @@ function rowHead(text) {
 
 /** Kováč v hrade i. Bez k ukáže prehľad, s k (w, a, s, h, m) ponuku jedného druhu výbavy. */
 function smithy(i, k) {
-    const t = TW[i], evil = shopSide(t.f), back = () => smithy(i, k);
+    const t = TW[i], evil = shopSide(t.f), back = () => smithy(i, k), bd = t.bd || {};
+    const cost = (k, x) => Math.round(x.p * (bd.s ? .8 : 1) * (k === 'm' && bd.j ? .75 : 1));   // zľava z kováčskej dielne a stajne
     mode = 'town';
     if (!k) {
-        show('Kováč a zbrojnica', 'Zlato: ' + G.gold + '. ' + eqSum() + ' ' + (evil ? 'Tunajší kováči kujú výbavu zla pre služobníkov Saurona a Sarumana.' : 'Tunajší kováči kujú výbavu dobra pre Gondor, Rohan, elfov a trpaslíkov.') + (t.f === 6 ? ' Tvoj hrad predáva výbavu tvojej strany.' : ''));
+        show('Kováč a zbrojnica', 'Zlato: ' + G.gold + '. ' + eqSum() + ' ' + (bd.s ? 'Kováčska dielňa: výbava o 20 % lacnejšia. ' : '') + (bd.j ? 'Stajňa: kone o 25 % lacnejšie. ' : '') + (evil ? 'Tunajší kováči kujú výbavu zla pre služobníkov Saurona a Sarumana.' : 'Tunajší kováči kujú výbavu dobra pre Gondor, Rohan, elfov a trpaslíkov.') + (t.f === 6 ? ' Tvoj hrad predáva výbavu tvojej strany.' : ''));
         SH.forEach(s => btn(s.l + ' (nosíš: ' + it(s.k).n + ')', () => smithy(i, s.k), 0, { k: s.k, i: G.eq[s.k] }));
         btn('Inventár', () => inv(() => smithy(i)));
         btn('Späť', () => town(i));
@@ -39,7 +40,7 @@ function smithy(i, k) {
             const b = btn(x.n + (G.eq[k] === j ? ' · nosíš' : ' · máš, obliecť'), () => { wear(k, j); back(); }, 0, { k, i: j });
             if (G.eq[k] === j) b.style.outline = '3px solid #fff';
         } else
-            btn(x.n + ' · ' + x.p + ' zl. · ' + eqShort(k, x) + (x.r ? ', dosah' : ''), () => { G.gold -= x.p; G.own[k].push(j); wear(k, j); back(); }, G.gold < x.p, { k, i: j });
+            btn(x.n + ' · ' + cost(k, x) + ' zl. · ' + eqShort(k, x) + (x.r ? ', dosah' : ''), () => { G.gold -= cost(k, x); G.own[k].push(j); wear(k, j); back(); }, G.gold < cost(k, x), { k, i: j });
     });
     btn('Späť', () => smithy(i));
 }

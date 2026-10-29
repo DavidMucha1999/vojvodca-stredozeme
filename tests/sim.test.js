@@ -76,6 +76,26 @@ try {
     run('chooseSide(0);');
     check('Strana dobra: mier s dobrom, vojna so zlom', run('!WR[6][0] && !WR[6][8] && WR[6][2] && WR[6][7] && REL[6][1] >= 40 && bloc(6) === 0'));
     check('Výbava sedí so svojím vzhľadom', run('shOf("w").findIndex(x => x.n === "Orkský nôž") === 16 && Soldiers.GEAR.w[16].L === 1.6 && Soldiers.GEAR.w[17].blade === "#d8c890"'));
+    // rozhovory, obchod, budovy, počasie
+    run('var le = E.find(e => e.f !== 9 && !e.nz); per(le); talk(le); var tb2 = document.getElementById("bt").children.map(b => b.textContent);');
+    check('Rozhovor s veliteľom ponúka témy', run('tb2.length >= 8 && tb2.some(t => /svete/.test(t)) && tb2.some(t => /plány/.test(t))'));
+    run('document.getElementById("bt").children.find(b => /plány/.test(b.textContent)).onclick(); var pt = document.querySelector && 1; var p1 = document.getElementById("ov")._h;');
+    check('Odpoveď podľa povahy', run('(() => { const sp = ["slúžiť|slovo|brániť", "korisť|zbohatnúť|léno", "Prežiť|posteli|viac", "léno|trón|schod", "Spálim|Zajatcov|šeptalo", "čas|Mapa|spojenectvá"][le.tr]; return new RegExp(sp).test(p1); })()'));
+    check('Témy sa po použití už neponúkajú', run('!document.getElementById("bt").children.some(b => /plány/.test(b.textContent))'));
+    run('G.gold = 500; G.cargo = {}; var v0 = VL.find(v => !hos(TW[v.t].f, G.fac)); v0.good = v0.good || villageGood(v0, VL.indexOf(v0)); var inv0 = { ...stock(v0) }; var p0 = price(v0, v0.good); var g0 = G.gold; var nb2 = buyGood(v0, v0.good, 5);');
+    check('Nákup tovaru v dedine', run('nb2 === 5 && G.cargo[v0.good] === 5 && G.gold < g0 && cargoCount() === 5'));
+    check('Cena po nákupe stúpla', run('price(v0, v0.good) >= p0'));
+    run('var t0 = TW.find(t => !hos(t.f, G.fac)); var g1 = G.gold; sellGood(t0, v0.good, 5);');
+    check('Predaj tovaru v hrade', run('G.gold > g1 && cargoCount() === 0'));
+    run('for (let i = 0; i < 3; i++) dailyTrade();');
+    check('Dedina vyrába svoj tovar', run('stock(v0)[v0.good] > inv0[v0.good] - 5'));
+    check('Budovy hradu sú definované', run('BUILDINGS.length === 7 && typeof castleIncome === "function"'));
+    run('var tm0 = TW.find(t => t.mine) || TW[0]; tm0.mine = 1; tm0.bd = { c: 1, s: 1 };');
+    check('Chrám chráni vojakov', run('temple() === true'));
+    run('G.x = 300; G.y = 300; rollWeather(); var w1 = MW.n;');
+    check('Počasie na severe', run('["snow", "fog", "storm", "clear"].includes(w1)'));
+    run('MW = { n: "storm", l: 2 }; dayT = 300;');
+    check('Búrka spomaľuje pochod, noc skracuje dostrel', run('weatherSlow() < 1 && isNight() && battleWeather().r < 110'));
     run('G.king = 0; delete G.side; startGear(1);');
     check('Hrdina zla začína s orkskou výbavou', run('it("w").n === "Orkský nôž" && it("a").n === "Orkské kože" && it("h").n === "Orkská kukla" && G.own.w.length === 1'));
     check('Základná výbava sa nepredáva', run('smithy(gi, "w"); !document.getElementById("bt").children.some(b => /Železný meč|Orkský nôž/.test(b.textContent))'));

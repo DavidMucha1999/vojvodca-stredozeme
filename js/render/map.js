@@ -421,18 +421,8 @@ function drawMap() {
                         ctx.fillRect((k * 113 + tm * .8 + Math.sin(tm / 30 + k) * 10) % W, (k * 71 + tm * 1.6) % H, 2, 2);
                 }
             }
-            if (G.day % 5 === 0) {
-                ctx.strokeStyle = 'rgba(180,200,230,.35)';
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                for (let k = 0; k < 90; k++) {
-                    const x = (k * 97 + tm * 6) % W, y = (k * 53 + tm * 14) % H;
-                    ctx.moveTo(x, y);
-                    ctx.lineTo(x - 3, y + 10);
-                }
-                ctx.stroke();
-            }
-            ctx.fillStyle = 'rgba(8,14,40,' + (.18 * (.5 - .5 * Math.cos(dayT / 600 * 6.283))) + ')';
+            drawWeather(MW.n, 1);
+            ctx.fillStyle = 'rgba(8,14,40,' + (.18 * (.5 - .5 * Math.cos(dayT / 600 * 6.283)) + nightness() * .22) + ')';
             ctx.fillRect(0, 0, W, H);
             ctx.drawImage(VG, 0, 0);
             const mx = W - 186, my = H - 126, k = 180 / WW;
@@ -539,4 +529,19 @@ function drawMap() {
         ctx.fillStyle = '#ffd24a';
         ctx.fillText('Pauza: klikni na mapu alebo sa utábor, aby čas plynul', W / 2, H - 53);
     }
+}
+
+/** Počasie cez celú obrazovku (pôvodná verzia): dážď, búrka s bleskom, hmla, sneh, popol. */
+function drawWeather(n, k) {
+    if (n === 'rain' || n === 'storm') {
+        const cnt = Math.round((n === 'storm' ? 170 : 100) * k), sp = n === 'storm' ? 22 : 16;
+        if (n === 'storm') { ctx.fillStyle = 'rgba(24,32,48,.25)'; ctx.fillRect(0, 0, W, H); }
+        ctx.strokeStyle = 'rgba(180,200,230,.4)'; ctx.lineWidth = 1; ctx.beginPath();
+        for (let i = 0; i < cnt; i++) { const x = (i * 89 + tm * (sp / 2)) % W, y = (i * 61 + tm * sp) % H; ctx.moveTo(x, y); ctx.lineTo(x - (n === 'storm' ? 6 : 3), y + 11); }
+        ctx.stroke();
+        if (n === 'storm' && Math.floor(tm) % 160 < 3) { ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(0, 0, W, H); }
+    }
+    if (n === 'snow') { ctx.fillStyle = 'rgba(220,230,255,.12)'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = '#fff'; for (let i = 0; i < 110 * k; i++) ctx.fillRect((i * 97 + tm * .9 + Math.sin(tm / 25 + i) * 12) % W, (i * 59 + tm * 1.8) % H, 2, 2); }
+    if (n === 'fog') { ctx.fillStyle = 'rgba(190,200,210,.38)'; ctx.fillRect(0, 0, W, H); }
+    if (n === 'ash') { ctx.fillStyle = 'rgba(58,42,36,.22)'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = 'rgba(106,90,82,.9)'; for (let i = 0; i < 90 * k; i++) ctx.fillRect((i * 101 + tm * .5 + Math.sin(tm / 20 + i) * 15) % W, (i * 67 + tm * 1.2) % H, 2, 2); }
 }

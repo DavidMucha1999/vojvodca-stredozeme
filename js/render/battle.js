@@ -102,26 +102,18 @@ function drawBattle() {
             ctx.stroke();
         }
         ctx.restore();
-        if (WX.n === 'rain') {
-            ctx.strokeStyle = 'rgba(180,200,230,.4)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            for (let k = 0; k < 120; k++) {
-                const x = (k * 89 + tm * 7) % W, y = (k * 61 + tm * 16) % H;
-                ctx.moveTo(x, y);
-                ctx.lineTo(x - 3, y + 11);
-            }
-            ctx.stroke();
+        if (WX.night) {   // noc: tma a fakle
+            ctx.fillStyle = 'rgba(6,10,28,.5)'; ctx.fillRect(0, 0, W, H);
+            ctx.save(); ctx.globalCompositeOperation = 'lighter';
+            U.forEach((u, i) => {
+                if (u.hp <= 0 || (i % 5 && !u.h)) return;
+                const x = u.x - bc.x, y = u.y - bc.y, R = (u.h ? 70 : 48) * (.85 + .15 * Math.sin(tm / 3 + i * 1.7));
+                ctx.fillStyle = 'rgba(255,154,48,.13)'; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.fill();
+                ctx.fillStyle = 'rgba(255,192,96,.18)'; ctx.beginPath(); ctx.arc(x, y, R * .55, 0, 7); ctx.fill();
+            });
+            ctx.restore();
         }
-        if (WX.n === 'snow') {
-            ctx.fillStyle = '#fff';
-            for (let k = 0; k < 110; k++)
-                ctx.fillRect((k * 97 + tm * .9 + Math.sin(tm / 25 + k) * 12) % W, (k * 59 + tm * 1.8) % H, 2, 2);
-        }
-        if (WX.n === 'fog') {
-            ctx.fillStyle = 'rgba(190,200,210,.38)';
-            ctx.fillRect(0, 0, W, H);
-        }
+        drawWeather(WX.n, 1.3);
         ctx.drawImage(VG, 0, 0);
         ctx.fillStyle = 'rgba(0,0,0,.55)';
         ctx.fillRect(W / 2 - 82, 58, 164, 10);

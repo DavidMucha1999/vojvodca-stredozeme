@@ -24,6 +24,10 @@ class BattleScene extends Phaser.Scene {
         }
 
         this.fx = this.add.graphics().setDepth(5000);
+        if (WX.night) {   // noc: tma nad bojiskom a svetlo fakieľ okolo vojakov
+            this.night = this.add.graphics().setDepth(4990);
+            this.torch = this.add.graphics().setDepth(4991).setBlendMode('ADD');
+        }
         this.units = new Map();
         for (const u of U) this.addUnit(u);
 
@@ -40,7 +44,7 @@ class BattleScene extends Phaser.Scene {
         }
         if (w.aura) this.aura = this.add.graphics().setBlendMode('ADD');   // aura najlepšej zbrane (Andúril)
 
-        this.cameras.main.setBounds(0, 0, BW, BH).setZoom(RES * BZ).setBackgroundColor('#22301a');
+        this.cameras.main.setBounds(0, 0, BW, BH).setZoom(RES * BZ).setBackgroundColor(WX.night ? '#0c1018' : '#22301a');
         // simulácia počíta cieľ ako ptr + bc, preto ukladáme bod na bojisku mínus bc
         const set = p => { const w = this.cameras.main.getWorldPoint(p.x, p.y); ptr.x = w.x - bc.x; ptr.y = w.y - bc.y; };
         this.input.on('pointerdown', p => { set(p); ptr.down = true; });
@@ -122,7 +126,24 @@ class BattleScene extends Phaser.Scene {
         const vw = W / BZ / 2, vh = H / BZ / 2, h = U[0];
         this.cameras.main.centerOn(Math.max(vw, Math.min(BW - vw, h.x)), Math.max(vh, Math.min(BH - vh, h.y)));
         this.drawAura();
+        this.drawNight();
         this.drawFx();
+    }
+
+    /** Noc: bojisko stmavne, každý piaty vojak nesie fakľu, ktorá bliká a osvetľuje okolie. */
+    drawNight() {
+        if (!this.night) return;
+        const n = this.night, t = this.torch;
+        n.clear().fillStyle(0x060a1c, .55).fillRect(0, 0, BW, BH);
+        t.clear();
+        for (let i = 0; i < U.length; i++) {
+            const u = U[i];
+            if (u.hp <= 0 || (i % 5 && !u.h)) continue;
+            const fl = .85 + .15 * Math.sin(tm / 3 + i * 1.7), R = (u.h ? 64 : 44) * fl;
+            for (let k = 5; k >= 1; k--) t.fillStyle(k > 3 ? 0xff8a20 : 0xffc060, .035 + (5 - k) * .012).fillCircle(u.x, u.y, R * k / 5);   // mäkký prechod svetla
+            t.fillStyle(0xfff0b0, .9).fillCircle(u.x - Math.sin(u.f) * 6, u.y + Math.cos(u.f) * 6 - 4, 1.8);
+        }
+        if (WX.n === 'storm' && Math.floor(tm) % 160 < 3) n.fillStyle(0xffffff, .35).fillRect(0, 0, BW, BH);
     }
 
     /** Žiarivá aura okolo hrdinu: pomaly sa otáčajúce zlaté lúče a pulzujúci kruh svetla. */

@@ -67,18 +67,19 @@ class UIScene extends Phaser.Scene {
         else this.toast.setVisible(false);
         this.pause.setVisible(scene === 'map' && mode === 'map' && !!PAUSE && !this.dlg);
         if (scene === 'map') {
-            g.fillStyle(0x080e28, .18 * (.5 - .5 * Math.cos(dayT / 600 * 6.283))).fillRect(0, 0, W, H);
-            const se = G ? Math.floor(G.day / 10) % 4 : 0;
+            const se = G ? season() : 0;
             if (se === 2) g.fillStyle(0xc86e1e, .1).fillRect(0, 0, W, H);
-            if (se === 3) { g.fillStyle(0xdce6ff, .14).fillRect(0, 0, W, H); g.fillStyle(0xffffff, 1); for (let k = 0; k < 70; k++) g.fillRect((k * 113 + tm * .8 + Math.sin(tm / 30 + k) * 10) % W, (k * 71 + tm * 1.6) % H, 1.5, 1.5); }
-            if (G && G.day % 5 === 0) { g.lineStyle(1, 0xb4c8e6, .35); for (let k = 0; k < 90; k++) { const x = (k * 97 + tm * 6) % W, y = (k * 53 + tm * 14) % H; g.lineBetween(x, y, x - 3, y + 10); } }
+            if (se === 3) g.fillStyle(0xdce6ff, .14).fillRect(0, 0, W, H);
+            this.drawWeather(g, MW.n, 1);
+            // noc: modré stmavenie, v hlbokej noci hviezdy
+            const nn = nightness();
+            g.fillStyle(0x080e28, .18 * (.5 - .5 * Math.cos(dayT / 600 * 6.283)) + nn * .22).fillRect(0, 0, W, H);
+            if (nn > .3 && MW.n === 'clear') { g.fillStyle(0xffffff, (nn - .3) * .9); for (let k = 0; k < 40; k++) g.fillRect((k * 173 + 31) % W, (k * 97 + 11) % (H * .6), 1.2, 1.2); }
             g.lineStyle(3, UI_C.line, 1).strokeRect(MM.x - 1.5, MM.y - 1.5, MM.w + 3, MM.h + 3);
         }
         this.gateTxt.setVisible(false);
         if (scene === 'battle' && U && U[0]) {
-            if (WX.n === 'rain') { g.lineStyle(1, 0xb4c8e6, .4); for (let k = 0; k < 120; k++) { const x = (k * 89 + tm * 7) % W, y = (k * 61 + tm * 16) % H; g.lineBetween(x, y, x - 3, y + 11); } }
-            if (WX.n === 'snow') { g.fillStyle(0xffffff, 1); for (let k = 0; k < 110; k++) g.fillRect((k * 97 + tm * .9 + Math.sin(tm / 25 + k) * 12) % W, (k * 59 + tm * 1.8) % H, 2, 2); }
-            if (WX.n === 'fog') g.fillStyle(0xbec8d2, .38).fillRect(0, 0, W, H);
+            this.drawWeather(g, WX.n, 1.3);
             const h = U[0];
             g.fillStyle(0x000000, .55).fillRect(W / 2 - 82, 58, 164, 10);
             g.fillStyle(0xb8402a, 1).fillRect(W / 2 - 80, 60, 160 * Math.max(0, h.hp) / h.mh, 6);
@@ -88,6 +89,19 @@ class UIScene extends Phaser.Scene {
                 this.gateTxt.setVisible(true).setText(SGB.gate > 0 ? 'Brána hradu' : 'Brána je zničená!');
             }
         }
+    }
+
+    /** Počasie cez celú obrazovku: dážď, búrka s bleskom, hmla, sneh, popolový dážď Mordoru. k = hustota. */
+    drawWeather(g, n, k) {
+        if (n === 'rain' || n === 'storm') {
+            const cnt = Math.round((n === 'storm' ? 170 : 100) * k), sp = n === 'storm' ? 22 : 16;
+            if (n === 'storm') g.fillStyle(0x182030, .25).fillRect(0, 0, W, H);
+            g.lineStyle(1, 0xb4c8e6, .4); for (let i = 0; i < cnt; i++) { const x = (i * 89 + tm * (sp / 2)) % W, y = (i * 61 + tm * sp) % H; g.lineBetween(x, y, x - (n === 'storm' ? 6 : 3), y + 11); }
+            if (n === 'storm' && Math.floor(tm) % 160 < 3) g.fillStyle(0xffffff, .55).fillRect(0, 0, W, H);   // blesk
+        }
+        if (n === 'snow') { g.fillStyle(0xdce6ff, .12).fillRect(0, 0, W, H); g.fillStyle(0xffffff, 1); for (let i = 0; i < 110 * k; i++) g.fillRect((i * 97 + tm * .9 + Math.sin(tm / 25 + i) * 12) % W, (i * 59 + tm * 1.8) % H, 2, 2); }
+        if (n === 'fog') { g.fillStyle(0xbec8d2, .38).fillRect(0, 0, W, H); for (let i = 0; i < 5; i++) g.fillStyle(0xd8dee6, .08).fillEllipse((i * 230 + tm * (.6 + i * .1)) % (W + 300) - 150, 90 + i * 85, 420, 70); }
+        if (n === 'ash') { g.fillStyle(0x3a2a24, .22).fillRect(0, 0, W, H); g.fillStyle(0x6a5a52, .9); for (let i = 0; i < 90 * k; i++) g.fillRect((i * 101 + tm * .5 + Math.sin(tm / 20 + i) * 15) % W, (i * 67 + tm * 1.2) % H, 2, 2); g.fillStyle(0xff6a20, .7); for (let i = 0; i < 12; i++) g.fillRect((i * 331 + tm * .3) % W, (i * 211 + tm * 1.4) % H, 1.5, 1.5); }
     }
 
     // ---------- Horná lišta (zrkadlo #hud) -----------------------------------------
@@ -188,7 +202,7 @@ class UIScene extends Phaser.Scene {
         const shade = this.add.rectangle(0, 0, W, H, 0x0c0907, .35).setOrigin(0).setInteractive();
         const h1 = ov.querySelector('h1'), title = h1 ? h1.textContent : '';
         const bt = ov.querySelector('#bt'), kids = bt ? [...bt.children] : [];
-        const nBtn = kids.filter(k => k.tagName === 'BUTTON').length, cols = nBtn > 8 ? 3 : 2, bw = (IW - (cols - 1) * 6) / cols;
+        const nBtn = kids.filter(k => k.tagName === 'BUTTON').length, cols = nBtn > 8 || /^Trh:/.test(title) ? 3 : 2, bw = (IW - (cols - 1) * 6) / cols;
         this.dlgButtons = [];
         // rozloženie obsahu okna (nadpis, text, tlačidlá a riadky) od y = 0
         const layout = list => {
