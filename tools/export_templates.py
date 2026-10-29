@@ -11,7 +11,7 @@ OUT = os.path.join(ROOT, 'assets', 'templates')
 with sync_playwright() as p:
     br = p.chromium.launch(args=['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader']); pg = br.new_page()
     pg.route('**/fonts.googleapis.com/**', lambda r: r.abort())
-    pg.goto('file://' + os.path.join(ROOT, 'phaser.html')); pg.wait_for_timeout(3000)
+    pg.goto('file://' + os.path.join(ROOT, 'Vojvodca Stredozeme.html')); pg.wait_for_timeout(3000)
     # zachytíme plátna, ktoré Art registruje
     data = pg.evaluate("""() => {
       const got = {};

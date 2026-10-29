@@ -8,7 +8,7 @@ Autor a vývojár hry: **Dávid Mucha**
 
 Hra má dve verzie, ktoré zdieľajú rovnakú logiku (`js/data`, `js/sim`):
 
-- **`phaser.html`** – hlavná verzia v hernom engine **Phaser 3**: ostrý obraz, dlaždicová mapa, animovaní vojaci, zvuky zo súborov a rozhranie v Phaseri. Phaser je v projekte (`vendor/phaser.min.js`), takže hra beží aj bez internetu.
+- **`Vojvodca Stredozeme.html`** – hlavná verzia (spúšťa sa dvojklikom, má vlastnú ikonu `assets/ikona.ico`; vedľa je aj odkaz `Vojvodca Stredozeme.lnk` s touto ikonou) v hernom engine **Phaser 3**: ostrý obraz, dlaždicová mapa, animovaní vojaci, zvuky zo súborov a rozhranie v Phaseri. Phaser je v projekte (`vendor/phaser.min.js`), takže hra beží aj bez internetu.
 - `index.html` – pôvodná verzia kreslená priamo na plátno.
 
 Obe otvoríš dvojklikom, server ani inštalácia nie sú potrebné. Celú hru v jednom súbore vytvorí `python tools/build_single.py` (výsledok je v `dist/phaser-single.html`).
@@ -97,7 +97,7 @@ Zvuky boja sú v `assets/audio/` (`render_sfx.py` ich vie vytvoriť znova). Hra 
 
 ## Štruktúra kódu
 
-Skripty sa načítavajú v poradí uvedenom v `phaser.html` (resp. `index.html`) a zdieľajú globálny priestor premenných.
+Skripty sa načítavajú v poradí uvedenom v `Vojvodca Stredozeme.html` (resp. `index.html`) a zdieľajú globálny priestor premenných.
 
 ```
 js/

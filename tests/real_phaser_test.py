@@ -17,7 +17,7 @@ with sync_playwright() as p:
     pg.on('console', lambda m: m.type == 'error' and 'fonts.googleapis' not in m.text and 'ERR_' not in m.text and errs.append('console: ' + m.text))
     pg.route('**/fonts.googleapis.com/**', lambda r: r.abort())
     shot = lambda n: pg.screenshot(path=os.path.join(SHOTS, n + '.png'))
-    pg.goto('file://' + os.path.join(ROOT, 'phaser.html')); pg.wait_for_timeout(4000)
+    pg.goto('file://' + os.path.join(ROOT, 'Vojvodca Stredozeme.html')); pg.wait_for_timeout(4000)
     E = pg.evaluate
     active = lambda: E("game.scene.getScenes(true).map(s => s.sys.settings.key).join(',')")
     check('Phaser načítaný', E("typeof Phaser !== 'undefined' && Phaser.VERSION"), E("Phaser.VERSION"))

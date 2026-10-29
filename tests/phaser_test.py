@@ -15,7 +15,7 @@ with sync_playwright() as p:
     errs = []; pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.route('**/fonts.googleapis.com/**', lambda r: r.abort())
     pg.on('console', lambda m: m.type == 'error' and 'ERR_' not in m.text and errs.append('console: ' + m.text))
-    pg.goto('file://' + os.path.join(ROOT, 'phaser.html')); pg.wait_for_timeout(4000)
+    pg.goto('file://' + os.path.join(ROOT, 'Vojvodca Stredozeme.html')); pg.wait_for_timeout(4000)
     pg.evaluate("window.__played = 0; { const p0 = SoundFX.play; SoundFX.play = k => { const r = p0(k); if (r) __played++; return r; }; }")
     E = pg.evaluate
     def waitfor(cond, ms=3000):
