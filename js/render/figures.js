@@ -178,7 +178,7 @@ const Figures = (() => {
         c.save(); c.translate(lx, seat - bob);
         if (o.rscale && o.rscale !== 1) c.scale(o.rscale > 1 ? 1 : 1.05, o.rscale);   // rasa: trpaslík a hobit nižší, uruk vyšší
         // zástava za chrbtom
-        if (o.flag != null) { c.strokeStyle = '#3a2a1a'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-6, -2); c.lineTo(-6, -40); c.stroke(); tm = fr * 14.1; bnr(-6, -40, o.flag, 16, 20); }
+        if (o.flag != null) { c.strokeStyle = '#3a2a1a'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-6, -2); c.lineTo(-6, -62); c.stroke(); c.fillStyle = '#d9b850'; c.beginPath(); c.moveTo(-8, -62); c.lineTo(-6, -67); c.lineTo(-4, -62); c.fill(); tm = fr * 14.1; bnr(-6, -62, o.flag, 16, 20); }   // žrď siaha vysoko nad hlavu a zbraň
         // plášť
         const cape = o.cape || CAPES[0];
         { const cg = c.createLinearGradient(-9, 0, 3, 0); cg.addColorStop(0, dark(A.pat === 'robe' ? '#0a0a10' : cape, .7)); cg.addColorStop(1, A.pat === 'robe' ? '#0a0a10' : cape); c.fillStyle = cg; P(c, [[-2, -18], [3, -18], [2, -2 + (M ? 2 : 0)], [-9 - walk * .3, 0]]); c.fill(); c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = .5; c.beginPath(); c.moveTo(-1, -17); c.lineTo(-5 - walk * .2, -1); c.stroke(); }

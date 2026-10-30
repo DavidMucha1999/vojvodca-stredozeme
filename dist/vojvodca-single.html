@@ -1521,10 +1521,33 @@ function startBattleBase(en, al) {
     if (BI === 's' && WX.n === 'clear')
         WX = { ...WX, n: 'snow', r: Math.round(WX.r * .85) };
 }
+/** Meno jednotky pre tabuľku výsledkov. */
+function unitName(u) {
+    if (u.h) return G.name;
+    if (u.cp) { const c = compDef(u.cp); return c ? c.n : 'Spoločník'; }
+    if (u.uk && FU[u.uk]) return FU[u.uk].n;
+    return { i: 'Pešiak', a: 'Lukostrelec', c: 'Jazdec', v: 'Veterán', r: 'Rohirim', e: 'Elf', o: 'Ork', t: 'Troll', w: 'Varg', x: 'Olifant', z: 'Nazgûl' }[u.k] || 'Vojak';
+}
+/** Výsledná tabuľka bitky: víťaz, straty podľa druhu na oboch stranách, najlepší bojovník. Pridá riadky do otvoreného okna. */
+function battleReport(win) {
+    const bt = document.getElementById('bt'); if (!bt) return;
+    const row = (text, color) => { const d = document.createElement('div'); d.style.cssText = 'grid-column:1/-1;text-align:left;font-size:.9rem' + (color ? ';color:' + color : ''); d.textContent = text; bt.appendChild(d); };
+    const tally = side => { const m = {}; U.filter(u => u.t === side && u.hp <= 0).forEach(u => { const n = unitName(u); m[n] = (m[n] || 0) + 1; }); return Object.entries(m).map(([n, c]) => c + '× ' + n).join(', ') || 'nikto'; };
+    const mine = U.filter(u => !u.t), their = U.filter(u => u.t);
+    row('Výsledok: ' + (win ? 'víťazstvo' : 'porážka') + ' – ' + (win ? 'tvoja strana' : (LB && LB.nm ? LB.nm : 'nepriateľ')) + ' ovládla bojisko.', '#ffd24a');
+    row('Tvoje straty (' + mine.filter(u => u.hp <= 0).length + '/' + mine.length + '): ' + tally(0));
+    row('Straty nepriateľa (' + their.filter(u => u.hp <= 0).length + '/' + their.length + '): ' + tally(1));
+    const best = mine.filter(u => (u.kills || 0) > 0 || (u.dmg || 0) > 0).sort((a, b) => (b.kills || 0) - (a.kills || 0) || (b.dmg || 0) - (a.dmg || 0))[0];
+    if (best) row('Najlepší bojovník: ' + unitName(best) + ' – ' + (best.kills || 0) + ' zabití, ' + Math.round(best.dmg || 0) + ' zranení.', '#9fe08a');
+    const worst = their.sort((a, b) => (b.kills || 0) - (a.kills || 0))[0];
+    if (worst && worst.kills) row('Najnebezpečnejší nepriateľ: ' + unitName(worst) + ' – ' + worst.kills + ' zabití.', '#ff9a80');
+}
 /** Chrám v niektorom z tvojich hradov: tvoji vojaci sú pevnejší (o 10 % menej zranení). */
 const temple = () => TW.some(t => t.mine && t.bd && t.bd.c);
 function hit(b, d, from) {
+    const was = b.hp > 0;
     b.hp -= d * (b.h ? red() : !b.t && temple() ? .9 : 1);
+    if (from) { from.dmg = (from.dmg || 0) + d; if (was && b.hp <= 0) from.kills = (from.kills || 0) + 1; }
     snd(b.hp <= 0 ? 'dy' : b.h ? 'sh' : Math.random() < .5 ? 'sw' : 'hb');
     for (let i = 0; i < 4; i++)
         PT.push({ x: b.x, y: b.y, vx: Math.random() * 3 - 1.5, vy: Math.random() * 3 - 1.5, l: 18, c: b.t ? '#8a2a1a' : '#d9a441' });
@@ -1699,6 +1722,7 @@ function endBattle(win) {
                     break L_endBattle0;
                 }
                 show('Víťazstvo', 'Padlo ' + (dI + dC) + ' tvojich mužov. Korisť: ' + loot + ' zlata.' + lv);
+                battleReport(true);
                 const L = LB;
                 if (!L.siege)
                     G.cap += Math.floor(L.n * .3);
@@ -1733,6 +1757,7 @@ function endBattle(win) {
                 G.y = G.ty = TW[0].y;
                 upd();
                 show('Porazený', 'Prišiel si o polovicu zlata aj mužov. Prebral si sa v Hobitove.');
+                battleReport(false);
                 btn('Pokračovať', () => { ov.classList.add('hide'); mode = 'map'; });
             }
         }
@@ -1767,7 +1792,7 @@ function updBattle(dt) {
             a.l -= dt;
             for (const v of U)
                 if (v.hp > 0 && v.t !== a.t && Math.abs(v.x - a.x) < 7 && Math.abs(v.y - a.y) < 7) {
-                    hit(v, (a.d || 4.5) + (a.t ? 0 : G.s.ls));
+                    hit(v, (a.d || 4.5) + (a.t ? 0 : G.s.ls), a.by);
                     a.l = 0;
                     break;
                 }
@@ -1814,7 +1839,7 @@ function updBattle(dt) {
                     fx = 10;
                     for (const v of U)
                         if (v.t && v.hp > 0 && Math.hypot(v.x - u.x, v.y - u.y) < rg)
-                            hit(v, dmg());
+                            hit(v, dmg(), u);
                 }
             }
             else {
@@ -1859,7 +1884,7 @@ function updBattle(dt) {
                         if (u.c <= 0 && bd < WX.r) {
                             u.c = 75;
                             const an = Math.atan2(b.y - u.y, b.x - u.x) + (Math.random() - .5) * .12;
-                            AR.push({ x: u.x, y: u.y, vx: Math.cos(an) * 7, vy: Math.sin(an) * 7, l: 40, t: u.t, d: u.k === 'e' ? 7 : 4.5 });
+                            AR.push({ x: u.x, y: u.y, vx: Math.cos(an) * 7, vy: Math.sin(an) * 7, l: 40, t: u.t, d: u.k === 'e' ? 7 : 4.5, by: u });
                             snd('ar');
                         }
                     }
@@ -1868,7 +1893,7 @@ function updBattle(dt) {
                         u.y += (b.y - u.y) / bd * u.sp * dt;
                     }
                     else if (u.c <= 0) {
-                        hit(b, u.d * (.7 + Math.random() * .6));
+                        hit(b, u.d * (.7 + Math.random() * .6), u);
                         u.c = 45;
                     }
                 }
@@ -6858,6 +6883,110 @@ const Icons = (() => {
 </script>
 <script>
 /*
+ * ENGINE: procedurálne textúry pre miestnosti (krčma, nádvorie, sieň) kreslené v 2× rozlíšení,
+ * a mäkká žiara (soft_glow) pre svetlo ohňa, sviečok a fakieľ.
+ * Tex.pattern(scene, kind, cols, seed) vráti kľúč dlaždice 256 × 256 bodov (512 px) – druhy:
+ *   planks (drevené dosky), planksV (zvislé), bricks (kamenné kvádre), cobbles (dlažobné kocky),
+ *   flags (veľké dlaždice), sand (pieskovec), grass (tráva so zemou), dark (čierny kameň Mordoru), bark (elfské drevo s rezbami).
+ */
+const Tex = (() => {
+    const S = 2, T = 256;
+    const rngOf = seed => { let s = seed | 0 || 1; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; };
+    const shade = (col, k) => { const n = parseInt(col.slice(1), 16), f = v => Math.max(0, Math.min(255, Math.round(v * k))); return '#' + [f(n >> 16 & 255), f(n >> 8 & 255), f(n & 255)].map(v => v.toString(16).padStart(2, '0')).join(''); };
+    const noise = (c, R, n, a) => { for (let k = 0; k < n; k++) { c.fillStyle = 'rgba(' + (R() < .5 ? '255,255,255' : '0,0,0') + ',' + (R() * a).toFixed(3) + ')'; c.fillRect(R() * T, R() * T, 1 + R() * 3, 1 + R() * 2); } };
+
+    const DRAW = {
+        planks(c, R, col, vertical) {
+            const pw = 28;
+            for (let i = 0; i < T / pw; i++) {
+                const tone = shade(col, .85 + R() * .3);
+                const x = i * pw, off = (i % 2) * T / 2;
+                c.fillStyle = tone; if (vertical) c.fillRect(x, 0, pw, T); else c.fillRect(0, x, T, pw);
+                // vlákna dreva
+                for (let k = 0; k < 7; k++) { c.strokeStyle = 'rgba(0,0,0,' + (.06 + R() * .08).toFixed(3) + ')'; c.lineWidth = 1; c.beginPath(); const p = x + 3 + R() * (pw - 6); if (vertical) { c.moveTo(p, 0); c.bezierCurveTo(p + R() * 4 - 2, T * .3, p + R() * 4 - 2, T * .7, p, T); } else { c.moveTo(0, p); c.bezierCurveTo(T * .3, p + R() * 4 - 2, T * .7, p + R() * 4 - 2, T, p); } c.stroke(); }
+                if (R() < .6) { const kx = R() * T, ky = x + pw / 2 + (R() - .5) * 10; c.fillStyle = 'rgba(0,0,0,.25)'; c.beginPath(); if (vertical) c.ellipse(ky, kx, 3, 5, 0, 0, 7); else c.ellipse(kx, ky, 5, 3, 0, 0, 7); c.fill(); }
+                // škáry a koniec dosky
+                c.fillStyle = 'rgba(0,0,0,.45)'; if (vertical) { c.fillRect(x, 0, 1.5, T); c.fillRect(x, off, pw, 1.5); } else { c.fillRect(0, x, T, 1.5); c.fillRect(off, x, 1.5, pw); }
+                c.fillStyle = 'rgba(255,255,255,.08)'; if (vertical) c.fillRect(x + 1.5, 0, 1, T); else c.fillRect(0, x + 1.5, T, 1);
+            }
+            noise(c, R, 400, .06);
+        },
+        bricks(c, R, col) {
+            const bh = 20, bw = 44;
+            c.fillStyle = shade(col, .55); c.fillRect(0, 0, T, T);
+            for (let j = 0; j < T / bh; j++) for (let i = -1; i < T / bw + 1; i++) {
+                const x = i * bw + (j % 2) * bw / 2, y = j * bh, tone = shade(col, .82 + R() * .3);
+                c.fillStyle = tone; c.fillRect(x + 1.5, y + 1.5, bw - 3, bh - 3);
+                c.fillStyle = 'rgba(255,255,255,.14)'; c.fillRect(x + 1.5, y + 1.5, bw - 3, 1.5); c.fillRect(x + 1.5, y + 1.5, 1.5, bh - 3);   // svetlá hrana
+                c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(x + 1.5, y + bh - 3, bw - 3, 1.5); c.fillRect(x + bw - 3, y + 1.5, 1.5, bh - 3);      // tieň hrany
+                if (R() < .2) { c.strokeStyle = 'rgba(0,0,0,.3)'; c.lineWidth = .8; c.beginPath(); const cx = x + 6 + R() * 30, cy = y + 3; c.moveTo(cx, cy); c.lineTo(cx + 4, cy + 6); c.lineTo(cx + 2, cy + 12); c.stroke(); }
+            }
+            noise(c, R, 500, .08);
+        },
+        cobbles(c, R, col) {
+            c.fillStyle = shade(col, .6); c.fillRect(0, 0, T, T);
+            const r = 11;
+            for (let j = 0; j < T / (r * 1.6) + 1; j++) for (let i = 0; i < T / (r * 1.8) + 1; i++) {
+                const x = i * r * 1.8 + (j % 2) * r * .9 + (R() - .5) * 3, y = j * r * 1.6 + (R() - .5) * 3, rx = r * (.8 + R() * .3), ry = r * (.65 + R() * .25);
+                const g = c.createRadialGradient(x - rx * .3, y - ry * .35, 1, x, y, rx); g.addColorStop(0, shade(col, 1.15 + R() * .1)); g.addColorStop(1, shade(col, .72));
+                c.fillStyle = g; c.beginPath(); c.ellipse(x, y, rx, ry, (R() - .5) * .4, 0, 7); c.fill();
+            }
+            noise(c, R, 300, .06);
+        },
+        flags(c, R, col) {
+            const s = 64;
+            c.fillStyle = shade(col, .5); c.fillRect(0, 0, T, T);
+            for (let j = 0; j < T / s; j++) for (let i = 0; i < T / s; i++) {
+                const x = i * s, y = j * s, tone = shade(col, .88 + R() * .22);
+                const g = c.createLinearGradient(x, y, x + s, y + s); g.addColorStop(0, shade(tone, 1.08)); g.addColorStop(1, shade(tone, .9));
+                c.fillStyle = g; c.fillRect(x + 2, y + 2, s - 4, s - 4);
+                c.fillStyle = 'rgba(255,255,255,.1)'; c.fillRect(x + 2, y + 2, s - 4, 2);
+                c.fillStyle = 'rgba(0,0,0,.2)'; c.fillRect(x + 2, y + s - 4, s - 4, 2);
+                if (R() < .3) { c.fillStyle = 'rgba(0,0,0,.12)'; c.beginPath(); c.ellipse(x + R() * s, y + R() * s, 6 + R() * 10, 3 + R() * 5, R() * 3, 0, 7); c.fill(); }
+            }
+            noise(c, R, 500, .07);
+        },
+        sand(c, R, col) { c.fillStyle = col; c.fillRect(0, 0, T, T); for (let k = 0; k < 40; k++) { c.fillStyle = 'rgba(' + (R() < .5 ? '255,240,200' : '80,50,20') + ',' + (.04 + R() * .06).toFixed(3) + ')'; c.beginPath(); c.ellipse(R() * T, R() * T, 14 + R() * 30, 4 + R() * 8, R() * .6, 0, 7); c.fill(); } noise(c, R, 900, .07); },
+        grass(c, R, col) { c.fillStyle = col; c.fillRect(0, 0, T, T); for (let k = 0; k < 30; k++) { c.fillStyle = 'rgba(90,60,30,' + (.1 + R() * .15).toFixed(3) + ')'; c.beginPath(); c.ellipse(R() * T, R() * T, 10 + R() * 26, 5 + R() * 9, R() * 3, 0, 7); c.fill(); } for (let k = 0; k < 500; k++) { c.strokeStyle = 'rgba(' + (R() < .5 ? '150,200,90' : '40,80,30') + ',.45)'; c.lineWidth = 1; const x = R() * T, y = R() * T; c.beginPath(); c.moveTo(x, y); c.lineTo(x + R() * 3 - 1.5, y - 3 - R() * 4); c.stroke(); } },
+        dark(c, R, col) { DRAW.bricks(c, R, col); for (let k = 0; k < 24; k++) { c.strokeStyle = 'rgba(255,90,30,' + (.08 + R() * .12).toFixed(3) + ')'; c.lineWidth = 1; c.beginPath(); const x = R() * T, y = R() * T; c.moveTo(x, y); c.lineTo(x + R() * 10 - 5, y + 8 + R() * 10); c.stroke(); } },
+        bark(c, R, col) { DRAW.planks(c, R, col, true); c.strokeStyle = 'rgba(220,230,200,.35)'; c.lineWidth = 1.2; for (let k = 0; k < 6; k++) { const x = 20 + k * 42; c.beginPath(); c.moveTo(x, T); c.bezierCurveTo(x - 14, T * .66, x + 14, T * .33, x, 0); c.stroke(); for (let m = 0; m < 4; m++) { const y = 30 + m * 60; c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + 10, y - 8, x + 16, y - 16); c.stroke(); } } }
+    };
+
+    /** Dlaždica druhu kind vo farbe col (seed pre variácie); vráti kľúč textúry. */
+    function pattern(scene, kind, col, seed = 1) {
+        const key = 'tex_' + kind + '_' + col.slice(1) + '_' + seed;
+        if (scene.textures.exists(key)) return key;
+        const cv = document.createElement('canvas'); cv.width = cv.height = T * S;
+        const c = cv.getContext('2d'); c.scale(S, S);
+        (DRAW[kind] || DRAW.flags)(c, rngOf(seed * 7919 + kind.length), col, kind === 'planksV');
+        scene.textures.addCanvas(key, cv);
+        return key;
+    }
+    /** Mäkká kruhová žiara (biela → priehľadná), používa sa s tintom a sčítaným miešaním. */
+    function glow(scene) {
+        const key = 'soft_glow';
+        if (scene.textures.exists(key)) return key;
+        const cv = document.createElement('canvas'); cv.width = cv.height = 256; const c = cv.getContext('2d');
+        const g = c.createRadialGradient(128, 128, 0, 128, 128, 128); for (let k = 0; k <= 24; k++) { const u = k / 24; g.addColorStop(u, 'rgba(255,255,255,' + (Math.pow(1 - u, 2.6)).toFixed(4) + ')'); }
+        c.fillStyle = g; c.fillRect(0, 0, 256, 256);
+        scene.textures.addCanvas(key, cv);
+        return key;
+    }
+    /** Svetlo: obrázok žiary so sčítaným miešaním; vráti objekt na animovanie alfa. */
+    function light(scene, x, y, radius, color, alpha = .5, depth = 39) {
+        const im = scene.add.image(x, y, glow(scene)).setDisplaySize(radius * 2, radius * 2).setTint(color).setAlpha(alpha).setDepth(depth).setBlendMode(Phaser.BlendModes.ADD);
+        return im;
+    }
+    /** Tieň pod predmetom (mäkká elipsa). */
+    function shadow(scene, x, y, w, h, alpha = .35, depth = 1.1) {
+        return scene.add.image(x, y, glow(scene)).setDisplaySize(w, h).setTint(0x000000).setAlpha(alpha).setDepth(depth);
+    }
+    return { pattern, glow, light, shadow, T };
+})();
+
+</script>
+<script>
+/*
  * ENGINE: zvuky zo súborov (Phaser).
  * Zvuky boja sú súbory assets/audio/sfx_<druh>_<n>.wav (zbalené v js/engine/assets.js).
  * Hra vyberá náhodný variant, mení výšku tónu a pri bitke nastavuje hlasitosť
@@ -7070,7 +7199,7 @@ class IntroScene extends Phaser.Scene {
  * zástavami, kameru so zoomom a minimapu ako druhú kameru.
  * Súradnice obrazovky sú logické (720×480), plátno má rozlíšenie RES-krát väčšie.
  */
-const MM = { x: W - 186, y: H - 126, w: 180, h: 120 };
+const MM = { x: W - 218, y: H - 152, w: 210, h: 140 };
 const FONT = '"IM Fell English", Georgia, serif';
 const txtStyle = (size, color, extra) => Object.assign({ fontFamily: FONT, fontSize: size + 'px', color, resolution: RES }, extra);
 
@@ -7104,15 +7233,8 @@ class MapScene extends Phaser.Scene {
         this.fx = this.add.graphics().setDepth(8999);
 
         this.cameras.main.setBounds(0, 0, WW, WH).setBackgroundColor('#1e2a16');
-        this.mini = this.add.graphics().setDepth(9500);
-        this.mmCam = this.cameras.add(MM.x * RES, MM.y * RES, MM.w * RES, MM.h * RES).setZoom(MM.w * RES / WW).setBounds(0, 0, WW, WH).setBackgroundColor('#120e0c');
-        this.mmCam.centerOn(WW / 2, WH / 2);
-        this.cameras.main.ignore(this.mini);
-        if (tiled) {
-            const mm = this.add.image(0, 0, this.minimapTexture()).setOrigin(0).setScale(WW / 360).setDepth(-20);
-            this.cameras.main.ignore(mm);
-            this.mmCam.ignore(worldObjs);
-        }
+        this.mmCam = { ignore() { } };                       // minimapu kreslí UIScene z textúry 'minimap'
+        if (tiled) this.minimapTexture();
         this.mmCam.ignore([this.fx, this.heroTxt, this.heroCrown, this.hero, ...this.vill.flatMap(o => [o.spr, o.txt]), ...this.towns.flatMap(o => [o.spr, o.txt, o.stars])]);
 
         this.input.on('pointerdown', p => this.click(p));
@@ -7263,19 +7385,44 @@ class MapScene extends Phaser.Scene {
     }
 
     /** Minimapa ako jeden obrázok (360 × 240) z dát terénu. */
+    /** Minimapa vo vysokom rozlíšení (1440 × 960): tieňovaný terén, lesy, hory so snehom a tieňom, rieka s brehmi, jazero, cesty. */
     minimapTexture() {
-        const T = MAPDATA.terrain, c = document.createElement('canvas'); c.width = 360; c.height = 240;
-        const x = c.getContext('2d'), sx = 360 / T.cols, sy = 240 / T.rows;
-        const col = ['#4a6d33', '#5a6a36', '#6e6a3e', '#76603e', '#3a2a26', '#b8955a', '#d8dee6', '#24526a'];
+        if (this.textures.exists('minimap')) return 'minimap';
+        const T = MAPDATA.terrain, MW2 = 1440, MH2 = 960, c = document.createElement('canvas'); c.width = MW2; c.height = MH2;
+        const x = c.getContext('2d'), sx = MW2 / T.cols, sy = MH2 / T.rows, s = MW2 / 1800;
+        const col = ['#4f7238', '#5e6e3a', '#716c42', '#7a6442', '#3c2c28', '#bf9c60', '#dde3ea', '#26546c'];
+        const rnd = n => { const v = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return v - Math.floor(v); };
         for (let j = 0; j < T.rows; j++) for (let i = 0; i < T.cols; i++) {
-            const n = j * T.cols + i; x.fillStyle = col[Math.floor((T.ground[n] - 1) / 4)] || '#4a6d33'; x.fillRect(i * sx, j * sy, sx + .5, sy + .5);
-            const f = T.forest[n]; if (f >= 33 && f <= 38) { x.fillStyle = f >= 37 ? 'rgba(40,30,20,.5)' : 'rgba(20,50,20,.55)'; x.fillRect(i * sx, j * sy, sx + .5, sy + .5); }
+            const n = j * T.cols + i, base = col[Math.floor((T.ground[n] - 1) / 4)] || col[0];
+            x.fillStyle = base; x.fillRect(i * sx, j * sy, sx + .5, sy + .5);
+            x.fillStyle = 'rgba(' + (rnd(n) < .5 ? '255,255,255' : '0,0,0') + ',' + (rnd(n * 3) * .07).toFixed(3) + ')'; x.fillRect(i * sx, j * sy, sx + .5, sy + .5);   // zrno
         }
-        const s = 360 / 1800;
-        x.strokeStyle = '#3a7a96'; x.lineWidth = 2.5; x.beginPath(); x.moveTo(640 * s, 0); x.bezierCurveTo(600 * s, 300 * s, 820 * s, 420 * s, 780 * s, 640 * s); x.bezierCurveTo(760 * s, 800 * s, 900 * s, 880 * s, 860 * s, 1200 * s); x.stroke();
-        x.fillStyle = '#3a7a96'; x.beginPath(); x.ellipse(1195 * s, 326 * s, 110 * s, 60 * s, .2, 0, 7); x.fill();
-        for (const [mx, my, , kind] of T.mountains) { x.fillStyle = kind === 'snow' ? '#e8ecf2' : kind === 'doom' ? '#ff6a1a' : '#1a1210'; x.beginPath(); x.moveTo(mx * s, my * s - 4); x.lineTo(mx * s - 4, my * s + 3); x.lineTo(mx * s + 4, my * s + 3); x.fill(); }
-        if (this.textures.exists('minimap')) this.textures.remove('minimap');
+        // lesy: mäkké tmavozelené škvrny so svetlejšími korunami
+        for (let j = 0; j < T.rows; j++) for (let i = 0; i < T.cols; i++) {
+            const n = j * T.cols + i, f = T.forest[n]; if (!(f >= 33)) continue;
+            const dead = f >= 37, cx = (i + .5) * sx, cy = (j + .5) * sy;
+            x.fillStyle = dead ? 'rgba(60,40,30,.75)' : 'rgba(22,54,24,.8)'; x.beginPath(); x.arc(cx + (rnd(n * 7) - .5) * 2, cy + (rnd(n * 11) - .5) * 2, sx * .62, 0, 7); x.fill();
+            if (!dead) { x.fillStyle = 'rgba(70,120,50,.55)'; x.beginPath(); x.arc(cx - 1, cy - 1.5, sx * .3, 0, 7); x.fill(); }
+        }
+        // rieka Anduin s brehmi a jazero
+        const river = () => { x.beginPath(); x.moveTo(640 * s, 0); x.bezierCurveTo(600 * s, 300 * s, 820 * s, 420 * s, 780 * s, 640 * s); x.bezierCurveTo(760 * s, 800 * s, 900 * s, 880 * s, 860 * s, 1200 * s); };
+        x.lineCap = 'round'; river(); x.strokeStyle = 'rgba(160,150,110,.7)'; x.lineWidth = 14 * s; x.stroke(); river(); x.strokeStyle = '#2e6a8c'; x.lineWidth = 9 * s; x.stroke(); river(); x.strokeStyle = '#5a9ab8'; x.lineWidth = 3 * s; x.stroke();
+        x.fillStyle = 'rgba(160,150,110,.7)'; x.beginPath(); x.ellipse(1195 * s, 326 * s, 118 * s, 66 * s, .2, 0, 7); x.fill();
+        x.fillStyle = '#2e6a8c'; x.beginPath(); x.ellipse(1195 * s, 326 * s, 110 * s, 60 * s, .2, 0, 7); x.fill();
+        x.fillStyle = 'rgba(120,180,210,.5)'; x.beginPath(); x.ellipse(1180 * s, 316 * s, 60 * s, 24 * s, .2, 0, 7); x.fill();
+        // cesty
+        x.strokeStyle = 'rgba(214,190,130,.75)'; x.lineWidth = 1.6; for (const [a2, b2] of MAPDATA.roads) { const A = MAPDATA.castles[a2], B = MAPDATA.castles[b2]; if (A && B) { x.beginPath(); x.moveTo(A[1] * s, A[2] * s); x.quadraticCurveTo((A[1] + B[1]) / 2 * s + 30 * s, (A[2] + B[2]) / 2 * s - 25 * s, B[1] * s, B[2] * s); x.stroke(); } }
+        // hory: tieň, telo, svetlá strana, snehová čiapka
+        for (const [mx, my, size, kind] of T.mountains) {
+            const r = Math.max(10, (size || 60) * .33) * s, px = mx * s, py = my * s;
+            x.fillStyle = 'rgba(0,0,0,.35)'; x.beginPath(); x.moveTo(px + 2, py - r); x.lineTo(px - r * .9 + 3, py + r * .55 + 2); x.lineTo(px + r * .9 + 4, py + r * .55 + 2); x.fill();
+            x.fillStyle = kind === 'doom' ? '#4a2622' : kind === 'snow' ? '#7a7a80' : '#4a403c'; x.beginPath(); x.moveTo(px, py - r); x.lineTo(px - r * .9, py + r * .55); x.lineTo(px + r * .9, py + r * .55); x.fill();
+            x.fillStyle = kind === 'doom' ? '#6a3a30' : kind === 'snow' ? '#a8a8b0' : '#6a5e58'; x.beginPath(); x.moveTo(px, py - r); x.lineTo(px - r * .9, py + r * .55); x.lineTo(px - r * .15, py + r * .55); x.fill();
+            if (kind === 'snow') { x.fillStyle = '#f2f4f8'; x.beginPath(); x.moveTo(px, py - r); x.lineTo(px - r * .32, py - r * .35); x.lineTo(px - r * .1, py - r * .25); x.lineTo(px + r * .1, py - r * .4); x.lineTo(px + r * .32, py - r * .35); x.fill(); }
+            if (kind === 'doom') { x.fillStyle = '#ff7a20'; x.beginPath(); x.arc(px, py - r + 2, 2.2, 0, 7); x.fill(); x.fillStyle = 'rgba(255,100,20,.25)'; x.beginPath(); x.arc(px, py - r, 10, 0, 7); x.fill(); }
+        }
+        // vinetácia okrajov
+        const vg = x.createRadialGradient(MW2 / 2, MH2 / 2, MH2 * .45, MW2 / 2, MH2 / 2, MW2 * .75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.35)'); x.fillStyle = vg; x.fillRect(0, 0, MW2, MH2);
         this.textures.addCanvas('minimap', c);
         return 'minimap';
     }
@@ -7311,7 +7458,6 @@ class MapScene extends Phaser.Scene {
         this.syncArmies();
         this.syncHero();
         this.drawFx();
-        this.drawMini();
     }
 
     syncTowns() {
@@ -7435,13 +7581,6 @@ class MapScene extends Phaser.Scene {
         }
     }
 
-    drawMini() {
-        const g = this.mini; g.clear();
-        if (MF.t) for (const t of TW) { g.fillStyle(hex(FC[t.f]), .28).fillCircle(t.x, t.y, 220); g.fillStyle(hex(FC[t.f]), 1).fillRect(t.x - 55, t.y - 55, 110, 110); }
-        if (MF.e) for (const e of E) g.fillStyle(hos(e.f, G.fac) ? 0xff4030 : hex(FC[e.f]), 1).fillCircle(e.x, e.y, 45);
-        g.fillStyle(0xffffff, 1).fillCircle(G.x, G.y, 70 + Math.sin(tm / 10) * 20);
-        g.lineStyle(40, 0xffffff, .7).strokeRect(cam.x, cam.y, W / Z, H / Z);
-    }
 }
 
 </script>
@@ -7677,7 +7816,7 @@ class RoomScene extends Phaser.Scene {
         this.room = r;
         this.people = this.people || [];
         this.add.text(W / 2, 72, r.title, txtStyle(17, '#f0d9a8', { fontFamily: TITLE_FONT, stroke: '#000', strokeThickness: 4 })).setOrigin(.5).setDepth(50);
-        this.hint = this.add.text(W / 2, H - 14, r.hint || 'Klik na zem alebo šípky/WASD = chôdza  •  klik na postavu alebo miesto = akcia  •  Esc = odísť', txtStyle(10, '#d8c8a8', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5).setDepth(50);
+        this.hint = this.add.text(W / 2, H - 14, r.hint || 'Klik na zem alebo šípky/WASD = chôdza  •  klik na postavu alebo miesto = akcia  •  medzerník = rozhovor s osobou pri tebe  •  Esc = odísť', txtStyle(10, '#d8c8a8', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5).setDepth(50);
         const ui = this.scene.get('UI');
         this.leaveBtn = ui.button.call(this, W - 128, H - 34, 118, 24, r.leave, () => this.leave(), { size: 11, icon: Icons.tex(this, 'door') });
         this.leaveBtn.forEach(o => o.setDepth(51));
@@ -7690,6 +7829,8 @@ class RoomScene extends Phaser.Scene {
         this.floor.on('pointerup', p => { if (ov.classList.contains('hide')) this.goTo(p.x / RES, p.y / RES, null); });
         this.keys = this.input.keyboard.addKeys('W,A,S,D,UP,LEFT,DOWN,RIGHT');
         this.input.keyboard.on('keydown-ESC', () => { if (ov.classList.contains('hide')) this.leave(); });
+        this.input.keyboard.on('keydown-SPACE', () => this.interactNearest());
+        this.input.keyboard.on('keydown-E', () => this.interactNearest());
         this.events.on('shutdown', () => this.input.keyboard.removeAllListeners());
         this.light = this.add.graphics().setDepth(40);
     }
@@ -7703,8 +7844,8 @@ class RoomScene extends Phaser.Scene {
         ring.lineStyle(2, 0xffd24a, .9).strokeEllipse(x, y + 2, 44 * sc, 14 * sc);
         const lbl = this.add.text(x, y + 8, name, txtStyle(10, '#f4e8d0', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5, 0).setDepth(45);
         spr.on('pointerover', () => ring.setVisible(true)); spr.on('pointerout', () => ring.setVisible(false));
-        spr.on('pointerup', () => { if (!ov.classList.contains('hide')) return; this.goTo(x + (this.pl.x < x ? -46 : 46), y + 4, onClick); });
-        this.people.push({ spr, ring, lbl, name, x, y, t0: Math.random() * 6 });
+        spr.on('pointerup', () => { if (!ov.classList.contains('hide')) return; this.approach(x, y, onClick); });
+        this.people.push({ spr, ring, lbl, name, x, y, t0: Math.random() * 6, fn: onClick });
         return spr;
     }
     /** Miesto (dvere, stánok…): neviditeľná plocha w × h okolo (x, y) s popiskom; hráč k nemu dôjde a vykoná fn. */
@@ -7713,11 +7854,26 @@ class RoomScene extends Phaser.Scene {
         const lbl = this.add.text(x, y + h / 2 + 2, name, txtStyle(10, '#ffe8b0', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5, 0).setDepth(45);
         z.on('pointerover', () => { z.setFillStyle(0xffd24a, .12); }); z.on('pointerout', () => { z.setFillStyle(0xffd24a, 0); });
         z.on('pointerup', () => { if (!ov.classList.contains('hide')) return; this.goTo(x, standY ?? (y + h / 2 + 14), fn); });
-        this.people.push({ spr: z, ring: this.add.graphics(), lbl, name, x, y: standY ?? y, t0: 0, spot: 1 });
+        this.people.push({ spr: z, ring: this.add.graphics(), lbl, name, x, y: standY ?? y, t0: 0, spot: 1, fn });
         return z;
     }
     clearPeople() { this.people.forEach(p => { p.spr.destroy(); p.ring.destroy(); p.lbl.destroy(); }); this.people = []; }
 
+    /** Je bod v niektorej prekážke miestnosti? */
+    blocked(x, y) { return (this.room.block || []).some(([bx, by, bw, bh]) => x > bx && x < bx + bw && y > by && y < by + bh); }
+    /** Príde k osobe na (x, y) z tej strany, kde nie je prekážka, a potom spustí fn. */
+    approach(x, y, fn) {
+        const cands = [[x + (this.pl.x < x ? -46 : 46), y + 4], [x + (this.pl.x < x ? 46 : -46), y + 4], [x, y + 40], [x, y + 60], [x - 50, y + 40], [x + 50, y + 40]];
+        const c = cands.find(([cx, cy]) => !this.blocked(cx, cy) && cy >= this.room.floorY + 10) || cands[2];
+        this.goTo(c[0], c[1], fn);
+    }
+    /** Medzerník: rozhovor s najbližšou osobou alebo miestom (do 80 bodov). */
+    interactNearest() {
+        if (!ov.classList.contains('hide')) return;
+        let best = null, bd = 80;
+        for (const p of this.people) { const d = Math.hypot(p.x - this.pl.x, p.y - this.pl.y); if (d < bd && p.fn) { bd = d; best = p; } }
+        if (best) { this.plT = null; this.plDo = null; this.pl.setFlipX(best.x < this.pl.x); best.fn(); }
+    }
     /** Hráč ide na miesto (x, y); po príchode zavolá fn. */
     goTo(x, y, fn) { const r = this.room; this.plT = { x: Math.max(24, Math.min(W - 24, x)), y: Math.max(r.floorY + 10, Math.min(H - 30, y)) }; this.plDo = fn; }
     movePlayer(dt = 1) {
@@ -7734,7 +7890,7 @@ class RoomScene extends Phaser.Scene {
             this.plStep += dt; pl.setFrame(1 + Math.floor(this.plStep / 5) % 4);
         } else pl.setFrame(0);
         pl.setDepth(pl.y); this.plLbl.setPosition(pl.x, pl.y + 8);
-        this.people.forEach(p => { const near = Math.hypot(p.x - pl.x, p.y - pl.y) < 70; p.lbl.setColor(near ? '#ffd24a' : p.spot ? '#ffe8b0' : '#f4e8d0'); });
+        this.people.forEach(p => { const near = Math.hypot(p.x - pl.x, p.y - pl.y) < 80; p.lbl.setColor(near ? '#ffd24a' : p.spot ? '#ffe8b0' : '#f4e8d0'); if (p.lbl.text.endsWith(' ⎵') !== near) p.lbl.setText(near ? p.name + ' ⎵' : p.name); });
     }
 
     /** Obloha v obdĺžniku (okno, nebo nad hradbami) podľa dennej doby a počasia. */
@@ -7794,17 +7950,16 @@ class TavernScene extends RoomScene {
         this.C = C;
         const g = this.add.graphics().setDepth(0);
         const HZ = 290;                                             // horizont: hranica steny a podlahy
-        // stena
-        g.fillStyle(C.wall, 1).fillRect(0, 0, W, HZ);
-        if (th === 'dwarf' || th === 'evil') { for (let y = 0; y < HZ; y += 22) for (let x = -11 + ((y / 22) % 2) * 20; x < W; x += 40) { g.fillStyle((x + y) % 80 < 40 ? C.wall2 : C.wall, 1).fillRoundedRect(x + 1, y + 1, 38, 20, 3); } }
-        else if (th === 'elf') { for (let x = 0; x < W; x += 90) { g.fillStyle(C.wall2, 1).fillRect(x + 40, 0, 10, HZ); g.lineStyle(2, 0x9ab8a0, .5); for (const d of [-1, 1]) { g.beginPath(); for (let k = 0; k <= 10; k++) { const u = k / 10, px = x + 45 + d * 60 * u * u, py = HZ - HZ * u; k ? g.lineTo(px, py) : g.moveTo(px, py); } g.strokePath(); } } }
-        else { for (let y = 0; y < HZ; y += 16) { g.fillStyle(y % 32 ? C.wall2 : C.wall, 1).fillRect(0, y, W, 16); } for (let x = 0; x < W; x += 120) g.fillStyle(C.beam, 1).fillRect(x, 0, 8, HZ); }
-        g.fillStyle(C.beam, 1).fillRect(0, 0, W, 14);                 // trám pod stropom
-        g.fillStyle(C.beam, 1).fillRect(0, HZ - 6, W, 8);
-        // podlaha
-        g.fillStyle(C.floor, 1).fillRect(0, HZ, W, H - HZ);
-        if (th === 'dwarf' || th === 'evil') { for (let y = HZ; y < H; y += 26) for (let x = ((y / 26) % 2) * 26; x < W; x += 52) g.fillStyle(C.floor2, 1).fillRect(x, y, 26, 26); }
-        else for (let y = HZ; y < H; y += 18) { g.fillStyle(y % 36 ? C.floor2 : C.floor, 1).fillRect(0, y, W, 18); g.fillStyle(0x000000, .15).fillRect(0, y, W, 1); for (let x = (y % 36 ? 60 : 0); x < W; x += 180) g.fillRect(x, y, 1, 18); }
+        // stena a podlaha z procedurálnych textúr (2× rozlíšenie), cez ne jemné tiene a trámy
+        const hx6 = v => '#' + v.toString(16).padStart(6, '0');
+        const wallKind = th === 'dwarf' ? 'bricks' : th === 'evil' ? 'dark' : th === 'elf' ? 'bark' : 'planks', floorKind = th === 'dwarf' || th === 'evil' ? 'flags' : th === 'elf' ? 'flags' : 'planks';
+        this.add.tileSprite(0, 0, W, HZ, Tex.pattern(this, wallKind, hx6(C.wall), this.ti + 1)).setOrigin(0).setDepth(-1).setTileScale(.4);
+        this.add.tileSprite(0, HZ, W, H - HZ, Tex.pattern(this, floorKind, hx6(C.floor), this.ti + 2)).setOrigin(0).setDepth(-1).setTileScale(.35);
+        if (th === 'elf') { for (let x = 0; x < W; x += 90) { g.fillStyle(C.wall2, .8).fillRect(x + 40, 0, 10, HZ); g.lineStyle(2, 0x9ab8a0, .5); for (const d of [-1, 1]) { g.beginPath(); for (let k = 0; k <= 10; k++) { const u = k / 10, px = x + 45 + d * 60 * u * u, py = HZ - HZ * u; k ? g.lineTo(px, py) : g.moveTo(px, py); } g.strokePath(); } } }
+        else if (th !== 'dwarf' && th !== 'evil') for (let x = 0; x < W; x += 120) { g.fillStyle(C.beam, 1).fillRect(x, 0, 8, HZ); g.fillStyle(0xffffff, .08).fillRect(x, 0, 2, HZ); }
+        g.fillStyle(C.beam, 1).fillRect(0, 0, W, 14); g.fillStyle(0x000000, .25).fillRect(0, 14, W, 6);                 // trám pod stropom a jeho tieň
+        g.fillStyle(C.beam, 1).fillRect(0, HZ - 6, W, 8); g.fillStyle(0x000000, .3).fillRect(0, HZ + 2, W, 10); g.fillStyle(0x000000, .12).fillRect(0, HZ + 12, W, 14);   // sokel a tieň steny na podlahe
+        g.fillStyle(0x000000, .18).fillRect(0, 0, W, HZ * .25);                                                            // tmavší strop
         // okno
         this.winX = 90 + Math.floor(R(1) * 3) * 60; this.winY = 60;
         this.sky = this.add.graphics().setDepth(1);
@@ -7919,9 +8074,12 @@ class TavernScene extends RoomScene {
         const dark = .25 + nn * .3;
         L.fillStyle(0x000000, dark).fillRect(0, 0, W, H);
         const flick = .08 + Math.sin(t / 2.2) * .02 + Math.sin(t / 1.3) * .015;
-        for (let k = 1; k <= 12; k++) L.fillStyle(C.light, (flick + .04) / 6).fillCircle(fx, HZ - 40, 30 + k * 22);          // mäkká žiara krbu
-        for (const [tx, ty] of this.tables) for (let k = 1; k <= 3; k++) L.fillStyle(0xffd090, .025 + Math.sin(t / 1.7 + tx) * .006).fillCircle(tx, ty - 10, 20 + k * 18);
-        for (let k = 1; k <= 3; k++) L.fillStyle(0xffe0a0, .02).fillCircle(this.barX + 90, HZ + 20, 40 + k * 35);
+        if (!this.glows) {   // mäkké žiary: krb, sviečky na stoloch, výčap
+            this.glows = [Tex.light(this, fx, HZ - 40, 300, C.light, .55), Tex.light(this, fx, HZ - 30, 120, 0xffe0a0, .5), Tex.light(this, this.barX + 90, HZ + 20, 150, 0xffe0a0, .22)];
+            for (const [tx, ty] of this.tables) this.glows.push(Tex.light(this, tx, ty - 12, 90, 0xffd090, .35));
+        }
+        this.glows[0].setAlpha(.5 + flick * 1.5); this.glows[1].setAlpha(.45 + Math.sin(t / 1.3) * .08);
+        for (let k = 3; k < this.glows.length; k++) this.glows[k].setAlpha(.3 + Math.sin(t / 1.7 + k) * .06);
         L.fillStyle(0x000000, .35).fillRect(0, 0, W, 14);
         // jemné pohupovanie postáv
         this.people.forEach(p => { p.spr.y = p.y + Math.sin(t / 9 + p.t0) * .8; });
@@ -7979,10 +8137,11 @@ class CastleScene extends RoomScene {
         this.HZ = HZ; this.skyRect = [0, 0, W, 112];
         // hradby a palác v pozadí
         const wallTop = 96;
-        g.fillStyle(C.wall, 1).fillRect(0, wallTop, W, HZ - wallTop);
-        if (th === 'lorien') { for (let x = 30; x < W; x += 120) { g.fillStyle(0x6a5a40, 1).fillRect(x, wallTop - 30, 22, HZ - wallTop + 30); g.fillStyle(0xd8c870, .9).fillCircle(x + 11, wallTop - 40, 46); g.fillStyle(0xe8dc90, .8).fillCircle(x + 2, wallTop - 52, 30); } g.fillStyle(C.wall, .55).fillRect(0, wallTop + 30, W, HZ - wallTop - 30); }
-        else if (th === 'rohan' || th === 'bandit') { for (let x = 0; x < W; x += 18) { g.fillStyle(x % 36 ? C.wall : C.wall2, 1).fillRect(x, wallTop, 18, HZ - wallTop); } for (let y = wallTop + 20; y < HZ; y += 40) g.fillStyle(0x000000, .15).fillRect(0, y, W, 2); }
-        else { for (let y = wallTop; y < HZ; y += 16) for (let x = -16 + ((y / 16) % 2) * 20; x < W; x += 40) g.fillStyle((x + y) % 80 < 40 ? C.wall : C.wall2, 1).fillRoundedRect(x + 1, y + 1, 38, 14, 2); }
+        const hx6 = v => '#' + v.toString(16).padStart(6, '0');
+        const wallKind = th === 'lorien' ? 'bark' : th === 'rohan' || th === 'bandit' ? 'planksV' : th === 'mordor' ? 'dark' : 'bricks';
+        this.add.tileSprite(0, wallTop, W, HZ - wallTop, Tex.pattern(this, wallKind, hx6(C.wall), this.ti + 3)).setOrigin(0).setDepth(-1).setTileScale(.4);
+        if (th === 'lorien') { for (let x = 30; x < W; x += 120) { g.fillStyle(0x6a5a40, 1).fillRect(x, wallTop - 30, 22, HZ - wallTop + 30); g.fillStyle(0xd8c870, .9).fillCircle(x + 11, wallTop - 40, 46); g.fillStyle(0xe8dc90, .8).fillCircle(x + 2, wallTop - 52, 30); } }
+        g.fillStyle(0x000000, .2).fillRect(0, wallTop, W, 10);                                       // tieň pod cimburím
         // cimburie a veže
         g.fillStyle(C.wall2, 1); for (let x = 0; x < W; x += 28) g.fillRect(x, wallTop - 12, 16, 14);
         for (const tx of [60, W - 60]) { g.fillStyle(C.wall2, 1).fillRect(tx - 34, wallTop - 60, 68, HZ - wallTop + 60); g.fillStyle(C.wall, 1).fillRect(tx - 30, wallTop - 56, 60, HZ - wallTop + 56); g.fillStyle(C.roof, 1); if (th === 'mordor' || th === 'isengard') g.fillTriangle(tx - 38, wallTop - 58, tx + 38, wallTop - 58, tx, wallTop - 120); else g.fillTriangle(tx - 38, wallTop - 58, tx + 38, wallTop - 58, tx, wallTop - 100); for (let y = wallTop - 40; y < HZ; y += 40) { g.fillStyle(0x100c0a, 1).fillRoundedRect(tx - 5, y, 10, 16, 3); } }
@@ -8004,11 +8163,10 @@ class CastleScene extends RoomScene {
         this.add.image(gx - 80, wallTop + 20, bk).setOrigin(.5, 0).setScale(2).setDepth(1.5);
         this.add.image(gx + 80, wallTop + 20, bk).setOrigin(.5, 0).setScale(2).setDepth(1.5);
         // zem
-        g.fillStyle(C.ground, 1).fillRect(0, HZ, W, H - HZ);
-        if (th === 'rohan' || th === 'bandit') { for (let y = HZ; y < H; y += 14) { g.fillStyle(y % 28 ? C.ground2 : C.ground, 1).fillRect(0, y, W, 14); } for (let k = 0; k < 40; k++) { g.fillStyle(0xc8b060, .5).fillRect(R(60 + k) * W, HZ + 10 + R(100 + k) * (H - HZ - 20), 6, 1.5); } }
-        else if (th === 'lorien') { for (let k = 0; k < 60; k++) { g.fillStyle(0x6a8a5a, .5).fillEllipse(R(60 + k) * W, HZ + 10 + R(100 + k) * (H - HZ - 20), 14, 5); } }
-        else { for (let y = HZ; y < H; y += 20) for (let x = ((y / 20) % 2) * 20; x < W; x += 40) { g.fillStyle(((x + y) / 20) % 3 ? C.ground2 : C.ground, 1).fillRoundedRect(x + 1, y + 1, 38, 18, 4); } }
-        g.fillStyle(0x000000, .22).fillRect(0, HZ, W, 10);                                   // tieň pod hradbou
+        const groundKind = th === 'rohan' || th === 'bandit' ? 'planks' : th === 'lorien' ? 'grass' : th === 'harad' ? 'sand' : th === 'gondor' ? 'flags' : 'cobbles';
+        this.add.tileSprite(0, HZ, W, H - HZ, Tex.pattern(this, groundKind, hx6(C.ground), this.ti + 4)).setOrigin(0).setDepth(-1).setTileScale(.32);
+        if (th === 'rohan' || th === 'bandit') for (let k = 0; k < 40; k++) { g.fillStyle(0xc8b060, .5).fillRect(R(60 + k) * W, HZ + 10 + R(100 + k) * (H - HZ - 20), 6, 1.5); }
+        g.fillStyle(0x000000, .3).fillRect(0, HZ, W, 10); g.fillStyle(0x000000, .12).fillRect(0, HZ + 10, W, 14);   // tieň pod hradbou
         // studňa
         const wx = 300 + Math.floor(R(1) * 3) * 60, wy = HZ + 90 + Math.floor(R(2) * 2) * 50;
         g.fillStyle(0x000000, .25).fillEllipse(wx, wy + 14, 60, 18);
@@ -8115,10 +8273,11 @@ class CastleScene extends RoomScene {
         const g = this.add.graphics().setDepth(1), HZ = 210;
         this.HZ = HZ; this.skyRect = null;
         // steny a stĺpy
-        g.fillStyle(C.hall, 1).fillRect(0, 0, W, HZ);
-        if (th === 'rohan' || th === 'bandit') { for (let x = 0; x < W; x += 22) g.fillStyle(x % 44 ? C.hall : C.hall2, 1).fillRect(x, 0, 22, HZ); }
-        else if (th === 'lorien') { for (let x = 0; x < W; x += 80) { g.lineStyle(2, 0xd8d0a0, .6); for (const d of [-1, 1]) { g.beginPath(); for (let k = 0; k <= 10; k++) { const u = k / 10; const px = x + 40 + d * 50 * u * u, py = HZ - HZ * u; k ? g.lineTo(px, py) : g.moveTo(px, py); } g.strokePath(); } } }
-        else { for (let y = 0; y < HZ; y += 18) for (let x = -18 + ((y / 18) % 2) * 24; x < W; x += 48) g.fillStyle((x + y) % 96 < 48 ? C.hall : C.hall2, 1).fillRoundedRect(x + 1, y + 1, 46, 16, 2); }
+        const hx6 = v => '#' + v.toString(16).padStart(6, '0');
+        const hallKind = th === 'rohan' || th === 'bandit' ? 'planksV' : th === 'lorien' ? 'bark' : th === 'mordor' ? 'dark' : 'bricks';
+        this.add.tileSprite(0, 0, W, HZ, Tex.pattern(this, hallKind, hx6(C.hall), this.ti + 5)).setOrigin(0).setDepth(-1).setTileScale(.4);
+        if (th === 'lorien') { for (let x = 0; x < W; x += 80) { g.lineStyle(2, 0xd8d0a0, .6); for (const d of [-1, 1]) { g.beginPath(); for (let k = 0; k <= 10; k++) { const u = k / 10; const px = x + 40 + d * 50 * u * u, py = HZ - HZ * u; k ? g.lineTo(px, py) : g.moveTo(px, py); } g.strokePath(); } } }
+        g.fillStyle(0x000000, .22).fillRect(0, 0, W, HZ * .3);                                        // tmavší strop
         for (const px of [90, W - 90]) { g.fillStyle(C.hall2, 1).fillRect(px - 16, 0, 32, HZ + 20); g.fillStyle(C.hall, 1).fillRect(px - 10, 0, 12, HZ + 20); g.fillStyle(C.trim, 1).fillRect(px - 20, HZ + 14, 40, 8).fillRect(px - 20, 0, 40, 8); }
         // okná
         this.windows = [[200, 66], [W - 200, 66]];
@@ -8134,8 +8293,8 @@ class CastleScene extends RoomScene {
         if (th === 'rohan') { g.fillStyle(0xd9a441, 1).fillEllipse(dx, dy - 130, 40, 14); g.fillStyle(0xf4f0e4, 1).fillEllipse(dx, dy - 130, 16, 7); }
         g.fillStyle(0xd8402a, .9).fillRect(dx - 18, dy - 100, 36, 70);                           // vankúš
         // koberec, stoly, ohne
-        g.fillStyle(C.floor, 1).fillRect(0, HZ, W, H - HZ);
-        for (let y = HZ; y < H; y += 24) for (let x = ((y / 24) % 2) * 24; x < W; x += 48) g.fillStyle(0x000000, .08).fillRect(x, y, 24, 24);
+        this.add.tileSprite(0, HZ, W, H - HZ, Tex.pattern(this, th === 'rohan' || th === 'bandit' ? 'planks' : 'flags', hx6(C.floor), this.ti + 6)).setOrigin(0).setDepth(-1).setTileScale(.32);
+        g.fillStyle(0x000000, .3).fillRect(0, HZ, W, 10); g.fillStyle(0x000000, .12).fillRect(0, HZ + 10, W, 14);
         g.fillStyle(C.carpet, 1).fillRect(dx - 40, dy + 8, 80, H - dy - 8); g.fillStyle(C.trim, .6).fillRect(dx - 40, dy + 8, 3, H - dy - 8).fillRect(dx + 37, dy + 8, 3, H - dy - 8);
         for (const side of [-1, 1]) {
             const tx = dx + side * 190, ty = dy + 90;
@@ -8189,8 +8348,13 @@ class CastleScene extends RoomScene {
         const L = this.light; L.clear();
         const dark = this.roomKind === 'hall' ? .2 + nn * .25 : nn * .45;
         L.fillStyle(this.roomKind === 'hall' ? 0x000000 : 0x080e28, dark).fillRect(0, 0, W, H);
-        if (this.roomKind === 'hall') { for (const [bx, by] of this.braziers || []) for (let k = 1; k <= 8; k++) L.fillStyle(C.light, (.06 + Math.sin(t / 2 + bx) * .01) / 4).fillCircle(bx, by, 20 + k * 20); for (let k = 1; k <= 5; k++) L.fillStyle(0xffe0a0, .02).fillCircle(W / 2, 92, 30 + k * 25); }
-        else if (this.forge) { for (let k = 1; k <= 6; k++) L.fillStyle(0xff9a40, (.05 + Math.sin(t / 2) * .01) / 3 * (1 + nn)).fillCircle(this.forge[0], this.forge[1], 15 + k * 18); if (nn > .2 && this.torches) for (const [tx, ty] of this.torches) for (let k = 1; k <= 4; k++) L.fillStyle(0xffb060, .035 * nn).fillCircle(tx, ty, 12 + k * 14); if (nn > .3) for (const gx of [W / 2 - 62, W / 2 + 62]) for (let k = 1; k <= 5; k++) L.fillStyle(0xffb060, .03 * nn).fillCircle(gx, this.HZ - 30, 15 + k * 18); }
+        if (!this.glows) {
+            this.glows = [];
+            if (this.roomKind === 'hall') { for (const [bx, by] of this.braziers || []) this.glows.push(Tex.light(this, bx, by, 190, C.light, .5)); this.glows.push(Tex.light(this, W / 2, 92, 160, 0xffe0a0, .35)); for (const [cx2, cy2] of this.candles || []) if (cy2 > 100) this.glows.push(Tex.light(this, cx2, cy2, 70, 0xffe0a0, .3)); }
+            else { if (this.forge) this.glows.push(Tex.light(this, this.forge[0], this.forge[1], 130, 0xff9a40, .45)); for (const [tx, ty] of this.torches || []) this.glows.push(Tex.light(this, tx, ty, 90, 0xffb060, .0)); }
+        }
+        if (this.roomKind === 'hall') this.glows.forEach((l, i) => l.setAlpha(.42 + Math.sin(t / 2 + i) * .06));
+        else { this.glows.forEach((l, i) => l.setAlpha(i === 0 && this.forge ? .4 + Math.sin(t / 2) * .08 : (.25 + Math.sin(t / 2.3 + i) * .06) * Math.min(1, nn * 1.6 + .15))); }
         this.people.forEach(p => { if (!p.spot) p.spr.y = p.y + Math.sin(t / 9 + p.t0) * .8; });
         this.movePlayer(dt);
     }
@@ -8255,6 +8419,7 @@ class UIScene extends Phaser.Scene {
         tm += dt;
         const scene = this.scene.isActive('Battle') ? 'battle' : this.scene.isActive('Tavern') || this.scene.isActive('Castle') ? 'tavern' : this.scene.isActive('Map') ? 'map' : 'intro';
         this.drawOverlay(scene, dt);
+        this.syncMinimap(scene);
         this.syncHud();
         this.syncBars();
         this.syncBigMap(scene);
@@ -8279,7 +8444,6 @@ class UIScene extends Phaser.Scene {
             const nn = nightness();
             g.fillStyle(0x080e28, .18 * (.5 - .5 * Math.cos(dayT / 600 * 6.283)) + nn * .22).fillRect(0, 0, W, H);
             if (nn > .3 && MW.n === 'clear') { g.fillStyle(0xffffff, (nn - .3) * .9); for (let k = 0; k < 40; k++) g.fillRect((k * 173 + 31) % W, (k * 97 + 11) % (H * .6), 1.2, 1.2); }
-            g.lineStyle(3, UI_C.line, 1).strokeRect(MM.x - 1.5, MM.y - 1.5, MM.w + 3, MM.h + 3);
         }
         this.gateTxt.setVisible(false);
         if (scene === 'battle' && U && U[0]) {
@@ -8306,6 +8470,41 @@ class UIScene extends Phaser.Scene {
         if (n === 'snow') { g.fillStyle(0xdce6ff, .12).fillRect(0, 0, W, H); g.fillStyle(0xffffff, 1); for (let i = 0; i < 110 * k; i++) g.fillRect((i * 97 + tm * .9 + Math.sin(tm / 25 + i) * 12) % W, (i * 59 + tm * 1.8) % H, 2, 2); }
         if (n === 'fog') { g.fillStyle(0xbec8d2, .38).fillRect(0, 0, W, H); for (let i = 0; i < 5; i++) g.fillStyle(0xd8dee6, .08).fillEllipse((i * 230 + tm * (.6 + i * .1)) % (W + 300) - 150, 90 + i * 85, 420, 70); }
         if (n === 'ash') { g.fillStyle(0x3a2a24, .22).fillRect(0, 0, W, H); g.fillStyle(0x6a5a52, .9); for (let i = 0; i < 90 * k; i++) g.fillRect((i * 101 + tm * .5 + Math.sin(tm / 20 + i) * 15) % W, (i * 67 + tm * 1.2) % H, 2, 2); g.fillStyle(0xff6a20, .7); for (let i = 0; i < 12; i++) g.fillRect((i * 331 + tm * .3) % W, (i * 211 + tm * 1.4) % H, 1.5, 1.5); }
+    }
+
+    // ---------- Minimapa -------------------------------------------------------------
+    syncMinimap(scene) {
+        if (!this.mmLayer) { this.mmLayer = this.add.container(0, 0).setDepth(8); this.mmG = null; }
+        const on = scene === 'map' && !!G && this.textures.exists('minimap') && !this.big;
+        this.mmLayer.setVisible(on);
+        if (!on) return;
+        if (!this.mmImg) {
+            this.mmImg = this.add.image(MM.x, MM.y, 'minimap').setOrigin(0).setDisplaySize(MM.w, MM.h);
+            this.mmG = this.add.graphics();
+            this.mmFrame = this.add.graphics();
+            this.mmFrame.fillStyle(0x120e0c, .9).fillRoundedRect(MM.x - 5, MM.y - 5, MM.w + 10, MM.h + 10, 4);
+            this.mmFrame.lineStyle(2, UI_C.line, 1).strokeRoundedRect(MM.x - 4, MM.y - 4, MM.w + 8, MM.h + 8, 4);
+            this.mmFrame.lineStyle(1, 0x8a6a2a, .8).strokeRect(MM.x - 1, MM.y - 1, MM.w + 2, MM.h + 2);
+            for (const [cx, cy] of [[MM.x - 4, MM.y - 4], [MM.x + MM.w + 4, MM.y - 4], [MM.x - 4, MM.y + MM.h + 4], [MM.x + MM.w + 4, MM.y + MM.h + 4]]) this.mmFrame.fillStyle(UI_C.line, 1).fillCircle(cx, cy, 2.2);
+            this.mmLayer.add([this.mmFrame, this.mmImg, this.mmG]);
+        }
+        if (this.mmImg.texture.key !== 'minimap') this.mmImg.setTexture('minimap').setDisplaySize(MM.w, MM.h);
+        const g = this.mmG; g.clear();
+        const kx = MM.w / WW, ky = MM.h / WH, X = x => MM.x + x * kx, Y = y => MM.y + y * ky;
+        // dediny
+        for (const v of VL) g.fillStyle(v.st > 0 ? 0x5a2a2a : 0xe8dcc0, .9).fillRect(X(v.x) - .8, Y(v.y) - .8, 1.6, 1.6);
+        // miesta
+        for (const p of PLACES) g.fillStyle(0xbfe8ff, .9).fillTriangle(X(p.x * K), Y(p.y * K) - 2.2, X(p.x * K) - 2, Y(p.y * K) + 1.4, X(p.x * K) + 2, Y(p.y * K) + 1.4);
+        // hrady: farba frakcie s tmavým okrajom, vlastné s bielym rámom, ciele ťaženia s bodkou
+        for (const t of TW) { const x = X(t.x), y = Y(t.y); g.fillStyle(0x000000, .7).fillRect(x - 3.2, y - 3.2, 6.4, 6.4); g.fillStyle(hex(FC[t.f]), 1).fillRect(x - 2.4, y - 2.4, 4.8, 4.8); if (t.mine) g.lineStyle(1, 0xffffff, 1).strokeRect(x - 3.6, y - 3.6, 7.2, 7.2); }
+        // vojská: nepriateľ červený trojuholník, ostatní bodka vo farbe frakcie; maršali väčší
+        for (const e of E) { const x = X(e.x), y = Y(e.y), m = typeof MAR !== 'undefined' && MAR[e.f] === e.id; if (hos(e.f, G.fac)) { g.fillStyle(0xff4030, 1).fillTriangle(x, y - (m ? 3.2 : 2.2), x - (m ? 2.8 : 2), y + (m ? 2 : 1.4), x + (m ? 2.8 : 2), y + (m ? 2 : 1.4)); } else { g.fillStyle(0x000000, .6).fillCircle(x, y, m ? 2.8 : 1.9); g.fillStyle(hex(FC[e.f]), 1).fillCircle(x, y, m ? 2.1 : 1.3); } }
+        // zraz vlastnej frakcie
+        const mm = typeof marshal === 'function' && G.fac !== 9 ? marshal(G.fac) : null;
+        if (mm && mm.mu && TW[mm.mu.t]) { const mp = musterPoint(mm, TW[mm.mu.t]); g.lineStyle(1, 0xffd24a, .9).strokeCircle(X(mp.x), Y(mp.y), 4 + Math.sin(tm / 8) * 1.2); }
+        // hrdina a výrez kamery
+        g.fillStyle(0xffffff, 1).fillCircle(X(G.x), Y(G.y), 2.2 + Math.sin(tm / 10) * .5); g.lineStyle(1, 0xffd24a, 1).strokeCircle(X(G.x), Y(G.y), 3.6);
+        g.lineStyle(1, 0xffffff, .85).strokeRect(X(cam.x), Y(cam.y), W / Z * kx, H / Z * ky);
     }
 
     // ---------- Horná lišta (zrkadlo #hud) -----------------------------------------
@@ -8425,23 +8624,21 @@ class UIScene extends Phaser.Scene {
         const sig = ev.t + ev.oldF + ev.newF + ev.who;
         if (sig !== this.evSig) {
             this.evSig = sig; this.evLayer.removeAll(true);
-            const PW2 = 420, PH2 = 112, px = W / 2 - PW2 / 2, py = 98;
+            const PW2 = 300, PH2 = 58, px = W / 2 - PW2 / 2, py = 96;
             const g = this.add.graphics();
-            g.fillStyle(0x120e0c, .93).fillRoundedRect(px, py, PW2, PH2, 8);
-            g.lineStyle(2, UI_C.line, 1).strokeRoundedRect(px, py, PW2, PH2, 8);
-            g.fillStyle(hex(FC[ev.oldF]), .9).fillRoundedRect(px + 8, py + 8, PW2 / 2 - 14, PH2 - 16, 6);
-            g.fillStyle(hex(FC[ev.newF]), .9).fillRoundedRect(px + PW2 / 2 + 6, py + 8, PW2 / 2 - 14, PH2 - 16, 6);
-            g.fillStyle(0x000000, .35).fillRoundedRect(px + 8, py + 8, PW2 / 2 - 14, PH2 - 16, 6).fillRoundedRect(px + PW2 / 2 + 6, py + 8, PW2 / 2 - 14, PH2 - 16, 6);
+            g.fillStyle(0x120e0c, .92).fillRoundedRect(px, py, PW2, PH2, 6);
+            g.lineStyle(1.5, UI_C.line, 1).strokeRoundedRect(px, py, PW2, PH2, 6);
+            g.fillStyle(hex(FC[ev.oldF]), .85).fillRoundedRect(px + 5, py + 5, PW2 / 2 - 12, PH2 - 10, 4);
+            g.fillStyle(hex(FC[ev.newF]), .85).fillRoundedRect(px + PW2 / 2 + 7, py + 5, PW2 / 2 - 12, PH2 - 10, 4);
+            g.fillStyle(0x000000, .4).fillRoundedRect(px + 5, py + 5, PW2 / 2 - 12, PH2 - 10, 4).fillRoundedRect(px + PW2 / 2 + 7, py + 5, PW2 / 2 - 12, PH2 - 10, 4);
             const items = [g];
-            const fl = (f, x) => items.push(this.add.image(x, py + 22, Art.banner(this, f)).setOrigin(.5, 0).setScale(1.6 / RES * 1.1));
-            fl(ev.oldF, px + 48); fl(ev.newF, px + PW2 / 2 + 46);
-            items.push(this.add.text(px + 86, py + 22, FN[ev.oldF], txtStyle(14, FC[ev.oldF], { fontFamily: TITLE_FONT, stroke: '#000', strokeThickness: 3 })));
-            items.push(this.add.text(px + 86, py + 44, 'stratil hrad', txtStyle(11, UI_C.ink)));
-            items.push(this.add.text(px + 86, py + 60, ev.t, txtStyle(16, '#fff', { fontStyle: 'bold', stroke: '#000', strokeThickness: 3 })));
-            items.push(this.add.text(px + PW2 / 2 + 84, py + 22, FN[ev.newF], txtStyle(14, FC[ev.newF], { fontFamily: TITLE_FONT, stroke: '#000', strokeThickness: 3 })));
-            items.push(this.add.text(px + PW2 / 2 + 84, py + 44, 'dobyl hrad, velil', txtStyle(11, UI_C.ink)));
-            items.push(this.add.text(px + PW2 / 2 + 84, py + 60, ev.who, txtStyle(14, '#ffd24a', { fontStyle: 'bold', stroke: '#000', strokeThickness: 3, wordWrap: { width: 110 } })));
-            items.push(this.add.text(W / 2, py + PH2 / 2, '➜', txtStyle(22, UI_C.gold)).setOrigin(.5));
+            const fl = (f, x) => items.push(this.add.image(x, py + 10, Art.banner(this, f)).setOrigin(.5, 0).setScale(1.3 / RES));
+            fl(ev.oldF, px + 24); fl(ev.newF, px + PW2 / 2 + 26);
+            items.push(this.add.text(px + 44, py + 9, FN[ev.oldF], txtStyle(11, FC[ev.oldF], { fontFamily: TITLE_FONT, stroke: '#000', strokeThickness: 2 })));
+            items.push(this.add.text(px + 44, py + 25, 'stratil ' + ev.t, txtStyle(10, '#fff', { fontStyle: 'bold', stroke: '#000', strokeThickness: 2, wordWrap: { width: 96 } })));
+            items.push(this.add.text(px + PW2 / 2 + 46, py + 9, FN[ev.newF], txtStyle(11, FC[ev.newF], { fontFamily: TITLE_FONT, stroke: '#000', strokeThickness: 2 })));
+            items.push(this.add.text(px + PW2 / 2 + 46, py + 25, 'dobyl: ' + ev.who, txtStyle(10, '#ffd24a', { fontStyle: 'bold', stroke: '#000', strokeThickness: 2, wordWrap: { width: 96 } })));
+            items.push(this.add.text(W / 2, py + PH2 / 2, '➜', txtStyle(16, UI_C.gold)).setOrigin(.5));
             this.evLayer.add(items);
         }
         this.evLayer.setAlpha(Math.min(1, ev.l / 40));

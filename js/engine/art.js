@@ -17,7 +17,7 @@ const RES = 2;
 /** Rozmery snímok podľa predpony kľúča: [šírka, výška, stredX, stredY]. */
 const ART_SIZES = {
     u_: [96, 96, 48, 48], hero_: [96, 96, 48, 48], unit_: [96, 96, 48, 48],
-    rider_: [60, 70, 22, 52], herorider_: [60, 70, 22, 52], figure_: [72, 80, 36, 64], bigfig_: [216, 240, 108, 192],
+    rider_: [60, 70, 22, 52], herorider_: [60, 70, 22, 52], figure_: [72, 104, 36, 88], bigfig_: [216, 312, 108, 264],
     castle_: [120, 110, 52, 80], village_: [44, 30, 22, 20],
     banner_: [24, 30, 2, 2], crown: [24, 18, 12, 9], spark: [8, 8, 4, 4]
 };

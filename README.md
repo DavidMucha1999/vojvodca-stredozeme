@@ -120,7 +120,7 @@ js/
   sim/                logika hry bez kreslenia: diplomacia, hrdina, armády, svet a AI, maršali a oznámenia (marshal.js), obchod (trade.js), počasie (weather.js), bitka, obliehanie, politika, príbeh, uloženie
   render/             pôvodné kreslenie na plátno (index.html; Phaser ho používa ako náhradnú grafiku)
     soldiers.js       vojaci, kone a výbava pohľadom zhora: hrdina podľa výbavy, ikonky u kováča, pásy snímok pre generátor
-    figures.js        postavičky na mape a v krčme pohľadom zboku: hrdina podľa výbavy (kôň/pešo), lordi podľa frakcie, spoločníci
+    figures.js        postavičky na mape a v krčme pohľadom zboku: hrdina podľa výbavy (kôň/pešo), lordi podľa frakcie, spoločníci; zástava erbu na dlhej žrdi vysoko nad hlavou a zbraňou
     portraits.js      portréty tvárí spredu (rozhovory, tvorba postavy, encyklopédia)
   audio/sound.js      syntetické zvuky a hudba
   ui/                 herné menu ako HTML (v Phaser verzii ich prekresľuje UIScene), inventory.js = kováč a inventár, market.js = trh, create.js = tvorba postavy, tavern.js = rozhovory v krčme
