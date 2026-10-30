@@ -61,6 +61,7 @@ with sync_playwright() as p:
     waitfor("game.scene.getScene('UI').legLayer.list.length > 20")
     check('Legenda v Phaseri', E("game.scene.getScene('UI').legLayer.list.length") > 20)
     E("LEG = false; startBattle(E.find(e => hos(e.f, G.fac) && !e.nz))"); pg.wait_for_timeout(1500)
+    waitfor("game.scene.isActive('Battle') && !game.scene.isActive('Map')", 8000)
     check('Bitka beží', scenes() == 'Battle,UI', scenes())
     check('Vojaci ako animované sprity', E("game.scene.getScene('Battle').units.size") == E("U.length"), E("U.length"))
     check('Hrdina nakreslený podľa výbavy', E("game.scene.getScene('Battle').units.get(U[0]).key") == E("Art.unitKey(U[0])") and E("game.textures.exists(Art.unitKey(U[0]))"))

@@ -127,14 +127,31 @@ function sndBase(k) {
     }
 }
 function pb(t) {
-    const z = mode === 'battle' ? 'b' : G.x < 2250 ? 's' : G.x > 5700 ? 'd' : 'e', P = { e: [[50, 53, 57], [46, 50, 53], [53, 57, 60], [48, 52, 55]], d: [[50, 53, 57], [51, 55, 58], [50, 53, 57], [49, 52, 57]], s: [[53, 57, 60], [48, 52, 55], [50, 53, 57], [46, 50, 53]], b: [[50, 53, 57], [50, 53, 57], [46, 50, 53], [45, 49, 52]] }[z], c = P[bar % 4], L = 2.4;
+    const z = mode === 'tavern' ? (heroSide() === 1 ? 'tv' : 't') : mode === 'battle' ? 'b' : G.x < 2250 ? 's' : G.x > 5700 ? 'd' : 'e', P = { t: [[55, 59, 62], [53, 57, 60], [50, 53, 57], [55, 59, 62]], tv: [[45, 48, 52], [44, 48, 51], [45, 48, 52], [43, 46, 50]], e: [[50, 53, 57], [46, 50, 53], [53, 57, 60], [48, 52, 55]], d: [[50, 53, 57], [51, 55, 58], [50, 53, 57], [49, 52, 57]], s: [[53, 57, 60], [48, 52, 55], [50, 53, 57], [46, 50, 53]], b: [[50, 53, 57], [50, 53, 57], [46, 50, 53], [45, 49, 52]] }[z], c = P[bar % 4], L = 2.4;
     bar++;
+    if (z === 't' || z === 'tv') return pbTavern(t, c, z === 'tv', L);
     c.forEach(m => { osc(mf(m), t, L + .6, 'sawtooth', .03, MB, .6, -7, 1100); osc(mf(m), t, L + .6, 'sawtooth', .03, MB, .6, 7, 1100); });
     osc(mf(c[0] - 24), t, L, 'sine', .18, MB, .05);
     if (z !== 's')
         (z === 'b' ? [0, .3, .6, 1.2, 1.5, 1.8, 2.1] : [0, 1.2, 1.8]).forEach(h => { const o = osc(110, t + h, .5, 'sine', z === 'b' ? .5 : .3, MB, .005); o.frequency.exponentialRampToValueAtTime(45, t + h + .4); noi(t + h, .12, .12, 'lowpass', 600, MB); });
     if (Math.random() < .8)
         [0, 1.2].forEach(h => osc(mf(c[Math.floor(Math.random() * 3)] + 12), t + h, 1.4, 'triangle', .06, MB, .25, 0, 2000));
+}
+/** Hudba krčmy (hudba mapy sa nemení): dobro = veselá brnkačka s ľahkým bubnom, zlo = temný dron s ťažkým úderom. */
+function pbTavern(t, c, evil, L) {
+    if (evil) {
+        c.forEach(m => osc(mf(m - 12), t, L + .4, 'sawtooth', .035, MB, .5, 0, 500));
+        osc(mf(c[0] - 24), t, L, 'sine', .2, MB, .05);
+        [0, 1.2].forEach(h => { const o = osc(80, t + h, .6, 'sine', .45, MB, .005); o.frequency.exponentialRampToValueAtTime(35, t + h + .5); noi(t + h, .15, .18, 'lowpass', 400, MB); });
+        if (Math.random() < .5) osc(mf(c[1] + 6), t + 1.8, .5, 'triangle', .04, MB, .1, 0, 1500);   // falošný tón
+        return;
+    }
+    // dobro: tri doby na takt, brnkané akordy a hopsavá melódia
+    [0, .8, 1.6].forEach((h, i) => c.forEach((m, k) => osc(mf(m + (i ? 0 : -12)), t + h + k * .03, .5, 'triangle', .07, MB, .005, 0, 2500)));
+    const mel = [c[2] + 12, c[1] + 12, c[0] + 12, c[2] + 12, c[0] + 14, c[2] + 12];
+    mel.forEach((m, i) => { if (Math.random() < .85) osc(mf(m), t + i * .4, .35, 'triangle', .08, MB, .005, 0, 3000); });
+    [0, 1.6].forEach(h => { noi(t + h, .08, .15, 'lowpass', 500, MB); });
+    [.8].forEach(h => noi(t + h, .05, .08, 'highpass', 3000, MB));
 }
 function mus() {
     if (!ac || mu || !G || mode === 'intro')

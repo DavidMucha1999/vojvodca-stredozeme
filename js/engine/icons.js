@@ -57,25 +57,45 @@ const Icons = (() => {
     draw.retreat = c => { c.strokeStyle = ink; c.lineWidth = 2.4; c.lineCap = 'round'; c.beginPath(); c.moveTo(20, 12); c.lineTo(6, 12); c.moveTo(11, 7); c.lineTo(6, 12); c.lineTo(11, 17); c.stroke(); };
     draw.formation = c => { c.fillStyle = ink; for (const x of [6, 12, 18]) for (const y of [8, 16]) { c.beginPath(); c.arc(x, y, 2.3, 0, 7); c.fill(); } };
     draw.helm = c => { c.fillStyle = steel; c.beginPath(); c.arc(12, 11, 8, Math.PI, 0); c.lineTo(20, 16); c.lineTo(4, 16); c.closePath(); c.fill(); c.fillStyle = steel2; c.fillRect(4, 14, 16, 2); c.fillRect(11, 8, 2, 11); c.fillStyle = gold; c.fillRect(11.3, 3, 1.4, 4); c.beginPath(); c.moveTo(12, 2); c.quadraticCurveTo(17, 1, 19, 6); c.quadraticCurveTo(15, 4, 12, 5); c.fill(); c.fillStyle = '#1a1210'; c.fillRect(6, 11.5, 4.5, 2); c.fillRect(13.5, 11.5, 4.5, 2); };
+    draw.anvil = c => { c.fillStyle = steel2; path(c, [[3, 7], [21, 7], [21, 10], [15, 12], [15, 16], [18, 19], [6, 19], [9, 16], [9, 12], [5, 10], [3, 10]], true); c.fill(); c.fillStyle = steel; c.fillRect(3, 7, 18, 1.6); c.fillStyle = wood; c.fillRect(5, 19, 14, 2.2); c.strokeStyle = '#4a3020'; c.lineWidth = 2; c.lineCap = 'round'; c.beginPath(); c.moveTo(16, 3); c.lineTo(20, 7); c.stroke(); };
+    draw.castle = c => { c.fillStyle = '#9a9ca4'; c.fillRect(4, 10, 16, 10); for (const x of [4, 9, 14]) c.fillRect(x, 7, 3, 3); c.fillRect(19, 7, 1, 3); c.fillStyle = '#7a7c84'; c.fillRect(9, 4, 6, 16); c.fillRect(8, 3, 8, 2); c.fillStyle = '#2a1e14'; c.beginPath(); c.arc(12, 17, 2, Math.PI, 0); c.lineTo(14, 20); c.lineTo(10, 20); c.fill(); c.fillStyle = red; path(c, [[12, 1], [16, 2.5], [12, 4]], true); c.fill(); };
+    draw.mug = c => { c.fillStyle = '#c8903a'; c.fillRect(5, 8, 11, 12); c.fillStyle = '#a8701a'; c.fillRect(5, 8, 11, 1.5); c.fillRect(5, 13, 11, 1); c.strokeStyle = '#c8903a'; c.lineWidth = 2.5; c.beginPath(); c.arc(17, 14, 3, -Math.PI / 2, Math.PI / 2); c.stroke(); c.fillStyle = '#fff4dc'; c.beginPath(); c.ellipse(10.5, 7, 7, 3, 0, 0, 7); c.fill(); c.beginPath(); c.arc(6, 5.5, 2, 0, 7); c.arc(10.5, 4, 2.6, 0, 7); c.arc(15, 5.5, 2, 0, 7); c.fill(); };
+    draw.door = c => { c.fillStyle = '#5a3a1a'; c.fillRect(4, 4, 12, 17); c.fillStyle = '#8a5a30'; c.fillRect(5.5, 5.5, 9, 15.5); c.fillStyle = gold; c.beginPath(); c.arc(13, 13, 1.1, 0, 7); c.fill(); c.strokeStyle = ink; c.lineWidth = 2; c.lineCap = 'round'; c.beginPath(); c.moveTo(15, 12.5); c.lineTo(21, 12.5); c.moveTo(18.5, 9.5); c.lineTo(21, 12.5); c.lineTo(18.5, 15.5); c.stroke(); };
+    draw.scales = c => { c.strokeStyle = gold; c.lineWidth = 1.6; c.lineCap = 'round'; c.beginPath(); c.moveTo(12, 4); c.lineTo(12, 19); c.moveTo(4, 7); c.lineTo(20, 7); c.moveTo(8, 20); c.lineTo(16, 20); c.stroke(); c.lineWidth = .8; c.beginPath(); c.moveTo(4, 7); c.lineTo(2, 13); c.moveTo(4, 7); c.lineTo(6, 13); c.moveTo(20, 7); c.lineTo(18, 13); c.moveTo(20, 7); c.lineTo(22, 13); c.stroke(); c.fillStyle = gold; c.beginPath(); c.arc(4, 13, 3, 0, Math.PI); c.fill(); c.beginPath(); c.arc(20, 13, 3, 0, Math.PI); c.fill(); };
+    draw.ram = c => { c.fillStyle = wood; c.fillRect(3, 11, 16, 3); c.fillStyle = steel2; path(c, [[19, 9], [23, 12.5], [19, 16]], true); c.fill(); c.strokeStyle = '#4a3020'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(6, 11); c.lineTo(4, 5); c.moveTo(15, 11); c.lineTo(17, 5); c.moveTo(4, 5); c.lineTo(17, 5); c.stroke(); for (const x of [6, 15]) { c.fillStyle = '#3a2a1a'; c.beginPath(); c.arc(x, 18, 2.3, 0, 7); c.fill(); } };
+    draw.chest = c => { c.fillStyle = '#7a4a22'; c.fillRect(4, 10, 16, 10); c.fillStyle = '#9a6a3a'; c.beginPath(); c.moveTo(4, 10); c.quadraticCurveTo(4, 5, 12, 5); c.quadraticCurveTo(20, 5, 20, 10); c.fill(); c.fillStyle = gold; c.fillRect(4, 9.5, 16, 1.4); c.fillRect(11, 9, 2, 4); c.fillStyle = gold2; c.fillRect(6, 10, 1, 10); c.fillRect(17, 10, 1, 10); };
+    draw.fire = c => { c.fillStyle = '#ff7a1a'; c.beginPath(); c.moveTo(12, 3); c.quadraticCurveTo(19, 9, 17, 15); c.quadraticCurveTo(16, 21, 12, 21); c.quadraticCurveTo(8, 21, 7, 15); c.quadraticCurveTo(6, 10, 12, 3); c.fill(); c.fillStyle = '#ffd040'; c.beginPath(); c.moveTo(12, 10); c.quadraticCurveTo(15.5, 14, 14, 18); c.quadraticCurveTo(13, 20.5, 12, 20.5); c.quadraticCurveTo(10, 20.5, 10, 17); c.quadraticCurveTo(9.5, 14, 12, 10); c.fill(); };
+    draw.back = c => { c.strokeStyle = '#1a120a'; c.lineWidth = 2.4; c.lineCap = 'round'; c.lineJoin = 'round'; c.beginPath(); c.moveTo(19, 12); c.lineTo(6, 12); c.moveTo(11, 7); c.lineTo(6, 12); c.lineTo(11, 17); c.stroke(); };
+    draw.court = c => { c.fillStyle = gold; path(c, [[5, 19], [5, 9], [9, 12], [12, 5], [15, 12], [19, 9], [19, 19]], true); c.fill(); c.fillStyle = '#4a86c0'; c.fillRect(5, 17, 14, 2.2); c.fillStyle = red; c.beginPath(); c.arc(12, 14, 1.4, 0, 7); c.fill(); };
+    draw.recruit = c => { for (const [x, y, s] of [[8, 12, .9], [16, 12, .9]]) { c.fillStyle = steel; c.beginPath(); c.arc(x, y - 4 * s, 3.2 * s, 0, 7); c.fill(); c.fillStyle = '#7d7f80'; c.beginPath(); c.moveTo(x - 5 * s, y + 8 * s); c.quadraticCurveTo(x, y - 1 * s, x + 5 * s, y + 8 * s); c.fill(); } c.strokeStyle = wood; c.lineWidth = 1.6; c.beginPath(); c.moveTo(12, 3); c.lineTo(12, 21); c.stroke(); c.fillStyle = red; path(c, [[12.5, 3], [19, 5], [12.5, 7.5]], true); c.fill(); };
+    draw.rest = c => { c.fillStyle = '#6a4a2a'; c.fillRect(3, 12, 18, 6); c.fillStyle = '#e8dcc0'; c.fillRect(4, 9, 16, 4); c.fillStyle = '#c84a3a'; c.fillRect(4, 11, 16, 2); c.fillStyle = '#fff'; c.beginPath(); c.ellipse(8, 9.5, 3, 1.8, 0, 0, 7); c.fill(); c.fillStyle = '#4a3020'; c.fillRect(3, 18, 2, 3); c.fillRect(19, 18, 2, 3); c.fillStyle = gold; c.font = 'bold 7px Georgia'; c.fillText('z', 15, 7); c.fillText('Z', 18, 4); };
+    draw.hero = c => { c.fillStyle = gold; c.beginPath(); for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? 3.2 : 7.5; c.lineTo(12 + Math.cos(a) * r, 9 + Math.sin(a) * r); } c.fill(); c.fillStyle = ink; c.beginPath(); c.moveTo(6, 22); c.quadraticCurveTo(12, 12, 18, 22); c.fill(); c.fillStyle = '#e2bf96'; c.beginPath(); c.arc(12, 15, 2.6, 0, 7); c.fill(); };
+    draw.gear = c => { c.fillStyle = steel; c.beginPath(); for (let k = 0; k < 16; k++) { const a = k * Math.PI / 8, r = k % 2 ? 6.5 : 9; c.lineTo(12 + Math.cos(a) * r, 12 + Math.sin(a) * r); } c.closePath(); c.fill(); c.fillStyle = '#2a2420'; c.beginPath(); c.arc(12, 12, 3, 0, 7); c.fill(); };
     draw.quest = draw.scroll;
     draw.camp = draw.tent;
 
     /** Kľúč textúry ikony name (nakreslí ju pri prvom použití). */
-    function tex(scene, name) {
-        const key = 'ico_ui_' + name;
-        if (scene.textures.exists(key)) return key;
+    /** Plátno s ikonou name (96 × 96 px). */
+    function canvas(name) {
         const cv = document.createElement('canvas'); cv.width = cv.height = SZ * S;
         const c = cv.getContext('2d'); c.scale(S, S);
         c.save(); c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 1.5; c.shadowOffsetY = .8;
         (draw[name] || draw.help)(c);
         c.restore();
-        scene.textures.addCanvas(key, cv);
+        return cv;
+    }
+    function tex(scene, name) {
+        const key = 'ico_ui_' + name;
+        if (!scene.textures.exists(key)) scene.textures.addCanvas(key, canvas(name));
         return key;
     }
+    const has = name => !!draw[name];
     /** Ikona podľa textu v lište alebo na tlačidle. */
     const HUD = [[/^Zlato/, 'coins'], [/^Pešiaci/, 'sword'], [/^Jazdci/, 'horse'], [/^Lukostrelci/, 'bow'], [/^Elfovia/, 'leaf'], [/^Rohirimi/, 'horn'], [/^Veteráni/, 'medal'], [/^Zajatci/, 'chain'], [/^Skúsenosti/, 'book'], [/^Kapitola/, 'scroll'], [/^Zdravie/, 'heart'], [/^Úroveň/, 'level'], [/^Body/, 'crown'], [/^Sláva/, 'star'], [/^Deň/, 'sun'], [/^Elitné/, 'elite'], [/prsteň/i, 'ring'], [/^Česť/, 'honor'], [/^Strach/, 'skull'], [/^Tábor/, 'tent'], [/^Voz/, 'cart'], [/^Úlohy/, 'quest'], [/^Družina/, 'group']];
     const BTN = { '−': 'zoomout', '+': 'zoomin', 'Prehľad': 'map', 'Denník': 'diary', 'Úlohy': 'quest', 'Družina': 'group', 'Inventár': 'bag', 'Štatistiky': 'chart', 'Legenda': 'legend', 'Trofeje': 'trophy', 'Úspechy': 'achievement', 'Návod': 'help', 'Zvuk': 'sound', 'Tábor': 'tent', 'Encyklopédia': 'encyclopedia', 'Celá obrazovka': 'fullscreen', '1 Útok': 'attack', '2 Držať': 'hold', '3 Ústup': 'retreat', '4 Šík': 'formation' };
+    const DLG = [[/^Späť/, 'back'], [/^(Odísť|Zavrieť|Pokračovať na mapu)/, 'door'], [/^(Uložiť|Načítať|Pozícia|Automatick)/, 'chest'], [/^Trh/, 'scales'], [/^Krčma/, 'mug'], [/^Kováč/, 'anvil'], [/^Verbovanie/, 'recruit'], [/^Obliehať|^Zaútočiť/, 'ram'], [/^(Prijať úlohu|Úloha)/, 'quest'], [/^Hovoriť|^Rozhovor|^Porozprávať/, 'group'], [/^Kúpiť|^Predať/, 'coins'], [/^Vyrabovať/, 'fire'], [/^Diplomacia/, 'honor'], [/^Hrdina/, 'hero'], [/^Turnaj/, 'attack'], [/^Správa hradu/, 'castle'], [/^Dvor/, 'court'], [/^Vojsko,/, 'rest'], [/^Nová hra|^Vyraziť/, 'sword']];
+    const forDialog = text => { const m = DLG.find(([re]) => re.test(text.trim())); return m ? m[1] : null; };
     const forHud = (text, first) => { const m = HUD.find(([re]) => re.test(text)); return m ? m[1] : first ? 'helm' : null; };
     const forButton = text => { const t = text.trim(); if (/^Zvuk: vyp/.test(t)) return 'soundoff'; if (/^Zvuk/.test(t)) return 'sound'; if (/^Tábor/.test(t)) return 'tent'; return BTN[t] || null; };
-    return { tex, forHud, forButton, SZ };
+    return { tex, canvas, has, forHud, forButton, forDialog, SZ };
 })();

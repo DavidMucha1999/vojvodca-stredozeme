@@ -33,7 +33,7 @@ class MapScene extends Phaser.Scene {
             stars: this.add.text(t.x - 24, t.y - (newArt ? 60 : 46), '', { fontFamily: 'sans-serif', fontSize: '11px', color: '#ffd24a', fontStyle: 'bold', resolution: RES }).setOrigin(.5).setDepth(9001)
         }));
 
-        this.hero = Art.image(this, G.x, G.y, Art.rider(this, G.fac, 1), 0, true);
+        this.hero = Art.image(this, G.x, G.y, Art.heroFigure(this), 0, true); this.hero.setScale(this.hero.scaleX * 1.2);
         this.heroTxt = this.add.text(0, 0, '', { fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold', color: '#ffd24a', backgroundColor: 'rgba(18,14,12,.85)', padding: { x: 5, y: 1 }, resolution: RES }).setOrigin(.5, 0).setDepth(9002);
         this.heroCrown = Art.image(this, 0, 0, Art.crown(this)).setDepth(9002);
         this.fx = this.add.graphics().setDepth(8999);
@@ -55,6 +55,42 @@ class MapScene extends Phaser.Scene {
         this.input.on('gameout', () => this.hover = null);
         this.input.on('wheel', (p, o, dx, dy) => { if (mode === 'map') Z = Math.max(.45, Math.min(1.5, Z - Math.sign(dy) * .1)); });
         this.events.once('shutdown', () => this.input.removeAllListeners());
+    }
+
+    /** Les ako jednotlivé stromy: hustý vnútri, pri okraji redší a s náhodne vysunutými stromami, aby hranica nebola kockatá. */
+    buildForest(T) {
+        const ts = WW / T.cols, rnd = n => { const x = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
+        const isF = (i, j) => i >= 0 && j >= 0 && i < T.cols && j < T.rows && T.forest[j * T.cols + i] >= 33;
+        const layer = this.add.layer().setDepth(-8);
+        // všetky stromy v jednej textúre (jedna dávka pre grafickú kartu namiesto tisícov prepnutí)
+        const KEYS = ['tree_0', 'tree_1', 'tree_2', 'deadtree'];
+        if (!this.textures.exists('map_trees')) {
+            const srcs = KEYS.map(k => this.textures.get(k).getSourceImage()), fw = Math.max(...srcs.map(i => i.width)), fh = Math.max(...srcs.map(i => i.height));
+            const cv = document.createElement('canvas'); cv.width = fw * KEYS.length; cv.height = fh; const c2 = cv.getContext('2d');
+            srcs.forEach((im, i) => c2.drawImage(im, i * fw + (fw - im.width) / 2, fh - im.height));
+            const tex = this.textures.addCanvas('map_trees', cv);
+            KEYS.forEach((k, i) => tex.add(i, 0, i * fw, 0, fw, fh));
+        }
+        const trees = [];
+        for (let j = 0; j < T.rows; j++) for (let i = 0; i < T.cols; i++) {
+            const f = T.forest[j * T.cols + i]; if (f < 33) continue;
+            const dead = f >= 37;
+            let nb = 0; for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) if ((di || dj) && isF(i + di, j + dj)) nb++;
+            const edge = nb < 8, seed = j * T.cols + i;
+            const n = dead ? 2 + (nb > 5 ? 1 : 0) : (edge ? 3 + Math.round(rnd(seed) * 2) : 5 + Math.round(rnd(seed) * 2));
+            for (let k = 0; k < n; k++) {
+                let x = (i + rnd(seed * 7 + k * 3 + 1)) * ts, y = (j + rnd(seed * 7 + k * 3 + 2)) * ts;
+                // pri okraji sa strom občas vysunie von z lesa – rozstrapkaná hranica
+                if (edge && rnd(seed * 13 + k) < .45) { const a = rnd(seed * 17 + k) * 6.283, d = rnd(seed * 19 + k) * ts * .9; x += Math.cos(a) * d; y += Math.sin(a) * d; }
+                const sc = dead ? .3 + rnd(seed + k * 5) * .1 : .28 + rnd(seed * 3 + k) * .16;
+                trees.push([x, y, sc, dead ? 'deadtree' : (rnd(seed * 5 + k) < .3 ? 'tree_2' : rnd(seed * 11 + k) < .5 ? 'tree_0' : 'tree_1')]);
+            }
+            // samostatné stromy kúsok za okrajom lesa (riedky lem)
+            if (edge && !dead && rnd(seed * 23) < .35) { const a = rnd(seed * 29) * 6.283, d = ts * (1 + rnd(seed * 31) * .8); trees.push([(i + .5) * ts + Math.cos(a) * d, (j + .5) * ts + Math.sin(a) * d, .22 + rnd(seed * 37) * .1, rnd(seed * 41) < .5 ? 'tree_1' : 'tree_2']); }
+        }
+        trees.sort((a, b) => a[1] - b[1]);
+        for (const [x, y, sc, key] of trees) layer.add(this.add.image(x, y, 'map_trees', KEYS.indexOf(key)).setOrigin(.5, .89).setScale(sc));
+        return [layer];
     }
 
     /** Terén z editora Tiled: dlaždice zeme a lesov, voda, cesty a hory. Vráti objekty sveta. */
@@ -114,7 +150,8 @@ class MapScene extends Phaser.Scene {
         if (this.textures.exists('forestwash')) this.textures.remove('forestwash');
         this.textures.addCanvas('forestwash', fc2);
         out.push(this.add.image(-WW / T.cols * .5, -WH / T.rows * .5, 'forestwash').setOrigin(0).setScale(WW / T.cols).setAlpha(.9).setDepth(-8.7));
-        layer(T.forest, -8, false);
+        // lesy: namiesto štvorcových dlaždíc jednotlivé stromy s rozhádzanými okrajmi (prirodzená hranica lesa)
+        out.push(...this.buildForest(T));
         // hory
         for (const [x, y, size, kind, v] of T.mountains) {
             const key = 'mtn_' + kind + '_' + (kind === 'doom' ? 0 : v % 3);
@@ -147,6 +184,7 @@ class MapScene extends Phaser.Scene {
 
     click(p) {
         if (mode !== 'map' || !G) return;
+        const ui = this.scene.get('UI'); if (ui && (ui.big || ui.menu)) { if (ui.menu) ui.menu = null; return; }   // otvorená veľká mapa alebo ponuka
         if (G.camp) { G.camp = 0; const b = [...tb.children].find(x => /tábor/i.test(x.textContent)); if (b) b.textContent = 'Tábor'; upd(); }
         G.dest = -1; G.vd = -1; G.chase = null; G.talk = null;
         const sx = p.x / RES, sy = p.y / RES;
@@ -204,15 +242,17 @@ class MapScene extends Phaser.Scene {
             if (!o) {
                 o = {
                     f: -1,
-                    spr: Art.image(this, e.x, e.y, Art.rider(this, e.f), 0, true),
+                    spr: Art.image(this, e.x, e.y, Art.figure(this, ...Figures.lordEq(e)), 0, true),
                     txt: this.add.text(0, 0, '', { fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold', color: '#ecdfc6', backgroundColor: 'rgba(18,14,12,.78)', padding: { x: 5, y: 1 }, resolution: RES }).setOrigin(.5, 0).setDepth(9002),
                     crown: Art.image(this, 0, 0, Art.crown(this)).setDepth(9002)
                 };
                 this.mmCam.ignore([o.spr, o.txt, o.crown]);
                 this.armies.set(e.id, o);
             }
-            if (o.f !== e.f) { o.f = e.f; const k = Art.rider(this, e.f); o.spr.setTexture(k, 0).play({ key: k + ':wave', startFrame: e.id % 4 }); }
+            const fk = Figures.key(...Figures.lordEq(e));
+            if (o.f !== fk) { o.f = fk; const k = Art.figure(this, ...Figures.lordEq(e)); o.spr.setTexture(k, 0).setScale((Art.scale[k] || 1 / RES) * 1.2).play({ key: k + ':wave', startFrame: e.id % 4 }); }
             o.spr.setPosition(e.x, e.y).setDepth(e.y);
+            if (e.vx) o.spr.setFlipX(e.vx < 0);
             o.txt.setPosition(e.x, e.y + 19).setText(e.nm + ' ' + Math.ceil(e.n))
                 .setColor(hos(e.f, G.fac) ? '#ff8a70' : (AL[G.fac][e.f] || e.f === G.fac) ? '#9fe08a' : '#ecdfc6');
             o.crown.setVisible(!!e.kr).setPosition(e.x + 17, e.y - 46);
@@ -222,10 +262,11 @@ class MapScene extends Phaser.Scene {
     }
 
     syncHero() {
-        const key = Art.rider(this, G.fac, 1);
-        if (this.hero.texture.key !== key) this.hero.setTexture(key, 0).setScale(Art.scale[key] || 1 / RES).play(key + ':wave');
+        const key = Art.heroFigure(this);
+        if (this.hero.texture.key !== key) this.hero.setTexture(key, 0).setScale((Art.scale[key] || 1 / RES) * 1.2).play(key + ':wave');
         if (!this.hero.anims.isPlaying) this.hero.play(key + ':wave');
         const moving = Math.hypot(G.tx - G.x, G.ty - G.y) > 3;
+        if (moving) this.hero.setFlipX(G.tx < G.x);
         this.hero.setPosition(G.x, G.y + (moving ? Math.sin(tm * .4) * 1.2 : 0)).setDepth(G.y + 1);
         this.heroTxt.setPosition(G.x, G.y + 38).setText(G.name + ' ' + ar());
         this.heroCrown.setVisible(!!G.king).setPosition(G.x + 17, G.y - 46);

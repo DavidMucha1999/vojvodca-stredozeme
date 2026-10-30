@@ -41,13 +41,13 @@ function ambTick() {
     ambInit();
     if (mu) { for (const k in AMB.src) ambSet(k, 0); return; }
     const battle = mode === 'battle', w = battle ? WX.n : MW.n, night = battle ? WX.night : isNight();
-    const se = season(), shop = mode === 'town' && ov && /^(Trh|Krčma)/.test((ov.querySelector('h1') || {}).textContent || '');
+    const se = season(), tav = mode === 'tavern', shop = tav || (mode === 'town' && ov && /^(Trh|Krčma)/.test((ov.querySelector('h1') || {}).textContent || ''));
     ambSet('rain', w === 'rain' ? .22 : w === 'storm' ? .4 : w === 'ash' ? .08 : 0);
     const windy = w === 'snow' || w === 'storm' || se === 3 || (w === 'fog' ? .5 : 0);
     ambSet('wind', w === 'snow' ? .3 : w === 'storm' ? .22 : se === 3 ? .12 : w === 'fog' ? .08 : 0);
     if (windy) AMB.src.wind.f.frequency.setTargetAtTime(300 + 250 * (.5 + .5 * Math.sin(tm / 90)), ac.currentTime, .5);
-    ambSet('fire', battle && night ? .12 : 0);
-    ambSet('crowd', shop ? .14 : 0);
+    ambSet('fire', battle && night ? .12 : tav ? .1 : 0);
+    ambSet('crowd', tav ? .2 : shop ? .14 : 0);
     const now = ac.currentTime;
     if (w === 'storm' && now > thunderAt) { thunder(); thunderAt = now + 5 + Math.random() * 10; }
     if (battle && night && now > crackleAt) { crackle(); crackleAt = now + .15 + Math.random() * .5; }

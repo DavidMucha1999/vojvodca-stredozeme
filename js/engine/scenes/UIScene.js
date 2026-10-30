@@ -30,9 +30,11 @@ class UIScene extends Phaser.Scene {
         this.barLayer = this.add.container(0, 0).setDepth(20);
         this.tipLayer = this.add.container(0, 0).setDepth(30);
         this.legLayer = this.add.container(0, 0).setDepth(25);
-        this.dlg = null; this.sig = {};
+        this.bigLayer = this.add.container(0, 0).setDepth(28);
+        this.dlg = null; this.sig = {}; this.menu = null; this.big = false;
         document.body.classList.add('phaser-ui');
-        this.input.keyboard.on('keydown-ESC', () => this.dialogKey('esc'));
+        this.input.keyboard.on('keydown-ESC', () => { if (this.big) this.big = false; else if (this.menu) this.menu = null; else this.dialogKey('esc'); });
+        this.input.keyboard.on('keydown-M', () => { if (G && mode === 'map' && !this.dlg && !ov.classList.contains('intro')) this.big = !this.big; });
         this.input.keyboard.on('keydown', e => { if (this.dlg && e.key >= '1' && e.key <= '9') this.dialogKey(+e.key); });
         this.input.on('wheel', (p, o, dx, dy) => { if (this.dlg) this.scrollDialog(dy); });
         // posúvanie dlhého okna ťahaním myšou alebo prstom
@@ -51,10 +53,11 @@ class UIScene extends Phaser.Scene {
     update(time, delta) {
         const dt = Math.min(2, delta / 16.67);
         tm += dt;
-        const scene = this.scene.isActive('Battle') ? 'battle' : this.scene.isActive('Map') ? 'map' : 'intro';
+        const scene = this.scene.isActive('Battle') ? 'battle' : this.scene.isActive('Tavern') ? 'tavern' : this.scene.isActive('Map') ? 'map' : 'intro';
         this.drawOverlay(scene, dt);
         this.syncHud();
         this.syncBars();
+        this.syncBigMap(scene);
         this.syncDialog();
         this.drawTooltip(scene);
         this.drawLegend(scene);
@@ -65,7 +68,7 @@ class UIScene extends Phaser.Scene {
         const g = this.g; g.clear();
         if (TS && TS.l > 0 && G) { TS.l -= dt; this.toast.setVisible(!this.dlg).setText(TS.s).setAlpha(Math.min(1, TS.l / 40)); }
         else this.toast.setVisible(false);
-        this.pause.setVisible(scene === 'map' && mode === 'map' && !!PAUSE && !this.dlg);
+        this.pause.setVisible(scene === 'map' && mode === 'map' && !!PAUSE && !this.dlg && !this.menu && !this.big);
         if (scene === 'map') {
             const se = G ? season() : 0;
             if (se === 2) g.fillStyle(0xc86e1e, .1).fillRect(0, 0, W, H);
@@ -153,31 +156,113 @@ class UIScene extends Phaser.Scene {
     }
 
     // ---------- Panel tlačidiel a rozkazy (zrkadlo tb a od) --------------------------
+    /** Skupiny tlačidiel spodného panela: [názov, ikona, texty HTML tlačidiel]. Ostatné (lupa, Tábor) sú vždy viditeľné. */
+    static get GROUPS() {
+        return [['Hrdina', 'helm', ['Prehľad', 'Denník', 'Úlohy', 'Družina', 'Inventár', 'Štatistiky']],
+                ['Kronika', 'book', ['Legenda', 'Trofeje', 'Úspechy', 'Encyklopédia', 'Návod']],
+                ['Nastavenia', 'gear', ['Zvuk', 'Celá obrazovka']]];
+    }
+
     syncBars() {
-        const vis = el => el.style.display !== 'none' && !!G && !this.dlg;
-        const sig = [vis(tb), vis(od), ...[...tb.children, ...od.children].map(b => b.textContent + (b.style.opacity || ''))].join('|');
+        const vis = el => el.style.display !== 'none' && !!G && !this.dlg && mode !== 'tavern';
+        if (this.dlg || !vis(tb)) this.menu = null;
+        const sig = [vis(tb), vis(od), this.menu, this.big, ...[...tb.children, ...od.children].map(b => b.textContent + (b.style.opacity || ''))].join('|');
         if (sig === this.sig.bars) return;
         this.sig.bars = sig;
         this.barLayer.removeAll(true);
-        const BH = 24;
+        const BH = 26;
         if (vis(tb)) {
-            let x = 6, y = H - BH - 4;
-            const rows = [];
-            [...tb.children].forEach(b => {
-                const ic = Icons.forButton(b.textContent), zoom = /^[−+]$/.test(b.textContent.trim());
-                const label = zoom ? '' : b.textContent;
-                const w = zoom ? BH : Math.max(20, this.measure(label, 11) + 14 + (ic ? BH + 2 : 0));
-                if (x + w > W * .68) { x = 6; y -= BH + 3; }
-                rows.push(this.button(x, y, w, BH, label, () => b.click(), { size: 11, icon: ic ? Icons.tex(this, ic) : null, bare: zoom }));
+            const y = H - BH - 4, all = [...tb.children], grouped = new Set(UIScene.GROUPS.flatMap(g => g[2]));
+            const find = n => all.find(b => b.textContent.trim().startsWith(n));
+            let x = 6;
+            const out = [];
+            const put = (label, ic, fn, o = {}) => {
+                const zoom = !label, w = zoom ? BH : Math.max(20, this.measure(label, 11) + 14 + (ic ? BH + 2 : 0));
+                out.push(...this.button(x, y, w, BH, label, fn, { size: 11, icon: ic ? Icons.tex(this, ic) : null, bare: zoom, ...o }));
                 x += w + 3;
-            });
-            this.barLayer.add(rows.flat());
-            if (this.pause) this.pause.y = y - 14;                       // upozornenie na pauzu nad panelom
+                return x - w - 3;
+            };
+            // lupa a Tábor ostávajú priamo na paneli
+            all.filter(b => /^[−+]$/.test(b.textContent.trim())).forEach(b => put('', Icons.forButton(b.textContent), () => b.click()));
+            const camp = find('Tábor') || find('Zrušiť tábor');
+            if (camp) put(camp.textContent, 'tent', () => camp.click());
+            put('Mapa (M)', 'map', () => { this.big = !this.big; });
+            // skupinové tlačidlá, ktoré rozbalia ponuku
+            for (const [name, ic, items] of UIScene.GROUPS) {
+                const open = this.menu === name, bx = put(name + (open ? ' ▾' : ' ▴'), ic, () => { this.menu = open ? null : name; });
+                if (!open) continue;
+                const bs = items.map(find).filter(Boolean), iw = 150, ih = 26, ph = bs.length * (ih + 3) + 9, py = y - ph - 4;
+                const panel = this.add.graphics();
+                panel.fillStyle(0x1c1510, .96).fillRoundedRect(bx, py, iw + 10, ph, 5);
+                panel.lineStyle(1.5, UI_C.line, 1).strokeRoundedRect(bx, py, iw + 10, ph, 5);
+                const blocker = this.add.rectangle(bx, py, iw + 10, ph, 0, 0).setOrigin(0).setInteractive();
+                out.push(panel, blocker);
+                bs.forEach((b, i) => {
+                    const t = b.textContent.trim(), bic = Icons.forButton(t);
+                    out.push(...this.button(bx + 5, py + 5 + i * (ih + 3), iw, ih, t, () => { this.menu = null; b.click(); }, { size: 11, icon: bic ? Icons.tex(this, bic) : null }));
+                });
+            }
+            // tlačidlá, ktoré nepatria do žiadnej skupiny ani nie sú vyššie (nové položky), ostanú viditeľné
+            all.filter(b => { const t = b.textContent.trim(); return !/^[−+]$/.test(t) && !/tábor/i.test(t) && ![...grouped].some(n => t.startsWith(n)); })
+               .forEach(b => put(b.textContent, Icons.forButton(b.textContent), () => b.click()));
+            this.barLayer.add(out);
+            if (this.pause) this.pause.y = y - 14;
         }
         if (vis(od)) {
             const bs = [...od.children], w = 84, x0 = W / 2 - (bs.length * (w + 4)) / 2;
             bs.forEach((b, i) => { const ic = Icons.forButton(b.textContent); this.barLayer.add(this.button(x0 + i * (w + 4), H - BH - 4, w, BH, b.textContent, () => b.click(), { size: 11, alpha: +(b.style.opacity || 1), icon: ic ? Icons.tex(this, ic) : null })); });
         }
+    }
+
+    // ---------- Veľká mapa (klávesa M) ---------------------------------------------
+    syncBigMap(scene) {
+        if (this.big && (scene !== 'map' || mode !== 'map' || this.dlg)) this.big = false;
+        const sig = this.big ? [1, G.x | 0, G.y | 0, E.length, tm / 30 | 0].join('|') : '';
+        if (sig === this.sig.big) return;
+        this.sig.big = sig;
+        this.bigLayer.removeAll(true);
+        if (!this.big) return;
+        const mh = H - 76, mw = mh * 1.5, mx = (W - mw) / 2, my = 38, sx = mw / WW, sy = mh / WH;
+        const g = this.add.graphics();
+        g.fillStyle(0x0a0806, .78).fillRect(0, 0, W, H);
+        g.fillStyle(0x2a1e14, 1).fillRoundedRect(mx - 10, my - 30, mw + 20, mh + 46, 8);
+        g.lineStyle(2, UI_C.line, 1).strokeRoundedRect(mx - 10, my - 30, mw + 20, mh + 46, 8);
+        const items = [g];
+        const shade = this.add.rectangle(mx, my, mw, mh, 0, 0).setOrigin(0).setInteractive({ useHandCursor: true });
+        shade.on('pointerup', p => {                              // klik = cieľ cesty
+            if (this.drag && this.drag.moved) return;
+            const wx = (p.x / RES - mx) / sx, wy = (p.y / RES - my) / sy;
+            G.dest = -1; G.vd = -1; G.chase = null; G.talk = null; G.tx = wx; G.ty = wy;
+            TW.forEach((t, i) => { if (Math.hypot(t.x - wx, t.y - wy) < 160) { G.tx = t.x; G.ty = t.y; G.dest = i; } });
+            this.big = false;
+        });
+        const closer = this.add.rectangle(0, 0, W, H, 0, 0).setOrigin(0).setInteractive();
+        closer.on('pointerup', () => { this.big = false; });
+        items.push(closer, shade);
+        if (this.textures.exists('minimap')) items.push(this.add.image(mx, my, 'minimap').setOrigin(0).setDisplaySize(mw, mh));
+        const d = this.add.graphics(); items.push(d);
+        // cesty
+        if (typeof MAPDATA !== 'undefined' && MAPDATA.roads) { d.lineStyle(1.2, 0xc8b080, .55); for (const [a, b] of MAPDATA.roads) { const A = TW[a], B = TW[b]; if (A && B) d.lineBetween(mx + A.x * sx, my + A.y * sy, mx + B.x * sx, my + B.y * sy); } }
+        // názvy krajín
+        const regions = {}; TW.forEach(t => { (regions[t.f] = regions[t.f] || []).push(t); });
+        for (const f in regions) { const ts = regions[f]; if (f == 6 || f == 9) continue; const cx = ts.reduce((a, t) => a + t.x, 0) / ts.length, cy = ts.reduce((a, t) => a + t.y, 0) / ts.length; items.push(this.add.text(mx + cx * sx, my + cy * sy - 22, FN[f].toUpperCase(), txtStyle(15, FC[f], { fontFamily: TITLE_FONT, stroke: '#000', strokeThickness: 3 })).setOrigin(.5).setAlpha(.8)); }
+        // dediny
+        for (const v of VL) { const x = mx + v.x * sx, y = my + v.y * sy; d.fillStyle(v.st > 0 ? 0x442222 : 0xe8d8b0, 1).fillCircle(x, y, 2.2); items.push(this.add.text(x + 3, y - 4, v.n, txtStyle(6.5, '#d8ccb0', { stroke: '#000', strokeThickness: 2 })).setAlpha(.8)); }
+        // hrady
+        TW.forEach((t, i) => {
+            const x = mx + t.x * sx, y = my + t.y * sy, col = hex(FC[t.f]);
+            d.fillStyle(0x000000, .6).fillRect(x - 5, y - 5, 10, 10); d.fillStyle(col, 1).fillRect(x - 4, y - 4, 8, 8);
+            if (t.mine) { d.lineStyle(1.5, 0xffffff, 1).strokeRect(x - 5.5, y - 5.5, 11, 11); }
+            items.push(this.add.text(x, y + 6, t.n, txtStyle(10, hos(t.f, G.fac) ? '#ffb0a0' : '#fff2d8', { fontStyle: 'bold', stroke: '#000', strokeThickness: 3 })).setOrigin(.5, 0));
+        });
+        // vojská a hrdina
+        for (const e of E) { d.fillStyle(hos(e.f, G.fac) ? 0xff4030 : hex(FC[e.f]), 1).fillCircle(mx + e.x * sx, my + e.y * sy, 2.6); d.lineStyle(.8, 0x000000, .8).strokeCircle(mx + e.x * sx, my + e.y * sy, 2.6); }
+        const hx = mx + G.x * sx, hy = my + G.y * sy;
+        d.fillStyle(0xffffff, 1).fillCircle(hx, hy, 4.5); d.lineStyle(1.5, 0xd9a441, 1).strokeCircle(hx, hy, 6.5 + Math.sin(tm / 10) * 1.5);
+        if (G.tx != null && (Math.abs(G.tx - G.x) > 5 || Math.abs(G.ty - G.y) > 5)) { d.lineStyle(1, 0xffffff, .7).lineBetween(hx, hy, mx + G.tx * sx, my + G.ty * sy); d.fillStyle(0xffd24a, 1).fillCircle(mx + G.tx * sx, my + G.ty * sy, 3); }
+        items.push(this.add.text(W / 2, my - 18, 'Mapa Stredozeme', txtStyle(16, UI_C.gold, { fontFamily: TITLE_FONT })).setOrigin(.5));
+        items.push(this.add.text(W / 2, my + mh + 3, 'Klik na mapu = cieľ cesty  •  M alebo Esc zatvorí  •  biely rám = tvoje hrady, červené názvy = nepriateľ', txtStyle(9, UI_C.dim)).setOrigin(.5, 0));
+        this.bigLayer.add(items);
     }
 
     measure(s, size) { const t = this.add.text(0, 0, s, txtStyle(size, '#fff')); const w = t.width; t.destroy(); return w; }
@@ -189,7 +274,7 @@ class UIScene extends Phaser.Scene {
         const deco = this.add.graphics().setAlpha(o.alpha ?? 1);          // svetlý horný okraj a tmavší spodok – plastické tlačidlo
         deco.fillStyle(0xffffff, off ? .08 : .22).fillRect(x + 1, y + 1, w - 2, 1);
         deco.fillStyle(0x3a2208, off ? .15 : .35).fillRect(x + 1, y + h - 2, w - 2, 1);
-        const is = Math.min(h - 4, 24), iw = o.icon ? (o.bare ? 0 : is + 6) : 0;
+        const is = Math.min(h - 4, o.iconSize || 24), iw = o.icon ? (o.bare ? 0 : is + 6) : 0;
         const t = this.add.text(x + iw + (w - iw) / 2, y + h / 2, label, txtStyle(size, off ? UI_C.dim : '#1a120a', { align: 'center', wordWrap: { width: Math.max(10, w - 12 - iw), useAdvancedWrap: true } })).setOrigin(.5);
         const out = [r, deco, t];
         if (o.icon) {
@@ -320,11 +405,12 @@ class UIScene extends Phaser.Scene {
 
     /** Tlačidlo okna podľa pôvodného HTML tlačidla k (aj s ikonkou výbavy). Vráti pole objektov s výškou .h. */
     dialogButton(k, x, y, w, allow) {
-        const label = k.textContent.trim() || '•', icon = this.iconFor(k), iw = icon ? 30 : 0;
+        const label = k.textContent.trim() || '•', dn = Icons.forDialog(label), icon = this.iconFor(k) || (dn && label !== '•' ? Icons.tex(this, dn) : null);
+        const unit = icon && /^ico_u_/.test(icon), is = unit ? 34 : 24, iw = icon ? is + 6 : 0;   // ikonky vojakov sú väčšie
         const probe = this.add.text(0, 0, label, txtStyle(12, '#000', { wordWrap: { width: w - 12 - iw, useAdvancedWrap: true } }));
-        const bh = Math.max(icon ? 28 : 24, probe.height + 8); probe.destroy();
+        const bh = Math.max(icon ? is + 4 : 24, probe.height + 8); probe.destroy();
         const swatch = k.style.background && k.textContent.trim() === '' ? k.style.background : null;
-        const parts = this.button(x, y, w, bh, label, () => { if (allow()) k.click(); }, { disabled: k.disabled, icon, size: 12 });
+        const parts = this.button(x, y, w, bh, label, () => { if (allow()) k.click(); }, { disabled: k.disabled, icon, iconSize: is, size: 12 });
         if (swatch) parts[0].setFillStyle(hex(swatch));
         if (k.style.outline) parts[0].setStrokeStyle(3, 0xffffff, 1);
         this.dlgButtons.push(k);

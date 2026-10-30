@@ -707,6 +707,18 @@ const Soldiers = (() => {
         if (k === 'm') { if (G) iconHorse(c, G, team); else iconBoots(c); }
         return cv;
     }
+    /** Ikonka vojaka (ako vyzerá v boji): druh kind z UNITS alebo hotový popis, farba frakcie color. */
+    function unitIcon(kind, color, size = 64) {
+        const sp = typeof kind === 'string' ? UNITS[kind] : kind;
+        if (!sp) return mkCanvas(size, size);
+        const cv = mkCanvas(size, size), c = cv.getContext('2d');
+        const big = sp.mount || sp.beast ? 1.5 : sp.big ? 1.7 : 1, u = size / 64 * (2.9 / big);
+        const draw = (ctx, layer) => { ctx.save(); ctx.translate(size / 2, size / 2); ctx.scale(u, u); drawUnit(ctx, sp, 0, layer); ctx.restore(); };
+        const base = mkCanvas(size, size); draw(base.getContext('2d'), 'base');
+        c.drawImage(outlined(base), 0, 0);
+        if (color) { const t = mkCanvas(size, size), tc = t.getContext('2d'); draw(tc, 'team'); tc.globalCompositeOperation = 'source-in'; tc.fillStyle = color; tc.fillRect(0, 0, size, size); c.drawImage(t, 0, 0); }
+        return cv;
+    }
     /** Nakreslí bielu vrstvu fn a zafarbí ju farbou frakcie. */
     function tintedLayer(c, color, fn) {
         const sz = 64, t = mkCanvas(sz, sz), tc = t.getContext('2d');
@@ -811,5 +823,5 @@ const Soldiers = (() => {
         }
     }
 
-    return { S, FRAME, FRAMES, UNITS, GEAR, gear, heroSpec, drawUnit, sheet, icon, shade, ell, mkCanvas };
+    return { S, FRAME, FRAMES, UNITS, GEAR, gear, heroSpec, drawUnit, sheet, icon, unitIcon, shade, ell, mkCanvas };
 })();

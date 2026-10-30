@@ -12,5 +12,5 @@ const game = new Phaser.Game({
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     render: { antialias: true, roundPixels: false },
     input: { mouse: { preventDefaultWheel: true } },
-    scene: [BootScene, IntroScene, MapScene, BattleScene, UIScene]
+    scene: [BootScene, IntroScene, MapScene, BattleScene, TavernScene, UIScene]
 });

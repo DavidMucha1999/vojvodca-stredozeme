@@ -17,7 +17,7 @@ const RES = 2;
 /** Rozmery snímok podľa predpony kľúča: [šírka, výška, stredX, stredY]. */
 const ART_SIZES = {
     u_: [96, 96, 48, 48], hero_: [96, 96, 48, 48], unit_: [96, 96, 48, 48],
-    rider_: [60, 70, 22, 52], herorider_: [60, 70, 22, 52],
+    rider_: [60, 70, 22, 52], herorider_: [60, 70, 22, 52], figure_: [72, 80, 36, 64], bigfig_: [216, 240, 108, 192],
     castle_: [120, 110, 52, 80], village_: [44, 30, 22, 20],
     banner_: [24, 30, 2, 2], crown: [24, 18, 12, 9], spark: [8, 8, 4, 4]
 };
@@ -209,6 +209,21 @@ const Art = {
     rider(scene, f, hero) {
         const key = (hero ? 'herorider_' + [f, G.kn || '', G.ke ?? '', G.eq.m].join('_') : 'rider_' + f);
         return Art.ensure(scene, key, () => [0, 1, 2, 3].map(k => () => { tm = k * 14.1; rider(0, 0, 0, f, hero ? '#5a6b55' : '#2c2a26'); }));
+    },
+
+    /** Postavička na mape podľa výbavy (hrdina: eq = G.eq; lord: Figures.lordEq(e)). */
+    figure(scene, eq, o) {
+        const key = Figures.key(eq, o);
+        return Art.ensure(scene, key, () => [0, 1, 2, 3].map(k => () => { tm = k * 14.1; Figures.draw(ctx, eq, o, k); }));
+    },
+    /** Trikrát väčšia postavička (krčma, rozhovory). */
+    bigFigure(scene, eq, o) {
+        const key = 'bigfig_' + Figures.key(eq, o).slice(7);
+        return Art.ensure(scene, key, () => [() => { tm = 0; ctx.scale(3, 3); Figures.draw(ctx, eq, o, 0); }]);
+    },
+    heroFigure(scene) {
+        const evil = typeof heroSide === 'function' && heroSide() === 1;
+        return Art.figure(scene, G.eq, { flag: G.fac, king: !!G.king, cape: evil ? '#2a1414' : '#6a2a2a' });
     },
 
     castle(scene, f) {

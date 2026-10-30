@@ -63,9 +63,9 @@ function vill(i) {
     if (!v.good) v.good = villageGood(v, i);
     show(v.n + ' (' + FN[f] + ')', v.st > 0 ? 'Dedina je vypálená, obnoví sa o ' + v.st + ' dní.' : 'Dedina patrí k hradu ' + TW[v.t].n + '. Vyrába: ' + goodOf(v.good).n + ' (' + goodOf(v.good).ico + '), prosperita úroveň ' + lvl(v) + '.');
     if (v.st <= 0 && !hos(f, G.fac))
-        btn('Trh (kúpiť a predať tovar)', () => market(v, () => vill(i)));
+        btn('Trh (kúpiť a predať tovar)', () => market(v, () => vill(i)), 0, 'scales');
     if (v.st <= 0 && hos(f, G.fac))
-        btn('Vyrabovať dedinu (bráni ju domáca stráž)', () => { ov.classList.add('hide'); startBattle({ n: 5 + Math.floor(Math.random() * 6), f, vil: v }); });
+        btn('Vyrabovať dedinu (bráni ju domáca stráž)', () => { ov.classList.add('hide'); startBattle({ n: 5 + Math.floor(Math.random() * 6), f, vil: v }); }, 0, 'fire');
     if (v.st <= 0 && !hos(f, G.fac))
         btn('Najať dobrovoľníkov (3 pešiaci za 25)', () => {
             if (G.gold >= 25) {
@@ -74,8 +74,8 @@ function vill(i) {
                 upd();
                 vill(i);
             }
-        }, G.gold < 25);
-    btn('Odísť', () => { ov.classList.add('hide'); mode = 'map'; });
+        }, G.gold < 25, { u: 'i' });
+    btn('Odísť', () => { ov.classList.add('hide'); mode = 'map'; }, 0, 'door');
 }
 function town(i) {
     const t = TW[i];
@@ -83,27 +83,27 @@ function town(i) {
     mode = 'town';
     if (hos(t.f, G.fac)) {
         show(t.n + ' (' + FN[t.f] + ')', 'Nepriateľský hrad. Garnizón: ' + t.g + ' mužov. Pri dobývaní sa bránia o 30 % silnejšie.');
-        btn('Obliehať hrad', () => siege(i));
-        btn('Odísť', () => { ov.classList.add('hide'); mode = 'map'; });
+        btn('Obliehať hrad', () => siege(i), 0, 'ram');
+        btn('Odísť', () => { ov.classList.add('hide'); mode = 'map'; }, 0, 'door');
         return;
     }
     qChk('v', t.n);
     questEvent('v', t.n);
     show(t.n + ' (' + FN[t.f] + ')', 'Zlato ' + G.gold + ', vojsko ' + ar() + ', zdravie ' + Math.ceil(G.hp) + '/' + mh() + '. Posádka hradu: ' + t.g + (t.lord ? ', léno drží ' + t.lord : '') + '.');
-    [['r', 'Verbovanie vojakov'], ['e', 'Kováč a zbrojnica'], ['v', 'Vojsko, zajatci a odpočinok'], ...(t.mine ? [['h', 'Správa hradu']] : []), ['d', 'Dvor a diplomacia']].forEach(([c, n]) => btn(n, () => tsub(i, c)));
-    btn('Trh', () => market(t, () => town(i)));
-    btn('Krčma' + (compsAt(t).length ? ' (niekto tu čaká)' : ''), () => tavern(i));
+    [['r', 'Verbovanie vojakov', 'recruit'], ['e', 'Kováč a zbrojnica', 'anvil'], ['v', 'Vojsko, zajatci a odpočinok', 'rest'], ...(t.mine ? [['h', 'Správa hradu', 'castle']] : []), ['d', 'Dvor a diplomacia', 'court']].forEach(([c, n, ic]) => btn(n, () => tsub(i, c), 0, ic));
+    btn('Trh', () => market(t, () => town(i)), 0, 'scales');
+    btn('Krčma' + (compsAt(t).length ? ' (niekto tu čaká)' : ''), () => enterTavern(i), 0, 'mug');
     questsAt(t).forEach(q => {
         const d = qDef(q), s = qStep(q);
-        if (s.k === 'r') btn('Úloha: uzavrieť „' + d.n + '“ u ' + q.lord, () => { questComplete(q); msg('„' + qText(q, d.done) + '“', () => town(i)); });
-        else btn('Úloha: odovzdať ' + s.n + '× ' + goodOf(s.a).n + ' (' + d.n + ')', () => { if (questDeliver(q)) msg(q.step >= d.steps.length ? '„' + qText(q, d.done) + '“' : 'Tovar odovzdaný.', () => town(i)); }, ((G.cargo || {})[s.a] || 0) < s.n);
+        if (s.k === 'r') btn('Úloha: uzavrieť „' + d.n + '“ u ' + q.lord, () => { questComplete(q); msg('„' + qText(q, d.done) + '“', () => town(i)); }, 0, 'quest');
+        else btn('Úloha: odovzdať ' + s.n + '× ' + goodOf(s.a).n + ' (' + d.n + ')', () => { if (questDeliver(q)) msg(q.step >= d.steps.length ? '„' + qText(q, d.done) + '“' : 'Tovar odovzdaný.', () => town(i)); }, ((G.cargo || {})[s.a] || 0) < s.n, 'quest');
     });
-    btn('Hrdina a schopnosti' + (G.sk ? ' (' + G.sk + ' bodov)' : ''), () => skills(i));
-    btn('Turnaj v aréne (vstupné 20)', () => { G.gold -= 20; upd(); ov.classList.add('hide'); startBattle({ n: 3 + Math.floor(G.lv / 2), f: t.f, ar: 1, t }); }, G.gold < 20);
+    btn('Hrdina a schopnosti' + (G.sk ? ' (' + G.sk + ' bodov)' : ''), () => skills(i), 0, 'hero');
+    btn('Turnaj v aréne (vstupné 20)', () => { G.gold -= 20; upd(); ov.classList.add('hide'); startBattle({ n: 3 + Math.floor(G.lv / 2), f: t.f, ar: 1, t }); }, G.gold < 20, 'attack');
     if (G.ring === 1 && t.n === 'Barad-dûr' && bloc(G.fac) === 1)
-        btn('Odovzdať Prsteň Sauronovi', () => { G.ring = 2; G.gold += 1000; G.ren += 10; lg('Odovzdal si Jeden prsteň Sauronovi.'); ach(); upd(); town(i); });
-    btn('Uložiť hru', () => saveMenu(() => town(i)));
-    btn('Odísť z mesta', () => { ov.classList.add('hide'); mode = 'map'; });
+        btn('Odovzdať Prsteň Sauronovi', () => { G.ring = 2; G.gold += 1000; G.ren += 10; lg('Odovzdal si Jeden prsteň Sauronovi.'); ach(); upd(); town(i); }, 0, 'ring');
+    btn('Uložiť hru', () => saveMenu(() => town(i)), 0, 'chest');
+    btn('Odísť z mesta', () => { ov.classList.add('hide'); mode = 'map'; }, 0, 'door');
 }
 function tsub(i, c) {
     if (c === 'e')
@@ -112,13 +112,13 @@ function tsub(i, c) {
     mode = 'town';
     show(T[c], 'Zlato: ' + G.gold + '.' + (c === 'r' ? ' Pešiaci ' + G.inf + ', jazdci ' + G.cav + ', lukostrelci ' + G.arc + ', elfovia ' + G.elf + ', rohirimi ' + G.roh + ', veteráni ' + G.vet + '.' : c === 'e' ? ' Útok ' + dmg() + ', ochrana ' + Math.round((1 - red()) * 100) + ' %.' : c === 'v' ? ' Zajatci ' + G.cap + ', skúsenosti ' + G.txp + ', zajatí velitelia ' + G.pri.length + '.' : c === 'h' ? ' Hradby stupeň ' + (t.wl || 0) + ', posádka ' + t.g + '.' : ' Hodnosť: ' + rank() + ', sláva ' + G.ren + ', frakcia: ' + FN[G.fac] + '.'));
     if (c === 'r')
-        rec(t).forEach(([n, p, k]) => btn(n + ' (' + p + ' zlata)', () => { G.gold -= p; G[k]++; re(); }, G.gold < p));
+        rec(t).forEach(([n, p, k]) => btn(n + ' (' + p + ' zlata)', () => { G.gold -= p; G[k]++; re(); }, G.gold < p, { u: unitKind(k) }));
     if (c === 'v') {
-        btn('Odpočinúť si (plné zdravie)', () => { G.hp = mh(); re(); }, G.hp >= mh());
-        btn('Povýšiť pešiaka na veterána (20 zlata, 15 skúseností)', () => { G.gold -= 20; G.txp -= 15; G.inf--; G.vet++; re(); }, G.gold < 20 || G.txp < 15 || G.inf < 1);
-        btn('Naverbovať zajatcov (8 zlata/ks)', () => { const n = Math.min(G.cap, Math.floor(G.gold / 8)); G.gold -= n * 8; G.inf += n; G.cap -= n; re(); }, !G.cap || G.gold < 8);
-        btn('Predať zajatcov (12 zlata/ks)', () => { G.gold += G.cap * 12; G.cap = 0; re(); }, !G.cap);
-        btn('Výkupné za zajatých veliteľov (' + G.pri.length * 80 + ')', () => { G.gold += G.pri.length * 80; G.pri = []; re(); }, !G.pri.length);
+        btn('Odpočinúť si (plné zdravie)', () => { G.hp = mh(); re(); }, G.hp >= mh(), 'heart');
+        btn('Povýšiť pešiaka na veterána (20 zlata, 15 skúseností)', () => { G.gold -= 20; G.txp -= 15; G.inf--; G.vet++; re(); }, G.gold < 20 || G.txp < 15 || G.inf < 1, { u: 'v' });
+        btn('Naverbovať zajatcov (8 zlata/ks)', () => { const n = Math.min(G.cap, Math.floor(G.gold / 8)); G.gold -= n * 8; G.inf += n; G.cap -= n; re(); }, !G.cap || G.gold < 8, 'chain');
+        btn('Predať zajatcov (12 zlata/ks)', () => { G.gold += G.cap * 12; G.cap = 0; re(); }, !G.cap, 'coins');
+        btn('Výkupné za zajatých veliteľov (' + G.pri.length * 80 + ')', () => { G.gold += G.pri.length * 80; G.pri = []; re(); }, !G.pri.length, 'coins');
     }
     if (c === 'h') {
         const w = t.wl || 0, cw = 150 * (w + 1), bd = t.bd || (t.bd = {});
@@ -148,7 +148,7 @@ function tsub(i, c) {
             btn('Léno drží: ' + t.lord, null, 1);
     }
     if (c === 'd') {
-        btn('Diplomacia s frakciami', () => dip(i));
+        btn('Diplomacia s frakciami', () => dip(i), 0, 'honor');
         if (G.fac === 6 && t.f !== 6)
             btn('Vstúpiť do služieb: ' + FN[t.f], () => {
                 G.fac = t.f;
@@ -182,8 +182,10 @@ function tsub(i, c) {
                     msg('Nemáš nepriateľa.', () => tsub(i, c));
             });
     }
-    btn('Späť', () => town(i));
+    btn('Späť', () => town(i), 0, 'back');
 }
+/** Druh vojaka (kľúč v Soldiers.UNITS) pre položku verbovania k. */
+const unitKind = k => ({ inf: 'i', arc: 'a', cav: 'c', roh: 'r', elf: 'e', vet: 'v' })[k] || k;
 function rec(t) {
     const L = [['Domobranec (pešiak)', 15, 'inf'], ['Lukostrelec', 30, 'arc'], ['Jazdec', 45, 'cav']];
     [t.f, ...[0, 1, 2, 3, 4, 5, 7, 8].filter(x => x !== t.f && AL[t.f][x] && !hos(x, G.fac))].forEach(f => (FK[f] || []).forEach(k => { G[k] = G[k] || 0; L.push([FU[k].n + ' (' + FN[f] + ', máš ' + G[k] + ')', FU[k].p, k]); }));

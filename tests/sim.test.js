@@ -110,6 +110,12 @@ try {
     check('Spoločníci bojujú v bitke', run('U.filter(u => u.cp).length === 2 && U.find(u => u.cp === "aragorn").hp === 220'));
     run('U[0].hp = 999; U.find(u => u.cp === "gimli").hp = 0; for (const u of U) if (u.t) u.hp = 0; updBattle(1); run2 = 0;');
     check('Ranený spoločník sa zotavuje', run('mode !== "battle" && G.cwound.gimli > G.day && G.chp.gimli === .3 && G.inf === 3'));
+    run(closeMenus + '; mode = "map"; G.gold = 500; G.ren = 3; var tI = TW.findIndex(t => t.n === "Bree"); tavKeeper(tI); var rb = document.getElementById("bt").children.find(b => /rundu/.test(b.textContent)); rb.onclick();');
+    check('Krčmár: runda pre všetkých zvýši slávu', run('G.ren === 4 && G.tround === G.day && typeof rumor(TW[tI]) === "string" && rumor(TW[tI]).length > 10'));
+    run('tavKeeper(tI); var rb2 = document.getElementById("bt").children.find(b => /rundu/.test(b.textContent));');
+    check('Runda sa dá zaplatiť raz za deň', run('rb2.disabled === true'));
+    check('Postavičky na mape: lordi podľa frakcie, hrdina podľa výbavy', run('[0,1,2,3,4,5,7,8,9].every(f => { const [eq, o] = Figures.lordEq({ f, id: f, nm: "L" }); return eq.w != null && o.flag === f; }) && Figures.key(G.eq, { flag: 6 }) !== Figures.key({ ...G.eq, m: 2 }, { flag: 6 }) && Figures.compEq(compDef("gimli"), true)[0].m === 0'));
+    check('Ikony rozhrania k tlačidlám a lište', run('Icons.forButton("Denník") === "diary" && Icons.forHud("Zdravie 10/10") === "heart" && Icons.forHud("Zlato 5") === "coins" && Icons.forDialog("Späť") === "back" && Icons.has("mug")'));
     run(closeMenus + '; mode = "map"; save(2); var d2 = G.day; G.day = 999; load(2);');
     check('Uloženie do pozície 2 a načítanie', run('G.day === d2 && slotInfo(2) && slotInfo(2).includes("deň " + d2) && G.comp.includes("aragorn")'));
     run('G.king = 0; delete G.side; startGear(1);');
