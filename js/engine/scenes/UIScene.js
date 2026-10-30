@@ -55,6 +55,7 @@ class UIScene extends Phaser.Scene {
         tm += dt;
         const scene = this.scene.isActive('Battle') ? 'battle' : this.scene.isActive('Tavern') || this.scene.isActive('Castle') ? 'tavern' : this.scene.isActive('Map') ? 'map' : 'intro';
         this.drawOverlay(scene, dt);
+        this.syncMinimap(scene);
         this.syncHud();
         this.syncBars();
         this.syncBigMap(scene);
@@ -79,7 +80,6 @@ class UIScene extends Phaser.Scene {
             const nn = nightness();
             g.fillStyle(0x080e28, .18 * (.5 - .5 * Math.cos(dayT / 600 * 6.283)) + nn * .22).fillRect(0, 0, W, H);
             if (nn > .3 && MW.n === 'clear') { g.fillStyle(0xffffff, (nn - .3) * .9); for (let k = 0; k < 40; k++) g.fillRect((k * 173 + 31) % W, (k * 97 + 11) % (H * .6), 1.2, 1.2); }
-            g.lineStyle(3, UI_C.line, 1).strokeRect(MM.x - 1.5, MM.y - 1.5, MM.w + 3, MM.h + 3);
         }
         this.gateTxt.setVisible(false);
         if (scene === 'battle' && U && U[0]) {
@@ -106,6 +106,41 @@ class UIScene extends Phaser.Scene {
         if (n === 'snow') { g.fillStyle(0xdce6ff, .12).fillRect(0, 0, W, H); g.fillStyle(0xffffff, 1); for (let i = 0; i < 110 * k; i++) g.fillRect((i * 97 + tm * .9 + Math.sin(tm / 25 + i) * 12) % W, (i * 59 + tm * 1.8) % H, 2, 2); }
         if (n === 'fog') { g.fillStyle(0xbec8d2, .38).fillRect(0, 0, W, H); for (let i = 0; i < 5; i++) g.fillStyle(0xd8dee6, .08).fillEllipse((i * 230 + tm * (.6 + i * .1)) % (W + 300) - 150, 90 + i * 85, 420, 70); }
         if (n === 'ash') { g.fillStyle(0x3a2a24, .22).fillRect(0, 0, W, H); g.fillStyle(0x6a5a52, .9); for (let i = 0; i < 90 * k; i++) g.fillRect((i * 101 + tm * .5 + Math.sin(tm / 20 + i) * 15) % W, (i * 67 + tm * 1.2) % H, 2, 2); g.fillStyle(0xff6a20, .7); for (let i = 0; i < 12; i++) g.fillRect((i * 331 + tm * .3) % W, (i * 211 + tm * 1.4) % H, 1.5, 1.5); }
+    }
+
+    // ---------- Minimapa -------------------------------------------------------------
+    syncMinimap(scene) {
+        if (!this.mmLayer) { this.mmLayer = this.add.container(0, 0).setDepth(8); this.mmG = null; }
+        const on = scene === 'map' && !!G && this.textures.exists('minimap') && !this.big;
+        this.mmLayer.setVisible(on);
+        if (!on) return;
+        if (!this.mmImg) {
+            this.mmImg = this.add.image(MM.x, MM.y, 'minimap').setOrigin(0).setDisplaySize(MM.w, MM.h);
+            this.mmG = this.add.graphics();
+            this.mmFrame = this.add.graphics();
+            this.mmFrame.fillStyle(0x120e0c, .9).fillRoundedRect(MM.x - 5, MM.y - 5, MM.w + 10, MM.h + 10, 4);
+            this.mmFrame.lineStyle(2, UI_C.line, 1).strokeRoundedRect(MM.x - 4, MM.y - 4, MM.w + 8, MM.h + 8, 4);
+            this.mmFrame.lineStyle(1, 0x8a6a2a, .8).strokeRect(MM.x - 1, MM.y - 1, MM.w + 2, MM.h + 2);
+            for (const [cx, cy] of [[MM.x - 4, MM.y - 4], [MM.x + MM.w + 4, MM.y - 4], [MM.x - 4, MM.y + MM.h + 4], [MM.x + MM.w + 4, MM.y + MM.h + 4]]) this.mmFrame.fillStyle(UI_C.line, 1).fillCircle(cx, cy, 2.2);
+            this.mmLayer.add([this.mmFrame, this.mmImg, this.mmG]);
+        }
+        if (this.mmImg.texture.key !== 'minimap') this.mmImg.setTexture('minimap').setDisplaySize(MM.w, MM.h);
+        const g = this.mmG; g.clear();
+        const kx = MM.w / WW, ky = MM.h / WH, X = x => MM.x + x * kx, Y = y => MM.y + y * ky;
+        // dediny
+        for (const v of VL) g.fillStyle(v.st > 0 ? 0x5a2a2a : 0xe8dcc0, .9).fillRect(X(v.x) - .8, Y(v.y) - .8, 1.6, 1.6);
+        // miesta
+        for (const p of PLACES) g.fillStyle(0xbfe8ff, .9).fillTriangle(X(p.x * K), Y(p.y * K) - 2.2, X(p.x * K) - 2, Y(p.y * K) + 1.4, X(p.x * K) + 2, Y(p.y * K) + 1.4);
+        // hrady: farba frakcie s tmavým okrajom, vlastné s bielym rámom, ciele ťaženia s bodkou
+        for (const t of TW) { const x = X(t.x), y = Y(t.y); g.fillStyle(0x000000, .7).fillRect(x - 3.2, y - 3.2, 6.4, 6.4); g.fillStyle(hex(FC[t.f]), 1).fillRect(x - 2.4, y - 2.4, 4.8, 4.8); if (t.mine) g.lineStyle(1, 0xffffff, 1).strokeRect(x - 3.6, y - 3.6, 7.2, 7.2); }
+        // vojská: nepriateľ červený trojuholník, ostatní bodka vo farbe frakcie; maršali väčší
+        for (const e of E) { const x = X(e.x), y = Y(e.y), m = typeof MAR !== 'undefined' && MAR[e.f] === e.id; if (hos(e.f, G.fac)) { g.fillStyle(0xff4030, 1).fillTriangle(x, y - (m ? 3.2 : 2.2), x - (m ? 2.8 : 2), y + (m ? 2 : 1.4), x + (m ? 2.8 : 2), y + (m ? 2 : 1.4)); } else { g.fillStyle(0x000000, .6).fillCircle(x, y, m ? 2.8 : 1.9); g.fillStyle(hex(FC[e.f]), 1).fillCircle(x, y, m ? 2.1 : 1.3); } }
+        // zraz vlastnej frakcie
+        const mm = typeof marshal === 'function' && G.fac !== 9 ? marshal(G.fac) : null;
+        if (mm && mm.mu && TW[mm.mu.t]) { const mp = musterPoint(mm, TW[mm.mu.t]); g.lineStyle(1, 0xffd24a, .9).strokeCircle(X(mp.x), Y(mp.y), 4 + Math.sin(tm / 8) * 1.2); }
+        // hrdina a výrez kamery
+        g.fillStyle(0xffffff, 1).fillCircle(X(G.x), Y(G.y), 2.2 + Math.sin(tm / 10) * .5); g.lineStyle(1, 0xffd24a, 1).strokeCircle(X(G.x), Y(G.y), 3.6);
+        g.lineStyle(1, 0xffffff, .85).strokeRect(X(cam.x), Y(cam.y), W / Z * kx, H / Z * ky);
     }
 
     // ---------- Horná lišta (zrkadlo #hud) -----------------------------------------
@@ -225,23 +260,21 @@ class UIScene extends Phaser.Scene {
         const sig = ev.t + ev.oldF + ev.newF + ev.who;
         if (sig !== this.evSig) {
             this.evSig = sig; this.evLayer.removeAll(true);
-            const PW2 = 420, PH2 = 112, px = W / 2 - PW2 / 2, py = 98;
+            const PW2 = 300, PH2 = 58, px = W / 2 - PW2 / 2, py = 96;
             const g = this.add.graphics();
-            g.fillStyle(0x120e0c, .93).fillRoundedRect(px, py, PW2, PH2, 8);
-            g.lineStyle(2, UI_C.line, 1).strokeRoundedRect(px, py, PW2, PH2, 8);
-            g.fillStyle(hex(FC[ev.oldF]), .9).fillRoundedRect(px + 8, py + 8, PW2 / 2 - 14, PH2 - 16, 6);
-            g.fillStyle(hex(FC[ev.newF]), .9).fillRoundedRect(px + PW2 / 2 + 6, py + 8, PW2 / 2 - 14, PH2 - 16, 6);
-            g.fillStyle(0x000000, .35).fillRoundedRect(px + 8, py + 8, PW2 / 2 - 14, PH2 - 16, 6).fillRoundedRect(px + PW2 / 2 + 6, py + 8, PW2 / 2 - 14, PH2 - 16, 6);
+            g.fillStyle(0x120e0c, .92).fillRoundedRect(px, py, PW2, PH2, 6);
+            g.lineStyle(1.5, UI_C.line, 1).strokeRoundedRect(px, py, PW2, PH2, 6);
+            g.fillStyle(hex(FC[ev.oldF]), .85).fillRoundedRect(px + 5, py + 5, PW2 / 2 - 12, PH2 - 10, 4);
+            g.fillStyle(hex(FC[ev.newF]), .85).fillRoundedRect(px + PW2 / 2 + 7, py + 5, PW2 / 2 - 12, PH2 - 10, 4);
+            g.fillStyle(0x000000, .4).fillRoundedRect(px + 5, py + 5, PW2 / 2 - 12, PH2 - 10, 4).fillRoundedRect(px + PW2 / 2 + 7, py + 5, PW2 / 2 - 12, PH2 - 10, 4);
             const items = [g];
-            const fl = (f, x) => items.push(this.add.image(x, py + 22, Art.banner(this, f)).setOrigin(.5, 0).setScale(1.6 / RES * 1.1));
-            fl(ev.oldF, px + 48); fl(ev.newF, px + PW2 / 2 + 46);
-            items.push(this.add.text(px + 86, py + 22, FN[ev.oldF], txtStyle(14, FC[ev.oldF], { fontFamily: TITLE_FONT, stroke: '#000', strokeThickness: 3 })));
-            items.push(this.add.text(px + 86, py + 44, 'stratil hrad', txtStyle(11, UI_C.ink)));
-            items.push(this.add.text(px + 86, py + 60, ev.t, txtStyle(16, '#fff', { fontStyle: 'bold', stroke: '#000', strokeThickness: 3 })));
-            items.push(this.add.text(px + PW2 / 2 + 84, py + 22, FN[ev.newF], txtStyle(14, FC[ev.newF], { fontFamily: TITLE_FONT, stroke: '#000', strokeThickness: 3 })));
-            items.push(this.add.text(px + PW2 / 2 + 84, py + 44, 'dobyl hrad, velil', txtStyle(11, UI_C.ink)));
-            items.push(this.add.text(px + PW2 / 2 + 84, py + 60, ev.who, txtStyle(14, '#ffd24a', { fontStyle: 'bold', stroke: '#000', strokeThickness: 3, wordWrap: { width: 110 } })));
-            items.push(this.add.text(W / 2, py + PH2 / 2, '➜', txtStyle(22, UI_C.gold)).setOrigin(.5));
+            const fl = (f, x) => items.push(this.add.image(x, py + 10, Art.banner(this, f)).setOrigin(.5, 0).setScale(1.3 / RES));
+            fl(ev.oldF, px + 24); fl(ev.newF, px + PW2 / 2 + 26);
+            items.push(this.add.text(px + 44, py + 9, FN[ev.oldF], txtStyle(11, FC[ev.oldF], { fontFamily: TITLE_FONT, stroke: '#000', strokeThickness: 2 })));
+            items.push(this.add.text(px + 44, py + 25, 'stratil ' + ev.t, txtStyle(10, '#fff', { fontStyle: 'bold', stroke: '#000', strokeThickness: 2, wordWrap: { width: 96 } })));
+            items.push(this.add.text(px + PW2 / 2 + 46, py + 9, FN[ev.newF], txtStyle(11, FC[ev.newF], { fontFamily: TITLE_FONT, stroke: '#000', strokeThickness: 2 })));
+            items.push(this.add.text(px + PW2 / 2 + 46, py + 25, 'dobyl: ' + ev.who, txtStyle(10, '#ffd24a', { fontStyle: 'bold', stroke: '#000', strokeThickness: 2, wordWrap: { width: 96 } })));
+            items.push(this.add.text(W / 2, py + PH2 / 2, '➜', txtStyle(16, UI_C.gold)).setOrigin(.5));
             this.evLayer.add(items);
         }
         this.evLayer.setAlpha(Math.min(1, ev.l / 40));

@@ -34,17 +34,16 @@ class TavernScene extends RoomScene {
         this.C = C;
         const g = this.add.graphics().setDepth(0);
         const HZ = 290;                                             // horizont: hranica steny a podlahy
-        // stena
-        g.fillStyle(C.wall, 1).fillRect(0, 0, W, HZ);
-        if (th === 'dwarf' || th === 'evil') { for (let y = 0; y < HZ; y += 22) for (let x = -11 + ((y / 22) % 2) * 20; x < W; x += 40) { g.fillStyle((x + y) % 80 < 40 ? C.wall2 : C.wall, 1).fillRoundedRect(x + 1, y + 1, 38, 20, 3); } }
-        else if (th === 'elf') { for (let x = 0; x < W; x += 90) { g.fillStyle(C.wall2, 1).fillRect(x + 40, 0, 10, HZ); g.lineStyle(2, 0x9ab8a0, .5); for (const d of [-1, 1]) { g.beginPath(); for (let k = 0; k <= 10; k++) { const u = k / 10, px = x + 45 + d * 60 * u * u, py = HZ - HZ * u; k ? g.lineTo(px, py) : g.moveTo(px, py); } g.strokePath(); } } }
-        else { for (let y = 0; y < HZ; y += 16) { g.fillStyle(y % 32 ? C.wall2 : C.wall, 1).fillRect(0, y, W, 16); } for (let x = 0; x < W; x += 120) g.fillStyle(C.beam, 1).fillRect(x, 0, 8, HZ); }
-        g.fillStyle(C.beam, 1).fillRect(0, 0, W, 14);                 // trám pod stropom
-        g.fillStyle(C.beam, 1).fillRect(0, HZ - 6, W, 8);
-        // podlaha
-        g.fillStyle(C.floor, 1).fillRect(0, HZ, W, H - HZ);
-        if (th === 'dwarf' || th === 'evil') { for (let y = HZ; y < H; y += 26) for (let x = ((y / 26) % 2) * 26; x < W; x += 52) g.fillStyle(C.floor2, 1).fillRect(x, y, 26, 26); }
-        else for (let y = HZ; y < H; y += 18) { g.fillStyle(y % 36 ? C.floor2 : C.floor, 1).fillRect(0, y, W, 18); g.fillStyle(0x000000, .15).fillRect(0, y, W, 1); for (let x = (y % 36 ? 60 : 0); x < W; x += 180) g.fillRect(x, y, 1, 18); }
+        // stena a podlaha z procedurálnych textúr (2× rozlíšenie), cez ne jemné tiene a trámy
+        const hx6 = v => '#' + v.toString(16).padStart(6, '0');
+        const wallKind = th === 'dwarf' ? 'bricks' : th === 'evil' ? 'dark' : th === 'elf' ? 'bark' : 'planks', floorKind = th === 'dwarf' || th === 'evil' ? 'flags' : th === 'elf' ? 'flags' : 'planks';
+        this.add.tileSprite(0, 0, W, HZ, Tex.pattern(this, wallKind, hx6(C.wall), this.ti + 1)).setOrigin(0).setDepth(-1).setTileScale(.4);
+        this.add.tileSprite(0, HZ, W, H - HZ, Tex.pattern(this, floorKind, hx6(C.floor), this.ti + 2)).setOrigin(0).setDepth(-1).setTileScale(.35);
+        if (th === 'elf') { for (let x = 0; x < W; x += 90) { g.fillStyle(C.wall2, .8).fillRect(x + 40, 0, 10, HZ); g.lineStyle(2, 0x9ab8a0, .5); for (const d of [-1, 1]) { g.beginPath(); for (let k = 0; k <= 10; k++) { const u = k / 10, px = x + 45 + d * 60 * u * u, py = HZ - HZ * u; k ? g.lineTo(px, py) : g.moveTo(px, py); } g.strokePath(); } } }
+        else if (th !== 'dwarf' && th !== 'evil') for (let x = 0; x < W; x += 120) { g.fillStyle(C.beam, 1).fillRect(x, 0, 8, HZ); g.fillStyle(0xffffff, .08).fillRect(x, 0, 2, HZ); }
+        g.fillStyle(C.beam, 1).fillRect(0, 0, W, 14); g.fillStyle(0x000000, .25).fillRect(0, 14, W, 6);                 // trám pod stropom a jeho tieň
+        g.fillStyle(C.beam, 1).fillRect(0, HZ - 6, W, 8); g.fillStyle(0x000000, .3).fillRect(0, HZ + 2, W, 10); g.fillStyle(0x000000, .12).fillRect(0, HZ + 12, W, 14);   // sokel a tieň steny na podlahe
+        g.fillStyle(0x000000, .18).fillRect(0, 0, W, HZ * .25);                                                            // tmavší strop
         // okno
         this.winX = 90 + Math.floor(R(1) * 3) * 60; this.winY = 60;
         this.sky = this.add.graphics().setDepth(1);
@@ -159,9 +158,12 @@ class TavernScene extends RoomScene {
         const dark = .25 + nn * .3;
         L.fillStyle(0x000000, dark).fillRect(0, 0, W, H);
         const flick = .08 + Math.sin(t / 2.2) * .02 + Math.sin(t / 1.3) * .015;
-        for (let k = 1; k <= 12; k++) L.fillStyle(C.light, (flick + .04) / 6).fillCircle(fx, HZ - 40, 30 + k * 22);          // mäkká žiara krbu
-        for (const [tx, ty] of this.tables) for (let k = 1; k <= 3; k++) L.fillStyle(0xffd090, .025 + Math.sin(t / 1.7 + tx) * .006).fillCircle(tx, ty - 10, 20 + k * 18);
-        for (let k = 1; k <= 3; k++) L.fillStyle(0xffe0a0, .02).fillCircle(this.barX + 90, HZ + 20, 40 + k * 35);
+        if (!this.glows) {   // mäkké žiary: krb, sviečky na stoloch, výčap
+            this.glows = [Tex.light(this, fx, HZ - 40, 300, C.light, .55), Tex.light(this, fx, HZ - 30, 120, 0xffe0a0, .5), Tex.light(this, this.barX + 90, HZ + 20, 150, 0xffe0a0, .22)];
+            for (const [tx, ty] of this.tables) this.glows.push(Tex.light(this, tx, ty - 12, 90, 0xffd090, .35));
+        }
+        this.glows[0].setAlpha(.5 + flick * 1.5); this.glows[1].setAlpha(.45 + Math.sin(t / 1.3) * .08);
+        for (let k = 3; k < this.glows.length; k++) this.glows[k].setAlpha(.3 + Math.sin(t / 1.7 + k) * .06);
         L.fillStyle(0x000000, .35).fillRect(0, 0, W, 14);
         // jemné pohupovanie postáv
         this.people.forEach(p => { p.spr.y = p.y + Math.sin(t / 9 + p.t0) * .8; });

@@ -5,7 +5,7 @@
  * zástavami, kameru so zoomom a minimapu ako druhú kameru.
  * Súradnice obrazovky sú logické (720×480), plátno má rozlíšenie RES-krát väčšie.
  */
-const MM = { x: W - 186, y: H - 126, w: 180, h: 120 };
+const MM = { x: W - 218, y: H - 152, w: 210, h: 140 };
 const FONT = '"IM Fell English", Georgia, serif';
 const txtStyle = (size, color, extra) => Object.assign({ fontFamily: FONT, fontSize: size + 'px', color, resolution: RES }, extra);
 
@@ -39,15 +39,8 @@ class MapScene extends Phaser.Scene {
         this.fx = this.add.graphics().setDepth(8999);
 
         this.cameras.main.setBounds(0, 0, WW, WH).setBackgroundColor('#1e2a16');
-        this.mini = this.add.graphics().setDepth(9500);
-        this.mmCam = this.cameras.add(MM.x * RES, MM.y * RES, MM.w * RES, MM.h * RES).setZoom(MM.w * RES / WW).setBounds(0, 0, WW, WH).setBackgroundColor('#120e0c');
-        this.mmCam.centerOn(WW / 2, WH / 2);
-        this.cameras.main.ignore(this.mini);
-        if (tiled) {
-            const mm = this.add.image(0, 0, this.minimapTexture()).setOrigin(0).setScale(WW / 360).setDepth(-20);
-            this.cameras.main.ignore(mm);
-            this.mmCam.ignore(worldObjs);
-        }
+        this.mmCam = { ignore() { } };                       // minimapu kreslí UIScene z textúry 'minimap'
+        if (tiled) this.minimapTexture();
         this.mmCam.ignore([this.fx, this.heroTxt, this.heroCrown, this.hero, ...this.vill.flatMap(o => [o.spr, o.txt]), ...this.towns.flatMap(o => [o.spr, o.txt, o.stars])]);
 
         this.input.on('pointerdown', p => this.click(p));
@@ -198,19 +191,44 @@ class MapScene extends Phaser.Scene {
     }
 
     /** Minimapa ako jeden obrázok (360 × 240) z dát terénu. */
+    /** Minimapa vo vysokom rozlíšení (1440 × 960): tieňovaný terén, lesy, hory so snehom a tieňom, rieka s brehmi, jazero, cesty. */
     minimapTexture() {
-        const T = MAPDATA.terrain, c = document.createElement('canvas'); c.width = 360; c.height = 240;
-        const x = c.getContext('2d'), sx = 360 / T.cols, sy = 240 / T.rows;
-        const col = ['#4a6d33', '#5a6a36', '#6e6a3e', '#76603e', '#3a2a26', '#b8955a', '#d8dee6', '#24526a'];
+        if (this.textures.exists('minimap')) return 'minimap';
+        const T = MAPDATA.terrain, MW2 = 1440, MH2 = 960, c = document.createElement('canvas'); c.width = MW2; c.height = MH2;
+        const x = c.getContext('2d'), sx = MW2 / T.cols, sy = MH2 / T.rows, s = MW2 / 1800;
+        const col = ['#4f7238', '#5e6e3a', '#716c42', '#7a6442', '#3c2c28', '#bf9c60', '#dde3ea', '#26546c'];
+        const rnd = n => { const v = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return v - Math.floor(v); };
         for (let j = 0; j < T.rows; j++) for (let i = 0; i < T.cols; i++) {
-            const n = j * T.cols + i; x.fillStyle = col[Math.floor((T.ground[n] - 1) / 4)] || '#4a6d33'; x.fillRect(i * sx, j * sy, sx + .5, sy + .5);
-            const f = T.forest[n]; if (f >= 33 && f <= 38) { x.fillStyle = f >= 37 ? 'rgba(40,30,20,.5)' : 'rgba(20,50,20,.55)'; x.fillRect(i * sx, j * sy, sx + .5, sy + .5); }
+            const n = j * T.cols + i, base = col[Math.floor((T.ground[n] - 1) / 4)] || col[0];
+            x.fillStyle = base; x.fillRect(i * sx, j * sy, sx + .5, sy + .5);
+            x.fillStyle = 'rgba(' + (rnd(n) < .5 ? '255,255,255' : '0,0,0') + ',' + (rnd(n * 3) * .07).toFixed(3) + ')'; x.fillRect(i * sx, j * sy, sx + .5, sy + .5);   // zrno
         }
-        const s = 360 / 1800;
-        x.strokeStyle = '#3a7a96'; x.lineWidth = 2.5; x.beginPath(); x.moveTo(640 * s, 0); x.bezierCurveTo(600 * s, 300 * s, 820 * s, 420 * s, 780 * s, 640 * s); x.bezierCurveTo(760 * s, 800 * s, 900 * s, 880 * s, 860 * s, 1200 * s); x.stroke();
-        x.fillStyle = '#3a7a96'; x.beginPath(); x.ellipse(1195 * s, 326 * s, 110 * s, 60 * s, .2, 0, 7); x.fill();
-        for (const [mx, my, , kind] of T.mountains) { x.fillStyle = kind === 'snow' ? '#e8ecf2' : kind === 'doom' ? '#ff6a1a' : '#1a1210'; x.beginPath(); x.moveTo(mx * s, my * s - 4); x.lineTo(mx * s - 4, my * s + 3); x.lineTo(mx * s + 4, my * s + 3); x.fill(); }
-        if (this.textures.exists('minimap')) this.textures.remove('minimap');
+        // lesy: mäkké tmavozelené škvrny so svetlejšími korunami
+        for (let j = 0; j < T.rows; j++) for (let i = 0; i < T.cols; i++) {
+            const n = j * T.cols + i, f = T.forest[n]; if (!(f >= 33)) continue;
+            const dead = f >= 37, cx = (i + .5) * sx, cy = (j + .5) * sy;
+            x.fillStyle = dead ? 'rgba(60,40,30,.75)' : 'rgba(22,54,24,.8)'; x.beginPath(); x.arc(cx + (rnd(n * 7) - .5) * 2, cy + (rnd(n * 11) - .5) * 2, sx * .62, 0, 7); x.fill();
+            if (!dead) { x.fillStyle = 'rgba(70,120,50,.55)'; x.beginPath(); x.arc(cx - 1, cy - 1.5, sx * .3, 0, 7); x.fill(); }
+        }
+        // rieka Anduin s brehmi a jazero
+        const river = () => { x.beginPath(); x.moveTo(640 * s, 0); x.bezierCurveTo(600 * s, 300 * s, 820 * s, 420 * s, 780 * s, 640 * s); x.bezierCurveTo(760 * s, 800 * s, 900 * s, 880 * s, 860 * s, 1200 * s); };
+        x.lineCap = 'round'; river(); x.strokeStyle = 'rgba(160,150,110,.7)'; x.lineWidth = 14 * s; x.stroke(); river(); x.strokeStyle = '#2e6a8c'; x.lineWidth = 9 * s; x.stroke(); river(); x.strokeStyle = '#5a9ab8'; x.lineWidth = 3 * s; x.stroke();
+        x.fillStyle = 'rgba(160,150,110,.7)'; x.beginPath(); x.ellipse(1195 * s, 326 * s, 118 * s, 66 * s, .2, 0, 7); x.fill();
+        x.fillStyle = '#2e6a8c'; x.beginPath(); x.ellipse(1195 * s, 326 * s, 110 * s, 60 * s, .2, 0, 7); x.fill();
+        x.fillStyle = 'rgba(120,180,210,.5)'; x.beginPath(); x.ellipse(1180 * s, 316 * s, 60 * s, 24 * s, .2, 0, 7); x.fill();
+        // cesty
+        x.strokeStyle = 'rgba(214,190,130,.75)'; x.lineWidth = 1.6; for (const [a2, b2] of MAPDATA.roads) { const A = MAPDATA.castles[a2], B = MAPDATA.castles[b2]; if (A && B) { x.beginPath(); x.moveTo(A[1] * s, A[2] * s); x.quadraticCurveTo((A[1] + B[1]) / 2 * s + 30 * s, (A[2] + B[2]) / 2 * s - 25 * s, B[1] * s, B[2] * s); x.stroke(); } }
+        // hory: tieň, telo, svetlá strana, snehová čiapka
+        for (const [mx, my, size, kind] of T.mountains) {
+            const r = Math.max(10, (size || 60) * .33) * s, px = mx * s, py = my * s;
+            x.fillStyle = 'rgba(0,0,0,.35)'; x.beginPath(); x.moveTo(px + 2, py - r); x.lineTo(px - r * .9 + 3, py + r * .55 + 2); x.lineTo(px + r * .9 + 4, py + r * .55 + 2); x.fill();
+            x.fillStyle = kind === 'doom' ? '#4a2622' : kind === 'snow' ? '#7a7a80' : '#4a403c'; x.beginPath(); x.moveTo(px, py - r); x.lineTo(px - r * .9, py + r * .55); x.lineTo(px + r * .9, py + r * .55); x.fill();
+            x.fillStyle = kind === 'doom' ? '#6a3a30' : kind === 'snow' ? '#a8a8b0' : '#6a5e58'; x.beginPath(); x.moveTo(px, py - r); x.lineTo(px - r * .9, py + r * .55); x.lineTo(px - r * .15, py + r * .55); x.fill();
+            if (kind === 'snow') { x.fillStyle = '#f2f4f8'; x.beginPath(); x.moveTo(px, py - r); x.lineTo(px - r * .32, py - r * .35); x.lineTo(px - r * .1, py - r * .25); x.lineTo(px + r * .1, py - r * .4); x.lineTo(px + r * .32, py - r * .35); x.fill(); }
+            if (kind === 'doom') { x.fillStyle = '#ff7a20'; x.beginPath(); x.arc(px, py - r + 2, 2.2, 0, 7); x.fill(); x.fillStyle = 'rgba(255,100,20,.25)'; x.beginPath(); x.arc(px, py - r, 10, 0, 7); x.fill(); }
+        }
+        // vinetácia okrajov
+        const vg = x.createRadialGradient(MW2 / 2, MH2 / 2, MH2 * .45, MW2 / 2, MH2 / 2, MW2 * .75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.35)'); x.fillStyle = vg; x.fillRect(0, 0, MW2, MH2);
         this.textures.addCanvas('minimap', c);
         return 'minimap';
     }
@@ -246,7 +264,6 @@ class MapScene extends Phaser.Scene {
         this.syncArmies();
         this.syncHero();
         this.drawFx();
-        this.drawMini();
     }
 
     syncTowns() {
@@ -370,11 +387,4 @@ class MapScene extends Phaser.Scene {
         }
     }
 
-    drawMini() {
-        const g = this.mini; g.clear();
-        if (MF.t) for (const t of TW) { g.fillStyle(hex(FC[t.f]), .28).fillCircle(t.x, t.y, 220); g.fillStyle(hex(FC[t.f]), 1).fillRect(t.x - 55, t.y - 55, 110, 110); }
-        if (MF.e) for (const e of E) g.fillStyle(hos(e.f, G.fac) ? 0xff4030 : hex(FC[e.f]), 1).fillCircle(e.x, e.y, 45);
-        g.fillStyle(0xffffff, 1).fillCircle(G.x, G.y, 70 + Math.sin(tm / 10) * 20);
-        g.lineStyle(40, 0xffffff, .7).strokeRect(cam.x, cam.y, W / Z, H / Z);
-    }
 }

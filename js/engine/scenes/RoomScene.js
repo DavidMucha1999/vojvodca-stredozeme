@@ -11,7 +11,7 @@ class RoomScene extends Phaser.Scene {
         this.room = r;
         this.people = this.people || [];
         this.add.text(W / 2, 72, r.title, txtStyle(17, '#f0d9a8', { fontFamily: TITLE_FONT, stroke: '#000', strokeThickness: 4 })).setOrigin(.5).setDepth(50);
-        this.hint = this.add.text(W / 2, H - 14, r.hint || 'Klik na zem alebo šípky/WASD = chôdza  •  klik na postavu alebo miesto = akcia  •  Esc = odísť', txtStyle(10, '#d8c8a8', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5).setDepth(50);
+        this.hint = this.add.text(W / 2, H - 14, r.hint || 'Klik na zem alebo šípky/WASD = chôdza  •  klik na postavu alebo miesto = akcia  •  medzerník = rozhovor s osobou pri tebe  •  Esc = odísť', txtStyle(10, '#d8c8a8', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5).setDepth(50);
         const ui = this.scene.get('UI');
         this.leaveBtn = ui.button.call(this, W - 128, H - 34, 118, 24, r.leave, () => this.leave(), { size: 11, icon: Icons.tex(this, 'door') });
         this.leaveBtn.forEach(o => o.setDepth(51));
@@ -24,6 +24,8 @@ class RoomScene extends Phaser.Scene {
         this.floor.on('pointerup', p => { if (ov.classList.contains('hide')) this.goTo(p.x / RES, p.y / RES, null); });
         this.keys = this.input.keyboard.addKeys('W,A,S,D,UP,LEFT,DOWN,RIGHT');
         this.input.keyboard.on('keydown-ESC', () => { if (ov.classList.contains('hide')) this.leave(); });
+        this.input.keyboard.on('keydown-SPACE', () => this.interactNearest());
+        this.input.keyboard.on('keydown-E', () => this.interactNearest());
         this.events.on('shutdown', () => this.input.keyboard.removeAllListeners());
         this.light = this.add.graphics().setDepth(40);
     }
@@ -37,8 +39,8 @@ class RoomScene extends Phaser.Scene {
         ring.lineStyle(2, 0xffd24a, .9).strokeEllipse(x, y + 2, 44 * sc, 14 * sc);
         const lbl = this.add.text(x, y + 8, name, txtStyle(10, '#f4e8d0', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5, 0).setDepth(45);
         spr.on('pointerover', () => ring.setVisible(true)); spr.on('pointerout', () => ring.setVisible(false));
-        spr.on('pointerup', () => { if (!ov.classList.contains('hide')) return; this.goTo(x + (this.pl.x < x ? -46 : 46), y + 4, onClick); });
-        this.people.push({ spr, ring, lbl, name, x, y, t0: Math.random() * 6 });
+        spr.on('pointerup', () => { if (!ov.classList.contains('hide')) return; this.approach(x, y, onClick); });
+        this.people.push({ spr, ring, lbl, name, x, y, t0: Math.random() * 6, fn: onClick });
         return spr;
     }
     /** Miesto (dvere, stánok…): neviditeľná plocha w × h okolo (x, y) s popiskom; hráč k nemu dôjde a vykoná fn. */
@@ -47,11 +49,26 @@ class RoomScene extends Phaser.Scene {
         const lbl = this.add.text(x, y + h / 2 + 2, name, txtStyle(10, '#ffe8b0', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5, 0).setDepth(45);
         z.on('pointerover', () => { z.setFillStyle(0xffd24a, .12); }); z.on('pointerout', () => { z.setFillStyle(0xffd24a, 0); });
         z.on('pointerup', () => { if (!ov.classList.contains('hide')) return; this.goTo(x, standY ?? (y + h / 2 + 14), fn); });
-        this.people.push({ spr: z, ring: this.add.graphics(), lbl, name, x, y: standY ?? y, t0: 0, spot: 1 });
+        this.people.push({ spr: z, ring: this.add.graphics(), lbl, name, x, y: standY ?? y, t0: 0, spot: 1, fn });
         return z;
     }
     clearPeople() { this.people.forEach(p => { p.spr.destroy(); p.ring.destroy(); p.lbl.destroy(); }); this.people = []; }
 
+    /** Je bod v niektorej prekážke miestnosti? */
+    blocked(x, y) { return (this.room.block || []).some(([bx, by, bw, bh]) => x > bx && x < bx + bw && y > by && y < by + bh); }
+    /** Príde k osobe na (x, y) z tej strany, kde nie je prekážka, a potom spustí fn. */
+    approach(x, y, fn) {
+        const cands = [[x + (this.pl.x < x ? -46 : 46), y + 4], [x + (this.pl.x < x ? 46 : -46), y + 4], [x, y + 40], [x, y + 60], [x - 50, y + 40], [x + 50, y + 40]];
+        const c = cands.find(([cx, cy]) => !this.blocked(cx, cy) && cy >= this.room.floorY + 10) || cands[2];
+        this.goTo(c[0], c[1], fn);
+    }
+    /** Medzerník: rozhovor s najbližšou osobou alebo miestom (do 80 bodov). */
+    interactNearest() {
+        if (!ov.classList.contains('hide')) return;
+        let best = null, bd = 80;
+        for (const p of this.people) { const d = Math.hypot(p.x - this.pl.x, p.y - this.pl.y); if (d < bd && p.fn) { bd = d; best = p; } }
+        if (best) { this.plT = null; this.plDo = null; this.pl.setFlipX(best.x < this.pl.x); best.fn(); }
+    }
     /** Hráč ide na miesto (x, y); po príchode zavolá fn. */
     goTo(x, y, fn) { const r = this.room; this.plT = { x: Math.max(24, Math.min(W - 24, x)), y: Math.max(r.floorY + 10, Math.min(H - 30, y)) }; this.plDo = fn; }
     movePlayer(dt = 1) {
@@ -68,7 +85,7 @@ class RoomScene extends Phaser.Scene {
             this.plStep += dt; pl.setFrame(1 + Math.floor(this.plStep / 5) % 4);
         } else pl.setFrame(0);
         pl.setDepth(pl.y); this.plLbl.setPosition(pl.x, pl.y + 8);
-        this.people.forEach(p => { const near = Math.hypot(p.x - pl.x, p.y - pl.y) < 70; p.lbl.setColor(near ? '#ffd24a' : p.spot ? '#ffe8b0' : '#f4e8d0'); });
+        this.people.forEach(p => { const near = Math.hypot(p.x - pl.x, p.y - pl.y) < 80; p.lbl.setColor(near ? '#ffd24a' : p.spot ? '#ffe8b0' : '#f4e8d0'); if (p.lbl.text.endsWith(' ⎵') !== near) p.lbl.setText(near ? p.name + ' ⎵' : p.name); });
     }
 
     /** Obloha v obdĺžniku (okno, nebo nad hradbami) podľa dennej doby a počasia. */

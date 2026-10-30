@@ -46,10 +46,11 @@ class CastleScene extends RoomScene {
         this.HZ = HZ; this.skyRect = [0, 0, W, 112];
         // hradby a palác v pozadí
         const wallTop = 96;
-        g.fillStyle(C.wall, 1).fillRect(0, wallTop, W, HZ - wallTop);
-        if (th === 'lorien') { for (let x = 30; x < W; x += 120) { g.fillStyle(0x6a5a40, 1).fillRect(x, wallTop - 30, 22, HZ - wallTop + 30); g.fillStyle(0xd8c870, .9).fillCircle(x + 11, wallTop - 40, 46); g.fillStyle(0xe8dc90, .8).fillCircle(x + 2, wallTop - 52, 30); } g.fillStyle(C.wall, .55).fillRect(0, wallTop + 30, W, HZ - wallTop - 30); }
-        else if (th === 'rohan' || th === 'bandit') { for (let x = 0; x < W; x += 18) { g.fillStyle(x % 36 ? C.wall : C.wall2, 1).fillRect(x, wallTop, 18, HZ - wallTop); } for (let y = wallTop + 20; y < HZ; y += 40) g.fillStyle(0x000000, .15).fillRect(0, y, W, 2); }
-        else { for (let y = wallTop; y < HZ; y += 16) for (let x = -16 + ((y / 16) % 2) * 20; x < W; x += 40) g.fillStyle((x + y) % 80 < 40 ? C.wall : C.wall2, 1).fillRoundedRect(x + 1, y + 1, 38, 14, 2); }
+        const hx6 = v => '#' + v.toString(16).padStart(6, '0');
+        const wallKind = th === 'lorien' ? 'bark' : th === 'rohan' || th === 'bandit' ? 'planksV' : th === 'mordor' ? 'dark' : 'bricks';
+        this.add.tileSprite(0, wallTop, W, HZ - wallTop, Tex.pattern(this, wallKind, hx6(C.wall), this.ti + 3)).setOrigin(0).setDepth(-1).setTileScale(.4);
+        if (th === 'lorien') { for (let x = 30; x < W; x += 120) { g.fillStyle(0x6a5a40, 1).fillRect(x, wallTop - 30, 22, HZ - wallTop + 30); g.fillStyle(0xd8c870, .9).fillCircle(x + 11, wallTop - 40, 46); g.fillStyle(0xe8dc90, .8).fillCircle(x + 2, wallTop - 52, 30); } }
+        g.fillStyle(0x000000, .2).fillRect(0, wallTop, W, 10);                                       // tieň pod cimburím
         // cimburie a veže
         g.fillStyle(C.wall2, 1); for (let x = 0; x < W; x += 28) g.fillRect(x, wallTop - 12, 16, 14);
         for (const tx of [60, W - 60]) { g.fillStyle(C.wall2, 1).fillRect(tx - 34, wallTop - 60, 68, HZ - wallTop + 60); g.fillStyle(C.wall, 1).fillRect(tx - 30, wallTop - 56, 60, HZ - wallTop + 56); g.fillStyle(C.roof, 1); if (th === 'mordor' || th === 'isengard') g.fillTriangle(tx - 38, wallTop - 58, tx + 38, wallTop - 58, tx, wallTop - 120); else g.fillTriangle(tx - 38, wallTop - 58, tx + 38, wallTop - 58, tx, wallTop - 100); for (let y = wallTop - 40; y < HZ; y += 40) { g.fillStyle(0x100c0a, 1).fillRoundedRect(tx - 5, y, 10, 16, 3); } }
@@ -71,11 +72,10 @@ class CastleScene extends RoomScene {
         this.add.image(gx - 80, wallTop + 20, bk).setOrigin(.5, 0).setScale(2).setDepth(1.5);
         this.add.image(gx + 80, wallTop + 20, bk).setOrigin(.5, 0).setScale(2).setDepth(1.5);
         // zem
-        g.fillStyle(C.ground, 1).fillRect(0, HZ, W, H - HZ);
-        if (th === 'rohan' || th === 'bandit') { for (let y = HZ; y < H; y += 14) { g.fillStyle(y % 28 ? C.ground2 : C.ground, 1).fillRect(0, y, W, 14); } for (let k = 0; k < 40; k++) { g.fillStyle(0xc8b060, .5).fillRect(R(60 + k) * W, HZ + 10 + R(100 + k) * (H - HZ - 20), 6, 1.5); } }
-        else if (th === 'lorien') { for (let k = 0; k < 60; k++) { g.fillStyle(0x6a8a5a, .5).fillEllipse(R(60 + k) * W, HZ + 10 + R(100 + k) * (H - HZ - 20), 14, 5); } }
-        else { for (let y = HZ; y < H; y += 20) for (let x = ((y / 20) % 2) * 20; x < W; x += 40) { g.fillStyle(((x + y) / 20) % 3 ? C.ground2 : C.ground, 1).fillRoundedRect(x + 1, y + 1, 38, 18, 4); } }
-        g.fillStyle(0x000000, .22).fillRect(0, HZ, W, 10);                                   // tieň pod hradbou
+        const groundKind = th === 'rohan' || th === 'bandit' ? 'planks' : th === 'lorien' ? 'grass' : th === 'harad' ? 'sand' : th === 'gondor' ? 'flags' : 'cobbles';
+        this.add.tileSprite(0, HZ, W, H - HZ, Tex.pattern(this, groundKind, hx6(C.ground), this.ti + 4)).setOrigin(0).setDepth(-1).setTileScale(.32);
+        if (th === 'rohan' || th === 'bandit') for (let k = 0; k < 40; k++) { g.fillStyle(0xc8b060, .5).fillRect(R(60 + k) * W, HZ + 10 + R(100 + k) * (H - HZ - 20), 6, 1.5); }
+        g.fillStyle(0x000000, .3).fillRect(0, HZ, W, 10); g.fillStyle(0x000000, .12).fillRect(0, HZ + 10, W, 14);   // tieň pod hradbou
         // studňa
         const wx = 300 + Math.floor(R(1) * 3) * 60, wy = HZ + 90 + Math.floor(R(2) * 2) * 50;
         g.fillStyle(0x000000, .25).fillEllipse(wx, wy + 14, 60, 18);
@@ -182,10 +182,11 @@ class CastleScene extends RoomScene {
         const g = this.add.graphics().setDepth(1), HZ = 210;
         this.HZ = HZ; this.skyRect = null;
         // steny a stĺpy
-        g.fillStyle(C.hall, 1).fillRect(0, 0, W, HZ);
-        if (th === 'rohan' || th === 'bandit') { for (let x = 0; x < W; x += 22) g.fillStyle(x % 44 ? C.hall : C.hall2, 1).fillRect(x, 0, 22, HZ); }
-        else if (th === 'lorien') { for (let x = 0; x < W; x += 80) { g.lineStyle(2, 0xd8d0a0, .6); for (const d of [-1, 1]) { g.beginPath(); for (let k = 0; k <= 10; k++) { const u = k / 10; const px = x + 40 + d * 50 * u * u, py = HZ - HZ * u; k ? g.lineTo(px, py) : g.moveTo(px, py); } g.strokePath(); } } }
-        else { for (let y = 0; y < HZ; y += 18) for (let x = -18 + ((y / 18) % 2) * 24; x < W; x += 48) g.fillStyle((x + y) % 96 < 48 ? C.hall : C.hall2, 1).fillRoundedRect(x + 1, y + 1, 46, 16, 2); }
+        const hx6 = v => '#' + v.toString(16).padStart(6, '0');
+        const hallKind = th === 'rohan' || th === 'bandit' ? 'planksV' : th === 'lorien' ? 'bark' : th === 'mordor' ? 'dark' : 'bricks';
+        this.add.tileSprite(0, 0, W, HZ, Tex.pattern(this, hallKind, hx6(C.hall), this.ti + 5)).setOrigin(0).setDepth(-1).setTileScale(.4);
+        if (th === 'lorien') { for (let x = 0; x < W; x += 80) { g.lineStyle(2, 0xd8d0a0, .6); for (const d of [-1, 1]) { g.beginPath(); for (let k = 0; k <= 10; k++) { const u = k / 10; const px = x + 40 + d * 50 * u * u, py = HZ - HZ * u; k ? g.lineTo(px, py) : g.moveTo(px, py); } g.strokePath(); } } }
+        g.fillStyle(0x000000, .22).fillRect(0, 0, W, HZ * .3);                                        // tmavší strop
         for (const px of [90, W - 90]) { g.fillStyle(C.hall2, 1).fillRect(px - 16, 0, 32, HZ + 20); g.fillStyle(C.hall, 1).fillRect(px - 10, 0, 12, HZ + 20); g.fillStyle(C.trim, 1).fillRect(px - 20, HZ + 14, 40, 8).fillRect(px - 20, 0, 40, 8); }
         // okná
         this.windows = [[200, 66], [W - 200, 66]];
@@ -201,8 +202,8 @@ class CastleScene extends RoomScene {
         if (th === 'rohan') { g.fillStyle(0xd9a441, 1).fillEllipse(dx, dy - 130, 40, 14); g.fillStyle(0xf4f0e4, 1).fillEllipse(dx, dy - 130, 16, 7); }
         g.fillStyle(0xd8402a, .9).fillRect(dx - 18, dy - 100, 36, 70);                           // vankúš
         // koberec, stoly, ohne
-        g.fillStyle(C.floor, 1).fillRect(0, HZ, W, H - HZ);
-        for (let y = HZ; y < H; y += 24) for (let x = ((y / 24) % 2) * 24; x < W; x += 48) g.fillStyle(0x000000, .08).fillRect(x, y, 24, 24);
+        this.add.tileSprite(0, HZ, W, H - HZ, Tex.pattern(this, th === 'rohan' || th === 'bandit' ? 'planks' : 'flags', hx6(C.floor), this.ti + 6)).setOrigin(0).setDepth(-1).setTileScale(.32);
+        g.fillStyle(0x000000, .3).fillRect(0, HZ, W, 10); g.fillStyle(0x000000, .12).fillRect(0, HZ + 10, W, 14);
         g.fillStyle(C.carpet, 1).fillRect(dx - 40, dy + 8, 80, H - dy - 8); g.fillStyle(C.trim, .6).fillRect(dx - 40, dy + 8, 3, H - dy - 8).fillRect(dx + 37, dy + 8, 3, H - dy - 8);
         for (const side of [-1, 1]) {
             const tx = dx + side * 190, ty = dy + 90;
@@ -256,8 +257,13 @@ class CastleScene extends RoomScene {
         const L = this.light; L.clear();
         const dark = this.roomKind === 'hall' ? .2 + nn * .25 : nn * .45;
         L.fillStyle(this.roomKind === 'hall' ? 0x000000 : 0x080e28, dark).fillRect(0, 0, W, H);
-        if (this.roomKind === 'hall') { for (const [bx, by] of this.braziers || []) for (let k = 1; k <= 8; k++) L.fillStyle(C.light, (.06 + Math.sin(t / 2 + bx) * .01) / 4).fillCircle(bx, by, 20 + k * 20); for (let k = 1; k <= 5; k++) L.fillStyle(0xffe0a0, .02).fillCircle(W / 2, 92, 30 + k * 25); }
-        else if (this.forge) { for (let k = 1; k <= 6; k++) L.fillStyle(0xff9a40, (.05 + Math.sin(t / 2) * .01) / 3 * (1 + nn)).fillCircle(this.forge[0], this.forge[1], 15 + k * 18); if (nn > .2 && this.torches) for (const [tx, ty] of this.torches) for (let k = 1; k <= 4; k++) L.fillStyle(0xffb060, .035 * nn).fillCircle(tx, ty, 12 + k * 14); if (nn > .3) for (const gx of [W / 2 - 62, W / 2 + 62]) for (let k = 1; k <= 5; k++) L.fillStyle(0xffb060, .03 * nn).fillCircle(gx, this.HZ - 30, 15 + k * 18); }
+        if (!this.glows) {
+            this.glows = [];
+            if (this.roomKind === 'hall') { for (const [bx, by] of this.braziers || []) this.glows.push(Tex.light(this, bx, by, 190, C.light, .5)); this.glows.push(Tex.light(this, W / 2, 92, 160, 0xffe0a0, .35)); for (const [cx2, cy2] of this.candles || []) if (cy2 > 100) this.glows.push(Tex.light(this, cx2, cy2, 70, 0xffe0a0, .3)); }
+            else { if (this.forge) this.glows.push(Tex.light(this, this.forge[0], this.forge[1], 130, 0xff9a40, .45)); for (const [tx, ty] of this.torches || []) this.glows.push(Tex.light(this, tx, ty, 90, 0xffb060, .0)); }
+        }
+        if (this.roomKind === 'hall') this.glows.forEach((l, i) => l.setAlpha(.42 + Math.sin(t / 2 + i) * .06));
+        else { this.glows.forEach((l, i) => l.setAlpha(i === 0 && this.forge ? .4 + Math.sin(t / 2) * .08 : (.25 + Math.sin(t / 2.3 + i) * .06) * Math.min(1, nn * 1.6 + .15))); }
         this.people.forEach(p => { if (!p.spot) p.spr.y = p.y + Math.sin(t / 9 + p.t0) * .8; });
         this.movePlayer(dt);
     }
