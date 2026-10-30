@@ -57,6 +57,11 @@ class MapScene extends Phaser.Scene {
         this.events.once('shutdown', () => this.input.removeAllListeners());
     }
 
+    /** Je bod blízko cesty? (cesty sú prepočítané body kriviek) */
+    nearRoad(x, y, d) { const P = this.roadPts || []; for (let i = 0; i < P.length; i++) { const dx = P[i].x - x; if (dx > d || dx < -d) continue; const dy = P[i].y - y; if (dx * dx + dy * dy < d * d) return true; } return false; }
+    /** Voľný priestor okolo hradov, dedín a ciest – nech obraz nie je nahádzaný na kope. */
+    clearZone(x, y) { return TW.some(t => Math.hypot(t.x - x, t.y - y) < 165) || VL.some(v => Math.hypot(v.x - x, v.y - y) < 95) || this.nearRoad(x, y, 30); }
+
     /** Les ako jednotlivé stromy: hustý vnútri, pri okraji redší a s náhodne vysunutými stromami, aby hranica nebola kockatá. */
     buildForest(T) {
         const ts = WW / T.cols, rnd = n => { const x = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
@@ -88,8 +93,9 @@ class MapScene extends Phaser.Scene {
             // samostatné stromy kúsok za okrajom lesa (riedky lem)
             if (edge && !dead && rnd(seed * 23) < .35) { const a = rnd(seed * 29) * 6.283, d = ts * (1 + rnd(seed * 31) * .8); trees.push([(i + .5) * ts + Math.cos(a) * d, (j + .5) * ts + Math.sin(a) * d, .22 + rnd(seed * 37) * .1, rnd(seed * 41) < .5 ? 'tree_1' : 'tree_2']); }
         }
-        trees.sort((a, b) => a[1] - b[1]);
-        for (const [x, y, sc, key] of trees) layer.add(this.add.image(x, y, 'map_trees', KEYS.indexOf(key)).setOrigin(.5, .89).setScale(sc));
+        const kept = trees.filter(([x, y]) => !this.clearZone(x, y));
+        kept.sort((a, b) => a[1] - b[1]);
+        for (const [x, y, sc, key] of kept) layer.add(this.add.image(x, y, 'map_trees', KEYS.indexOf(key)).setOrigin(.5, .89).setScale(sc));
         return [layer];
     }
 
@@ -125,6 +131,7 @@ class MapScene extends Phaser.Scene {
         g.lineStyle(14 * k * .75, 0x2c5b73, 1).strokePoints(river); g.lineStyle(7 * k * .75, 0x4a86a0, 1).strokePoints(river); g.lineStyle(2 * k * .75, 0x8ac0d8, .5).strokePoints(river);
         // cesty: tmavší okraj, svetlý stred, vyjazdené koľaje
         const roads = MAPDATA.roads.map(([a, b]) => { const A = TW[a], B = TW[b]; return new Phaser.Curves.QuadraticBezier(new Phaser.Math.Vector2(A.x, A.y), new Phaser.Math.Vector2((A.x + B.x) / 2 + 30 * k, (A.y + B.y) / 2 - 25 * k), new Phaser.Math.Vector2(B.x, B.y)).getPoints(28); });
+        this.roadPts = roads.flat();                                   // body ciest pre „voľný priestor“ (stromy a skaly sa cestám vyhýbajú)
         g.lineStyle(5.5 * k * .75, 0x7a6a44, .55); roads.forEach(r => g.strokePoints(r));
         g.lineStyle(3.6 * k * .75, 0xc4ad78, .85); roads.forEach(r => g.strokePoints(r));
         g.lineStyle(.5 * k * .75, 0x8a7a50, .6); roads.forEach(r => { g.strokePoints(r.map(p => ({ x: p.x, y: p.y - 1.1 * k * .75 }))); g.strokePoints(r.map(p => ({ x: p.x, y: p.y + 1.1 * k * .75 }))); });
@@ -137,8 +144,8 @@ class MapScene extends Phaser.Scene {
             }
             // polia okolo dedín a skalky po krajine
             const rnd = (n) => ((n * 9301 + 49297) % 233280) / 233280;
-            VL.forEach((v, i) => { for (let f = 0; f < 2; f++) { const a = rnd(i * 3 + f) * 6.283, d = 48 + rnd(i * 7 + f) * 20; out.push(this.add.image(v.x + Math.cos(a) * d, v.y + Math.sin(a) * d * .7, 'map_field_' + regionAt(v.x, v.y) + ((i + f) % 2)).setScale(.4).setAlpha(.9).setRotation((rnd(i + f * 5) - .5) * .6).setDepth(-8.6)); } });
-            for (let i = 0; i < 160; i++) { const x = rnd(i * 11 + 1) * WW, y = rnd(i * 13 + 2) * WH; if (!TW.some(t => Math.hypot(t.x - x, t.y - y) < 150) && !VL.some(v => Math.hypot(v.x - x, v.y - y) < 90)) out.push(this.add.image(x, y, 'map_rocks_' + (i % 3)).setScale(.4).setDepth(-8.4)); }
+            VL.forEach((v, i) => { for (let f = 0; f < 1; f++) { const a = rnd(i * 3 + f) * 6.283, d = 48 + rnd(i * 7 + f) * 20; out.push(this.add.image(v.x + Math.cos(a) * d, v.y + Math.sin(a) * d * .7, 'map_field_' + regionAt(v.x, v.y) + ((i + f) % 2)).setScale(.4).setAlpha(.9).setRotation((rnd(i + f * 5) - .5) * .6).setDepth(-8.6)); } });
+            for (let i = 0; i < 70; i++) { const x = rnd(i * 11 + 1) * WW, y = rnd(i * 13 + 2) * WH; if (!TW.some(t => Math.hypot(t.x - x, t.y - y) < 200) && !VL.some(v => Math.hypot(v.x - x, v.y - y) < 120) && !this.nearRoad(x, y, 60)) out.push(this.add.image(x, y, 'map_rocks_' + (i % 3)).setScale(.4).setDepth(-8.4)); }
         }
         // mäkký tmavý podklad pod lesmi: zjemní hranice dlaždíc a dá lesu hĺbku
         const fc = document.createElement('canvas'); fc.width = T.cols; fc.height = T.rows;

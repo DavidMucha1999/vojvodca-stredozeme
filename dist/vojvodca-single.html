@@ -4254,6 +4254,18 @@ const Soldiers = (() => {
         if (k === 'm') { if (G) iconHorse(c, G, team); else iconBoots(c); }
         return cv;
     }
+    /** Ikonka vojaka (ako vyzerá v boji): druh kind z UNITS alebo hotový popis, farba frakcie color. */
+    function unitIcon(kind, color, size = 64) {
+        const sp = typeof kind === 'string' ? UNITS[kind] : kind;
+        if (!sp) return mkCanvas(size, size);
+        const cv = mkCanvas(size, size), c = cv.getContext('2d');
+        const big = sp.mount || sp.beast ? 1.5 : sp.big ? 1.7 : 1, u = size / 64 * (2.9 / big);
+        const draw = (ctx, layer) => { ctx.save(); ctx.translate(size / 2, size / 2); ctx.scale(u, u); drawUnit(ctx, sp, 0, layer); ctx.restore(); };
+        const base = mkCanvas(size, size); draw(base.getContext('2d'), 'base');
+        c.drawImage(outlined(base), 0, 0);
+        if (color) { const t = mkCanvas(size, size), tc = t.getContext('2d'); draw(tc, 'team'); tc.globalCompositeOperation = 'source-in'; tc.fillStyle = color; tc.fillRect(0, 0, size, size); c.drawImage(t, 0, 0); }
+        return cv;
+    }
     /** Nakreslí bielu vrstvu fn a zafarbí ju farbou frakcie. */
     function tintedLayer(c, color, fn) {
         const sz = 64, t = mkCanvas(sz, sz), tc = t.getContext('2d');
@@ -4358,7 +4370,264 @@ const Soldiers = (() => {
         }
     }
 
-    return { S, FRAME, FRAMES, UNITS, GEAR, gear, heroSpec, drawUnit, sheet, icon, shade, ell, mkCanvas };
+    return { S, FRAME, FRAMES, UNITS, GEAR, gear, heroSpec, drawUnit, sheet, icon, unitIcon, shade, ell, mkCanvas };
+})();
+
+</script>
+<script>
+/*
+ * Postavičky na mape (pohľad zboku): hrdina podľa kúpenej výbavy a lordi podľa svojej frakcie.
+ * Figures.draw(ctx, eq, o, frame) nakreslí jazdca alebo pešiaka okolo bodu (0, 0) – nohy stoja na y = 0.
+ *   eq = { w, a, s, h, m } (poradie vecí ako u kováča, Soldiers.GEAR), o = { fac, king, cape, beard, nazgul, flag }.
+ *   frame 0–3 = krok / viatie zástavy.
+ * Figures.lordEq(e) vráti výbavu lorda e podľa frakcie (a drobné odlišnosti podľa jeho mena), Figures.key(eq, o) kľúč textúry.
+ * Farby a tvary sa berú z tých istých dát ako v bitke (Soldiers.GEAR), takže kôň, prilba či zbraň sedia s bojiskom.
+ */
+const Figures = (() => {
+    const g = (k, i) => Soldiers.gear(k, i);
+    const P = (c, pts, close = true) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); if (close) c.closePath(); };
+    const E = (c, x, y, rx, ry, rot = 0) => { c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, 7); };
+    const dark = (col, k = .6) => { const n = parseInt(col.slice(1), 16); const f = v => Math.round(v * k); return '#' + [f(n >> 16 & 255), f(n >> 8 & 255), f(n & 255)].map(v => v.toString(16).padStart(2, '0')).join(''); };
+    const glow = (c, col, blur, fn) => { c.save(); c.shadowColor = col; c.shadowBlur = blur; fn(); fn(); c.restore(); };
+    const CAPES = ['#8a2a2a', '#2a4a7a', '#3a6a3a', '#6a3a7a', '#8a6a2a', '#2a6a6a'];
+
+    /* ---------- kôň / varg (zboku, hlava vpravo) ---------- */
+    function mount(c, M, fr, o) {
+        const s = M.s || 1, leg = Math.sin(fr * Math.PI / 2) * 3;
+        c.save(); c.scale(s, s);
+        if (M.glow) glow(c, M.glow, 10, () => { c.fillStyle = M.glow; c.globalAlpha = .25; E(c, 0, -10, 20, 10); c.fill(); c.globalAlpha = 1; });
+        if (M.wolf) {
+            c.fillStyle = M.col;
+            // nohy
+            for (const [x, d] of [[-10, leg], [-6, -leg], [6, -leg], [10, leg]]) { P(c, [[x - 2, -9], [x + 2, -9], [x + 1.5 + d * .6, 0], [x - 1.5 + d * .6, 0]]); c.fill(); }
+            E(c, 0, -11, 15, 6); c.fill();                                            // telo
+            c.fillStyle = M.back; E(c, -1, -14, 12, 3.5); c.fill();                    // tmavý chrbát
+            c.fillStyle = M.col; P(c, [[-14, -12], [-22, -18 + leg * .5], [-19, -11]]); c.fill();   // chvost
+            E(c, 15, -14, 6.5, 4.5, -.2); c.fill();                                   // hlava
+            P(c, [[19, -14], [26, -12], [20, -10]]); c.fill();                        // papuľa
+            c.fillStyle = '#fff'; P(c, [[21, -11], [23, -9], [22, -11]]); c.fill();   // zub
+            c.fillStyle = M.col; P(c, [[12, -17], [14, -23], [16, -17]]); c.fill(); P(c, [[16, -18], [19, -23], [20, -17]]); c.fill(); // uši
+            c.fillStyle = M.eye; E(c, 17, -15, 1.3, 1); c.fill();
+            c.restore(); return { seat: -17 * s, lx: -2 * s };
+        }
+        const col = M.col, dk = dark(col, .7);
+        // nohy (4, striedavo)
+        for (const [x, d, back] of [[-9, leg, 1], [-5, -leg, 0], [8, -leg, 1], [12, leg, 0]]) {
+            c.fillStyle = back ? dk : col; P(c, [[x - 2.2, -12], [x + 2.2, -12], [x + 1.6 + d * .8, -2], [x - 1.6 + d * .8, -2]]); c.fill();
+            c.fillStyle = M.socks && !back ? M.socks : col; c.fillRect(x - 1.6 + d * .8, -4, 3.2, 3);
+            c.fillStyle = M.hoof; c.fillRect(x - 1.9 + d * .8, -1.6, 3.8, 1.8);
+        }
+        if (M.shroud) { c.fillStyle = 'rgba(40,10,60,.45)'; E(c, 0, -8, 24, 8); c.fill(); }
+        // telo
+        c.fillStyle = col; E(c, 0, -17, 16 * (M.chubby ? 1.05 : 1), 7.5 * (M.chubby ? 1.15 : 1)); c.fill();
+        if (M.dapple) { c.fillStyle = M.dapple; for (let k = 0; k < 6; k++) { E(c, -8 + k * 3.2, -19 + (k % 2) * 3, 1.6, 1.1); c.fill(); } }
+        if (M.sheen) { c.fillStyle = 'rgba(255,255,255,.35)'; E(c, -2, -20, 10, 2.5); c.fill(); }
+        // chvost
+        c.strokeStyle = M.mane; c.lineWidth = 2.6; c.lineCap = 'round'; c.beginPath(); c.moveTo(-15, -19); c.quadraticCurveTo(-22, -16 + leg * .4, -21 + (M.flow ? -3 : 0), -5); c.stroke();
+        // krk a hlava
+        c.fillStyle = col; P(c, [[9, -21], [15, -22], [21, -31], [17, -34], [10, -28]]); c.fill();
+        P(c, [[15, -35], [24, -34], [28, -27], [25, -24], [17, -26]]); c.fill();           // hlava
+        c.fillStyle = dk; c.fillRect(25.5, -28, 2.2, 1.6);                                  // nozdra
+        if (M.blaze) { c.fillStyle = '#f4f0e4'; P(c, [[19, -34], [21.5, -34], [26, -26], [24.5, -25.5]]); c.fill(); }
+        c.fillStyle = M.redEye ? '#ff3020' : '#1a1210'; E(c, 21, -31, 1.3, 1.1); c.fill();
+        if (M.redEye) glow(c, '#ff3020', 6, () => { c.fillStyle = '#ff5030'; E(c, 21, -31, 1, .9); c.fill(); });
+        c.fillStyle = col; P(c, [[17, -35], [18, -40], [20, -35]]); c.fill(); P(c, [[21, -35], [23, -39], [24, -34]]); c.fill(); // uši
+        if (M.horn) { c.fillStyle = '#2a2a2e'; P(c, [[19, -36], [22, -45], [21, -35]]); c.fill(); }
+        // hriva
+        c.strokeStyle = M.mane; c.lineWidth = M.long ? 3.2 : 2.2; c.beginPath(); c.moveTo(10, -24); c.quadraticCurveTo(14, -30, 18, -36); c.stroke();
+        if (M.long || M.flow) { c.lineWidth = 1.6; for (let k = 0; k < 4; k++) { c.beginPath(); c.moveTo(11 + k * 2, -24 - k * 2.5); c.lineTo(5 + k * 2 - (M.flow ? leg * .6 : 0), -22 - k * 2.5); c.stroke(); } }
+        if (M.braid) { c.strokeStyle = M.braid; c.lineWidth = 1; c.beginPath(); c.moveTo(12, -27); c.lineTo(16, -33); c.stroke(); }
+        if (M.shaggy) { c.fillStyle = M.mane; for (let k = 0; k < 5; k++) { E(c, -12 + k * 2.4, -24, 1.4, 2); c.fill(); } }
+        // výstroj: deka, čabraka, brnenie koňa
+        if (M.caparison) { c.fillStyle = M.barding; P(c, [[-13, -17], [13, -17], [12, -6], [-12, -6]]); c.fill(); c.fillStyle = dark(M.barding, .75); for (let k = 0; k < 4; k++) c.fillRect(-11 + k * 6, -14, 1, 8); }
+        else if (M.barding) { c.fillStyle = M.barding; E(c, 0, -17, 14, 5); c.fill(); }
+        if (M.blanket) { c.fillStyle = M.tack ? '#9a2a24' : '#5a3a2a'; c.fillRect(-7, -22, 14, 7); }
+        if (M.crinet) { c.fillStyle = M.barding; P(c, [[10, -21], [16, -23], [21, -31], [17, -33], [11, -27]]); c.fill(); }
+        if (M.tree) { c.fillStyle = '#fff'; P(c, [[0, -8], [-3, -13], [-1, -12], [0, -15], [1, -12], [3, -13]]); c.fill(); }
+        if (M.plume) { c.fillStyle = M.plume; P(c, [[17, -40], [19, -47], [22, -41]]); c.fill(); }
+        if (M.packs) { c.fillStyle = '#6a4a2a'; c.fillRect(-15, -23, 6, 7); c.fillRect(8, -23, 6, 7); c.fillStyle = '#c8a870'; c.fillRect(-14, -22, 4, 2); c.fillRect(9, -22, 4, 2); }
+        if (M.sparkle) { c.fillStyle = '#fff'; for (let k = 0; k < 4; k++) { const sx = -12 + ((k * 9 + fr * 5) % 30), sy = -30 + (k % 2) * 8 + Math.sin(fr + k) * 2; c.fillRect(sx, sy, 1.4, 1.4); } }
+        c.restore();
+        return { seat: -24 * s, lx: -1 * s };
+    }
+
+    /* ---------- štít (zboku, na ľavom boku jazdca) ---------- */
+    function shield(c, S, x, y) {
+        if (!S) return;
+        const w = (S.shape === 'round' ? 7 : 6) * (S.big || 1), h = (S.shape === 'round' ? 7 : 9) * (S.big || 1);
+        if (S.glow) glow(c, S.glow, 8, () => { c.fillStyle = S.glow; c.globalAlpha = .3; E(c, x, y, w + 2, h + 2); c.fill(); c.globalAlpha = 1; });
+        c.fillStyle = S.col;
+        if (S.shape === 'round') { E(c, x, y, w, h); c.fill(); }
+        else if (S.shape === 'leaf') { P(c, [[x, y - h], [x + w, y - h * .3], [x, y + h], [x - w, y - h * .3]]); c.fill(); }
+        else { P(c, [[x - w, y - h * .8], [x + w, y - h * .8], [x + w, y], [x, y + h], [x - w, y]]); c.fill(); }
+        c.strokeStyle = S.rim; c.lineWidth = 1; c.stroke();
+        if (S.boss) { c.fillStyle = S.boss; E(c, x, y, 1.8, 1.8); c.fill(); }
+        if (S.sun) { c.fillStyle = '#f0d060'; E(c, x, y, 2.5, 2.5); c.fill(); }
+        if (S.tree) { c.fillStyle = '#fff'; P(c, [[x, y + 3], [x - 2.5, y - 1], [x - .8, y - .5], [x, y - 4], [x + .8, y - .5], [x + 2.5, y - 1]]); c.fill(); }
+        if (S.vein) { c.strokeStyle = S.rim; c.lineWidth = .8; c.beginPath(); c.moveTo(x, y - h + 1); c.lineTo(x, y + h - 1); c.stroke(); }
+        if (S.rune) { c.strokeStyle = '#ffd890'; c.lineWidth = 1; c.beginPath(); c.moveTo(x - 2, y - 3); c.lineTo(x - 2, y + 3); c.moveTo(x - 2, y); c.lineTo(x + 2, y - 3); c.stroke(); }
+        if (S.hand) { c.fillStyle = '#eee'; E(c, x, y + 1, 2.2, 2.6); c.fill(); for (let k = -2; k <= 2; k++) c.fillRect(x + k * 1.1 - .4, y - 4.5, .8, 3); }
+        if (S.rays) { c.strokeStyle = '#f0d060'; c.lineWidth = .8; for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; c.beginPath(); c.moveTo(x + Math.cos(a) * 2, y + Math.sin(a) * 2); c.lineTo(x + Math.cos(a) * 5, y + Math.sin(a) * 5); c.stroke(); } }
+        if (S.eye) { c.fillStyle = '#ff6a20'; E(c, x, y, 3.2, 1.8); c.fill(); c.fillStyle = '#000'; E(c, x, y, .9, 1.8); c.fill(); }
+        if (S.planks) { c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = .7; for (let k = -1; k <= 1; k++) { c.beginPath(); c.moveTo(x + k * 3, y - h + 1); c.lineTo(x + k * 3, y + h - 1); c.stroke(); } }
+    }
+
+    /* ---------- zbraň v pravej ruke, držaná šikmo hore ---------- */
+    function weapon(c, Wp, x, y, fr) {
+        c.save(); c.translate(x, y); c.rotate(-.5 + Math.sin(fr * 1.5) * .04);
+        const L = (Wp.L || 2) * 7;
+        if (Wp.glow) glow(c, Wp.glow, 6 + (Wp.glowR || 1) * 2, () => { c.strokeStyle = Wp.glow; c.lineWidth = 3; c.globalAlpha = .45; c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -L); c.stroke(); c.globalAlpha = 1; });
+        if (Wp.t === 'spear') {
+            c.strokeStyle = Wp.shaft; c.lineWidth = 1.6; c.beginPath(); c.moveTo(0, 6); c.lineTo(0, -L); c.stroke();
+            c.fillStyle = Wp.blade; P(c, [[-1.8, -L], [0, -L - 6], [1.8, -L]]); c.fill();
+            if (Wp.pennon) { c.fillStyle = Wp.pennon; P(c, [[0, -L + 1], [8 + Math.sin(fr) * 1.5, -L + 3], [0, -L + 7]]); c.fill(); }
+            if (Wp.barbs) { c.fillStyle = Wp.blade; P(c, [[-1, -L + 2], [-3.5, -L + 5], [-1, -L + 4]]); c.fill(); P(c, [[1, -L + 2], [3.5, -L + 5], [1, -L + 4]]); c.fill(); }
+        } else if (Wp.t === 'axe') {
+            c.strokeStyle = Wp.haft; c.lineWidth = 1.8; c.beginPath(); c.moveTo(0, 4); c.lineTo(0, -L); c.stroke();
+            c.fillStyle = Wp.head; P(c, [[0, -L + 7], [7, -L + 10], [7, -L - 2], [0, -L + 1]]); c.fill();
+            if (!Wp.single) { P(c, [[0, -L + 7], [-7, -L + 10], [-7, -L - 2], [0, -L + 1]]); c.fill(); }
+            if (Wp.rim) { c.strokeStyle = Wp.rim; c.lineWidth = .8; c.beginPath(); c.moveTo(7, -L + 10); c.lineTo(7, -L - 2); c.stroke(); }
+            if (Wp.gem) { c.fillStyle = Wp.gem; E(c, 0, -L + 4, 1.3, 1.3); c.fill(); }
+            if (Wp.spikes) { c.fillStyle = Wp.head; P(c, [[-1.5, -L], [0, -L - 6], [1.5, -L]]); c.fill(); }
+        } else if (Wp.t === 'mace') {
+            const b = Wp.big || 1;
+            c.strokeStyle = Wp.haft; c.lineWidth = 1.8; c.beginPath(); c.moveTo(0, 4); c.lineTo(0, -L); c.stroke();
+            if (Wp.glow) glow(c, Wp.glow, 8, () => { c.fillStyle = Wp.core; E(c, 0, -L, 4 * b, 4 * b); c.fill(); });
+            c.fillStyle = Wp.head; E(c, 0, -L, 4.5 * b, 4.5 * b); c.fill();
+            c.fillStyle = Wp.spike; for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; P(c, [[Math.cos(a - .3) * 3.5 * b, -L + Math.sin(a - .3) * 3.5 * b], [Math.cos(a) * 7 * b, -L + Math.sin(a) * 7 * b], [Math.cos(a + .3) * 3.5 * b, -L + Math.sin(a + .3) * 3.5 * b]]); c.fill(); }
+            c.fillStyle = Wp.core; E(c, 0, -L, 1.6 * b, 1.6 * b); c.fill();
+        } else if (Wp.t === 'bow') {
+            c.strokeStyle = '#6a4a2a'; c.lineWidth = 1.6; c.beginPath(); c.arc(-4, -L / 2, L / 2, -1.3, 1.3); c.stroke();
+        } else {
+            // meče, šable, sekáče, plameň
+            const w = (Wp.w || .12) * 22, grad = Wp.grad ? (() => { const gr = c.createLinearGradient(0, 0, 0, -L); gr.addColorStop(0, Wp.grad[0]); gr.addColorStop(1, Wp.grad[1]); return gr; })() : Wp.blade;
+            c.fillStyle = Wp.grip; c.fillRect(-1, 0, 2, 6); c.fillStyle = Wp.pommel; E(c, 0, 6.5, 1.6, 1.6); c.fill();
+            c.fillStyle = Wp.guard; c.fillRect(-(Wp.gw || 1) * 3.2, -1, (Wp.gw || 1) * 6.4, 1.6);
+            if (Wp.wing) { P(c, [[-3, -1], [-6, -4], [-3, 0]]); c.fill(); P(c, [[3, -1], [6, -4], [3, 0]]); c.fill(); }
+            c.fillStyle = grad;
+            if (Wp.t === 'curve' || Wp.t === 'scimitar') { P(c, [[-w, -1], [w, -1], [w + 2.5, -L * .6], [w + 1, -L], [w - 1, -L * .7], [-w, -L * .55]]); c.fill(); }
+            else if (Wp.t === 'cleaver') { P(c, [[-w, -1], [w * .6, -1], [w * .6, -L * .5], [w * 1.6, -L * .55], [w * 1.2, -L], [-w, -L * .95]]); c.fill(); }
+            else if (Wp.t === 'flame') { c.beginPath(); c.moveTo(-w, -1); c.lineTo(w, -1); for (let k = 1; k <= 5; k++) c.lineTo(w * (k % 2 ? 1.5 : .6), -L * k / 5); c.lineTo(0, -L - 3); for (let k = 5; k >= 1; k--) c.lineTo(-w * (k % 2 ? 1.5 : .6), -L * k / 5); c.closePath(); c.fill(); if (Wp.tongues) { c.fillStyle = Wp.base; for (let k = 0; k < 3; k++) { P(c, [[w, -L * (.3 + k * .25)], [w + 3 + Math.sin(fr + k) * 1.5, -L * (.38 + k * .25)], [w, -L * (.45 + k * .25)]]); c.fill(); } } }
+            else { P(c, [[-w, -1], [w, -1], [w, -L + 3], [0, -L - 2], [-w, -L + 3]]); c.fill(); if (Wp.edgeCol) { c.strokeStyle = Wp.edgeCol; c.lineWidth = .6; c.stroke(); } }
+            if (Wp.fuller) { c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = .6; c.beginPath(); c.moveTo(0, -3); c.lineTo(0, -L + 6); c.stroke(); }
+            if (Wp.runes) { c.fillStyle = Wp.runes; for (let k = 1; k < 5; k++) c.fillRect(-.5, -L * k / 6, 1, 1.5); }
+            if (Wp.tree) { c.fillStyle = '#fff'; P(c, [[0, -L * .35], [-1.5, -L * .5], [0, -L * .48], [0, -L * .62], [1.5, -L * .5]]); c.fill(); }
+            if (Wp.tipStar) glow(c, '#fff', 6, () => { c.fillStyle = '#fff'; E(c, 0, -L - 2, 1.6, 1.6); c.fill(); });
+            if (Wp.rays) { c.strokeStyle = 'rgba(255,240,190,.6)'; c.lineWidth = .7; for (let k = 0; k < 5; k++) { const a = -Math.PI / 2 + (k - 2) * .35; c.beginPath(); c.moveTo(0, -L); c.lineTo(Math.cos(a) * 9, -L + Math.sin(a) * 9); c.stroke(); } }
+            if (Wp.gem) { c.fillStyle = Wp.gem; E(c, 0, -.2, 1.2, 1.2); c.fill(); }
+        }
+        c.restore();
+    }
+
+    /* ---------- prilba ---------- */
+    function helm(c, Hm, x, y, o) {
+        const k = Hm.kind, col = Hm.col;
+        c.fillStyle = col;
+        if (k === 'cap') { c.beginPath(); c.arc(x, y, 4.6, Math.PI, 0); c.lineTo(x + 4.6, y + 1.2); c.lineTo(x - 4.6, y + 1.2); c.fill(); }
+        if (k === 'rohan') { c.beginPath(); c.arc(x, y, 4.6, Math.PI, 0); c.lineTo(x + 4.8, y + 2); c.lineTo(x - 4.8, y + 2); c.fill(); c.fillStyle = '#d9a441'; c.fillRect(x - 4.8, y, 9.6, 1); c.strokeStyle = Hm.tail; c.lineWidth = 1.8; c.beginPath(); c.moveTo(x, y - 4.5); c.quadraticCurveTo(x - 6, y - 3, x - 8, y + 4); c.stroke(); c.fillStyle = col; c.fillRect(x + 1, y - 1, 1.6, 4); }
+        if (k === 'gondor' || k === 'citadel') {
+            P(c, [[x - 4.8, y + 2], [x - 4.8, y - 3], [x - 2, y - 8], [x + 2, y - 8], [x + 4.8, y - 3], [x + 4.8, y + 2]]); c.fill();
+            c.fillStyle = Hm.wings; P(c, [[x - 4, y - 2], [x - 10, y - 8], [x - 4, y - 5]]); c.fill(); P(c, [[x + 4, y - 2], [x + 9, y - 8], [x + 4, y - 5]]); c.fill();
+            if (Hm.plume) { c.fillStyle = k === 'citadel' ? '#fff' : '#e8e8e8'; P(c, [[x - 1, y - 8], [x - 7, y - 13], [x + 1, y - 8]]); c.fill(); }
+            if (Hm.band) { c.fillStyle = Hm.band; c.fillRect(x - 4.8, y - 1, 9.6, 1.2); }
+            if (Hm.gems) { c.fillStyle = '#4a8af0'; c.fillRect(x - 1, y - 5, 2, 2); }
+            c.fillStyle = col; c.fillRect(x - .8, y - 3, 1.6, 5);   // nánosník
+        }
+        if (k === 'elf') { c.beginPath(); c.arc(x, y, 4.4, Math.PI, 0); c.lineTo(x + 4.4, y + 1); c.lineTo(x - 4.4, y + 1); c.fill(); c.fillStyle = Hm.crest; P(c, [[x - 4, y - 1], [x, y - 9], [x + 4, y - 1]]); c.fill(); c.fillStyle = col; P(c, [[x + 3, y], [x + 7, y - 3], [x + 4, y + 2]]); c.fill(); }
+        if (k === 'orc') { P(c, [[x - 5, y + 2], [x - 5, y - 3], [x - 2, y - 6], [x + 1, y - 4], [x + 3, y - 7], [x + 5, y - 2], [x + 5, y + 2]]); c.fill(); c.fillStyle = '#1a1410'; c.fillRect(x - 5, y, 10, 1.4); }
+        if (k === 'uruk') { P(c, [[x - 5, y + 2], [x - 5, y - 4], [x + 5, y - 4], [x + 5, y + 2]]); c.fill(); c.fillStyle = '#e8e8e8'; E(c, x + 1, y - 1, 1.6, 2); c.fill(); for (let k2 = -1; k2 <= 1; k2++) c.fillRect(x + .4 + k2 * .9, y - 4, .6, 1.8); c.fillStyle = col; c.fillRect(x - 5, y + 2, 10, 2); }
+        if (k === 'mask') { c.beginPath(); c.arc(x, y, 4.6, Math.PI, 0); c.lineTo(x + 4.6, y + 1); c.lineTo(x - 4.6, y + 1); c.fill(); c.fillStyle = '#d9b850'; E(c, x + 1.5, y + 2.5, 3.6, 3.4); c.fill(); c.fillStyle = '#2a1a10'; c.fillRect(x + 1, y + 1.5, 1.4, .8); c.fillRect(x + 3.5, y + 1.5, 1, .8); }
+        if (k === 'mouth') { P(c, [[x - 5, y + 3], [x - 4, y - 7], [x + 4, y - 7], [x + 5, y + 3]]); c.fill(); c.fillStyle = Hm.glow || '#ff3010'; c.fillRect(x - 3, y - 3, 6, .9); c.fillRect(x - 3, y - 1, 6, .9); c.fillStyle = '#e8d8c8'; c.fillRect(x + 1, y + 2, 4, 2.2); c.fillStyle = '#3a1010'; c.fillRect(x + 2, y + 3, 2.5, .6); }
+        if (Hm.glow) glow(c, Hm.glow, 6, () => { c.fillStyle = Hm.glow; c.globalAlpha = .2; E(c, x, y - 2, 7, 6); c.fill(); c.globalAlpha = 1; });
+        if (o.king) { c.fillStyle = '#ffd24a'; P(c, [[x - 4, y - 7], [x - 4, y - 12], [x - 2, y - 9], [x, y - 13], [x + 2, y - 9], [x + 4, y - 12], [x + 4, y - 7]]); c.fill(); c.fillStyle = '#d8402a'; c.fillRect(x - .7, y - 10, 1.4, 1.4); }
+    }
+
+    /* ---------- celá postavička ---------- */
+    function draw(c, eq, o, fr) {
+        const M = eq.m > 0 ? g('m', eq.m) : null, A = g('a', eq.a), S = eq.s > 0 ? g('s', eq.s) : null, Hm = eq.h == null ? null : g('h', eq.h);
+        const Wp = eq.w == null ? null : typeof eq.w === 'object' ? eq.w : g('w', eq.w);   // objekt = vlastná zbraň (napr. luk), null = bez zbrane
+        const skin = o.nazgul ? '#000' : o.orc ? '#5f7a4a' : o.dark ? '#8a5a3a' : '#e2bf96';
+        const bob = M ? 0 : Math.abs(Math.sin(fr * Math.PI / 2)) * 1.2, walk = Math.sin(fr * Math.PI / 2) * 3.5;
+        // tieň
+        c.fillStyle = 'rgba(0,0,0,.32)'; E(c, 0, 0, M ? 18 * (M.s || 1) : 7, M ? 5 : 2.5); c.fill();
+        let seat = 0, lx = 0;
+        if (M) ({ seat, lx } = mount(c, M, fr, o));
+        c.save(); c.translate(lx, seat - bob);
+        // zástava za chrbtom
+        if (o.flag != null) { c.strokeStyle = '#3a2a1a'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-6, -2); c.lineTo(-6, -40); c.stroke(); tm = fr * 14.1; bnr(-6, -40, o.flag, 16, 20); }
+        // plášť
+        const cape = o.cape || CAPES[0];
+        if (!o.nazgul || 1) { c.fillStyle = A.pat === 'robe' ? '#0a0a10' : cape; P(c, [[-2, -18], [3, -18], [2, -2 + (M ? 2 : 0)], [-9 - walk * .3, 0]]); c.fill(); }
+        // nohy
+        if (!M) { for (const d of [walk, -walk]) { c.fillStyle = A.pat === 'robe' ? '#0a0a10' : '#3a2a1a'; P(c, [[-2 + d * .2, -8], [2 + d * .2, -8], [2 + d, 0], [-2 + d, 0]]); c.fill(); c.fillStyle = '#2a1a10'; c.fillRect(-2.5 + d, -1.5, 5, 1.5); } }
+        else { c.fillStyle = A.pat === 'robe' ? '#0a0a10' : '#3a2a1a'; P(c, [[1, -8], [5, -8], [6, 2], [3, 3]]); c.fill(); c.fillStyle = '#2a1a10'; c.fillRect(2.5, 2, 4.5, 1.6); }
+        // trup
+        const pad = A.pad || 1;
+        c.fillStyle = A.col; P(c, [[-4.5 * pad, -20], [4.5 * pad, -20], [4 * pad, -7], [-4 * pad, -7]]); c.fill();
+        if (A.glow) glow(c, A.glow, 6, () => { c.fillStyle = A.glow; c.globalAlpha = .35; c.fillRect(-4 * pad, -19, 8 * pad, 11); c.globalAlpha = 1; });
+        if (A.pat === 'mail') { c.fillStyle = 'rgba(255,255,255,.22)'; for (let yy = -18; yy < -8; yy += 2.2) for (let xx = -3.5; xx < 3.5; xx += 2) { E(c, xx + (yy % 4 ? 1 : 0), yy, .7, .7); c.fill(); } }
+        if (A.pat === 'plate') { c.fillStyle = 'rgba(255,255,255,.18)'; c.fillRect(-4 * pad, -19, 8 * pad, 1); c.fillRect(-4 * pad, -14, 8 * pad, 1); c.fillRect(-4 * pad, -10, 8 * pad, 1); c.fillStyle = A.rim || '#fff'; c.fillRect(-4.5 * pad, -20, 9 * pad, 1.2); }
+        if (A.pat === 'scale') { c.strokeStyle = A.rim || '#fff'; c.lineWidth = .6; for (let yy = -18; yy < -8; yy += 2.5) for (let xx = -3; xx <= 3; xx += 2.5) { c.beginPath(); c.arc(xx + (yy % 5 ? 1.2 : 0), yy, 1.2, 0, Math.PI); c.stroke(); } }
+        if (A.pat === 'dwarf') { c.fillStyle = A.rim; c.fillRect(-4.5 * pad, -20, 9 * pad, 1.5); c.fillRect(-1, -20, 2, 13); c.fillRect(-4.5 * pad, -13, 9 * pad, 1); }
+        if (A.pat === 'mithril') { c.fillStyle = 'rgba(255,255,255,.5)'; for (let yy = -18; yy < -8; yy += 2) c.fillRect(-3.5 * pad, yy, 7 * pad, .6); }
+        if (A.pat === 'robe') { c.fillStyle = A.col; P(c, [[-5, -20], [5, -20], [7, 4], [-8, 4]]); c.fill(); if (A.glow) { c.fillStyle = A.glow; c.globalAlpha = .25; P(c, [[-5, -20], [5, -20], [7, 4], [-8, 4]]); c.fill(); c.globalAlpha = 1; } }
+        if (A.mantle) { c.fillStyle = A.mantle; P(c, [[-5, -20], [5, -20], [4, -14], [-4, -14]]); c.fill(); }
+        if (A.spikes) { c.fillStyle = A.rim || '#666'; for (const sx of [-4, 0, 4]) { P(c, [[sx - 1, -20], [sx, -24], [sx + 1, -20]]); c.fill(); } }
+        if (A.hand) { c.fillStyle = '#eee'; E(c, 0, -14, 1.6, 2); c.fill(); }
+        if (A.rust) { c.fillStyle = 'rgba(120,60,20,.35)'; c.fillRect(-2, -16, 3, 2); c.fillRect(1, -11, 2, 2); }
+        // ramená a ruky
+        c.fillStyle = A.col; E(c, -4 * pad, -18, 2.2, 2.2); c.fill(); E(c, 4 * pad, -18, 2.2, 2.2); c.fill();
+        c.strokeStyle = skin === '#000' ? '#0a0a10' : A.col; c.lineWidth = 2.4; c.lineCap = 'round';
+        if (Wp) { c.beginPath(); c.moveTo(4 * pad, -17); c.lineTo(8, -12); c.stroke(); c.fillStyle = skin; E(c, 8.5, -11.5, 1.6, 1.6); c.fill(); weapon(c, Wp, 8.5, -11.5, fr); }   // pravá ruka so zbraňou
+        else { c.beginPath(); c.moveTo(4 * pad, -17); c.lineTo(6, -9); c.stroke(); c.fillStyle = skin; E(c, 6, -8.5, 1.6, 1.6); c.fill(); if (o.mug) { c.fillStyle = '#c8903a'; c.fillRect(6.5, -11, 3.5, 4); c.fillStyle = '#fff4dc'; c.fillRect(6.5, -11.8, 3.5, 1.2); } }
+        if (S) shield(c, S, -7, -12);
+        else { c.strokeStyle = A.col; c.beginPath(); c.moveTo(-4 * pad, -17); c.lineTo(-6, -10); c.stroke(); }
+        // hlava
+        c.fillStyle = skin; E(c, 0, -24, 4, 4.3); c.fill();
+        if (o.beard) { c.fillStyle = o.beard; P(c, [[-3.5, -23], [3.5, -23], [2, -14], [-2, -14]]); c.fill(); }
+        if (!o.nazgul) { c.fillStyle = '#1a1210'; c.fillRect(1.5, -25, 1.2, 1.2); }
+        if (o.nazgul) { c.fillStyle = '#0a0a10'; P(c, [[-6, -16], [-5, -30], [0, -33], [5, -30], [5, -20]]); c.fill(); }
+        else if (Hm) helm(c, Hm, 0, -25, o);
+        else { c.fillStyle = o.hair || '#4a3020'; c.beginPath(); c.arc(0, -25.5, 4.2, Math.PI, 0); c.fill(); if (o.hair === 'long') { c.fillRect(-4.2, -25.5, 2, 8); } if (o.king) helm(c, { kind: 'none', col: '#000' }, 0, -25, o); }
+        if (o.apron) { c.fillStyle = '#e8dcc0'; P(c, [[-3.5, -16], [3.5, -16], [3, -4], [-3, -4]]); c.fill(); }
+        c.restore();
+    }
+
+    /** Výbava lorda e podľa frakcie; drobné odlišnosti podľa mena (prilba, kôň). */
+    function lordEq(e) {
+        const id = (e.id || 0) + (e.nm ? e.nm.length : 0), v = id % 2;
+        const T = {
+            0: [{ w: 1, a: 2, s: 2, h: v ? 2 : 4, m: 3 }, { cape: '#2a3a6a' }],
+            1: [{ w: 2, a: 1, s: 1, h: 1, m: 2 }, { cape: '#3a6a2a' }],
+            2: [{ w: v ? 9 : 14, a: v ? 6 : 9, s: v ? 5 : 8, h: v ? 5 : 8, m: 7 }, { cape: '#2a1010', orc: !!v }],
+            3: [{ w: 11, a: 7, s: 6, h: 6, m: v ? 6 : 5 }, { cape: '#1a1a1a', orc: 1 }],
+            4: [{ w: 17, a: 8, s: 7, h: v ? 0 : 7, m: 2 }, { cape: '#a03020', dark: 1 }],
+            5: [{ w: 5, a: 4, s: 4, h: 0, m: 1 }, { cape: '#3a4a7a', beard: v ? '#c8a060' : '#5a3a20' }],
+            7: [{ w: 10, a: 8, s: 7, h: 7, m: 7 }, { cape: '#5a1f4a' }],
+            8: [{ w: 4, a: 3, s: 3, h: 3, m: 4 }, { cape: '#9ab07a' }],
+            9: [{ w: 0, a: 0, s: 0, h: 0, m: 0 }, { cape: '#4a3a2a' }]
+        };
+        if (e.nz) return [{ w: 13, a: 10, s: 0, h: 8, m: 8 }, { cape: '#000', nazgul: 1 }];
+        let r = T[e.f];
+        if (!r) r = (typeof heroSide === 'function' && heroSide() === 1) ? T[2] : T[0];   // vlastní vazali podľa strany hráča
+        return [r[0], { ...r[1], king: !!e.kr, flag: e.f }];
+    }
+    /** Výbava spoločníka c (postava z filmu) pre postavičku; bez koňa v interiéri (noMount). */
+    function compEq(c, noMount) {
+        const ART = { uL2: [{ w: 4, a: 3, s: 0, h: 3, m: 0 }, { cape: '#5a7a5a' }], uE1: [{ w: 5, a: 4, s: 4, h: 0, m: 0 }, { beard: '#b05a20', cape: '#3a4a7a' }],
+            uG2: [{ w: { t: 'bow', L: 2.6 }, a: 0, s: 0, h: null, m: 0 }, { cape: '#3a5a32', hair: '#6a4a2a' }], uI1: [{ w: 11, a: 7, s: 6, h: 6, m: 0 }, { orc: 1, cape: '#1a1a1a' }],
+            uM1: [{ w: 9, a: 6, s: 5, h: 5, m: 0 }, { orc: 1, cape: '#2a1010' }], uM2: [{ w: 12, a: 9, s: 0, h: 5, m: 0 }, { orc: 1, cape: '#2a1a10' }], uH1: [{ w: 17, a: 8, s: 7, h: 0, m: 0 }, { dark: 1, cape: '#a03020' }],
+            uN1: [{ w: 10, a: 8, s: 7, h: 7, m: 0 }, { cape: '#5a1f4a' }], z: [{ w: 13, a: 10, s: 0, h: 8, m: 0 }, { nazgul: 1, cape: '#000' }], t: [{ w: 12, a: 9, s: 0, h: 5, m: 0 }, { orc: 1, cape: '#2a1a10' }],
+            e: [{ w: { t: 'bow', L: 2.8 }, a: 3, s: 0, h: 3, m: 0 }, { cape: '#9ab07a' }], a: [{ w: { t: 'bow', L: 2.6 }, a: 0, s: 0, h: 0, m: 0 }, { cape: '#4a3a2a' }] };
+        let r = c.eq ? [{ ...c.eq }, { cape: c.side ? '#2a1414' : '#6a2a2a' }] : (ART[c.art] || [{ w: 0, a: c.side ? 11 : 0, s: 0, h: 0, m: 0 }, { cape: '#4a3a2a' }]);
+        r = [{ ...r[0] }, { ...r[1] }];
+        if (noMount) r[0].m = 0;
+        if (c.id === 'sam') { r[1].hair = '#b08a50'; r[0].h = null; }
+        if (c.id === 'eowyn') { r[1].hair = 'long'; r[0].h = null; }
+        return r;
+    }
+    const key = (eq, o) => 'figure_' + [eq.w == null ? 'n' : typeof eq.w === 'object' ? 'x' + eq.w.t : eq.w, eq.a, eq.s, eq.h, eq.m, o.flag ?? '', o.king ? 1 : 0, o.cape || '', o.beard || '', o.nazgul ? 1 : 0, o.orc ? 1 : 0, o.dark ? 1 : 0, o.hair || '', o.apron ? 1 : 0, o.mug ? 1 : 0].join('_');
+    return { draw, lordEq, compEq, key, CAPES };
 })();
 
 </script>
@@ -4492,14 +4761,31 @@ function sndBase(k) {
     }
 }
 function pb(t) {
-    const z = mode === 'battle' ? 'b' : G.x < 2250 ? 's' : G.x > 5700 ? 'd' : 'e', P = { e: [[50, 53, 57], [46, 50, 53], [53, 57, 60], [48, 52, 55]], d: [[50, 53, 57], [51, 55, 58], [50, 53, 57], [49, 52, 57]], s: [[53, 57, 60], [48, 52, 55], [50, 53, 57], [46, 50, 53]], b: [[50, 53, 57], [50, 53, 57], [46, 50, 53], [45, 49, 52]] }[z], c = P[bar % 4], L = 2.4;
+    const z = mode === 'tavern' ? (heroSide() === 1 ? 'tv' : 't') : mode === 'battle' ? 'b' : G.x < 2250 ? 's' : G.x > 5700 ? 'd' : 'e', P = { t: [[55, 59, 62], [53, 57, 60], [50, 53, 57], [55, 59, 62]], tv: [[45, 48, 52], [44, 48, 51], [45, 48, 52], [43, 46, 50]], e: [[50, 53, 57], [46, 50, 53], [53, 57, 60], [48, 52, 55]], d: [[50, 53, 57], [51, 55, 58], [50, 53, 57], [49, 52, 57]], s: [[53, 57, 60], [48, 52, 55], [50, 53, 57], [46, 50, 53]], b: [[50, 53, 57], [50, 53, 57], [46, 50, 53], [45, 49, 52]] }[z], c = P[bar % 4], L = 2.4;
     bar++;
+    if (z === 't' || z === 'tv') return pbTavern(t, c, z === 'tv', L);
     c.forEach(m => { osc(mf(m), t, L + .6, 'sawtooth', .03, MB, .6, -7, 1100); osc(mf(m), t, L + .6, 'sawtooth', .03, MB, .6, 7, 1100); });
     osc(mf(c[0] - 24), t, L, 'sine', .18, MB, .05);
     if (z !== 's')
         (z === 'b' ? [0, .3, .6, 1.2, 1.5, 1.8, 2.1] : [0, 1.2, 1.8]).forEach(h => { const o = osc(110, t + h, .5, 'sine', z === 'b' ? .5 : .3, MB, .005); o.frequency.exponentialRampToValueAtTime(45, t + h + .4); noi(t + h, .12, .12, 'lowpass', 600, MB); });
     if (Math.random() < .8)
         [0, 1.2].forEach(h => osc(mf(c[Math.floor(Math.random() * 3)] + 12), t + h, 1.4, 'triangle', .06, MB, .25, 0, 2000));
+}
+/** Hudba krčmy (hudba mapy sa nemení): dobro = veselá brnkačka s ľahkým bubnom, zlo = temný dron s ťažkým úderom. */
+function pbTavern(t, c, evil, L) {
+    if (evil) {
+        c.forEach(m => osc(mf(m - 12), t, L + .4, 'sawtooth', .035, MB, .5, 0, 500));
+        osc(mf(c[0] - 24), t, L, 'sine', .2, MB, .05);
+        [0, 1.2].forEach(h => { const o = osc(80, t + h, .6, 'sine', .45, MB, .005); o.frequency.exponentialRampToValueAtTime(35, t + h + .5); noi(t + h, .15, .18, 'lowpass', 400, MB); });
+        if (Math.random() < .5) osc(mf(c[1] + 6), t + 1.8, .5, 'triangle', .04, MB, .1, 0, 1500);   // falošný tón
+        return;
+    }
+    // dobro: tri doby na takt, brnkané akordy a hopsavá melódia
+    [0, .8, 1.6].forEach((h, i) => c.forEach((m, k) => osc(mf(m + (i ? 0 : -12)), t + h + k * .03, .5, 'triangle', .07, MB, .005, 0, 2500)));
+    const mel = [c[2] + 12, c[1] + 12, c[0] + 12, c[2] + 12, c[0] + 14, c[2] + 12];
+    mel.forEach((m, i) => { if (Math.random() < .85) osc(mf(m), t + i * .4, .35, 'triangle', .08, MB, .005, 0, 3000); });
+    [0, 1.6].forEach(h => { noi(t + h, .08, .15, 'lowpass', 500, MB); });
+    [.8].forEach(h => noi(t + h, .05, .08, 'highpass', 3000, MB));
 }
 function mus() {
     if (!ac || mu || !G || mode === 'intro')
@@ -4581,10 +4867,12 @@ const msg = (t, fn) => { show('Správa', t); btn('Späť', fn); };
 /** Tlačidlo okna. icon = { k, i } pridá ikonku veci od kováča (k = druh výbavy, i = poradie). */
 function btn(label, fn, off, icon) {
     const b = document.createElement('button'); b.textContent = label; b.onclick = fn; b.disabled = !!off;
-    if (icon && typeof Soldiers !== 'undefined') {
-        const c = Soldiers.icon(icon.k, icon.i, FC[G.fac]);
-        c.className = 'ico'; b.dataset.icon = ['ico', icon.k, icon.i, G.fac].join('_'); if (b.prepend) b.prepend(c);
-    }
+    // ikona: {k,i} = výbava (kováč), {u} = vojak ako v boji, reťazec = ikona rozhrania (Icons)
+    let c = null, key = null;
+    if (icon && typeof Soldiers !== 'undefined' && icon.k) { c = Soldiers.icon(icon.k, icon.i, FC[G.fac]); key = ['ico', icon.k, icon.i, G.fac].join('_'); }
+    else if (icon && typeof Soldiers !== 'undefined' && icon.u) { c = Soldiers.unitIcon(icon.u, FC[G.fac]); key = ['ico_u', icon.u, G.fac].join('_'); }
+    else if (typeof icon === 'string' && typeof Icons !== 'undefined' && Icons.has(icon)) { c = Icons.canvas(icon); key = 'ico_ui_' + icon; }
+    if (c) { c.className = 'ico'; b.dataset.icon = key; if (b.prepend) b.prepend(c); }
     document.getElementById('bt').appendChild(b);
     return b;
 }
@@ -4691,9 +4979,9 @@ function vill(i) {
     if (!v.good) v.good = villageGood(v, i);
     show(v.n + ' (' + FN[f] + ')', v.st > 0 ? 'Dedina je vypálená, obnoví sa o ' + v.st + ' dní.' : 'Dedina patrí k hradu ' + TW[v.t].n + '. Vyrába: ' + goodOf(v.good).n + ' (' + goodOf(v.good).ico + '), prosperita úroveň ' + lvl(v) + '.');
     if (v.st <= 0 && !hos(f, G.fac))
-        btn('Trh (kúpiť a predať tovar)', () => market(v, () => vill(i)));
+        btn('Trh (kúpiť a predať tovar)', () => market(v, () => vill(i)), 0, 'scales');
     if (v.st <= 0 && hos(f, G.fac))
-        btn('Vyrabovať dedinu (bráni ju domáca stráž)', () => { ov.classList.add('hide'); startBattle({ n: 5 + Math.floor(Math.random() * 6), f, vil: v }); });
+        btn('Vyrabovať dedinu (bráni ju domáca stráž)', () => { ov.classList.add('hide'); startBattle({ n: 5 + Math.floor(Math.random() * 6), f, vil: v }); }, 0, 'fire');
     if (v.st <= 0 && !hos(f, G.fac))
         btn('Najať dobrovoľníkov (3 pešiaci za 25)', () => {
             if (G.gold >= 25) {
@@ -4702,8 +4990,8 @@ function vill(i) {
                 upd();
                 vill(i);
             }
-        }, G.gold < 25);
-    btn('Odísť', () => { ov.classList.add('hide'); mode = 'map'; });
+        }, G.gold < 25, { u: 'i' });
+    btn('Odísť', () => { ov.classList.add('hide'); mode = 'map'; }, 0, 'door');
 }
 function town(i) {
     const t = TW[i];
@@ -4711,27 +4999,27 @@ function town(i) {
     mode = 'town';
     if (hos(t.f, G.fac)) {
         show(t.n + ' (' + FN[t.f] + ')', 'Nepriateľský hrad. Garnizón: ' + t.g + ' mužov. Pri dobývaní sa bránia o 30 % silnejšie.');
-        btn('Obliehať hrad', () => siege(i));
-        btn('Odísť', () => { ov.classList.add('hide'); mode = 'map'; });
+        btn('Obliehať hrad', () => siege(i), 0, 'ram');
+        btn('Odísť', () => { ov.classList.add('hide'); mode = 'map'; }, 0, 'door');
         return;
     }
     qChk('v', t.n);
     questEvent('v', t.n);
     show(t.n + ' (' + FN[t.f] + ')', 'Zlato ' + G.gold + ', vojsko ' + ar() + ', zdravie ' + Math.ceil(G.hp) + '/' + mh() + '. Posádka hradu: ' + t.g + (t.lord ? ', léno drží ' + t.lord : '') + '.');
-    [['r', 'Verbovanie vojakov'], ['e', 'Kováč a zbrojnica'], ['v', 'Vojsko, zajatci a odpočinok'], ...(t.mine ? [['h', 'Správa hradu']] : []), ['d', 'Dvor a diplomacia']].forEach(([c, n]) => btn(n, () => tsub(i, c)));
-    btn('Trh', () => market(t, () => town(i)));
-    btn('Krčma' + (compsAt(t).length ? ' (niekto tu čaká)' : ''), () => tavern(i));
+    [['r', 'Verbovanie vojakov', 'recruit'], ['e', 'Kováč a zbrojnica', 'anvil'], ['v', 'Vojsko, zajatci a odpočinok', 'rest'], ...(t.mine ? [['h', 'Správa hradu', 'castle']] : []), ['d', 'Dvor a diplomacia', 'court']].forEach(([c, n, ic]) => btn(n, () => tsub(i, c), 0, ic));
+    btn('Trh', () => market(t, () => town(i)), 0, 'scales');
+    btn('Krčma' + (compsAt(t).length ? ' (niekto tu čaká)' : ''), () => enterTavern(i), 0, 'mug');
     questsAt(t).forEach(q => {
         const d = qDef(q), s = qStep(q);
-        if (s.k === 'r') btn('Úloha: uzavrieť „' + d.n + '“ u ' + q.lord, () => { questComplete(q); msg('„' + qText(q, d.done) + '“', () => town(i)); });
-        else btn('Úloha: odovzdať ' + s.n + '× ' + goodOf(s.a).n + ' (' + d.n + ')', () => { if (questDeliver(q)) msg(q.step >= d.steps.length ? '„' + qText(q, d.done) + '“' : 'Tovar odovzdaný.', () => town(i)); }, ((G.cargo || {})[s.a] || 0) < s.n);
+        if (s.k === 'r') btn('Úloha: uzavrieť „' + d.n + '“ u ' + q.lord, () => { questComplete(q); msg('„' + qText(q, d.done) + '“', () => town(i)); }, 0, 'quest');
+        else btn('Úloha: odovzdať ' + s.n + '× ' + goodOf(s.a).n + ' (' + d.n + ')', () => { if (questDeliver(q)) msg(q.step >= d.steps.length ? '„' + qText(q, d.done) + '“' : 'Tovar odovzdaný.', () => town(i)); }, ((G.cargo || {})[s.a] || 0) < s.n, 'quest');
     });
-    btn('Hrdina a schopnosti' + (G.sk ? ' (' + G.sk + ' bodov)' : ''), () => skills(i));
-    btn('Turnaj v aréne (vstupné 20)', () => { G.gold -= 20; upd(); ov.classList.add('hide'); startBattle({ n: 3 + Math.floor(G.lv / 2), f: t.f, ar: 1, t }); }, G.gold < 20);
+    btn('Hrdina a schopnosti' + (G.sk ? ' (' + G.sk + ' bodov)' : ''), () => skills(i), 0, 'hero');
+    btn('Turnaj v aréne (vstupné 20)', () => { G.gold -= 20; upd(); ov.classList.add('hide'); startBattle({ n: 3 + Math.floor(G.lv / 2), f: t.f, ar: 1, t }); }, G.gold < 20, 'attack');
     if (G.ring === 1 && t.n === 'Barad-dûr' && bloc(G.fac) === 1)
-        btn('Odovzdať Prsteň Sauronovi', () => { G.ring = 2; G.gold += 1000; G.ren += 10; lg('Odovzdal si Jeden prsteň Sauronovi.'); ach(); upd(); town(i); });
-    btn('Uložiť hru', () => saveMenu(() => town(i)));
-    btn('Odísť z mesta', () => { ov.classList.add('hide'); mode = 'map'; });
+        btn('Odovzdať Prsteň Sauronovi', () => { G.ring = 2; G.gold += 1000; G.ren += 10; lg('Odovzdal si Jeden prsteň Sauronovi.'); ach(); upd(); town(i); }, 0, 'ring');
+    btn('Uložiť hru', () => saveMenu(() => town(i)), 0, 'chest');
+    btn('Odísť z mesta', () => { ov.classList.add('hide'); mode = 'map'; }, 0, 'door');
 }
 function tsub(i, c) {
     if (c === 'e')
@@ -4740,13 +5028,13 @@ function tsub(i, c) {
     mode = 'town';
     show(T[c], 'Zlato: ' + G.gold + '.' + (c === 'r' ? ' Pešiaci ' + G.inf + ', jazdci ' + G.cav + ', lukostrelci ' + G.arc + ', elfovia ' + G.elf + ', rohirimi ' + G.roh + ', veteráni ' + G.vet + '.' : c === 'e' ? ' Útok ' + dmg() + ', ochrana ' + Math.round((1 - red()) * 100) + ' %.' : c === 'v' ? ' Zajatci ' + G.cap + ', skúsenosti ' + G.txp + ', zajatí velitelia ' + G.pri.length + '.' : c === 'h' ? ' Hradby stupeň ' + (t.wl || 0) + ', posádka ' + t.g + '.' : ' Hodnosť: ' + rank() + ', sláva ' + G.ren + ', frakcia: ' + FN[G.fac] + '.'));
     if (c === 'r')
-        rec(t).forEach(([n, p, k]) => btn(n + ' (' + p + ' zlata)', () => { G.gold -= p; G[k]++; re(); }, G.gold < p));
+        rec(t).forEach(([n, p, k]) => btn(n + ' (' + p + ' zlata)', () => { G.gold -= p; G[k]++; re(); }, G.gold < p, { u: unitKind(k) }));
     if (c === 'v') {
-        btn('Odpočinúť si (plné zdravie)', () => { G.hp = mh(); re(); }, G.hp >= mh());
-        btn('Povýšiť pešiaka na veterána (20 zlata, 15 skúseností)', () => { G.gold -= 20; G.txp -= 15; G.inf--; G.vet++; re(); }, G.gold < 20 || G.txp < 15 || G.inf < 1);
-        btn('Naverbovať zajatcov (8 zlata/ks)', () => { const n = Math.min(G.cap, Math.floor(G.gold / 8)); G.gold -= n * 8; G.inf += n; G.cap -= n; re(); }, !G.cap || G.gold < 8);
-        btn('Predať zajatcov (12 zlata/ks)', () => { G.gold += G.cap * 12; G.cap = 0; re(); }, !G.cap);
-        btn('Výkupné za zajatých veliteľov (' + G.pri.length * 80 + ')', () => { G.gold += G.pri.length * 80; G.pri = []; re(); }, !G.pri.length);
+        btn('Odpočinúť si (plné zdravie)', () => { G.hp = mh(); re(); }, G.hp >= mh(), 'heart');
+        btn('Povýšiť pešiaka na veterána (20 zlata, 15 skúseností)', () => { G.gold -= 20; G.txp -= 15; G.inf--; G.vet++; re(); }, G.gold < 20 || G.txp < 15 || G.inf < 1, { u: 'v' });
+        btn('Naverbovať zajatcov (8 zlata/ks)', () => { const n = Math.min(G.cap, Math.floor(G.gold / 8)); G.gold -= n * 8; G.inf += n; G.cap -= n; re(); }, !G.cap || G.gold < 8, 'chain');
+        btn('Predať zajatcov (12 zlata/ks)', () => { G.gold += G.cap * 12; G.cap = 0; re(); }, !G.cap, 'coins');
+        btn('Výkupné za zajatých veliteľov (' + G.pri.length * 80 + ')', () => { G.gold += G.pri.length * 80; G.pri = []; re(); }, !G.pri.length, 'coins');
     }
     if (c === 'h') {
         const w = t.wl || 0, cw = 150 * (w + 1), bd = t.bd || (t.bd = {});
@@ -4776,7 +5064,7 @@ function tsub(i, c) {
             btn('Léno drží: ' + t.lord, null, 1);
     }
     if (c === 'd') {
-        btn('Diplomacia s frakciami', () => dip(i));
+        btn('Diplomacia s frakciami', () => dip(i), 0, 'honor');
         if (G.fac === 6 && t.f !== 6)
             btn('Vstúpiť do služieb: ' + FN[t.f], () => {
                 G.fac = t.f;
@@ -4810,8 +5098,10 @@ function tsub(i, c) {
                     msg('Nemáš nepriateľa.', () => tsub(i, c));
             });
     }
-    btn('Späť', () => town(i));
+    btn('Späť', () => town(i), 0, 'back');
 }
+/** Druh vojaka (kľúč v Soldiers.UNITS) pre položku verbovania k. */
+const unitKind = k => ({ inf: 'i', arc: 'a', cav: 'c', roh: 'r', elf: 'e', vet: 'v' })[k] || k;
 function rec(t) {
     const L = [['Domobranec (pešiak)', 15, 'inf'], ['Lukostrelec', 30, 'arc'], ['Jazdec', 45, 'cav']];
     [t.f, ...[0, 1, 2, 3, 4, 5, 7, 8].filter(x => x !== t.f && AL[t.f][x] && !hos(x, G.fac))].forEach(f => (FK[f] || []).forEach(k => { G[k] = G[k] || 0; L.push([FU[k].n + ' (' + FN[f] + ', máš ' + G[k] + ')', FU[k].p, k]); }));
@@ -5091,6 +5381,71 @@ function compTalk(c, back, line) {
     btn('Ako sa ti darí?', () => { const hp = G.chp && G.chp[c.id] != null ? G.chp[c.id] : 1; compTalk(c, back, hp > .8 ? 'Som pripravený. Kam ideme?' : hp > .5 ? 'Rany sa hoja. Ešte deň či dva a budem ako nový.' : 'Zle. Potrebujem odpočinok, nie ďalšiu bitku.'); });
     btn('Čo si myslíš o našej ceste?', () => compTalk(c, back, G.ren > 15 ? 'Ľudia o tebe hovoria. To je dobre, kým hovoria dobre.' : G.ring === 1 ? 'Nesieš to so sebou. Cítim to každý deň. Daj si pozor.' : 'Je to dlhá cesta. Ale dlhé cesty majú dobré konce, ak ich človek dojde.'));
     btn('Späť', () => party(back));
+}
+
+</script>
+<script>
+/*
+ * Krčma ako miestnosť (scéna Tavern v js/engine/scenes/TavernScene.js) a jej rozhovory.
+ * enterTavern(i) vstúpi do krčmy hradu i; bez Phaseru (index.html, testy) sa použije staré okno tavern().
+ * Rozhovory sa otvárajú ako bežné okná (show/btn), mode ostáva 'tavern', zatvorenie okna vráti do miestnosti.
+ */
+function enterTavern(i) {
+    if (typeof game === 'undefined' || !game.scene || !game.scene.getScene('Tavern')) return tavern(i);
+    ov.classList.add('hide');
+    mode = 'tavern';
+    G.dest = -1;
+    const sc = game.scene.getScene('Tavern');
+    if (game.scene.isActive('Map')) game.scene.sleep('Map');          // mapa pod krčmou spí (čas stojí)
+    if (sc.scene.isActive()) sc.scene.restart({ i }); else game.scene.start('Tavern', { i });
+}
+/** Zavrie okno a vráti hráča do miestnosti krčmy. */
+function tavBack() { ov.classList.add('hide'); mode = 'tavern'; }
+/** Obnoví postavy v miestnosti (po pripojení spoločníka). */
+function tavRefresh() { const sc = typeof game !== 'undefined' && game.scene.getScene('Tavern'); if (sc && sc.scene.isActive()) sc.refresh(); }
+
+/** Rozhovor so spoločníkom c, ktorý čaká v krčme hradu i. */
+function tavTalk(i, c, line) {
+    mode = 'tavern';
+    show(c.n + ', ' + c.t, '„' + (line || c.join) + '“');
+    const full = (G.comp || []).length >= 4, ok = G.ren >= c.ren && G.gold >= c.p && !full;
+    btn('Pripojiť sa k družine (' + c.p + ' zlata' + (G.ren < c.ren ? ', treba slávu ' + c.ren : '') + (full ? ', družina je plná' : '') + ')', () => {
+        G.gold -= c.p; compJoin(c); upd();
+        show(c.n, '„' + compLine(c) + '“ ' + c.n + ' vstáva od stola a pridáva sa k tebe. V bitke bude bojovať po tvojom boku.');
+        btn('Späť do krčmy', () => { tavBack(); tavRefresh(); });
+    }, !ok, 'group');
+    btn('Opýtať sa na jeho príbeh', () => tavTalk(i, c, compLine(c)), 0, 'book');
+    btn('Čo vieš o tomto kraji?', () => { const t = TW[i]; tavTalk(i, c, (c.side ? 'Tento brloh patrí ' : 'Toto mesto patrí ') + FN[t.f] + '. Posádka má ' + t.g + ' mužov' + (t.lord ? ', léno drží ' + t.lord : '') + '. ' + (hos(t.f, G.fac) ? 'Nie sú tu priatelia.' : 'Ľudia tu sú k tebe zatiaľ priateľskí.')); }, 0, 'map');
+    btn('Späť do krčmy', tavBack, 0, 'back');
+}
+
+/** Krčmár: klebety, runda, nocľah, dobrovoľníci. */
+function tavKeeper(i, line) {
+    const t = TW[i], evil = heroSide() === 1, th = (typeof game !== 'undefined' && game.scene.getScene('Tavern') || {}).th;
+    mode = 'tavern';
+    const hello = evil ? 'Čo chceš? Mäso došlo, zostalo len to z včera. Plať, alebo sa prac.' : th === 'elf' ? 'Vitaj, pútnik. Posaď sa; víno z Dorwinionu je staršie než tvoj rod.' : th === 'dwarf' ? 'Sadaj! Pivo je silné, pečienka horúca a účet sa platí vopred.' : th === 'hobbit' ? 'Dobrý večer! Pivo, koláč, alebo oboje? U nás sa zvyčajne berie oboje.' : 'Vitaj, pane. Čo si dáš? Pivo, chlieb, alebo novinky?';
+    show((th === 'evil' ? 'Správca brlohu' : th === 'elf' ? 'Hostiteľ' : 'Krčmár') + ' v ' + t.n, '„' + (line || hello) + '“');
+    btn('Vypočuť si klebety (5 zlata)', () => { G.gold -= 5; upd(); tavKeeper(i, rumor(t)); }, G.gold < 5, 'book');
+    btn('Zaplatiť rundu pre všetkých (' + (10 + G.ren) + ' zlata, sláva +1)', () => { G.gold -= 10 + G.ren; G.ren++; G.tround = G.day; lg('Zaplatil si rundu v ' + t.n + '. Ľudia si ťa pamätajú.'); upd(); tavKeeper(i, evil ? 'Chlapi revú. Dobre, dnes ťa nikto neokradne.' : 'Na tvoje zdravie, pane! O tomto sa bude hovoriť.'); }, G.gold < 10 + G.ren || G.tround === G.day, 'mug');
+    btn('Prenocovať (8 zlata, plné zdravie)', () => { G.gold -= 8; G.hp = mh(); upd(); tavKeeper(i, 'Izba hore, schody vŕzgajú. Ráno budeš ako nový.'); }, G.gold < 8 || G.hp >= mh(), 'rest');
+    btn(evil ? 'Najať hladných orkov (3 pešiaci za 30)' : 'Najať chlapov od stola (3 pešiaci za 30)', () => { G.gold -= 30; G.inf += 3; upd(); tavKeeper(i, evil ? 'Traja sa zdvihli. Kŕm ich, inak zožerú teba.' : 'Traja chlapi odkladajú korbele. Nie sú to hrdinovia, ale vedia držať kopiju.'); }, G.gold < 30, { u: evil ? 'orc' : 'i'});
+    btn('Späť do krčmy', tavBack, 0, 'back');
+}
+/** Klebeta o svete: vojny, najbližší nepriateľ, hľadaní spoločníci, počasie. */
+function rumor(t) {
+    const R = [];
+    const wars = [];
+    for (let a = 0; a < 9; a++) for (let b = a + 1; b < 9; b++) if (a !== 6 && b !== 6 && hos(a, b) && FN[a] && FN[b]) wars.push(FN[a] + ' a ' + FN[b]);
+    if (wars.length) R.push('Hovorí sa, že ' + wars[Math.floor(Math.random() * wars.length)] + ' sú vo vojne. Kupci sa boja ciest.');
+    const en = E.filter(e => hos(e.f, G.fac)).sort((a, b) => Math.hypot(a.x - t.x, a.y - t.y) - Math.hypot(b.x - t.x, b.y - t.y))[0];
+    if (en) R.push('Kupec videl vojsko ' + en.nm + ' (' + FN[en.f] + ', asi ' + Math.ceil(en.n) + ' mužov) ' + (en.x < t.x ? 'na západ' : 'na východ') + ' odtiaľto. Drž sa ciest.');
+    const c = COMPANIONS.filter(x => x.side === heroSide() && !(G.comp || []).includes(x.id) && x.at !== t.n)[Math.floor(Math.random() * 3)];
+    if (c) R.push('Vraj v ' + c.at + ' sedí po večeroch ' + c.n + '. ' + (heroSide() ? 'Hľadá, komu by slúžil – za dobrú cenu.' : 'Vraj hľadá, komu by ponúkol svoj meč.'));
+    const rich = TW.filter(x => !hos(x.f, G.fac) && x !== t).sort((a, b) => (b.pr || 40) - (a.pr || 40))[0];
+    if (rich) R.push('V ' + rich.n + ' vraj platia za tovar najlepšie. Keby si mal voz...');
+    if (G.ring === 1) R.push('Niečo sa deje. Vrany lietajú na východ a v noci sa ľuďom sníva o ohni. Vravia, že sa niečo stratené našlo.');
+    R.push(MW.n !== 'clear' ? 'Počasie sa kazí. Starí ľudia vravia, že ' + WNAME[MW.n] + ' potrvá ešte pár dní.' : 'Pekné dni. Vraj to dlho nevydrží – nikdy nevydrží.');
+    return R[Math.floor(Math.random() * R.length)];
 }
 
 </script>
@@ -5527,7 +5882,7 @@ const RES = 2;
 /** Rozmery snímok podľa predpony kľúča: [šírka, výška, stredX, stredY]. */
 const ART_SIZES = {
     u_: [96, 96, 48, 48], hero_: [96, 96, 48, 48], unit_: [96, 96, 48, 48],
-    rider_: [60, 70, 22, 52], herorider_: [60, 70, 22, 52],
+    rider_: [60, 70, 22, 52], herorider_: [60, 70, 22, 52], figure_: [72, 80, 36, 64], bigfig_: [216, 240, 108, 192],
     castle_: [120, 110, 52, 80], village_: [44, 30, 22, 20],
     banner_: [24, 30, 2, 2], crown: [24, 18, 12, 9], spark: [8, 8, 4, 4]
 };
@@ -5721,6 +6076,21 @@ const Art = {
         return Art.ensure(scene, key, () => [0, 1, 2, 3].map(k => () => { tm = k * 14.1; rider(0, 0, 0, f, hero ? '#5a6b55' : '#2c2a26'); }));
     },
 
+    /** Postavička na mape podľa výbavy (hrdina: eq = G.eq; lord: Figures.lordEq(e)). */
+    figure(scene, eq, o) {
+        const key = Figures.key(eq, o);
+        return Art.ensure(scene, key, () => [0, 1, 2, 3].map(k => () => { tm = k * 14.1; Figures.draw(ctx, eq, o, k); }));
+    },
+    /** Trikrát väčšia postavička (krčma, rozhovory). */
+    bigFigure(scene, eq, o) {
+        const key = 'bigfig_' + Figures.key(eq, o).slice(7);
+        return Art.ensure(scene, key, () => [() => { tm = 0; ctx.scale(3, 3); Figures.draw(ctx, eq, o, 0); }]);
+    },
+    heroFigure(scene) {
+        const evil = typeof heroSide === 'function' && heroSide() === 1;
+        return Art.figure(scene, G.eq, { flag: G.fac, king: !!G.king, cape: evil ? '#2a1414' : '#6a2a2a' });
+    },
+
     castle(scene, f) {
         return Art.ensure(scene, 'castle_' + f, () => [0, 1, 2, 3].map(k => () => { tm = k * 14.1; drawCastle({ n: '', x: 0, y: 0, f, g: 0 }); }));
     },
@@ -5830,27 +6200,47 @@ const Icons = (() => {
     draw.retreat = c => { c.strokeStyle = ink; c.lineWidth = 2.4; c.lineCap = 'round'; c.beginPath(); c.moveTo(20, 12); c.lineTo(6, 12); c.moveTo(11, 7); c.lineTo(6, 12); c.lineTo(11, 17); c.stroke(); };
     draw.formation = c => { c.fillStyle = ink; for (const x of [6, 12, 18]) for (const y of [8, 16]) { c.beginPath(); c.arc(x, y, 2.3, 0, 7); c.fill(); } };
     draw.helm = c => { c.fillStyle = steel; c.beginPath(); c.arc(12, 11, 8, Math.PI, 0); c.lineTo(20, 16); c.lineTo(4, 16); c.closePath(); c.fill(); c.fillStyle = steel2; c.fillRect(4, 14, 16, 2); c.fillRect(11, 8, 2, 11); c.fillStyle = gold; c.fillRect(11.3, 3, 1.4, 4); c.beginPath(); c.moveTo(12, 2); c.quadraticCurveTo(17, 1, 19, 6); c.quadraticCurveTo(15, 4, 12, 5); c.fill(); c.fillStyle = '#1a1210'; c.fillRect(6, 11.5, 4.5, 2); c.fillRect(13.5, 11.5, 4.5, 2); };
+    draw.anvil = c => { c.fillStyle = steel2; path(c, [[3, 7], [21, 7], [21, 10], [15, 12], [15, 16], [18, 19], [6, 19], [9, 16], [9, 12], [5, 10], [3, 10]], true); c.fill(); c.fillStyle = steel; c.fillRect(3, 7, 18, 1.6); c.fillStyle = wood; c.fillRect(5, 19, 14, 2.2); c.strokeStyle = '#4a3020'; c.lineWidth = 2; c.lineCap = 'round'; c.beginPath(); c.moveTo(16, 3); c.lineTo(20, 7); c.stroke(); };
+    draw.castle = c => { c.fillStyle = '#9a9ca4'; c.fillRect(4, 10, 16, 10); for (const x of [4, 9, 14]) c.fillRect(x, 7, 3, 3); c.fillRect(19, 7, 1, 3); c.fillStyle = '#7a7c84'; c.fillRect(9, 4, 6, 16); c.fillRect(8, 3, 8, 2); c.fillStyle = '#2a1e14'; c.beginPath(); c.arc(12, 17, 2, Math.PI, 0); c.lineTo(14, 20); c.lineTo(10, 20); c.fill(); c.fillStyle = red; path(c, [[12, 1], [16, 2.5], [12, 4]], true); c.fill(); };
+    draw.mug = c => { c.fillStyle = '#c8903a'; c.fillRect(5, 8, 11, 12); c.fillStyle = '#a8701a'; c.fillRect(5, 8, 11, 1.5); c.fillRect(5, 13, 11, 1); c.strokeStyle = '#c8903a'; c.lineWidth = 2.5; c.beginPath(); c.arc(17, 14, 3, -Math.PI / 2, Math.PI / 2); c.stroke(); c.fillStyle = '#fff4dc'; c.beginPath(); c.ellipse(10.5, 7, 7, 3, 0, 0, 7); c.fill(); c.beginPath(); c.arc(6, 5.5, 2, 0, 7); c.arc(10.5, 4, 2.6, 0, 7); c.arc(15, 5.5, 2, 0, 7); c.fill(); };
+    draw.door = c => { c.fillStyle = '#5a3a1a'; c.fillRect(4, 4, 12, 17); c.fillStyle = '#8a5a30'; c.fillRect(5.5, 5.5, 9, 15.5); c.fillStyle = gold; c.beginPath(); c.arc(13, 13, 1.1, 0, 7); c.fill(); c.strokeStyle = ink; c.lineWidth = 2; c.lineCap = 'round'; c.beginPath(); c.moveTo(15, 12.5); c.lineTo(21, 12.5); c.moveTo(18.5, 9.5); c.lineTo(21, 12.5); c.lineTo(18.5, 15.5); c.stroke(); };
+    draw.scales = c => { c.strokeStyle = gold; c.lineWidth = 1.6; c.lineCap = 'round'; c.beginPath(); c.moveTo(12, 4); c.lineTo(12, 19); c.moveTo(4, 7); c.lineTo(20, 7); c.moveTo(8, 20); c.lineTo(16, 20); c.stroke(); c.lineWidth = .8; c.beginPath(); c.moveTo(4, 7); c.lineTo(2, 13); c.moveTo(4, 7); c.lineTo(6, 13); c.moveTo(20, 7); c.lineTo(18, 13); c.moveTo(20, 7); c.lineTo(22, 13); c.stroke(); c.fillStyle = gold; c.beginPath(); c.arc(4, 13, 3, 0, Math.PI); c.fill(); c.beginPath(); c.arc(20, 13, 3, 0, Math.PI); c.fill(); };
+    draw.ram = c => { c.fillStyle = wood; c.fillRect(3, 11, 16, 3); c.fillStyle = steel2; path(c, [[19, 9], [23, 12.5], [19, 16]], true); c.fill(); c.strokeStyle = '#4a3020'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(6, 11); c.lineTo(4, 5); c.moveTo(15, 11); c.lineTo(17, 5); c.moveTo(4, 5); c.lineTo(17, 5); c.stroke(); for (const x of [6, 15]) { c.fillStyle = '#3a2a1a'; c.beginPath(); c.arc(x, 18, 2.3, 0, 7); c.fill(); } };
+    draw.chest = c => { c.fillStyle = '#7a4a22'; c.fillRect(4, 10, 16, 10); c.fillStyle = '#9a6a3a'; c.beginPath(); c.moveTo(4, 10); c.quadraticCurveTo(4, 5, 12, 5); c.quadraticCurveTo(20, 5, 20, 10); c.fill(); c.fillStyle = gold; c.fillRect(4, 9.5, 16, 1.4); c.fillRect(11, 9, 2, 4); c.fillStyle = gold2; c.fillRect(6, 10, 1, 10); c.fillRect(17, 10, 1, 10); };
+    draw.fire = c => { c.fillStyle = '#ff7a1a'; c.beginPath(); c.moveTo(12, 3); c.quadraticCurveTo(19, 9, 17, 15); c.quadraticCurveTo(16, 21, 12, 21); c.quadraticCurveTo(8, 21, 7, 15); c.quadraticCurveTo(6, 10, 12, 3); c.fill(); c.fillStyle = '#ffd040'; c.beginPath(); c.moveTo(12, 10); c.quadraticCurveTo(15.5, 14, 14, 18); c.quadraticCurveTo(13, 20.5, 12, 20.5); c.quadraticCurveTo(10, 20.5, 10, 17); c.quadraticCurveTo(9.5, 14, 12, 10); c.fill(); };
+    draw.back = c => { c.strokeStyle = '#1a120a'; c.lineWidth = 2.4; c.lineCap = 'round'; c.lineJoin = 'round'; c.beginPath(); c.moveTo(19, 12); c.lineTo(6, 12); c.moveTo(11, 7); c.lineTo(6, 12); c.lineTo(11, 17); c.stroke(); };
+    draw.court = c => { c.fillStyle = gold; path(c, [[5, 19], [5, 9], [9, 12], [12, 5], [15, 12], [19, 9], [19, 19]], true); c.fill(); c.fillStyle = '#4a86c0'; c.fillRect(5, 17, 14, 2.2); c.fillStyle = red; c.beginPath(); c.arc(12, 14, 1.4, 0, 7); c.fill(); };
+    draw.recruit = c => { for (const [x, y, s] of [[8, 12, .9], [16, 12, .9]]) { c.fillStyle = steel; c.beginPath(); c.arc(x, y - 4 * s, 3.2 * s, 0, 7); c.fill(); c.fillStyle = '#7d7f80'; c.beginPath(); c.moveTo(x - 5 * s, y + 8 * s); c.quadraticCurveTo(x, y - 1 * s, x + 5 * s, y + 8 * s); c.fill(); } c.strokeStyle = wood; c.lineWidth = 1.6; c.beginPath(); c.moveTo(12, 3); c.lineTo(12, 21); c.stroke(); c.fillStyle = red; path(c, [[12.5, 3], [19, 5], [12.5, 7.5]], true); c.fill(); };
+    draw.rest = c => { c.fillStyle = '#6a4a2a'; c.fillRect(3, 12, 18, 6); c.fillStyle = '#e8dcc0'; c.fillRect(4, 9, 16, 4); c.fillStyle = '#c84a3a'; c.fillRect(4, 11, 16, 2); c.fillStyle = '#fff'; c.beginPath(); c.ellipse(8, 9.5, 3, 1.8, 0, 0, 7); c.fill(); c.fillStyle = '#4a3020'; c.fillRect(3, 18, 2, 3); c.fillRect(19, 18, 2, 3); c.fillStyle = gold; c.font = 'bold 7px Georgia'; c.fillText('z', 15, 7); c.fillText('Z', 18, 4); };
+    draw.hero = c => { c.fillStyle = gold; c.beginPath(); for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? 3.2 : 7.5; c.lineTo(12 + Math.cos(a) * r, 9 + Math.sin(a) * r); } c.fill(); c.fillStyle = ink; c.beginPath(); c.moveTo(6, 22); c.quadraticCurveTo(12, 12, 18, 22); c.fill(); c.fillStyle = '#e2bf96'; c.beginPath(); c.arc(12, 15, 2.6, 0, 7); c.fill(); };
+    draw.gear = c => { c.fillStyle = steel; c.beginPath(); for (let k = 0; k < 16; k++) { const a = k * Math.PI / 8, r = k % 2 ? 6.5 : 9; c.lineTo(12 + Math.cos(a) * r, 12 + Math.sin(a) * r); } c.closePath(); c.fill(); c.fillStyle = '#2a2420'; c.beginPath(); c.arc(12, 12, 3, 0, 7); c.fill(); };
     draw.quest = draw.scroll;
     draw.camp = draw.tent;
 
     /** Kľúč textúry ikony name (nakreslí ju pri prvom použití). */
-    function tex(scene, name) {
-        const key = 'ico_ui_' + name;
-        if (scene.textures.exists(key)) return key;
+    /** Plátno s ikonou name (96 × 96 px). */
+    function canvas(name) {
         const cv = document.createElement('canvas'); cv.width = cv.height = SZ * S;
         const c = cv.getContext('2d'); c.scale(S, S);
         c.save(); c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 1.5; c.shadowOffsetY = .8;
         (draw[name] || draw.help)(c);
         c.restore();
-        scene.textures.addCanvas(key, cv);
+        return cv;
+    }
+    function tex(scene, name) {
+        const key = 'ico_ui_' + name;
+        if (!scene.textures.exists(key)) scene.textures.addCanvas(key, canvas(name));
         return key;
     }
+    const has = name => !!draw[name];
     /** Ikona podľa textu v lište alebo na tlačidle. */
     const HUD = [[/^Zlato/, 'coins'], [/^Pešiaci/, 'sword'], [/^Jazdci/, 'horse'], [/^Lukostrelci/, 'bow'], [/^Elfovia/, 'leaf'], [/^Rohirimi/, 'horn'], [/^Veteráni/, 'medal'], [/^Zajatci/, 'chain'], [/^Skúsenosti/, 'book'], [/^Kapitola/, 'scroll'], [/^Zdravie/, 'heart'], [/^Úroveň/, 'level'], [/^Body/, 'crown'], [/^Sláva/, 'star'], [/^Deň/, 'sun'], [/^Elitné/, 'elite'], [/prsteň/i, 'ring'], [/^Česť/, 'honor'], [/^Strach/, 'skull'], [/^Tábor/, 'tent'], [/^Voz/, 'cart'], [/^Úlohy/, 'quest'], [/^Družina/, 'group']];
     const BTN = { '−': 'zoomout', '+': 'zoomin', 'Prehľad': 'map', 'Denník': 'diary', 'Úlohy': 'quest', 'Družina': 'group', 'Inventár': 'bag', 'Štatistiky': 'chart', 'Legenda': 'legend', 'Trofeje': 'trophy', 'Úspechy': 'achievement', 'Návod': 'help', 'Zvuk': 'sound', 'Tábor': 'tent', 'Encyklopédia': 'encyclopedia', 'Celá obrazovka': 'fullscreen', '1 Útok': 'attack', '2 Držať': 'hold', '3 Ústup': 'retreat', '4 Šík': 'formation' };
+    const DLG = [[/^Späť/, 'back'], [/^(Odísť|Zavrieť|Pokračovať na mapu)/, 'door'], [/^(Uložiť|Načítať|Pozícia|Automatick)/, 'chest'], [/^Trh/, 'scales'], [/^Krčma/, 'mug'], [/^Kováč/, 'anvil'], [/^Verbovanie/, 'recruit'], [/^Obliehať|^Zaútočiť/, 'ram'], [/^(Prijať úlohu|Úloha)/, 'quest'], [/^Hovoriť|^Rozhovor|^Porozprávať/, 'group'], [/^Kúpiť|^Predať/, 'coins'], [/^Vyrabovať/, 'fire'], [/^Diplomacia/, 'honor'], [/^Hrdina/, 'hero'], [/^Turnaj/, 'attack'], [/^Správa hradu/, 'castle'], [/^Dvor/, 'court'], [/^Vojsko,/, 'rest'], [/^Nová hra|^Vyraziť/, 'sword']];
+    const forDialog = text => { const m = DLG.find(([re]) => re.test(text.trim())); return m ? m[1] : null; };
     const forHud = (text, first) => { const m = HUD.find(([re]) => re.test(text)); return m ? m[1] : first ? 'helm' : null; };
     const forButton = text => { const t = text.trim(); if (/^Zvuk: vyp/.test(t)) return 'soundoff'; if (/^Zvuk/.test(t)) return 'sound'; if (/^Tábor/.test(t)) return 'tent'; return BTN[t] || null; };
-    return { tex, forHud, forButton, SZ };
+    return { tex, canvas, has, forHud, forButton, forDialog, SZ };
 })();
 
 </script>
@@ -5982,13 +6372,13 @@ function ambTick() {
     ambInit();
     if (mu) { for (const k in AMB.src) ambSet(k, 0); return; }
     const battle = mode === 'battle', w = battle ? WX.n : MW.n, night = battle ? WX.night : isNight();
-    const se = season(), shop = mode === 'town' && ov && /^(Trh|Krčma)/.test((ov.querySelector('h1') || {}).textContent || '');
+    const se = season(), tav = mode === 'tavern', shop = tav || (mode === 'town' && ov && /^(Trh|Krčma)/.test((ov.querySelector('h1') || {}).textContent || ''));
     ambSet('rain', w === 'rain' ? .22 : w === 'storm' ? .4 : w === 'ash' ? .08 : 0);
     const windy = w === 'snow' || w === 'storm' || se === 3 || (w === 'fog' ? .5 : 0);
     ambSet('wind', w === 'snow' ? .3 : w === 'storm' ? .22 : se === 3 ? .12 : w === 'fog' ? .08 : 0);
     if (windy) AMB.src.wind.f.frequency.setTargetAtTime(300 + 250 * (.5 + .5 * Math.sin(tm / 90)), ac.currentTime, .5);
-    ambSet('fire', battle && night ? .12 : 0);
-    ambSet('crowd', shop ? .14 : 0);
+    ambSet('fire', battle && night ? .12 : tav ? .1 : 0);
+    ambSet('crowd', tav ? .2 : shop ? .14 : 0);
     const now = ac.currentTime;
     if (w === 'storm' && now > thunderAt) { thunder(); thunderAt = now + 5 + Math.random() * 10; }
     if (battle && night && now > crackleAt) { crackle(); crackleAt = now + .15 + Math.random() * .5; }
@@ -6095,7 +6485,7 @@ class MapScene extends Phaser.Scene {
             stars: this.add.text(t.x - 24, t.y - (newArt ? 60 : 46), '', { fontFamily: 'sans-serif', fontSize: '11px', color: '#ffd24a', fontStyle: 'bold', resolution: RES }).setOrigin(.5).setDepth(9001)
         }));
 
-        this.hero = Art.image(this, G.x, G.y, Art.rider(this, G.fac, 1), 0, true);
+        this.hero = Art.image(this, G.x, G.y, Art.heroFigure(this), 0, true); this.hero.setScale(this.hero.scaleX * 1.2);
         this.heroTxt = this.add.text(0, 0, '', { fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold', color: '#ffd24a', backgroundColor: 'rgba(18,14,12,.85)', padding: { x: 5, y: 1 }, resolution: RES }).setOrigin(.5, 0).setDepth(9002);
         this.heroCrown = Art.image(this, 0, 0, Art.crown(this)).setDepth(9002);
         this.fx = this.add.graphics().setDepth(8999);
@@ -6117,6 +6507,42 @@ class MapScene extends Phaser.Scene {
         this.input.on('gameout', () => this.hover = null);
         this.input.on('wheel', (p, o, dx, dy) => { if (mode === 'map') Z = Math.max(.45, Math.min(1.5, Z - Math.sign(dy) * .1)); });
         this.events.once('shutdown', () => this.input.removeAllListeners());
+    }
+
+    /** Les ako jednotlivé stromy: hustý vnútri, pri okraji redší a s náhodne vysunutými stromami, aby hranica nebola kockatá. */
+    buildForest(T) {
+        const ts = WW / T.cols, rnd = n => { const x = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
+        const isF = (i, j) => i >= 0 && j >= 0 && i < T.cols && j < T.rows && T.forest[j * T.cols + i] >= 33;
+        const layer = this.add.layer().setDepth(-8);
+        // všetky stromy v jednej textúre (jedna dávka pre grafickú kartu namiesto tisícov prepnutí)
+        const KEYS = ['tree_0', 'tree_1', 'tree_2', 'deadtree'];
+        if (!this.textures.exists('map_trees')) {
+            const srcs = KEYS.map(k => this.textures.get(k).getSourceImage()), fw = Math.max(...srcs.map(i => i.width)), fh = Math.max(...srcs.map(i => i.height));
+            const cv = document.createElement('canvas'); cv.width = fw * KEYS.length; cv.height = fh; const c2 = cv.getContext('2d');
+            srcs.forEach((im, i) => c2.drawImage(im, i * fw + (fw - im.width) / 2, fh - im.height));
+            const tex = this.textures.addCanvas('map_trees', cv);
+            KEYS.forEach((k, i) => tex.add(i, 0, i * fw, 0, fw, fh));
+        }
+        const trees = [];
+        for (let j = 0; j < T.rows; j++) for (let i = 0; i < T.cols; i++) {
+            const f = T.forest[j * T.cols + i]; if (f < 33) continue;
+            const dead = f >= 37;
+            let nb = 0; for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) if ((di || dj) && isF(i + di, j + dj)) nb++;
+            const edge = nb < 8, seed = j * T.cols + i;
+            const n = dead ? 2 + (nb > 5 ? 1 : 0) : (edge ? 3 + Math.round(rnd(seed) * 2) : 5 + Math.round(rnd(seed) * 2));
+            for (let k = 0; k < n; k++) {
+                let x = (i + rnd(seed * 7 + k * 3 + 1)) * ts, y = (j + rnd(seed * 7 + k * 3 + 2)) * ts;
+                // pri okraji sa strom občas vysunie von z lesa – rozstrapkaná hranica
+                if (edge && rnd(seed * 13 + k) < .45) { const a = rnd(seed * 17 + k) * 6.283, d = rnd(seed * 19 + k) * ts * .9; x += Math.cos(a) * d; y += Math.sin(a) * d; }
+                const sc = dead ? .3 + rnd(seed + k * 5) * .1 : .28 + rnd(seed * 3 + k) * .16;
+                trees.push([x, y, sc, dead ? 'deadtree' : (rnd(seed * 5 + k) < .3 ? 'tree_2' : rnd(seed * 11 + k) < .5 ? 'tree_0' : 'tree_1')]);
+            }
+            // samostatné stromy kúsok za okrajom lesa (riedky lem)
+            if (edge && !dead && rnd(seed * 23) < .35) { const a = rnd(seed * 29) * 6.283, d = ts * (1 + rnd(seed * 31) * .8); trees.push([(i + .5) * ts + Math.cos(a) * d, (j + .5) * ts + Math.sin(a) * d, .22 + rnd(seed * 37) * .1, rnd(seed * 41) < .5 ? 'tree_1' : 'tree_2']); }
+        }
+        trees.sort((a, b) => a[1] - b[1]);
+        for (const [x, y, sc, key] of trees) layer.add(this.add.image(x, y, 'map_trees', KEYS.indexOf(key)).setOrigin(.5, .89).setScale(sc));
+        return [layer];
     }
 
     /** Terén z editora Tiled: dlaždice zeme a lesov, voda, cesty a hory. Vráti objekty sveta. */
@@ -6176,7 +6602,8 @@ class MapScene extends Phaser.Scene {
         if (this.textures.exists('forestwash')) this.textures.remove('forestwash');
         this.textures.addCanvas('forestwash', fc2);
         out.push(this.add.image(-WW / T.cols * .5, -WH / T.rows * .5, 'forestwash').setOrigin(0).setScale(WW / T.cols).setAlpha(.9).setDepth(-8.7));
-        layer(T.forest, -8, false);
+        // lesy: namiesto štvorcových dlaždíc jednotlivé stromy s rozhádzanými okrajmi (prirodzená hranica lesa)
+        out.push(...this.buildForest(T));
         // hory
         for (const [x, y, size, kind, v] of T.mountains) {
             const key = 'mtn_' + kind + '_' + (kind === 'doom' ? 0 : v % 3);
@@ -6209,6 +6636,7 @@ class MapScene extends Phaser.Scene {
 
     click(p) {
         if (mode !== 'map' || !G) return;
+        const ui = this.scene.get('UI'); if (ui && (ui.big || ui.menu)) { if (ui.menu) ui.menu = null; return; }   // otvorená veľká mapa alebo ponuka
         if (G.camp) { G.camp = 0; const b = [...tb.children].find(x => /tábor/i.test(x.textContent)); if (b) b.textContent = 'Tábor'; upd(); }
         G.dest = -1; G.vd = -1; G.chase = null; G.talk = null;
         const sx = p.x / RES, sy = p.y / RES;
@@ -6266,15 +6694,17 @@ class MapScene extends Phaser.Scene {
             if (!o) {
                 o = {
                     f: -1,
-                    spr: Art.image(this, e.x, e.y, Art.rider(this, e.f), 0, true),
+                    spr: Art.image(this, e.x, e.y, Art.figure(this, ...Figures.lordEq(e)), 0, true),
                     txt: this.add.text(0, 0, '', { fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold', color: '#ecdfc6', backgroundColor: 'rgba(18,14,12,.78)', padding: { x: 5, y: 1 }, resolution: RES }).setOrigin(.5, 0).setDepth(9002),
                     crown: Art.image(this, 0, 0, Art.crown(this)).setDepth(9002)
                 };
                 this.mmCam.ignore([o.spr, o.txt, o.crown]);
                 this.armies.set(e.id, o);
             }
-            if (o.f !== e.f) { o.f = e.f; const k = Art.rider(this, e.f); o.spr.setTexture(k, 0).play({ key: k + ':wave', startFrame: e.id % 4 }); }
+            const fk = Figures.key(...Figures.lordEq(e));
+            if (o.f !== fk) { o.f = fk; const k = Art.figure(this, ...Figures.lordEq(e)); o.spr.setTexture(k, 0).setScale((Art.scale[k] || 1 / RES) * 1.2).play({ key: k + ':wave', startFrame: e.id % 4 }); }
             o.spr.setPosition(e.x, e.y).setDepth(e.y);
+            if (e.vx) o.spr.setFlipX(e.vx < 0);
             o.txt.setPosition(e.x, e.y + 19).setText(e.nm + ' ' + Math.ceil(e.n))
                 .setColor(hos(e.f, G.fac) ? '#ff8a70' : (AL[G.fac][e.f] || e.f === G.fac) ? '#9fe08a' : '#ecdfc6');
             o.crown.setVisible(!!e.kr).setPosition(e.x + 17, e.y - 46);
@@ -6284,10 +6714,11 @@ class MapScene extends Phaser.Scene {
     }
 
     syncHero() {
-        const key = Art.rider(this, G.fac, 1);
-        if (this.hero.texture.key !== key) this.hero.setTexture(key, 0).setScale(Art.scale[key] || 1 / RES).play(key + ':wave');
+        const key = Art.heroFigure(this);
+        if (this.hero.texture.key !== key) this.hero.setTexture(key, 0).setScale((Art.scale[key] || 1 / RES) * 1.2).play(key + ':wave');
         if (!this.hero.anims.isPlaying) this.hero.play(key + ':wave');
         const moving = Math.hypot(G.tx - G.x, G.ty - G.y) > 3;
+        if (moving) this.hero.setFlipX(G.tx < G.x);
         this.hero.setPosition(G.x, G.y + (moving ? Math.sin(tm * .4) * 1.2 : 0)).setDepth(G.y + 1);
         this.heroTxt.setPosition(G.x, G.y + 38).setText(G.name + ' ' + ar());
         this.heroCrown.setVisible(!!G.king).setPosition(G.x + 17, G.y - 46);
@@ -6550,6 +6981,203 @@ class BattleScene extends Phaser.Scene {
 </script>
 <script>
 /*
+ * ENGINE: krčma – miestnosť, do ktorej hráč vstúpi z hradu. Beží nad mapou (mode = 'tavern', čas stojí).
+ * Interiér sa kreslí kódom podľa témy hradu (ľudia, hobiti, elfovia, trpaslíci, zlo) a náhodného rozloženia
+ * daného číslom hradu: krb, výčap s krčmárom, stoly so sviečkami, okno s dennou dobou a počasím, zástava frakcie.
+ * Postavy: krčmár a spoločníci z filmu, ktorí tu čakajú (Figures vo veľkom). Klik na postavu otvorí rozhovor (js/ui/tavern.js).
+ * Hudba krčmy je vlastná (sound.js, pásmo 't'/'tv'); hudba mapy ostáva nezmenená.
+ */
+class TavernScene extends Phaser.Scene {
+    constructor() { super('Tavern'); }
+    init(d) { this.ti = d.i; }
+
+    /** Téma krčmy podľa hradu a strany hráča. */
+    theme() {
+        const t = TW[this.ti], evil = heroSide() === 1;
+        if (evil) return t.f === 4 ? 'harad' : 'evil';
+        if (t.f === 8 || /Rivendell|Lórien|Lindon|prístavy|Lesné/.test(t.n)) return 'elf';
+        if (t.f === 5) return 'dwarf';
+        if (/Hobitov|Bree/.test(t.n)) return 'hobbit';
+        return 'human';
+    }
+
+    create() {
+        this.cameras.main.setZoom(RES).setOrigin(0, 0);
+        const t = TW[this.ti], th = this.theme(), seed = this.ti * 7 + 3, R = n => { const x = Math.sin((seed + n) * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
+        this.th = th; this.R = R;
+        const C = {
+            human: { wall: 0x5a4432, wall2: 0x4a3626, floor: 0x6b4a2e, floor2: 0x5a3c24, beam: 0x3a2818, light: 0xffb060, bar: 0x4a3018 },
+            hobbit: { wall: 0x8a6a48, wall2: 0x7a5a3c, floor: 0x7a5634, floor2: 0x6a4828, beam: 0x4a3018, light: 0xffc070, bar: 0x5a3a1a },
+            elf: { wall: 0x3a4a44, wall2: 0x2e3c36, floor: 0x4a5a4e, floor2: 0x3e4e42, beam: 0x8a9a80, light: 0xc8e8ff, bar: 0x5a6a5a },
+            dwarf: { wall: 0x4a4a52, wall2: 0x3a3a42, floor: 0x3e3a3a, floor2: 0x343030, beam: 0x8a7a50, light: 0xffa040, bar: 0x5a5250 },
+            evil: { wall: 0x2a2224, wall2: 0x1e181a, floor: 0x2a2020, floor2: 0x221818, beam: 0x3a1a14, light: 0xff6030, bar: 0x3a2a24 },
+            harad: { wall: 0x7a4a2a, wall2: 0x6a3e22, floor: 0x8a6a3a, floor2: 0x7a5a30, beam: 0x3a2010, light: 0xffc050, bar: 0x5a3a1a }
+        }[th];
+        this.C = C;
+        const g = this.add.graphics().setDepth(0);
+        const HZ = 290;                                             // horizont: hranica steny a podlahy
+        // stena
+        g.fillStyle(C.wall, 1).fillRect(0, 0, W, HZ);
+        if (th === 'dwarf' || th === 'evil') { for (let y = 0; y < HZ; y += 22) for (let x = -11 + ((y / 22) % 2) * 20; x < W; x += 40) { g.fillStyle((x + y) % 80 < 40 ? C.wall2 : C.wall, 1).fillRoundedRect(x + 1, y + 1, 38, 20, 3); } }
+        else if (th === 'elf') { for (let x = 0; x < W; x += 90) { g.fillStyle(C.wall2, 1).fillRect(x + 40, 0, 10, HZ); g.lineStyle(2, 0x9ab8a0, .5); for (const d of [-1, 1]) { g.beginPath(); for (let k = 0; k <= 10; k++) { const u = k / 10, px = x + 45 + d * 60 * u * u, py = HZ - HZ * u; k ? g.lineTo(px, py) : g.moveTo(px, py); } g.strokePath(); } } }
+        else { for (let y = 0; y < HZ; y += 16) { g.fillStyle(y % 32 ? C.wall2 : C.wall, 1).fillRect(0, y, W, 16); } for (let x = 0; x < W; x += 120) g.fillStyle(C.beam, 1).fillRect(x, 0, 8, HZ); }
+        g.fillStyle(C.beam, 1).fillRect(0, 0, W, 14);                 // trám pod stropom
+        g.fillStyle(C.beam, 1).fillRect(0, HZ - 6, W, 8);
+        // podlaha
+        g.fillStyle(C.floor, 1).fillRect(0, HZ, W, H - HZ);
+        if (th === 'dwarf' || th === 'evil') { for (let y = HZ; y < H; y += 26) for (let x = ((y / 26) % 2) * 26; x < W; x += 52) g.fillStyle(C.floor2, 1).fillRect(x, y, 26, 26); }
+        else for (let y = HZ; y < H; y += 18) { g.fillStyle(y % 36 ? C.floor2 : C.floor, 1).fillRect(0, y, W, 18); g.fillStyle(0x000000, .15).fillRect(0, y, W, 1); for (let x = (y % 36 ? 60 : 0); x < W; x += 180) g.fillRect(x, y, 1, 18); }
+        // okno
+        this.winX = 90 + Math.floor(R(1) * 3) * 60; this.winY = 60;
+        this.sky = this.add.graphics().setDepth(1);
+        g.fillStyle(C.beam, 1).fillRect(this.winX - 6, this.winY - 6, 92, 72);
+        if (th === 'hobbit') { g.fillStyle(C.beam, 1).fillCircle(this.winX + 40, this.winY + 30, 44); }
+        // krb
+        this.fireX = R(2) < .5 ? W - 130 : 250 + Math.floor(R(3) * 2) * 90;
+        const fx = this.fireX;
+        g.fillStyle(th === 'evil' ? 0x1a1414 : 0x6a6660, 1).fillRect(fx - 50, HZ - 140, 100, 140);
+        for (let y = HZ - 140; y < HZ; y += 14) for (let x = fx - 50 + ((y / 14) % 2) * 12; x < fx + 50; x += 24) g.fillStyle(th === 'evil' ? 0x241c1c : (x + y) % 48 < 24 ? 0x7a766e : 0x8a8680, 1).fillRoundedRect(x, y, 22, 12, 2);
+        g.fillStyle(0x100a08, 1).fillRoundedRect(fx - 34, HZ - 90, 68, 90, { tl: 20, tr: 20, bl: 0, br: 0 });
+        g.fillStyle(th === 'evil' ? 0x3a2a24 : 0x9a9690, 1).fillRect(fx - 56, HZ - 146, 112, 8);
+        g.fillStyle(0x3a2a1a, 1).fillRect(fx - 22, HZ - 14, 44, 6).fillRect(fx - 16, HZ - 20, 32, 6);  // polená
+        this.fire = this.add.graphics().setDepth(2);
+        // výčap na opačnej strane ako krb
+        this.barX = fx > W / 2 ? 60 : W - 240;
+        const bx = this.barX;
+        g.fillStyle(C.bar, 1).fillRect(bx, HZ + 40, 180, 60);
+        g.fillStyle(0x000000, .25).fillRect(bx, HZ + 96, 180, 6);
+        g.fillStyle(th === 'elf' ? 0x9ab8a0 : 0x8a6a40, 1).fillRect(bx - 6, HZ + 34, 192, 8);          // pult
+        // police s fľašami
+        g.fillStyle(C.beam, 1).fillRect(bx + 10, 70, 160, 6).fillRect(bx + 10, 120, 160, 6);
+        for (let k = 0; k < 9; k++) { const col = [0x4a7a3a, 0x7a3a2a, 0x3a4a7a, 0xc8a040, 0x6a2a5a][k % 5]; g.fillStyle(col, 1).fillRect(bx + 16 + k * 17, 70 - 16 - (k % 3) * 3, 9, 16 + (k % 3) * 3); g.fillStyle(0x2a1a10, 1).fillRect(bx + 19 + k * 17, 70 - 22 - (k % 3) * 3, 3, 6); }
+        for (let k = 0; k < 4; k++) { g.fillStyle(0x7a5a30, 1).fillRoundedRect(bx + 14 + k * 40, 96, 26, 24, 4); g.fillStyle(0x3a2a1a, 1).fillRect(bx + 14 + k * 40, 102, 26, 2).fillRect(bx + 14 + k * 40, 114, 26, 2); } // sudy na polici
+        // sudy pri výčape
+        const sdx = bx < W / 2 ? bx + 190 : bx - 44;
+        for (let k = 0; k < 2; k++) { const sx = sdx + k * 6, sy = HZ + 44 + k * 34; g.fillStyle(0x6a4a2a, 1).fillRoundedRect(sx, sy, 34, 44, 6); g.fillStyle(0x3a2a1a, 1).fillRect(sx, sy + 10, 34, 3).fillRect(sx, sy + 32, 34, 3); }
+        // stoly
+        this.tables = [];
+        const nt = 2 + Math.floor(R(4) * 2);
+        for (let k = 0; k < nt; k++) {
+            const tx = 150 + k * (W - 300) / Math.max(1, nt - 1) + (R(5 + k) - .5) * 40, ty = HZ + 70 + (k % 2) * 70 + R(9 + k) * 20;
+            if (Math.abs(tx - (bx + 90)) < 130 && ty < HZ + 110) continue;
+            this.tables.push([tx, ty]);
+            g.fillStyle(0x000000, .25).fillEllipse(tx, ty + 14, 90, 22);
+            g.fillStyle(th === 'elf' ? 0x8aa090 : 0x5a3a1c, 1).fillRect(tx - 36, ty - 2, 8, 30).fillRect(tx + 28, ty - 2, 8, 30);
+            g.fillStyle(th === 'elf' ? 0xb8c8b0 : 0x8a5a2e, 1).fillEllipse(tx, ty, 90, 26);
+            g.fillStyle(th === 'elf' ? 0x98a890 : 0x6a4420, 1).fillEllipse(tx, ty + 1, 84, 20);
+            for (const [mx, my] of [[-18, -4], [16, 2]]) { g.fillStyle(0xc8903a, 1).fillRect(tx + mx, ty + my - 8, 8, 10); g.fillStyle(0xfff4dc, 1).fillRect(tx + mx, ty + my - 10, 8, 3); }
+            g.fillStyle(0xf0e0c0, 1).fillRect(tx - 2, ty - 14, 4, 12);                             // sviečka
+            for (const sx of [-50, 50]) { g.fillStyle(0x4a3018, 1).fillRect(tx + sx - 10, ty + 8, 20, 6).fillRect(tx + sx - 8, ty + 14, 4, 12).fillRect(tx + sx + 4, ty + 14, 4, 12); }   // stoličky
+        }
+        // zástava frakcie a výzdoba
+        const bkey = Art.banner(this, t.f); this.add.image(this.winX + 150, 40, bkey).setOrigin(0, 0).setScale(2.4).setDepth(1);
+        this.decor(g, th, HZ);
+        // svetlo: vinety a žiara krbu/sviečok sa kreslia v update
+        this.light = this.add.graphics().setDepth(40);
+        // postavy
+        this.people = [];
+        this.spawn(t, th, HZ);
+        // popisky a ovládanie
+        this.add.text(W / 2, 72, (th === 'evil' ? 'Brloh v ' : th === 'elf' ? 'Sieň v ' : 'Krčma v ') + t.n, txtStyle(17, '#f0d9a8', { fontFamily: TITLE_FONT, stroke: '#000', strokeThickness: 4 })).setOrigin(.5).setDepth(50);
+        this.hint = this.add.text(W / 2, H - 14, 'Klikni na postavu a porozprávaj sa  •  Esc = odísť', txtStyle(10, '#d8c8a8', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5).setDepth(50);
+        const ui = this.scene.get('UI');
+        this.leaveBtn = ui.button.call(this, W - 120, H - 34, 110, 24, 'Odísť z krčmy', () => this.leave(), { size: 11, icon: Icons.tex(this, 'door') });
+        this.leaveBtn.forEach(o => o.setDepth(51));
+        this.input.keyboard.on('keydown-ESC', () => { if (ov.classList.contains('hide')) this.leave(); });
+        this.events.on('shutdown', () => this.input.keyboard.removeAllListeners());
+    }
+
+    /** Tematická výzdoba steny. */
+    decor(g, th, HZ) {
+        if (th === 'evil') {
+            for (let k = 0; k < 3; k++) { const x = 40 + k * 60, y = 40 + (k % 2) * 20; g.fillStyle(0xe8e4d8, 1).fillCircle(x, y, 7); g.fillRect(x - 5, y + 2, 10, 6); g.fillStyle(0x1a1210, 1).fillCircle(x - 2.5, y - 1, 1.8).fillCircle(x + 2.5, y - 1, 1.8); }   // lebky
+            g.lineStyle(2, 0x5a5a60, 1); for (let k = 0; k < 6; k++) g.strokeEllipse(W - 60, 30 + k * 10, 8, 6);   // reťaz
+            g.fillStyle(0x6a1a10, 1).fillTriangle(W / 2 - 30, 14, W / 2 + 30, 14, W / 2, 90); g.fillStyle(0xff6a20, 1).fillEllipse(W / 2, 44, 18, 9); g.fillStyle(0x000000, 1).fillEllipse(W / 2, 44, 4, 9);  // zástava s okom
+        }
+        if (th === 'elf') { for (let k = 0; k < 5; k++) { const x = 60 + k * 150; g.fillStyle(0xc8e8ff, .9).fillCircle(x, 50 + (k % 2) * 30, 5); g.lineStyle(1, 0x9ab8a0, .8).lineBetween(x, 14, x, 45 + (k % 2) * 30); } }
+        if (th === 'dwarf') { g.fillStyle(0x8a8a90, 1).fillRect(W / 2 - 24, HZ - 40, 48, 10).fillRect(W / 2 - 10, HZ - 30, 20, 30); for (let k = 0; k < 4; k++) { g.fillStyle([0x3a8ae0, 0xd8402a, 0x7ab84a, 0xe8b84a][k], 1).fillRect(80 + k * 30, 60, 8, 10); } }
+        if (th === 'hobbit') { for (let k = 0; k < 3; k++) { g.fillStyle(0xc8a060, 1).fillEllipse(W - 80 + (k % 2) * 30, 50 + k * 30, 26, 12); g.fillStyle(0x8a5a30, 1).fillEllipse(W - 80 + (k % 2) * 30, 48 + k * 30, 20, 7); } }
+        if (th === 'harad') { g.fillStyle(0xd9a441, 1); for (let k = 0; k < 6; k++) g.fillTriangle(W / 2 - 90 + k * 36, 14, W / 2 - 72 + k * 36, 14, W / 2 - 81 + k * 36, 40); }
+    }
+
+    /** Postavy: krčmár za výčapom, spoločníci pri stoloch. */
+    spawn(t, th, HZ) {
+        const keeperEq = { evil: [{ w: null, a: 11, s: 0, h: 5, m: 0 }, { orc: 1, mug: 1 }], harad: [{ w: null, a: 8, s: 0, h: 7, m: 0 }, { dark: 1, mug: 1 }], elf: [{ w: null, a: 3, s: 0, h: null, m: 0 }, { hair: 'long', mug: 1 }],
+            dwarf: [{ w: null, a: 4, s: 0, h: null, m: 0 }, { beard: '#c8a060', apron: 1, mug: 1 }], hobbit: [{ w: null, a: 0, s: 0, h: null, m: 0 }, { hair: '#b08a50', apron: 1, mug: 1 }], human: [{ w: null, a: 0, s: 0, h: null, m: 0 }, { apron: 1, mug: 1 }] }[th];
+        const kn = { evil: 'Shagrat, správca brlohu', harad: 'Hostinský z juhu', elf: 'Hostiteľ siene', dwarf: 'Krčmár Bofur', hobbit: 'Hostinský Jačmienko', human: 'Krčmár' }[th];
+        this.person(this.barX + 90, HZ + 44, keeperEq, kn, () => tavKeeper(this.ti), .85);
+        const list = compsAt(t);
+        list.forEach((c, k) => {
+            const tb = this.tables[k % Math.max(1, this.tables.length)] || [W / 2, HZ + 100];
+            const side = k % 2 ? 1 : -1;
+            this.person(tb[0] + side * 66, tb[1] + 10, Figures.compEq(c, true), c.n, () => tavTalk(this.ti, c), 1);
+        });
+        this.comps = list;
+    }
+
+    person(x, y, [eq, o], name, onClick, sc) {
+        const key = Art.bigFigure(this, eq, o);
+        const spr = Art.image(this, x, y, key).setScale((Art.scale[key] || 1 / RES) * sc).setDepth(y);
+        spr.setInteractive({ useHandCursor: true });
+        const ring = this.add.graphics().setDepth(y - 1).setVisible(false);
+        ring.lineStyle(2, 0xffd24a, .9).strokeEllipse(x, y + 2, 44 * sc, 14 * sc);
+        const lbl = this.add.text(x, y + 8, name, txtStyle(10, '#f4e8d0', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5, 0).setDepth(45);
+        spr.on('pointerover', () => ring.setVisible(true)); spr.on('pointerout', () => ring.setVisible(false));
+        spr.on('pointerup', () => { if (ov.classList.contains('hide')) onClick(); });
+        this.people.push({ spr, ring, lbl, name, x, y, t0: Math.random() * 6 });
+    }
+
+    /** Po pripojení spoločníka alebo zmene obnoví postavy. */
+    refresh() {
+        this.people.forEach(p => { p.spr.destroy(); p.ring.destroy(); p.lbl.destroy(); });
+        this.people = [];
+        this.spawn(TW[this.ti], this.th, 290);
+    }
+
+    leave() {
+        if (mode !== 'tavern') return;
+        mode = 'town';
+        this.scene.stop();
+        if (this.scene.isSleeping('Map')) this.scene.wake('Map');
+        town(this.ti);
+    }
+
+    update() {
+        if (mode !== 'tavern') { if (mode !== 'town') { this.scene.stop(); if (this.scene.isSleeping('Map')) this.scene.wake('Map'); } return; }
+        const C = this.C, th = this.th, HZ = 290, t = tm;
+        // obloha v okne podľa dennej doby a počasia
+        const s = this.sky; s.clear();
+        const nn = nightness(), day = 1 - nn, wx = this.winX, wy = this.winY;
+        s.fillStyle(Phaser.Display.Color.GetColor(40 + 120 * day, 60 + 120 * day, 90 + 140 * day), 1);
+        if (th === 'hobbit') s.fillCircle(wx + 40, wy + 30, 36); else s.fillRect(wx, wy, 80, 60);
+        if (nn > .4) { s.fillStyle(0xfff4d0, 1).fillCircle(wx + 58, wy + 16, 7); s.fillStyle(0xffffff, 1); for (let k = 0; k < 6; k++) s.fillRect(wx + 8 + (k * 13) % 70, wy + 6 + (k * 29) % 40, 1.5, 1.5); }
+        if (MW.n === 'rain' || MW.n === 'storm') { s.lineStyle(1, 0xcfe0f0, .6); for (let k = 0; k < 14; k++) { const x = wx + (k * 37 + t * 2) % 80, y = wy + (k * 53 + t * 6) % 60; s.lineBetween(x, y, x - 2, y + 6); } }
+        if (MW.n === 'snow') { s.fillStyle(0xffffff, .9); for (let k = 0; k < 12; k++) s.fillRect(wx + (k * 41 + t) % 80, wy + (k * 29 + t * 2) % 60, 2, 2); }
+        s.fillStyle(C.beam, 1).fillRect(wx + 38, wy, 4, 60).fillRect(wx, wy + 28, 80, 4);     // kríž okna
+        // oheň
+        const f = this.fire; f.clear();
+        const fx = this.fireX, base = HZ - 16, evil = th === 'evil', col1 = evil ? 0xff3a10 : 0xff7a20, col2 = evil ? 0xff8a40 : 0xffd060;
+        for (let k = 0; k < 7; k++) { const ph = t / 3 + k * 1.7, h = 26 + Math.sin(ph) * 8 + Math.sin(ph * 2.3) * 4, x = fx - 18 + k * 6 + Math.sin(ph * 1.3) * 2; f.fillStyle(col1, .85).fillTriangle(x - 6, base, x + 6, base, x + Math.sin(ph) * 3, base - h); }
+        for (let k = 0; k < 5; k++) { const ph = t / 2.6 + k * 2.1, h = 14 + Math.sin(ph) * 5, x = fx - 12 + k * 6; f.fillStyle(col2, .9).fillTriangle(x - 3.5, base, x + 3.5, base, x + Math.sin(ph) * 2, base - h); }
+        for (let k = 0; k < 6; k++) { const a = (t * .8 + k * 23) % 70; f.fillStyle(col2, .8 - a / 90).fillRect(fx - 10 + ((k * 7 + a * .3) % 20), base - 30 - a, 1.5, 1.5); }   // iskry
+        for (let k = 0; k < 4; k++) { const a = (t * .5 + k * 20) % 80; f.fillStyle(0x4a403a, .25 - a / 400).fillCircle(fx + Math.sin(a * .1 + k) * 6, HZ - 100 - a * .6, 6 + a * .12); }   // dym
+        // svetlo: tmavé rohy, teplá žiara krbu a sviečok, mihotanie
+        const L = this.light; L.clear();
+        const dark = .25 + nn * .3;
+        L.fillStyle(0x000000, dark).fillRect(0, 0, W, H);
+        const flick = .08 + Math.sin(t / 2.2) * .02 + Math.sin(t / 1.3) * .015;
+        for (let k = 1; k <= 12; k++) L.fillStyle(C.light, (flick + .04) / 6).fillCircle(fx, HZ - 40, 30 + k * 22);          // mäkká žiara krbu
+        for (const [tx, ty] of this.tables) for (let k = 1; k <= 3; k++) L.fillStyle(0xffd090, .025 + Math.sin(t / 1.7 + tx) * .006).fillCircle(tx, ty - 10, 20 + k * 18);
+        for (let k = 1; k <= 3; k++) L.fillStyle(0xffe0a0, .02).fillCircle(this.barX + 90, HZ + 20, 40 + k * 35);
+        L.fillStyle(0x000000, .35).fillRect(0, 0, W, 14);
+        // jemné pohupovanie postáv
+        this.people.forEach(p => { p.spr.y = p.y + Math.sin(t / 9 + p.t0) * .8; });
+    }
+}
+
+</script>
+<script>
+/*
  * ENGINE: rozhranie v Phaseri.
  *
  * Herné menu sú naďalej napísané v js/ui (funkcie show/btn vytvárajú HTML).
@@ -6581,9 +7209,11 @@ class UIScene extends Phaser.Scene {
         this.barLayer = this.add.container(0, 0).setDepth(20);
         this.tipLayer = this.add.container(0, 0).setDepth(30);
         this.legLayer = this.add.container(0, 0).setDepth(25);
-        this.dlg = null; this.sig = {};
+        this.bigLayer = this.add.container(0, 0).setDepth(28);
+        this.dlg = null; this.sig = {}; this.menu = null; this.big = false;
         document.body.classList.add('phaser-ui');
-        this.input.keyboard.on('keydown-ESC', () => this.dialogKey('esc'));
+        this.input.keyboard.on('keydown-ESC', () => { if (this.big) this.big = false; else if (this.menu) this.menu = null; else this.dialogKey('esc'); });
+        this.input.keyboard.on('keydown-M', () => { if (G && mode === 'map' && !this.dlg && !ov.classList.contains('intro')) this.big = !this.big; });
         this.input.keyboard.on('keydown', e => { if (this.dlg && e.key >= '1' && e.key <= '9') this.dialogKey(+e.key); });
         this.input.on('wheel', (p, o, dx, dy) => { if (this.dlg) this.scrollDialog(dy); });
         // posúvanie dlhého okna ťahaním myšou alebo prstom
@@ -6602,10 +7232,11 @@ class UIScene extends Phaser.Scene {
     update(time, delta) {
         const dt = Math.min(2, delta / 16.67);
         tm += dt;
-        const scene = this.scene.isActive('Battle') ? 'battle' : this.scene.isActive('Map') ? 'map' : 'intro';
+        const scene = this.scene.isActive('Battle') ? 'battle' : this.scene.isActive('Tavern') ? 'tavern' : this.scene.isActive('Map') ? 'map' : 'intro';
         this.drawOverlay(scene, dt);
         this.syncHud();
         this.syncBars();
+        this.syncBigMap(scene);
         this.syncDialog();
         this.drawTooltip(scene);
         this.drawLegend(scene);
@@ -6616,7 +7247,7 @@ class UIScene extends Phaser.Scene {
         const g = this.g; g.clear();
         if (TS && TS.l > 0 && G) { TS.l -= dt; this.toast.setVisible(!this.dlg).setText(TS.s).setAlpha(Math.min(1, TS.l / 40)); }
         else this.toast.setVisible(false);
-        this.pause.setVisible(scene === 'map' && mode === 'map' && !!PAUSE && !this.dlg);
+        this.pause.setVisible(scene === 'map' && mode === 'map' && !!PAUSE && !this.dlg && !this.menu && !this.big);
         if (scene === 'map') {
             const se = G ? season() : 0;
             if (se === 2) g.fillStyle(0xc86e1e, .1).fillRect(0, 0, W, H);
@@ -6704,31 +7335,113 @@ class UIScene extends Phaser.Scene {
     }
 
     // ---------- Panel tlačidiel a rozkazy (zrkadlo tb a od) --------------------------
+    /** Skupiny tlačidiel spodného panela: [názov, ikona, texty HTML tlačidiel]. Ostatné (lupa, Tábor) sú vždy viditeľné. */
+    static get GROUPS() {
+        return [['Hrdina', 'helm', ['Prehľad', 'Denník', 'Úlohy', 'Družina', 'Inventár', 'Štatistiky']],
+                ['Kronika', 'book', ['Legenda', 'Trofeje', 'Úspechy', 'Encyklopédia', 'Návod']],
+                ['Nastavenia', 'gear', ['Zvuk', 'Celá obrazovka']]];
+    }
+
     syncBars() {
-        const vis = el => el.style.display !== 'none' && !!G && !this.dlg;
-        const sig = [vis(tb), vis(od), ...[...tb.children, ...od.children].map(b => b.textContent + (b.style.opacity || ''))].join('|');
+        const vis = el => el.style.display !== 'none' && !!G && !this.dlg && mode !== 'tavern';
+        if (this.dlg || !vis(tb)) this.menu = null;
+        const sig = [vis(tb), vis(od), this.menu, this.big, ...[...tb.children, ...od.children].map(b => b.textContent + (b.style.opacity || ''))].join('|');
         if (sig === this.sig.bars) return;
         this.sig.bars = sig;
         this.barLayer.removeAll(true);
-        const BH = 24;
+        const BH = 26;
         if (vis(tb)) {
-            let x = 6, y = H - BH - 4;
-            const rows = [];
-            [...tb.children].forEach(b => {
-                const ic = Icons.forButton(b.textContent), zoom = /^[−+]$/.test(b.textContent.trim());
-                const label = zoom ? '' : b.textContent;
-                const w = zoom ? BH : Math.max(20, this.measure(label, 11) + 14 + (ic ? BH + 2 : 0));
-                if (x + w > W * .68) { x = 6; y -= BH + 3; }
-                rows.push(this.button(x, y, w, BH, label, () => b.click(), { size: 11, icon: ic ? Icons.tex(this, ic) : null, bare: zoom }));
+            const y = H - BH - 4, all = [...tb.children], grouped = new Set(UIScene.GROUPS.flatMap(g => g[2]));
+            const find = n => all.find(b => b.textContent.trim().startsWith(n));
+            let x = 6;
+            const out = [];
+            const put = (label, ic, fn, o = {}) => {
+                const zoom = !label, w = zoom ? BH : Math.max(20, this.measure(label, 11) + 14 + (ic ? BH + 2 : 0));
+                out.push(...this.button(x, y, w, BH, label, fn, { size: 11, icon: ic ? Icons.tex(this, ic) : null, bare: zoom, ...o }));
                 x += w + 3;
-            });
-            this.barLayer.add(rows.flat());
-            if (this.pause) this.pause.y = y - 14;                       // upozornenie na pauzu nad panelom
+                return x - w - 3;
+            };
+            // lupa a Tábor ostávajú priamo na paneli
+            all.filter(b => /^[−+]$/.test(b.textContent.trim())).forEach(b => put('', Icons.forButton(b.textContent), () => b.click()));
+            const camp = find('Tábor') || find('Zrušiť tábor');
+            if (camp) put(camp.textContent, 'tent', () => camp.click());
+            put('Mapa (M)', 'map', () => { this.big = !this.big; });
+            // skupinové tlačidlá, ktoré rozbalia ponuku
+            for (const [name, ic, items] of UIScene.GROUPS) {
+                const open = this.menu === name, bx = put(name + (open ? ' ▾' : ' ▴'), ic, () => { this.menu = open ? null : name; });
+                if (!open) continue;
+                const bs = items.map(find).filter(Boolean), iw = 150, ih = 26, ph = bs.length * (ih + 3) + 9, py = y - ph - 4;
+                const panel = this.add.graphics();
+                panel.fillStyle(0x1c1510, .96).fillRoundedRect(bx, py, iw + 10, ph, 5);
+                panel.lineStyle(1.5, UI_C.line, 1).strokeRoundedRect(bx, py, iw + 10, ph, 5);
+                const blocker = this.add.rectangle(bx, py, iw + 10, ph, 0, 0).setOrigin(0).setInteractive();
+                out.push(panel, blocker);
+                bs.forEach((b, i) => {
+                    const t = b.textContent.trim(), bic = Icons.forButton(t);
+                    out.push(...this.button(bx + 5, py + 5 + i * (ih + 3), iw, ih, t, () => { this.menu = null; b.click(); }, { size: 11, icon: bic ? Icons.tex(this, bic) : null }));
+                });
+            }
+            // tlačidlá, ktoré nepatria do žiadnej skupiny ani nie sú vyššie (nové položky), ostanú viditeľné
+            all.filter(b => { const t = b.textContent.trim(); return !/^[−+]$/.test(t) && !/tábor/i.test(t) && ![...grouped].some(n => t.startsWith(n)); })
+               .forEach(b => put(b.textContent, Icons.forButton(b.textContent), () => b.click()));
+            this.barLayer.add(out);
+            if (this.pause) this.pause.y = y - 14;
         }
         if (vis(od)) {
             const bs = [...od.children], w = 84, x0 = W / 2 - (bs.length * (w + 4)) / 2;
             bs.forEach((b, i) => { const ic = Icons.forButton(b.textContent); this.barLayer.add(this.button(x0 + i * (w + 4), H - BH - 4, w, BH, b.textContent, () => b.click(), { size: 11, alpha: +(b.style.opacity || 1), icon: ic ? Icons.tex(this, ic) : null })); });
         }
+    }
+
+    // ---------- Veľká mapa (klávesa M) ---------------------------------------------
+    syncBigMap(scene) {
+        if (this.big && (scene !== 'map' || mode !== 'map' || this.dlg)) this.big = false;
+        const sig = this.big ? [1, G.x | 0, G.y | 0, E.length, tm / 30 | 0].join('|') : '';
+        if (sig === this.sig.big) return;
+        this.sig.big = sig;
+        this.bigLayer.removeAll(true);
+        if (!this.big) return;
+        const mh = H - 76, mw = mh * 1.5, mx = (W - mw) / 2, my = 38, sx = mw / WW, sy = mh / WH;
+        const g = this.add.graphics();
+        g.fillStyle(0x0a0806, .78).fillRect(0, 0, W, H);
+        g.fillStyle(0x2a1e14, 1).fillRoundedRect(mx - 10, my - 30, mw + 20, mh + 46, 8);
+        g.lineStyle(2, UI_C.line, 1).strokeRoundedRect(mx - 10, my - 30, mw + 20, mh + 46, 8);
+        const items = [g];
+        const shade = this.add.rectangle(mx, my, mw, mh, 0, 0).setOrigin(0).setInteractive({ useHandCursor: true });
+        shade.on('pointerup', p => {                              // klik = cieľ cesty
+            if (this.drag && this.drag.moved) return;
+            const wx = (p.x / RES - mx) / sx, wy = (p.y / RES - my) / sy;
+            G.dest = -1; G.vd = -1; G.chase = null; G.talk = null; G.tx = wx; G.ty = wy;
+            TW.forEach((t, i) => { if (Math.hypot(t.x - wx, t.y - wy) < 160) { G.tx = t.x; G.ty = t.y; G.dest = i; } });
+            this.big = false;
+        });
+        const closer = this.add.rectangle(0, 0, W, H, 0, 0).setOrigin(0).setInteractive();
+        closer.on('pointerup', () => { this.big = false; });
+        items.push(closer, shade);
+        if (this.textures.exists('minimap')) items.push(this.add.image(mx, my, 'minimap').setOrigin(0).setDisplaySize(mw, mh));
+        const d = this.add.graphics(); items.push(d);
+        // cesty
+        if (typeof MAPDATA !== 'undefined' && MAPDATA.roads) { d.lineStyle(1.2, 0xc8b080, .55); for (const [a, b] of MAPDATA.roads) { const A = TW[a], B = TW[b]; if (A && B) d.lineBetween(mx + A.x * sx, my + A.y * sy, mx + B.x * sx, my + B.y * sy); } }
+        // názvy krajín
+        const regions = {}; TW.forEach(t => { (regions[t.f] = regions[t.f] || []).push(t); });
+        for (const f in regions) { const ts = regions[f]; if (f == 6 || f == 9) continue; const cx = ts.reduce((a, t) => a + t.x, 0) / ts.length, cy = ts.reduce((a, t) => a + t.y, 0) / ts.length; items.push(this.add.text(mx + cx * sx, my + cy * sy - 22, FN[f].toUpperCase(), txtStyle(15, FC[f], { fontFamily: TITLE_FONT, stroke: '#000', strokeThickness: 3 })).setOrigin(.5).setAlpha(.8)); }
+        // dediny
+        for (const v of VL) { const x = mx + v.x * sx, y = my + v.y * sy; d.fillStyle(v.st > 0 ? 0x442222 : 0xe8d8b0, 1).fillCircle(x, y, 2.2); items.push(this.add.text(x + 3, y - 4, v.n, txtStyle(6.5, '#d8ccb0', { stroke: '#000', strokeThickness: 2 })).setAlpha(.8)); }
+        // hrady
+        TW.forEach((t, i) => {
+            const x = mx + t.x * sx, y = my + t.y * sy, col = hex(FC[t.f]);
+            d.fillStyle(0x000000, .6).fillRect(x - 5, y - 5, 10, 10); d.fillStyle(col, 1).fillRect(x - 4, y - 4, 8, 8);
+            if (t.mine) { d.lineStyle(1.5, 0xffffff, 1).strokeRect(x - 5.5, y - 5.5, 11, 11); }
+            items.push(this.add.text(x, y + 6, t.n, txtStyle(10, hos(t.f, G.fac) ? '#ffb0a0' : '#fff2d8', { fontStyle: 'bold', stroke: '#000', strokeThickness: 3 })).setOrigin(.5, 0));
+        });
+        // vojská a hrdina
+        for (const e of E) { d.fillStyle(hos(e.f, G.fac) ? 0xff4030 : hex(FC[e.f]), 1).fillCircle(mx + e.x * sx, my + e.y * sy, 2.6); d.lineStyle(.8, 0x000000, .8).strokeCircle(mx + e.x * sx, my + e.y * sy, 2.6); }
+        const hx = mx + G.x * sx, hy = my + G.y * sy;
+        d.fillStyle(0xffffff, 1).fillCircle(hx, hy, 4.5); d.lineStyle(1.5, 0xd9a441, 1).strokeCircle(hx, hy, 6.5 + Math.sin(tm / 10) * 1.5);
+        if (G.tx != null && (Math.abs(G.tx - G.x) > 5 || Math.abs(G.ty - G.y) > 5)) { d.lineStyle(1, 0xffffff, .7).lineBetween(hx, hy, mx + G.tx * sx, my + G.ty * sy); d.fillStyle(0xffd24a, 1).fillCircle(mx + G.tx * sx, my + G.ty * sy, 3); }
+        items.push(this.add.text(W / 2, my - 18, 'Mapa Stredozeme', txtStyle(16, UI_C.gold, { fontFamily: TITLE_FONT })).setOrigin(.5));
+        items.push(this.add.text(W / 2, my + mh + 3, 'Klik na mapu = cieľ cesty  •  M alebo Esc zatvorí  •  biely rám = tvoje hrady, červené názvy = nepriateľ', txtStyle(9, UI_C.dim)).setOrigin(.5, 0));
+        this.bigLayer.add(items);
     }
 
     measure(s, size) { const t = this.add.text(0, 0, s, txtStyle(size, '#fff')); const w = t.width; t.destroy(); return w; }
@@ -6740,7 +7453,7 @@ class UIScene extends Phaser.Scene {
         const deco = this.add.graphics().setAlpha(o.alpha ?? 1);          // svetlý horný okraj a tmavší spodok – plastické tlačidlo
         deco.fillStyle(0xffffff, off ? .08 : .22).fillRect(x + 1, y + 1, w - 2, 1);
         deco.fillStyle(0x3a2208, off ? .15 : .35).fillRect(x + 1, y + h - 2, w - 2, 1);
-        const is = Math.min(h - 4, 24), iw = o.icon ? (o.bare ? 0 : is + 6) : 0;
+        const is = Math.min(h - 4, o.iconSize || 24), iw = o.icon ? (o.bare ? 0 : is + 6) : 0;
         const t = this.add.text(x + iw + (w - iw) / 2, y + h / 2, label, txtStyle(size, off ? UI_C.dim : '#1a120a', { align: 'center', wordWrap: { width: Math.max(10, w - 12 - iw), useAdvancedWrap: true } })).setOrigin(.5);
         const out = [r, deco, t];
         if (o.icon) {
@@ -6871,11 +7584,12 @@ class UIScene extends Phaser.Scene {
 
     /** Tlačidlo okna podľa pôvodného HTML tlačidla k (aj s ikonkou výbavy). Vráti pole objektov s výškou .h. */
     dialogButton(k, x, y, w, allow) {
-        const label = k.textContent.trim() || '•', icon = this.iconFor(k), iw = icon ? 30 : 0;
+        const label = k.textContent.trim() || '•', dn = Icons.forDialog(label), icon = this.iconFor(k) || (dn && label !== '•' ? Icons.tex(this, dn) : null);
+        const unit = icon && /^ico_u_/.test(icon), is = unit ? 34 : 24, iw = icon ? is + 6 : 0;   // ikonky vojakov sú väčšie
         const probe = this.add.text(0, 0, label, txtStyle(12, '#000', { wordWrap: { width: w - 12 - iw, useAdvancedWrap: true } }));
-        const bh = Math.max(icon ? 28 : 24, probe.height + 8); probe.destroy();
+        const bh = Math.max(icon ? is + 4 : 24, probe.height + 8); probe.destroy();
         const swatch = k.style.background && k.textContent.trim() === '' ? k.style.background : null;
-        const parts = this.button(x, y, w, bh, label, () => { if (allow()) k.click(); }, { disabled: k.disabled, icon, size: 12 });
+        const parts = this.button(x, y, w, bh, label, () => { if (allow()) k.click(); }, { disabled: k.disabled, icon, iconSize: is, size: 12 });
         if (swatch) parts[0].setFillStyle(hex(swatch));
         if (k.style.outline) parts[0].setStrokeStyle(3, 0xffffff, 1);
         this.dlgButtons.push(k);
@@ -6986,7 +7700,7 @@ const game = new Phaser.Game({
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     render: { antialias: true, roundPixels: false },
     input: { mouse: { preventDefaultWheel: true } },
-    scene: [BootScene, IntroScene, MapScene, BattleScene, UIScene]
+    scene: [BootScene, IntroScene, MapScene, BattleScene, TavernScene, UIScene]
 });
 
 </script>

@@ -50,6 +50,12 @@ function newGame() {
             spawnX();
         if (bloc(f0))
             startGear(1);   // hrdina zla začína s orkskou výbavou
+        if (typeof creatorResult === 'function') {   // tvorba postavy: vzhľad, povaha, schopnosti
+            const cr = creatorResult();
+            G.look = cr.look; G.trait = cr.trait; Object.assign(G.s, cr.s);
+            if (TRAITS[cr.trait]) TRAITS[cr.trait].fx(G);
+            if (G.trel) E.forEach(e => { if (!bloc(e.f)) e.rl = (e.rl || 0) + G.trel; });
+        }
         if (f0 !== 6) {
             const t = TW.find(t => t.f === f0);
             G.fac = f0;

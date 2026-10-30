@@ -40,16 +40,17 @@ function ambTick() {
     if (!ac || !G || mode === 'intro') { if (AMB) for (const k in AMB.src) ambSet(k, 0); return; }
     ambInit();
     if (mu) { for (const k in AMB.src) ambSet(k, 0); return; }
-    const battle = mode === 'battle', w = battle ? WX.n : MW.n, night = battle ? WX.night : isNight();
-    const se = season(), tav = mode === 'tavern', shop = tav || (mode === 'town' && ov && /^(Trh|Krčma)/.test((ov.querySelector('h1') || {}).textContent || ''));
-    ambSet('rain', w === 'rain' ? .22 : w === 'storm' ? .4 : w === 'ash' ? .08 : 0);
-    const windy = w === 'snow' || w === 'storm' || se === 3 || (w === 'fog' ? .5 : 0);
-    ambSet('wind', w === 'snow' ? .3 : w === 'storm' ? .22 : se === 3 ? .12 : w === 'fog' ? .08 : 0);
+    const battle = mode === 'battle', inside = mode === 'town' || mode === 'tavern';   // v hrade a v krčme vonkajšie zvuky nepočuť
+    const w = inside ? 'clear' : battle ? WX.n : MW.n, night = battle ? WX.night : isNight();
+    const se = season();
+    ambSet('rain', w === 'rain' ? .1 : w === 'storm' ? .18 : w === 'ash' ? .05 : 0);            // dážď tichý, len ako podkres
+    const windy = w === 'snow' || w === 'storm' || (!inside && se === 3) || (w === 'fog' ? .5 : 0);
+    ambSet('wind', w === 'snow' ? .18 : w === 'storm' ? .14 : !inside && se === 3 ? .08 : w === 'fog' ? .06 : 0);
     if (windy) AMB.src.wind.f.frequency.setTargetAtTime(300 + 250 * (.5 + .5 * Math.sin(tm / 90)), ac.currentTime, .5);
-    ambSet('fire', battle && night ? .12 : tav ? .1 : 0);
-    ambSet('crowd', tav ? .2 : shop ? .14 : 0);
+    ambSet('fire', battle && night ? .12 : 0);
+    ambSet('crowd', 0);                                                                         // v krčme hrá iba hudba
     const now = ac.currentTime;
-    if (w === 'storm' && now > thunderAt) { thunder(); thunderAt = now + 5 + Math.random() * 10; }
+    if (w === 'storm' && !inside && now > thunderAt) { thunder(); thunderAt = now + 5 + Math.random() * 10; }
     if (battle && night && now > crackleAt) { crackle(); crackleAt = now + .15 + Math.random() * .5; }
 }
 {   // napojenie na zvukový interval hry

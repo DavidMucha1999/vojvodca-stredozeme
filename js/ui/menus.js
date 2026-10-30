@@ -99,7 +99,7 @@ function ency(c) {
         h += '<div class="chips"><button data-ef="-1" style="--fc:#d9a441" class="' + (EF < 0 ? 'on' : '') + '">Všetci</button>' + F.filter(f => E.some(e => e.f === f)).map(f => '<button data-ef="' + f + '" style="--fc:' + FC[f] + '" class="' + (EF === f ? 'on' : '') + '">' + eesc(FN[f]) + '</button>').join('') + '</div><div class="egrid">';
         E.filter(e => EF < 0 || e.f === EF).sort((a, b) => (b.kr | 0) - (a.kr | 0) || (b.nz | 0) - (a.nz | 0) || a.f - b.f).forEach(e => {
             per(e);
-            const img = snap(84, 96, () => portrait(e)), hs = hos(e.f, G.fac), r = Math.round(e.rl || 0);
+            const img = Portraits.canvas(Portraits.forLord(e), 84).toDataURL(), hs = hos(e.f, G.fac), r = Math.round(e.rl || 0);
             h += '<div class="card" style="--fc:' + FC[e.f] + '"><img src="' + img + '" width="72" height="82" alt=""><div class="cb"><div class="nm">' + eesc(e.nm) + '</div>' + epill(eesc(FN[e.f]), FC[e.f], 1) + (e.kr ? epill('Panovník', '#ffd24a') : '') + (e.nz ? epill('Prsteňový prízrak', '#c0392b') : '') + (e.vas ? epill('Tvoj vazal', '#d9a441') : '') + (e.f !== 9 && !e.nz ? epill(TR[e.tr][0], '#9fb8a0') : '') + epill(hs ? 'Nepriateľ' : 'Priateľ', hs ? '#c0392b' : '#4a9a4a') +
                 '<div class="desc">' + (e.nz ? 'Jeden z deviatich služobníkov Temného pána, ktorý cíti Jeden prsteň na veľkú diaľku.' : e.f === 9 ? 'Vodca lúpežníckej tlupy, ktorý prepadáva dediny a pocestných.' : eesc(TR[e.tr][1] + ' ' + BO[e.bo])) + '</div><div class="st"><span>Vojsko ' + Math.ceil(e.n) + '</span>' + ebar(e.n, 40, FC[e.f]) + '<span>Vzťah ' + r + '</span>' + ebar(r + 100, 200, r < 0 ? '#c0392b' : '#4a9a4a') + '</div></div></div>';
         });

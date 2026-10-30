@@ -321,12 +321,17 @@ class UIScene extends Phaser.Scene {
         const layout = list => {
             const items = [];
             let y = 0, col = 0, rowH = 0;
-            if (title) { const t = this.add.text(PW / 2, y, title, txtStyle(19, UI_C.gold, { fontFamily: TITLE_FONT, align: 'center', wordWrap: { width: IW } })).setOrigin(.5, 0); items.push(t); y += t.height + 5; }
+            // portrét (plátno .por) vľavo od nadpisu a prvého odseku
+            const por = ov.querySelector('canvas.por'), pk = por && por.dataset.key;
+            let px0 = 16, pw0 = IW, py0 = y, pimg = null;
+            if (por && pk) { if (!this.textures.exists(pk)) this.textures.addCanvas(pk, por); pimg = this.add.image(16, y, pk).setOrigin(0).setDisplaySize(78, 78); items.push(pimg); px0 = 16 + 86; pw0 = IW - 86; }
+            if (title) { const t = this.add.text(pimg ? px0 : PW / 2, y, title, txtStyle(19, UI_C.gold, { fontFamily: TITLE_FONT, align: pimg ? 'left' : 'center', wordWrap: { width: pw0 } })).setOrigin(pimg ? 0 : .5, 0); items.push(t); y += t.height + 5; }
             ov.querySelectorAll(':scope > p').forEach(p => {
                 if (!p.textContent.trim()) return;
-                const t = this.add.text(PW / 2, y, p.textContent, txtStyle(12, p.style.color ? UI_C.gold : UI_C.ink, { align: 'center', lineSpacing: 2, wordWrap: { width: IW } })).setOrigin(.5, 0);
+                const t = this.add.text(pimg ? px0 : PW / 2, y, p.textContent, txtStyle(12, p.style.color ? UI_C.gold : UI_C.ink, { align: pimg ? 'left' : 'center', lineSpacing: 2, wordWrap: { width: pw0 } })).setOrigin(pimg ? 0 : .5, 0);
                 items.push(t); y += t.height + 6;
             });
+            if (pimg) { y = Math.max(y, py0 + 84); px0 = 16; }
             y += 4;
             const flush = () => { if (col) { y += rowH + 5; col = 0; rowH = 0; } };
             list.forEach(k => {

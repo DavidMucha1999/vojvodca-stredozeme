@@ -50,6 +50,7 @@ function buyGood(o, k, n) {
     const inv = stock(o); n = Math.min(n, inv[k], CARGO_MAX - cargoCount());
     let cost = 0;
     for (let i = 0; i < n; i++) { cost += price(o, k); inv[k]--; }
+    if (G.tmerc) cost = Math.round(cost * .95);          // chamtivý hrdina zjedná lepšiu cenu
     if (G.gold < cost) { inv[k] += n; return 0; }
     G.gold -= cost; G.cargo = G.cargo || {}; G.cargo[k] = (G.cargo[k] || 0) + n;
     G.st.tr = (G.st.tr || 0) + cost;
@@ -59,6 +60,7 @@ function sellGood(o, k, n) {
     const inv = stock(o); n = Math.min(n, (G.cargo || {})[k] || 0);
     let gain = 0;
     for (let i = 0; i < n; i++) { gain += price(o, k); inv[k]++; }
+    if (G.tmerc) gain = Math.round(gain * 1.05);
     G.gold += gain; G.cargo[k] -= n;
     G.st.tr = (G.st.tr || 0) + gain;
     if (o.pr != null) o.pr = Math.min(100, o.pr + n * .1);      // obchod pomáha prosperite

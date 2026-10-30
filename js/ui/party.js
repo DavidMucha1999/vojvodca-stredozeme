@@ -32,6 +32,7 @@ function party(back) {
 }
 function compTalk(c, back, line) {
     mode = 'town';
+    PORTRAIT = c.look;
     show(c.n, '„' + (line || compLine(c)) + '“');
     btn('Povedz niečo', () => compTalk(c, back, compLine(c)));
     btn('Ako sa ti darí?', () => { const hp = G.chp && G.chp[c.id] != null ? G.chp[c.id] : 1; compTalk(c, back, hp > .8 ? 'Som pripravený. Kam ideme?' : hp > .5 ? 'Rany sa hoja. Ešte deň či dva a budem ako nový.' : 'Zle. Potrebujem odpočinok, nie ďalšiu bitku.'); });

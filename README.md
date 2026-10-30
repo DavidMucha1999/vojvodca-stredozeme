@@ -36,9 +36,11 @@ Testy v prehliadači potrebujú `pip install playwright && playwright install ch
 
 - **Úlohy od pánov** (`js/data/quests.js`, logika `js/sim/quests.js`): v rozhovore s priateľským veliteľom sa opýtaj „Máš pre mňa úlohu?“. Pán ponúkne úlohu podľa svojej povahy a strany (hliadky v Ithiliene, hlad v Edorase, vargovia pri Fangorne, posolstvo do Lothlórienu; pre zlo daň pre Čiernu bránu, oči v Bielom meste, soľ z juhu…). Úlohy majú viac krokov: poraziť armády, navštíviť hrad, doviezť tovar, vrátiť sa k pánovi. Odmena je zlato, sláva a vzťah; úloha od panovníka zlepší vzťah dvojnásobne a aj s celou frakciou. Najviac 3 úlohy naraz, tlačidlo **Úlohy** na mape ukazuje postup a čo robiť. Úloha sa uzatvára alebo tovar odovzdáva v hrade pána (tlačidlo „Úloha: …“).
 - **Spoločníci** (`js/data/companions.js`, logika `js/sim/companions.js`, okná `js/ui/party.js`): postavy z Pána prsteňov čakajú v **krčmách** hradov. Dobro: Aragorn (Bree), Legolas (Lothlórien), Gimli (Erebor), Boromir (Minas Tirith), Éowyn (Edoras), Faramir (Osgiliath), Sam (Hobitov). Zlo: Lurtz (Isengard), Gothmog (Minas Morgul), Gríma (Edoras), Šagrat (Barad-dûr), Suladân (Umbar), Ústa Saurona (Morannon). Pripojenie stojí zlato a vyžaduje slávu; v družine môžu byť štyria. V bitke bojujú ako silní hrdinovia s vlastným vzhľadom a pokrikmi, na mape občas prehodia hlášku, v okne **Družina** sa s nimi dá porozprávať alebo ich prepustiť. Ranený spoločník sa tri dni zotavuje.
-- **Krčma ako miestnosť** (`js/engine/scenes/TavernScene.js`, rozhovory `js/ui/tavern.js`): z hradu sa do krčmy vstupuje ako do samostatnej scény. Interiér sa kreslí kódom podľa témy hradu (ľudia, hobiti v Hobitove a Bree, elfovia, trpaslíci, brlohy zla, juh) a náhodne podľa čísla hradu (poloha krbu a výčapu, počet stolov), v okne vidno dennú dobu a počasie, na stene visí zástava frakcie. Za výčapom stojí krčmár (klebety o svete, runda pre všetkých za slávu, nocľah, najatie chlapov od stola) a pri stoloch sedia spoločníci, ktorí ešte nie sú v družine – klikom sa s nimi porozprávaš a pripojíš. Krčma má vlastnú hudbu (`pbTavern` v `js/audio/sound.js`, iná pre dobro a zlo) a ruch hostí; hudba mapy sa nemení. Postavy sú veľké verzie postavičiek z mapy (`Figures`, `Art.bigFigure`).
+- **Tvorba postavy** (`js/ui/create.js`): na úvodnej obrazovke si okrem mena a frakcie vyberieš vzhľad (pohlavie, pleť, vlasy a ich farbu, bradu, oči – s živým portrétom), **povahu** (čestný, chamtivý, odvážny, prefíkaný, krutý, múdry – každá dáva iné počiatočné bonusy, zoznam `TRAITS`) a rozdelíš 5 bodov schopností (sila, odolnosť, obratnosť, presviedčanie, lukostreľba). Vzhľad sa ukladá v `G.look` a určuje portrét aj postavičku hrdinu na mape a v krčme.
+- **Portréty** (`js/render/portraits.js`): tváre spredu kreslené kódom podľa popisu `look` (rasa, pleť, vlasy, brada, oči, vek, jazva, kapucňa, turban, prilba, koruna). Okná rozhovorov so spoločníkmi, lordmi (tvár odvodená z mena a frakcie, vždy rovnaká) a krčmármi ukazujú portrét vedľa nadpisu – stačí pred `show()` nastaviť `PORTRAIT = look`. Spoločníci majú tváre v `js/data/companions.js` (`look`). Postavičky na mape a v krčme majú z toho istého popisu oko, obočie, nos, ústa, vlasy a bradu.
+- **Krčma ako miestnosť** (`js/engine/scenes/TavernScene.js`, rozhovory `js/ui/tavern.js`): z hradu sa do krčmy vstupuje ako do samostatnej scény. Interiér sa kreslí kódom podľa témy hradu (ľudia, hobiti v Hobitove a Bree, elfovia, trpaslíci, brlohy zla, juh) a náhodne podľa čísla hradu (poloha krbu a výčapu, počet stolov), v okne vidno dennú dobu a počasie, na stene visí zástava frakcie. Za výčapom stojí krčmár (klebety o svete, runda pre všetkých za slávu, nocľah, najatie chlapov od stola) a pri stoloch sedia spoločníci, ktorí ešte nie sú v družine – klikom sa s nimi porozprávaš a pripojíš. Po krčme chodí hráčova postava (podľa výbavy a vzhľadu): klik na podlahu alebo šípky/WASD; klik na postavu k nej dôjde a začne rozhovor. Krčma má vlastnú hudbu (`pbTavern` v `js/audio/sound.js`, iná pre dobro a zlo), bez zvukov prostredia; hudba mapy sa nemení. Postavy sú veľké verzie postavičiek z mapy (`Figures`, `Art.bigFigure`).
 - **Ukladanie:** hra sa sama ukladá na konci každého dňa (automatická pozícia). V hrade sa dá uložiť do troch ručných pozícií a na úvodnej obrazovke si vyberieš, ktorú načítať.
-- **Zvuky prostredia** (`js/audio/ambience.js`): dážď a hrom pri búrke, vietor v snehu a v zime, praskanie fakieľ v nočnej bitke, ruch trhu a krčmy. Hudba na mape sa nemení.
+- **Zvuky prostredia** (`js/audio/ambience.js`): tichý dážď a hrom pri búrke, vietor v snehu a v zime, praskanie fakieľ v nočnej bitke. V hrade a v krčme vonkajšie zvuky stíchnu. Hudba na mape sa nemení.
 
 ## Svet: rozhovory, obchod, hrad, počasie
 
@@ -108,8 +110,9 @@ js/
   render/             pôvodné kreslenie na plátno (index.html; Phaser ho používa ako náhradnú grafiku)
     soldiers.js       vojaci, kone a výbava pohľadom zhora: hrdina podľa výbavy, ikonky u kováča, pásy snímok pre generátor
     figures.js        postavičky na mape a v krčme pohľadom zboku: hrdina podľa výbavy (kôň/pešo), lordi podľa frakcie, spoločníci
+    portraits.js      portréty tvárí spredu (rozhovory, tvorba postavy, encyklopédia)
   audio/sound.js      syntetické zvuky a hudba
-  ui/                 herné menu ako HTML (v Phaser verzii ich prekresľuje UIScene), inventory.js = kováč a inventár, market.js = trh
+  ui/                 herné menu ako HTML (v Phaser verzii ich prekresľuje UIScene), inventory.js = kováč a inventár, market.js = trh, create.js = tvorba postavy, tavern.js = rozhovory v krčme
   input.js            klávesnica a myš (pôvodná verzia)
   main.js             hlavná slučka pôvodnej verzie
   engine/             Phaser verzia
@@ -121,7 +124,7 @@ js/
     scenes/
       BootScene.js    načítanie textúr, obrázkov, zvukov a písma
       IntroScene.js   úvodná obrazovka
-      MapScene.js     mapa: dlaždicový terén, lesy z jednotlivých stromov, voda, cesty, hory, hrady, dediny, armády, minimapa
+      MapScene.js     mapa: dlaždicový terén, lesy z jednotlivých stromov (voľný priestor okolo hradov, dedín a ciest), voda, cesty, hory, hrady, dediny, armády, minimapa
       BattleScene.js  bitka: bojisko z textúr, animovaní vojaci, zástavy, šípy, obliehanie, častice
       TavernScene.js  krčma: miestnosť podľa témy hradu, krb, krčmár a spoločníci
       UIScene.js      rozhranie v Phaseri: lišta, tlačidlá, okná, popisky, legenda, počasie

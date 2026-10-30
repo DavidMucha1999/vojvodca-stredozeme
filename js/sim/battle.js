@@ -202,7 +202,7 @@ function endBattle(win) {
                 G.cav = Math.max(0, G.cav - dC);
                 G.gold += loot;
                 G.ren++;
-                G.xp += LB.n * 5;
+                G.xp += Math.round(LB.n * 5 * (G.twise ? 1.1 : 1));
                 G.hp = Math.max(20, U[0].hp);
                 while (G.xp >= G.lv * 30) {
                     G.xp -= G.lv * 30;

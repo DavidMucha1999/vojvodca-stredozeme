@@ -3,7 +3,8 @@
  */
 function skills(i) {
     mode = 'town';
-    show('Hrdina ' + G.name, 'Úroveň ' + G.lv + ', voľné body: ' + G.sk + '. Každá schopnosť môže mať až 5 stupňov.');
+    PORTRAIT = Portraits.hero();
+    show('Hrdina ' + G.name, 'Povaha: ' + traitName() + '. Úroveň ' + G.lv + ', voľné body: ' + G.sk + '. Každá schopnosť môže mať až 5 stupňov.');
     [['st', 'Sila (+3 útok)'], ['od', 'Odolnosť (+15 zdravie)'], ['ob', 'Obratnosť (+8 % rýchlosť)'], ['pr', 'Presviedčanie (+6 pri prehováraní)'], ['ls', 'Lukostrelba (+1 zranenie šípov)']].forEach(([k, n]) => btn(n + ' [' + G.s[k] + ']', () => { G.sk--; G.s[k]++; upd(); skills(i); }, !G.sk || G.s[k] >= 5));
     btn('Späť', () => town(i));
 }
@@ -117,7 +118,7 @@ function tsub(i, c) {
         btn('Odpočinúť si (plné zdravie)', () => { G.hp = mh(); re(); }, G.hp >= mh(), 'heart');
         btn('Povýšiť pešiaka na veterána (20 zlata, 15 skúseností)', () => { G.gold -= 20; G.txp -= 15; G.inf--; G.vet++; re(); }, G.gold < 20 || G.txp < 15 || G.inf < 1, { u: 'v' });
         btn('Naverbovať zajatcov (8 zlata/ks)', () => { const n = Math.min(G.cap, Math.floor(G.gold / 8)); G.gold -= n * 8; G.inf += n; G.cap -= n; re(); }, !G.cap || G.gold < 8, 'chain');
-        btn('Predať zajatcov (12 zlata/ks)', () => { G.gold += G.cap * 12; G.cap = 0; re(); }, !G.cap, 'coins');
+        btn('Predať zajatcov (' + (G.tcun ? 15 : 12) + ' zlata/ks)', () => { G.gold += G.cap * (G.tcun ? 15 : 12); G.cap = 0; re(); }, !G.cap, 'coins');
         btn('Výkupné za zajatých veliteľov (' + G.pri.length * 80 + ')', () => { G.gold += G.pri.length * 80; G.pri = []; re(); }, !G.pri.length, 'coins');
     }
     if (c === 'h') {
@@ -221,6 +222,7 @@ function lord(e) {
     {
         mode = 'town';
         e.rl = e.rl || 0;
+        PORTRAIT = Portraits.forLord(e);
         show(e.nm + ' (' + FN[e.f] + ')', 'Vzťah: ' + e.rl + '. Vojakov: ' + Math.ceil(e.n) + '. Tvoja sláva: ' + G.ren + '.');
         btn('Porozprávať sa', () => talk(e));
         btn('Darovať 50 zlata (+8 vzťah)', () => { G.gold -= 50; e.rl += 8; upd(); lord(e); }, G.gold < 50);
@@ -270,6 +272,7 @@ function talk(e, line, used = {}) {
     per(e);
     const c = dlgCtx(e), say = s => '„' + s + '“';
     mode = 'town';
+    PORTRAIT = Portraits.forLord(e);
     show(e.nm + ', ' + TR[e.tr][0] + ' veliteľ ' + FN[e.f], say(line || DLG.greet(c)));
     const topic = (key, label, fn) => { if (used[key]) return; btn(label, () => { used[key] = 1; const r = fn(c); if (typeof r === 'string') talk(e, r, used); else { e.rl = (e.rl || 0) + r.d; upd(); talk(e, r.t, used); } }); };
     topic('world', 'Čo sa deje vo svete?', c => DLG.pick(DLG.WORLD[c.f] || DLG.WORLD[0]));
@@ -294,6 +297,7 @@ function talk(e, line, used = {}) {
 function questOffer(e, qo) {
     mode = 'town';
     const d = qo.def, king = e.kr;
+    PORTRAIT = Portraits.forLord(e);
     show(d.n, '„' + d.intro.replace(/\{Y\}/g, G.name) + '“\n\nOdmena: ' + d.r + ' zlata, sláva +' + d.ren + ', vzťah (' + e.nm + ') +' + d.rl * (king ? 2 : 1) + (king ? ', panovník: zlepší sa aj vzťah s frakciou ' + FN[e.f] : '') + '.');
     btn('Prijať úlohu', () => { questAccept(e, d, qo.home); talk(e, ['Dobre. Viem, že slovo dodržíš.', 'Výborne. Zlato čaká, keď bude hotovo.', 'Ďakujem. Naozaj ďakujem.', 'Dobre. Nesklam ma, mám na teba plány.', 'Tak choď. A nevracaj sa s prázdnymi rukami.', 'Múdra voľba. Budem sledovať, ako si počínaš.'][e.tr]); });
     btn('Odmietnuť', () => talk(e, ['Škoda. Ale vážim si, že si to povedal rovno.', 'Tvoja strata. Zlato si nájde iné ruky.', 'Ach... dobre. Chápem.', 'Zapamätám si, že si odmietol.', 'Zbabelec. Choď mi z očí.', 'Rozumiem. Možno inokedy.'][e.tr]));

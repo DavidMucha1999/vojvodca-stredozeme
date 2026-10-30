@@ -16,6 +16,7 @@ button{font:inherit;font-size:clamp(.9rem,2.3vw,1.1rem);color:#1a120a;background
 button:hover:not(:disabled){background:#ecb957}
 button:disabled{background:#4a4036;color:#9a8c78;cursor:default}
 button:focus-visible{outline:3px solid var(--elf);outline-offset:3px}
+#ov canvas.por{display:block;width:96px;height:96px;margin:0 auto .4rem;border-radius:4px}
 button canvas.ico{width:32px;height:32px;vertical-align:middle;margin:-6px .5rem -6px -.3rem;background:rgba(244,230,196,.5);border-radius:3px}
 input,select{font:inherit;font-size:1.05rem;padding:.45rem .6rem;background:#2a211b;color:var(--ink);border:1px solid #6a5a46;border-radius:2px;max-width:100%}
 
@@ -47,3 +48,15 @@ input,select{font:inherit;font-size:1.05rem;padding:.45rem .6rem;background:#2a2
 .bar{height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden}
 .bar b{display:block;height:100%;border-radius:3px}
 .sec{color:#d9a441;font-family:"Uncial Antiqua",Georgia,serif;font-size:1.05rem;margin:.2rem 0}
+/* tvorba postavy na úvodnej obrazovke */
+#cre{margin:.6rem auto;max-width:620px;text-align:left;font-size:.85rem;background:rgba(0,0,0,.25);border:1px solid rgba(217,164,65,.5);border-radius:6px;padding:.5rem .7rem}
+#cre .cre-row{display:flex;gap:.6rem;align-items:flex-start;flex-wrap:wrap;margin:.3rem 0}
+#cre canvas{width:96px;height:96px;border-radius:4px;flex:none}
+#creCtl{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.2rem .6rem;flex:1}
+#cre label{display:flex;flex-direction:column;font-size:.75rem;color:var(--gold)}
+#cre select{font-size:.8rem;padding:.15rem .3rem;margin:0}
+#cre .cre-note{flex:1;font-size:.78rem;opacity:.85;align-self:center}
+#creSk{display:flex;gap:.4rem;flex-wrap:wrap}
+#cre .cre-sk{display:flex;align-items:center;gap:.2rem;font-size:.75rem}
+#cre .cre-sk button{padding:0 .45rem;font-size:.8rem;margin:0;min-width:1.4rem;line-height:1.3}
+#cre .cre-sk b{min-width:1rem;text-align:center;color:var(--gold)}

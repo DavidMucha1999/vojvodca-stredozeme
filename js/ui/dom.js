@@ -14,11 +14,16 @@ function btn(label, fn, off, icon) {
     document.getElementById('bt').appendChild(b);
     return b;
 }
-let LOG = [], TS = null, BI = 'g', RN = null;
+let LOG = [], TS = null, BI = 'g', RN = null, PORTRAIT = null;
+/** Okno s nadpisom h a textom body. Ak je pred volaním nastavený PORTRAIT (popis tváre), okno dostane portrét (plátno .por). */
 function show(h, body) {
     ov.classList.remove('encv');
     {
         ov.innerHTML = '<h1>' + h + '</h1><p>' + body + '</p><div id="bt"></div>';
+        if (PORTRAIT && typeof Portraits !== 'undefined') {
+            try { const c = Portraits.canvas(PORTRAIT); c.className = 'por'; c.dataset.key = 'por_' + JSON.stringify(PORTRAIT); ov.insertBefore(c, ov.firstChild); } catch (e) { }
+        }
+        PORTRAIT = null;
         ov.classList.remove('hide');
     }
 }
