@@ -51,7 +51,7 @@ const SoundFX = {
     /** Hudba zo súborov podľa oblasti (iba ak súbory existujú). */
     music() {
         if (!sfxScene || !G || mode === 'intro') return false;
-        const z = mode === 'battle' ? 'bitka' : G.x < 2250 ? 'kraj' : G.x > 5700 ? 'mordor' : 'stred';
+        const z = mode === 'battle' ? 'bitka' : G.x < 500 * K ? 'kraj' : G.x > 1267 * K ? 'mordor' : 'stred';
         const key = MUSIC[z];
         if (!key) return false;
         if (musicNow && musicNow.key === key) { musicNow.setMute(mu); return true; }

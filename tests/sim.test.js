@@ -122,6 +122,11 @@ try {
     run(closeMenus + '; mode = "map"; G.hp = 30; stayInCastle(0); var hp0 = G.hp; daily2();');
     check('Pobyt v hrade: čas plynie a hojí sa rýchlejšie', run('G.camp === 1 && G.stay === TW[0].n && G.hp >= hp0 + 20') );
     run('G.camp = 0; G.stay = null; mode = "map";');
+    check('Lordi majú úlohy: strážcovia lén a poľné vojsko maršala', run('E.filter(e => e.role === "guard").length > 5 && E.filter(e => e.role === "army").length > 5 && [0,1,2,3,4,5,7,8].every(f => !E.some(e => e.f === f) || marshal(f))'));
+    run('var gd = E.find(e => e.role === "guard" && TW[e.home] && TW[e.home].f === e.f); var gh = gd ? gd.home : null; mode = "map"; G.camp = 1; for (let i = 0; i < 1200; i++) worldTick(1); G.camp = 0;');
+    check('Strážca léna ostáva pri svojom hrade', run('!gd || gd.dead || gd.home !== gh || Math.hypot(gd.x - TW[gh].x, gd.y - TW[gh].y) < 60 * K'));
+    check('Dediny majú jedinečné mená podľa kraja', run('new Set(VL.map(v => v.n)).size === VL.length && VL.length >= 90'));
+    check('Väčší svet a polohy podľa mierky', run('K > 6 && WW === 1800 * K && TW.every(t => t.x <= WW && t.y <= WH) && regionAt(10, 10) === "s"'));
     check('Ikony rozhrania k tlačidlám a lište', run('Icons.forButton("Denník") === "diary" && Icons.forHud("Zdravie 10/10") === "heart" && Icons.forHud("Zlato 5") === "coins" && Icons.forDialog("Späť") === "back" && Icons.has("mug")'));
     run(closeMenus + '; mode = "map"; save(2); var d2 = G.day; G.day = 999; load(2);');
     check('Uloženie do pozície 2 a načítanie', run('G.day === d2 && slotInfo(2) && slotInfo(2).includes("deň " + d2) && G.comp.includes("aragorn")'));

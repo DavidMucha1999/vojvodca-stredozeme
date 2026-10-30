@@ -190,6 +190,7 @@ function endBattle(win) {
                     LB.vil.st = 8;
                 if (LB.siege) {
                     lg('Dobyl si hrad ' + LB.t.n + ' aj s okolitými dedinami.');
+                    (LB.lords || []).forEach(e => { e.n = Math.max(2, e.n * .4); e.home = null; e.role = 'army'; });   // obrancovia z hradu utekajú zdecimovaní
                     LB.t.f = G.fac;
                     LB.t.g = 8;
                     LB.t.mine = 1;

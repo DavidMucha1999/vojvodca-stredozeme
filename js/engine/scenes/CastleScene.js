@@ -222,7 +222,7 @@ class CastleScene extends RoomScene {
     }
     spawnHall(t, th) {
         const f = t.f === 6 ? (heroSide() === 1 ? 2 : 0) : t.f;
-        const lord = E.find(e => e.f === t.f && !hos(e.f, G.fac) && Math.hypot(e.x - t.x, e.y - t.y) < 90);
+        const lord = E.find(e => e.f === t.f && !hos(e.f, G.fac) && Math.hypot(e.x - t.x, e.y - t.y) < 15 * K);
         this.lord = lord;
         if (lord) {
             const [eq, o] = Figures.lordEq(lord);

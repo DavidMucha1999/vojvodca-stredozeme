@@ -6,11 +6,11 @@ let NID = 0, LRL = {};
 const lr = (a, b) => LRL[a.id + '-' + b.id] ?? (LRL[a.id + '-' + b.id] = Math.random() * 20 - 6);
 function spawnE() {
     const f = [0, 1, 2, 3, 4, 5, 7, 8][Math.floor(Math.random() * 8)], ts = TW.filter(t => t.f === f);
-    if (!ts.length || E.filter(e => e.f === f).length >= 5)
+    if (!ts.length || E.filter(e => e.f === f).length >= 8)
         return;
     const t = ts[Math.floor(Math.random() * ts.length)];
     const kr = !E.some(o => o.f === f && o.kr);
-    E.push({ kr, id: ++NID, x: t.x, y: t.y + 25, f, n: (kr ? 10 : 0) + Math.min(26, 6 + Math.floor(Math.random() * 8) + Math.floor(G.day / 2)), vx: 0, vy: 0, w: 0, nm: kr ? KN[f] : ((a) => a[Math.floor(Math.random() * a.length)])(LN.filter(n => !E.some(e => e.nm === n))) || LN[NID % LN.length] + ' II' });
+    E.push({ kr, id: ++NID, home: TW.indexOf(t), role: 'army', x: t.x, y: t.y + 25, f, n: (kr ? 10 : 0) + Math.min(26, 6 + Math.floor(Math.random() * 8) + Math.floor(G.day / 2)), vx: 0, vy: 0, w: 0, nm: kr ? KN[f] : ((a) => a[Math.floor(Math.random() * a.length)])(LN.filter(n => !E.some(e => e.nm === n))) || LN[NID % LN.length] + ' II' });
 }
 function spawnX() {
     const r = Math.random;

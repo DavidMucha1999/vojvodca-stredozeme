@@ -6,3 +6,22 @@ let TW = mkTW();
 const VN = ['Lúčnica', 'Dubina', 'Brezové Pole', 'Hôrka', 'Bystrá', 'Medovec', 'Kamenec', 'Vŕbovo', 'Jelšina', 'Sedlisko', 'Zlatá Lúka', 'Mlynisko', 'Jaseňová', 'Pod Hradom', 'Studienka', 'Ražná Dolina', 'Ovčia Stráň', 'Lipová', 'Pasienky', 'Križovatka', 'Kaštaľová', 'Prístavisko'];
 let VL = [];
 const mkVL = () => typeof MAPDATA !== 'undefined' && MAPDATA.villages.length ? MAPDATA.villages.map(([n, x, y, t]) => ({ n, x: x * K, y: y * K, t, st: 0 })) : TW.flatMap((t, i) => [0, 1].map(j => { const a = i * 2.3 + j * 3.1, d = (170 + j * 60) * K / 3; return { n: VN[(i * 2 + j) % VN.length], x: Math.max(40, Math.min(WW - 40, t.x + Math.cos(a) * d)), y: Math.max(40, Math.min(WH - 40, t.y + Math.sin(a) * d)), t: i, st: 0 }; }));
+
+/* Názvy dedín podľa kraja (g zelené kraje, s sever, d juh, a Mordor a východ) – každá dedina dostane jedinečné meno. */
+const VNAMES = {
+    g: ['Lesný Dvor', 'Vŕbový Brod', 'Starý Mlyn', 'Jazerná', 'Slnečná Lúka', 'Medová Dolina', 'Biele Pramene', 'Tichý Potok', 'Vysoké Pole', 'Trojbrezie', 'Konské Pastviny', 'Horná Mýtina', 'Dolná Mýtina', 'Bukovec', 'Hrabovník', 'Strážny Kopec', 'Pastierska', 'Zlatý Klas', 'Ryšavé Vŕšky', 'Včelín', 'Kamenný Most', 'Dubová Hora', 'Lipový Dvor', 'Žitné Pole', 'Rybárska', 'Sokolia Skala', 'Mlynský Potok', 'Jablonka', 'Hlboká Dolina', 'Vinohrady', 'Dlhé Lúky', 'Studnička', 'Breziny', 'Ovčiarka', 'Rozcestie', 'Zelený Brod', 'Pod Lesom', 'Hviezdna Lúka', 'Topoľová', 'Kráľovská Cesta', 'Bobrí Jaz', 'Jastrabie', 'Osikovec', 'Senný Dvor', 'Kováčova', 'Hrnčiarska', 'Lúka Entov', 'Orechovo', 'Trstiny', 'Sivý Kameň', 'Malá Hôrka', 'Veľká Hôrka', 'Dolný Dvor', 'Horný Dvor', 'Jarabinka', 'Smrečina', 'Modrý Prameň', 'Borovina', 'Ďatelinka', 'Kôstkovec'],
+    s: ['Snežná', 'Ľadový Potok', 'Severný Dvor', 'Sivé Skaly', 'Vranie Hniezdo', 'Mrazivá Lúka', 'Sobolia', 'Kamenná Hoľa', 'Biela Priehlbina', 'Vetrná', 'Zamrznutý Brod', 'Horský Dvor', 'Trpasličia Cesta', 'Medvedia', 'Jedľová'],
+    d: ['Piesočná', 'Oáza Zuhur', 'Palmový Dvor', 'Soľné Jazero', 'Horúci Prameň', 'Karavánska', 'Slonia Lúka', 'Červené Duny', 'Koreninová', 'Prístav Lúčov', 'Suchý Brod', 'Datľová', 'Hadia Skala', 'Južný Dvor', 'Slnečný Kameň'],
+    a: ['Popolná', 'Spálená Zem', 'Železná Brána', 'Kostihorka', 'Hadia Jama', 'Čierna Hlina', 'Otrocký Tábor', 'Kováčske Jamy', 'Krvavý Brod', 'Vlčia Dolina', 'Sírny Prameň', 'Temný Dvor', 'Trollia Skala', 'Rozbité Kamene', 'Jama Hladu', 'Pole Núrnen', 'Mŕtva Lúka', 'Kostená Cesta', 'Havrania', 'Šibeničná']
+};
+/** Dá dedinám jedinečné mená podľa kraja. */
+function nameVillages(list) {
+    const used = new Set(), idx = { g: 0, s: 0, d: 0, a: 0 };
+    list.forEach(v => {
+        const reg = typeof regionAt === 'function' ? regionAt(v.x, v.y) : 'g', L = VNAMES[reg] || VNAMES.g;
+        let n = L[idx[reg] % L.length], k = 1; idx[reg]++;
+        while (used.has(n)) { n = L[(idx[reg]++) % L.length] + (idx[reg] > L.length ? ' ' + ['II', 'III', 'IV'][k++ % 3] : ''); }
+        used.add(n); v.n = n;
+    });
+    return list;
+}
