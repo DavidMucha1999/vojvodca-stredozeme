@@ -58,6 +58,7 @@ class UIScene extends Phaser.Scene {
         this.syncHud();
         this.syncBars();
         this.syncBigMap(scene);
+        this.syncEvents(dt);
         this.syncDialog();
         this.drawTooltip(scene);
         this.drawLegend(scene);
@@ -214,6 +215,38 @@ class UIScene extends Phaser.Scene {
         }
     }
 
+    // ---------- Oznámenie o dobytí hradu ---------------------------------------------
+    syncEvents(dt) {
+        if (!this.evLayer) this.evLayer = this.add.container(0, 0).setDepth(35);
+        const ev = typeof EVENTS !== 'undefined' && G ? EVENTS[0] : null;
+        if (!ev) { if (this.evSig) { this.evLayer.removeAll(true); this.evSig = null; } return; }
+        ev.l -= dt;
+        if (ev.l <= 0) { EVENTS.shift(); this.evLayer.removeAll(true); this.evSig = null; return; }
+        const sig = ev.t + ev.oldF + ev.newF + ev.who;
+        if (sig !== this.evSig) {
+            this.evSig = sig; this.evLayer.removeAll(true);
+            const PW2 = 420, PH2 = 112, px = W / 2 - PW2 / 2, py = 98;
+            const g = this.add.graphics();
+            g.fillStyle(0x120e0c, .93).fillRoundedRect(px, py, PW2, PH2, 8);
+            g.lineStyle(2, UI_C.line, 1).strokeRoundedRect(px, py, PW2, PH2, 8);
+            g.fillStyle(hex(FC[ev.oldF]), .9).fillRoundedRect(px + 8, py + 8, PW2 / 2 - 14, PH2 - 16, 6);
+            g.fillStyle(hex(FC[ev.newF]), .9).fillRoundedRect(px + PW2 / 2 + 6, py + 8, PW2 / 2 - 14, PH2 - 16, 6);
+            g.fillStyle(0x000000, .35).fillRoundedRect(px + 8, py + 8, PW2 / 2 - 14, PH2 - 16, 6).fillRoundedRect(px + PW2 / 2 + 6, py + 8, PW2 / 2 - 14, PH2 - 16, 6);
+            const items = [g];
+            const fl = (f, x) => items.push(this.add.image(x, py + 22, Art.banner(this, f)).setOrigin(.5, 0).setScale(1.6 / RES * 1.1));
+            fl(ev.oldF, px + 48); fl(ev.newF, px + PW2 / 2 + 46);
+            items.push(this.add.text(px + 86, py + 22, FN[ev.oldF], txtStyle(14, FC[ev.oldF], { fontFamily: TITLE_FONT, stroke: '#000', strokeThickness: 3 })));
+            items.push(this.add.text(px + 86, py + 44, 'stratil hrad', txtStyle(11, UI_C.ink)));
+            items.push(this.add.text(px + 86, py + 60, ev.t, txtStyle(16, '#fff', { fontStyle: 'bold', stroke: '#000', strokeThickness: 3 })));
+            items.push(this.add.text(px + PW2 / 2 + 84, py + 22, FN[ev.newF], txtStyle(14, FC[ev.newF], { fontFamily: TITLE_FONT, stroke: '#000', strokeThickness: 3 })));
+            items.push(this.add.text(px + PW2 / 2 + 84, py + 44, 'dobyl hrad, velil', txtStyle(11, UI_C.ink)));
+            items.push(this.add.text(px + PW2 / 2 + 84, py + 60, ev.who, txtStyle(14, '#ffd24a', { fontStyle: 'bold', stroke: '#000', strokeThickness: 3, wordWrap: { width: 110 } })));
+            items.push(this.add.text(W / 2, py + PH2 / 2, '➜', txtStyle(22, UI_C.gold)).setOrigin(.5));
+            this.evLayer.add(items);
+        }
+        this.evLayer.setAlpha(Math.min(1, ev.l / 40));
+    }
+
     // ---------- Veľká mapa (klávesa M) ---------------------------------------------
     syncBigMap(scene) {
         if (this.big && (scene !== 'map' || mode !== 'map' || this.dlg)) this.big = false;
@@ -234,6 +267,7 @@ class UIScene extends Phaser.Scene {
             const wx = (p.x / RES - mx) / sx, wy = (p.y / RES - my) / sy;
             G.dest = -1; G.vd = -1; G.chase = null; G.talk = null; G.tx = wx; G.ty = wy;
             TW.forEach((t, i) => { if (Math.hypot(t.x - wx, t.y - wy) < 160) { G.tx = t.x; G.ty = t.y; G.dest = i; } });
+            G.pd = -1; PLACES.forEach((p, i) => { if (Math.hypot(p.x * K - wx, p.y * K - wy) < 140 && G.dest < 0) { G.tx = p.x * K; G.ty = p.y * K + 10; G.pd = i; } });
             this.big = false;
         });
         const closer = this.add.rectangle(0, 0, W, H, 0, 0).setOrigin(0).setInteractive();
@@ -248,6 +282,8 @@ class UIScene extends Phaser.Scene {
         for (const f in regions) { const ts = regions[f]; if (f == 6 || f == 9) continue; const cx = ts.reduce((a, t) => a + t.x, 0) / ts.length, cy = ts.reduce((a, t) => a + t.y, 0) / ts.length; items.push(this.add.text(mx + cx * sx, my + cy * sy - 22, FN[f].toUpperCase(), txtStyle(15, FC[f], { fontFamily: TITLE_FONT, stroke: '#000', strokeThickness: 3 })).setOrigin(.5).setAlpha(.8)); }
         // dediny
         for (const v of VL) { const x = mx + v.x * sx, y = my + v.y * sy; d.fillStyle(v.st > 0 ? 0x442222 : 0xe8d8b0, 1).fillCircle(x, y, 2.2); items.push(this.add.text(x + 3, y - 4, v.n, txtStyle(6.5, '#d8ccb0', { stroke: '#000', strokeThickness: 2 })).setAlpha(.8)); }
+        // zaujímavé miesta
+        for (const p of PLACES) { const x = mx + p.x * K * sx, y = my + p.y * K * sy; d.fillStyle(0xbfe8ff, 1).fillTriangle(x, y - 4, x - 3.5, y + 2, x + 3.5, y + 2); items.push(this.add.text(x + 4, y - 7, p.n.split(' (')[0], txtStyle(6.5, '#bfe8ff', { stroke: '#000', strokeThickness: 2 })).setAlpha(.9)); }
         // hrady
         TW.forEach((t, i) => {
             const x = mx + t.x * sx, y = my + t.y * sy, col = hex(FC[t.f]);

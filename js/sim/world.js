@@ -40,6 +40,11 @@ function worldTick(dt) {
         G.vd = -1;
         vill(i);
     }
+    else if (G.pd >= 0) {
+        const i = G.pd;
+        G.pd = -1;
+        place(i);
+    }
     dayT += dt;
     if (dayT > 600) {
         dayT = 0;
@@ -159,6 +164,7 @@ function worldTick(dt) {
                 if (thr) {
                     const strong = thr === G ? pw() > e.n * 1.1 : thr.n > e.n * 1.1;
                     tg = (strong || tdist < 35 * K) ? h : thr;          // silnejšieho votrelca čaká za hradbami, slabšieho ide zahnať
+                    if (tg === thr && Math.hypot(e.x - h.x, e.y - h.y) > RG) tg = h;   // neprenasleduje ďaleko od domova
                     e.inside = tg === h && Math.hypot(h.x - e.x, h.y - e.y) < 30;
                     if (tg === h && e.inside) { stopHere = true; }
                 }
@@ -175,32 +181,38 @@ function worldTick(dt) {
             else {
                 // poľné vojsko: maršal kráľovstva zhromažďuje lordov a vedie ťaženie; ostatní ho nasledujú
                 const m = marshal(e.f);
-                if (m && m !== e && !m.dead) {
+                if (m && m !== e && !m.dead && !(m.mu && e.muSkip === m.mu.t)) {
                     tg = m;
                     if (Math.hypot(m.x - e.x, m.y - e.y) < 12 * K) { stopHere = true; e.hold = 1; } else e.hold = 0;
                 }
+                else if (m && m !== e && !m.dead) { const h = TW[e.home]; tg = Math.hypot(h.x - e.x, h.y - e.y) < 20 ? null : h; if (!tg) stopHere = true; }   // odmietol výzvu: ostáva doma
                 else {
                     const ci = CP[e.f] != null && TW[CP[e.f]] && hos(TW[CP[e.f]].f, e.f) ? CP[e.f] : null;
                     if (ci == null) { const h = TW[e.home]; tg = Math.hypot(h.x - e.x, h.y - e.y) < 20 ? null : h; if (!tg) { stopHere = true; } }
                     else {
                         const t = TW[ci];
-                        if (!e.mu || e.mu.t !== ci) e.mu = { t: ci, day: G.day };
+                        if (!e.mu || e.mu.t !== ci) { e.mu = { t: ci, day: G.day }; onMuster(e, ci); }
                         const own = TW.filter(x => x.f === e.f), muster = own.length ? own.reduce((b, x) => Math.hypot(x.x - t.x, x.y - t.y) < Math.hypot(b.x - t.x, b.y - t.y) ? x : b) : TW[e.home];
                         const gathered = E.filter(o => o !== e && !o.dead && (o.f === e.f || AL[e.f][o.f]) && Math.hypot(o.x - e.x, o.y - e.y) < 40 * K).reduce((s, o) => s + o.n, 0) + e.n;
                         const need = t.g + 6 + (t.wl || 0) * 8 + E.filter(o => o.f === t.f && !o.dead && Math.hypot(o.x - t.x, o.y - t.y) < 15 * K).reduce((s, o) => s + o.n, 0);
                         const ready = gathered >= need * 1.1 || G.day - e.mu.day >= 5;
                         tg = ready ? t : muster;
                         if (!ready && Math.hypot(muster.x - e.x, muster.y - e.y) < 20) { stopHere = true; tg = null; }
-                        if (ready && Math.hypot(t.x - e.x, t.y - e.y) < 20) {
+                        if (ready && Math.hypot(t.x - e.x, t.y - e.y) < 20 && e.atkDay === G.day) { tg = null; stopHere = true; }   // dnes už útočil, čaká na ďalší deň
+                        else if (ready && Math.hypot(t.x - e.x, t.y - e.y) < 20) {
+                            e.atkDay = G.day;
                             // útok na hrad: útočníci v okolí proti posádke a lordom vnútri
                             const att = E.filter(o => !o.dead && (o.f === e.f || AL[e.f][o.f]) && Math.hypot(o.x - t.x, o.y - t.y) < 35 * K).reduce((s, o) => s + o.n, 0);
                             const def = t.g + 4 + (t.wl || 0) * 8 + E.filter(o => o.f === t.f && !o.dead && Math.hypot(o.x - t.x, o.y - t.y) < 15 * K).reduce((s, o) => s + o.n, 0);
                             if (att > def) {
-                                lg(FN[e.f] + ' (' + e.nm + ') dobyl hrad ' + t.n + '.');
+                                const oldF = t.f;
+                                captureEvent(t, oldF, e.f, e.nm); mst(e.f).wins++;
+                                if (G.join && G.join.ci === ci && Math.hypot(G.x - t.x, G.y - t.y) < 40 * K) { G.ren += 3; G.gold += 60; e.rl = (e.rl || 0) + 6; lg('Za účasť na ťažení si dostal podiel na koristi (60 zlata) a slávu.'); G.join = null; }
                                 t.lord = 0; e.n = Math.max(3, e.n - t.g * .5); t.f = e.f; t.g = 5; t.mine = 0; t.wl = 0;
                                 E.filter(o => o.home === ci && o.f !== e.f).forEach(o => { o.n = Math.max(2, o.n * .5); o.home = null; });
                                 CP[e.f] = null; e.mu = null;
                             } else {
+                                mst(e.f).losses++;
                                 e.n = Math.max(3, e.n - 2); t.g = Math.max(3, t.g - 2);   // neúspešný útok: straty na oboch stranách
                                 if (G.day - e.mu.day >= 8) { CP[e.f] = null; e.mu = null; }
                             }
@@ -320,6 +332,7 @@ function assignRoles(f) {
     if (m) m.role = 'army';
 }
 function stratAI() {
+    marshalDaily();
     [0, 1, 2, 3, 4, 5, 6, 7, 8].forEach(assignRoles);
     const F = [0, 1, 2, 3, 4, 5, 7, 8], P = {};
     F.forEach(f => P[f] = E.filter(e => e.f === f).reduce((s, e) => s + e.n, 0) + TW.filter(t => t.f === f).reduce((s, t) => s + t.g, 0));
@@ -378,6 +391,7 @@ function updMap(dt) {
         worldTick(dt);
         if (G.day !== d)
             daily2();
+        if (LETTERS.length && mode === 'map' && ov.classList.contains('hide')) readLetter();
         const dd = Math.hypot(G.x - DOOM.x, G.y - DOOM.y);
         if (G.ring === 1 && mode === 'map' && dd < 180 && !G.rp) {
             G.rp = 1;

@@ -62,6 +62,31 @@ class MapScene extends Phaser.Scene {
     /** Voľný priestor okolo hradov, dedín a ciest – nech obraz nie je nahádzaný na kope. */
     clearZone(x, y) { return TW.some(t => Math.hypot(t.x - x, t.y - y) < 36 * K) || VL.some(v => Math.hypot(v.x - x, v.y - y) < 21 * K) || this.nearRoad(x, y, 7 * K); }
 
+    /** Zaujímavé miesta (PLACES): kresba podľa druhu a popisok. */
+    buildPlaces() {
+        const out = [], g = this.add.graphics().setDepth(-7.5);
+        const P = (pts) => { g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.fillPath(); };
+        for (const p of PLACES) {
+            const x = p.x * K, y = p.y * K;
+            g.fillStyle(0x000000, .22).fillEllipse(x, y + 10, 70, 22);
+            if (p.kind === 'tower') { g.fillStyle(0x6a7a4a, 1).fillEllipse(x, y + 2, 76, 30); g.fillStyle(0x8a8a86, 1); P([[x - 16, y + 4], [x - 13, y - 44], [x + 13, y - 44], [x + 16, y + 4]]); g.fillStyle(0x6a6a66, 1); for (let k = 0; k < 4; k++) g.fillRect(x - 14 + k * 8, y - 50, 5, 7); g.fillStyle(0x9a9a96, 1); P([[x - 22, y + 6], [x - 20, y - 20], [x - 14, y - 22], [x - 12, y + 6]]); g.fillStyle(0x15100c, 1).fillRect(x - 3, y - 20, 6, 10); g.fillStyle(0x5a6a3a, 1); for (let k = 0; k < 6; k++) g.fillRect(x - 30 + k * 11, y - 2 + (k % 2) * 3, 4, 2); }
+            if (p.kind === 'statues') { for (const s of [-1, 1]) { const sx = x + s * 26; g.fillStyle(0x7a8a8a, 1).fillRect(sx - 10, y - 10, 20, 16); g.fillStyle(0x9aa8a8, 1); P([[sx - 7, y - 10], [sx - 6, y - 50], [sx + 6, y - 50], [sx + 7, y - 10]]); g.fillStyle(0xb0bcbc, 1).fillCircle(sx, y - 54, 5.5); g.fillStyle(0x9aa8a8, 1).fillRect(sx - 4, y - 62, 8, 5); g.fillRect(sx - 13 * s, y - 42, 6, 20); } g.fillStyle(0x24526a, .8).fillRect(x - 10, y - 20, 20, 36); }
+            if (p.kind === 'cave') { g.fillStyle(0x6a6a62, 1).fillEllipse(x, y, 80, 40); g.fillStyle(0x7a7a72, 1).fillEllipse(x - 20, y - 16, 36, 26).fillEllipse(x + 22, y - 12, 30, 22); g.fillStyle(0x15100c, 1); P([[x - 14, y + 6], [x - 10, y - 16], [x + 10, y - 16], [x + 14, y + 6]]); g.fillStyle(0x4a5a3a, 1).fillCircle(x - 34, y + 8, 7).fillCircle(x + 36, y + 4, 6); g.fillStyle(0xe8e4d8, 1).fillCircle(x + 22, y + 10, 3); }
+            if (p.kind === 'house') { g.fillStyle(0x3a4a2a, 1); for (let k = 0; k < 5; k++) g.fillCircle(x - 50 + k * 25, y - 10 - (k % 2) * 8, 14); g.fillStyle(0xd9c050, 1).fillRect(x - 16, y - 18, 32, 22); g.fillStyle(0x8a5a30, 1); P([[x - 20, y - 18], [x, y - 36], [x + 20, y - 18]]); g.fillStyle(0x3a6a9a, 1).fillCircle(x, y - 6, 4); g.fillStyle(0xffd27a, 1).fillRect(x - 11, y - 12, 5, 5).fillRect(x + 7, y - 12, 5, 5); g.fillStyle(0x6a4a2a, 1).fillRect(x + 8, y - 34, 4, 10); }
+            if (p.kind === 'swamp') { g.fillStyle(0x3a4a3a, 1).fillEllipse(x, y, 110, 50); g.fillStyle(0x24363a, .9).fillEllipse(x - 24, y - 4, 40, 18).fillEllipse(x + 22, y + 8, 46, 20).fillEllipse(x + 6, y - 16, 30, 12); g.fillStyle(0x5a6a3a, 1); for (let k = 0; k < 9; k++) g.fillRect(x - 48 + k * 12, y - 14 + (k % 3) * 9, 1.5, 10); g.fillStyle(0xbfe8ff, .7); for (let k = 0; k < 4; k++) g.fillCircle(x - 30 + k * 20, y - 20 + (k % 2) * 6, 2); }
+            if (p.kind === 'web') { g.fillStyle(0x1e2a1a, 1); for (let k = 0; k < 5; k++) g.fillCircle(x - 44 + k * 22, y - 14 - (k % 2) * 10, 16); g.lineStyle(1, 0xe8e8e8, .8); for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3; g.lineBetween(x, y - 18, x + Math.cos(a) * 34, y - 18 + Math.sin(a) * 22); } for (let r = 8; r < 32; r += 8) g.strokeEllipse(x, y - 18, r * 2, r * 1.3); g.fillStyle(0xd8d8c8, 1).fillEllipse(x + 14, y - 10, 8, 12).fillEllipse(x - 18, y - 24, 7, 10); g.fillStyle(0x1a1410, 1).fillEllipse(x + 2, y - 30, 10, 6); }
+            if (p.kind === 'ents') { g.fillStyle(0x2a4a24, 1); for (let k = 0; k < 7; k++) g.fillCircle(x - 54 + k * 18, y - 8 - (k % 3) * 9, 15); g.fillStyle(0x5a4028, 1); P([[x - 8, y + 6], [x - 6, y - 36], [x + 6, y - 36], [x + 8, y + 6]]); g.fillRect(x - 20, y - 30, 14, 4).fillRect(x + 6, y - 24, 16, 4); g.fillStyle(0x4a7a3a, 1).fillCircle(x, y - 44, 13).fillCircle(x - 20, y - 36, 7).fillCircle(x + 22, y - 30, 7); g.fillStyle(0xe8e0a0, 1).fillRect(x - 4, y - 24, 2, 2).fillRect(x + 2, y - 24, 2, 2); }
+            if (p.kind === 'door') { g.fillStyle(0x3a3a42, 1); P([[x - 50, y + 10], [x - 30, y - 50], [x, y - 70], [x + 30, y - 50], [x + 50, y + 10]]); g.fillStyle(0x0a0a0e, 1); P([[x - 12, y + 8], [x - 10, y - 22], [x, y - 30], [x + 10, y - 22], [x + 12, y + 8]]); g.fillStyle(0x6a6a72, 1); for (let k = 0; k < 3; k++) g.fillRect(x - 22 + k * 16, y - 40, 4, 10); g.fillStyle(0xbfe8ff, .4).fillEllipse(x, y - 8, 14, 20); }
+            if (p.kind === 'homestead') { g.fillStyle(0x6a4a2a, 1).fillRect(x - 24, y - 20, 48, 24); g.fillStyle(0x3a2a1a, 1); P([[x - 28, y - 20], [x, y - 40], [x + 28, y - 20]]); g.fillStyle(0xd9a441, 1); for (let k = 0; k < 4; k++) g.fillRect(x - 46 + k * 9, y + 2, 6, 8); g.fillStyle(0x8a8a86, 1).fillEllipse(x + 46, y - 6, 22, 30); g.fillStyle(0x4a4a46, 1).fillEllipse(x + 46, y - 16, 14, 10); }
+            if (p.kind === 'ford') { g.fillStyle(0x7a8a90, 1); for (let k = 0; k < 7; k++) g.fillEllipse(x - 36 + k * 12, y + Math.sin(k) * 6, 10, 6); g.fillStyle(0xbfd0d8, .5).fillEllipse(x, y, 100, 22); g.fillStyle(0x8a8a86, 1).fillRect(x - 40, y - 30, 3, 14).fillRect(x + 36, y - 26, 3, 12); g.fillStyle(0xd9a441, 1).fillRect(x - 38, y - 30, 10, 6); }
+            if (p.kind === 'tree') { g.fillStyle(0x5a6a3a, 1).fillEllipse(x, y + 2, 80, 30); g.fillStyle(0xd8d8d0, 1); P([[x - 4, y + 4], [x - 3, y - 30], [x + 3, y - 30], [x + 4, y + 4]]); g.fillRect(x - 18, y - 24, 14, 3).fillRect(x + 4, y - 18, 16, 3).fillRect(x - 12, y - 38, 3, 14); g.fillStyle(0x8a8a86, 1); for (let k = 0; k < 5; k++) g.fillRect(x - 30 + k * 14, y - 4 + (k % 2) * 6, 10, 2); }
+            const t = this.add.text(x, y + 18, p.n.split(' (')[0], { fontFamily: 'sans-serif', fontSize: '10px', color: '#f0e6c8', backgroundColor: 'rgba(18,14,12,.6)', padding: { x: 3, y: 1 }, resolution: RES }).setOrigin(.5, 0).setDepth(-7.4);
+            out.push(t);
+        }
+        out.push(g);
+        return out;
+    }
+
     /** Les ako jednotlivé stromy: hustý vnútri, pri okraji redší a s náhodne vysunutými stromami, aby hranica nebola kockatá. */
     buildForest(T) {
         const ts = WW / T.cols, rnd = n => { const x = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
@@ -82,12 +107,12 @@ class MapScene extends Phaser.Scene {
             const dead = f >= 37;
             let nb = 0; for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) if ((di || dj) && isF(i + di, j + dj)) nb++;
             const edge = nb < 8, seed = j * T.cols + i;
-            const n = dead ? 3 + (nb > 5 ? 1 : 0) : (edge ? 4 + Math.round(rnd(seed) * 3) : 7 + Math.round(rnd(seed) * 3));
+            const n = dead ? 4 + (nb > 5 ? 1 : 0) : (edge ? 5 + Math.round(rnd(seed) * 4) : 10 + Math.round(rnd(seed) * 4));
             for (let k = 0; k < n; k++) {
                 let x = (i + rnd(seed * 7 + k * 3 + 1)) * ts, y = (j + rnd(seed * 7 + k * 3 + 2)) * ts;
                 // pri okraji sa strom občas vysunie von z lesa – rozstrapkaná hranica
                 if (edge && rnd(seed * 13 + k) < .45) { const a = rnd(seed * 17 + k) * 6.283, d = rnd(seed * 19 + k) * ts * .9; x += Math.cos(a) * d; y += Math.sin(a) * d; }
-                const sc = dead ? .3 + rnd(seed + k * 5) * .1 : .28 + rnd(seed * 3 + k) * .16;
+                const sc = dead ? .34 + rnd(seed + k * 5) * .12 : .32 + rnd(seed * 3 + k) * .18;
                 trees.push([x, y, sc, dead ? 'deadtree' : (rnd(seed * 5 + k) < .3 ? 'tree_2' : rnd(seed * 11 + k) < .5 ? 'tree_0' : 'tree_1')]);
             }
             // samostatné stromy kúsok za okrajom lesa (riedky lem)
@@ -159,6 +184,7 @@ class MapScene extends Phaser.Scene {
         out.push(this.add.image(-WW / T.cols * .5, -WH / T.rows * .5, 'forestwash').setOrigin(0).setScale(WW / T.cols).setAlpha(.9).setDepth(-8.7));
         // lesy: namiesto štvorcových dlaždíc jednotlivé stromy s rozhádzanými okrajmi (prirodzená hranica lesa)
         out.push(...this.buildForest(T));
+        out.push(...this.buildPlaces());
         // hory
         for (const [x, y, size, kind, v] of T.mountains) {
             const key = 'mtn_' + kind + '_' + (kind === 'doom' ? 0 : v % 3);
@@ -193,7 +219,7 @@ class MapScene extends Phaser.Scene {
         if (mode !== 'map' || !G) return;
         const ui = this.scene.get('UI'); if (ui && (ui.big || ui.menu)) { if (ui.menu) ui.menu = null; return; }   // otvorená veľká mapa alebo ponuka
         if (G.camp) { G.camp = 0; G.stay = null; const b = [...tb.children].find(x => /tábor|pobyt/i.test(x.textContent)); if (b) b.textContent = 'Tábor'; upd(); }
-        G.dest = -1; G.vd = -1; G.chase = null; G.talk = null;
+        G.dest = -1; G.vd = -1; G.pd = -1; G.chase = null; G.talk = null;
         const sx = p.x / RES, sy = p.y / RES;
         if (sx > MM.x && sy > MM.y) { G.tx = (sx - MM.x) / MM.w * WW; G.ty = (sy - MM.y) / MM.h * WH; return; }
         const w = this.cameras.main.getWorldPoint(p.x, p.y);
@@ -201,6 +227,7 @@ class MapScene extends Phaser.Scene {
         E.forEach(e => { if (Math.hypot(e.x - w.x, e.y - w.y) < 34) { if (hos(e.f, G.fac)) G.chase = e; else G.talk = e; } });
         VL.forEach((v, i) => { if (Math.hypot(v.x - w.x, v.y - w.y) < 26) { G.tx = v.x; G.ty = v.y; G.vd = i; } });
         TW.forEach((t, i) => { if (Math.hypot(t.x - w.x, t.y - w.y) < 30) { G.tx = t.x; G.ty = t.y; G.dest = i; } });
+        G.pd = -1; PLACES.forEach((p, i) => { if (Math.hypot(p.x * K - w.x, p.y * K - w.y) < 36) { G.tx = p.x * K; G.ty = p.y * K + 10; G.pd = i; G.dest = -1; G.vd = -1; } });
         if (G.chase || G.talk) { G.vd = -1; G.dest = -1; }
     }
 
@@ -254,9 +281,10 @@ class MapScene extends Phaser.Scene {
                     f: -1,
                     spr: Art.image(this, e.x, e.y, Art.figure(this, ...Figures.lordEq(e)), 0, true),
                     txt: this.add.text(0, 0, '', { fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold', color: '#ecdfc6', backgroundColor: 'rgba(18,14,12,.78)', padding: { x: 5, y: 1 }, resolution: RES }).setOrigin(.5, 0).setDepth(9002),
-                    crown: Art.image(this, 0, 0, Art.crown(this)).setDepth(9002)
+                    crown: Art.image(this, 0, 0, Art.crown(this)).setDepth(9002),
+                    flag: Art.image(this, 0, 0, Art.banner(this, e.f)).setScale(1.9 / RES).setDepth(9002).setVisible(false)   // veľká zástava maršala
                 };
-                this.mmCam.ignore([o.spr, o.txt, o.crown]);
+                this.mmCam.ignore([o.spr, o.txt, o.crown, o.flag]);
                 this.armies.set(e.id, o);
             }
             const fk = Figures.key(...Figures.lordEq(e));
@@ -266,9 +294,12 @@ class MapScene extends Phaser.Scene {
             o.txt.setPosition(e.x, e.y + 19).setText(e.nm + ' ' + Math.ceil(e.n))
                 .setColor(hos(e.f, G.fac) ? '#ff8a70' : (AL[G.fac][e.f] || e.f === G.fac) ? '#9fe08a' : '#ecdfc6');
             o.crown.setVisible(!!e.kr).setPosition(e.x + 17, e.y - 46);
+            const isM = typeof MAR !== 'undefined' && MAR[e.f] === e.id;
+            o.flag.setVisible(isM).setPosition(e.x + 22, e.y - 92);
+            if (isM && o.flag.texture.key !== 'banner_' + e.f) o.flag.setTexture(Art.banner(this, e.f));
         }
         for (const [id, o] of this.armies)
-            if (!seen.has(id)) { o.spr.destroy(); o.txt.destroy(); o.crown.destroy(); this.armies.delete(id); }
+            if (!seen.has(id)) { o.spr.destroy(); o.txt.destroy(); o.crown.destroy(); o.flag.destroy(); this.armies.delete(id); }
     }
 
     syncHero() {
@@ -293,11 +324,41 @@ class MapScene extends Phaser.Scene {
             if (hos(e.f, G.fac)) g.lineStyle(2, e.n > pw() ? 0xe0442a : 0x6fbf5a, 1).strokeEllipse(e.x, e.y + 8, 34, 14);
             if (e.fo) { g.lineStyle(3, 0xffd27a, 1); g.lineBetween(e.x - 9, e.y - 36, e.x + 9, e.y - 20); g.lineBetween(e.x + 9, e.y - 36, e.x - 9, e.y - 20); }
         }
+        // zraz vojska vlastnej frakcie: pulzujúci zlatý kruh a zástava pri hrade zrazu
+        if (!this.musterTxt) { this.musterTxt = this.add.text(0, 0, 'Zraz vojska', { fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold', color: '#ffd24a', backgroundColor: 'rgba(18,14,12,.8)', padding: { x: 5, y: 1 }, resolution: RES }).setOrigin(.5, 1).setDepth(9003).setVisible(false); this.mmCam.ignore(this.musterTxt); }
+        const mm = typeof marshal === 'function' && G.fac !== 9 ? marshal(G.fac) : null;
+        if (mm && mm.mu && TW[mm.mu.t] && !mm.dead) {
+            const mp = musterPoint(mm, TW[mm.mu.t]), r = 70 + Math.sin(tm / 8) * 10;
+            g.lineStyle(4, 0xffd24a, .8).strokeCircle(mp.x, mp.y + 10, r); g.lineStyle(2, 0xffd24a, .35).strokeCircle(mp.x, mp.y + 10, r + 14);
+            g.lineStyle(3, 0xffd24a, .9).lineBetween(mm.x, mm.y - 10, mp.x, mp.y + 10);
+            this.musterTxt.setVisible(true).setPosition(mp.x, mp.y - r - 4).setText('Zraz vojska: ' + mm.nm + ' → ' + TW[mm.mu.t].n);
+        } else this.musterTxt.setVisible(false);
         for (const v of VL) if (v.st > 0) {
             // horiaca dedina: plamene pri domoch a stúpajúci dym
             for (let k = 0; k < 5; k++) { const fx = v.x - 18 + k * 9, fl = 3 + Math.sin(tm / 2 + k * 1.3) * 1.5; g.fillStyle(0xff7a20, .8).fillTriangle(fx - 3, v.y - 6, fx, v.y - 10 - fl * 2, fx + 3, v.y - 6); g.fillStyle(0xffd060, .9).fillTriangle(fx - 1.5, v.y - 6, fx, v.y - 8 - fl, fx + 1.5, v.y - 6); }
             for (let k = 0; k < 6; k++) { const s = (tm * .5 + k * 14) % 84; g.fillStyle(0x3c322d, .45 - s / 200).fillCircle(v.x - 10 + k * 4 + Math.sin(s * .15 + k) * 6, v.y - 14 - s * .7, 4 + s * .13); }
             g.fillStyle(0xff6a20, .08 + .04 * Math.sin(tm / 3)).fillCircle(v.x, v.y - 6, 40);
+        }
+        // Oko Mordoru nad Barad-dûrom: plamenné oko hľadí za hrdinom; po zničení Prsteňa ostane rozpadnutá veža a dym
+        const bd = this.baradDur || (this.baradDur = TW.find(t => t.n === 'Barad-dûr'));
+        if (bd) {
+            const ex = bd.x + 10, ey = bd.y - 150;
+            if (G.ring !== 2) {
+                const a = Math.atan2(G.y - ey, G.x - ex), pulse = 1 + Math.sin(tm / 6) * .06;
+                for (let k = 5; k >= 1; k--) g.fillStyle(0xff5a10, .035 * (6 - k) / 2).fillEllipse(ex, ey, 190 * pulse + k * 36, 100 * pulse + k * 22);
+                for (let i = 0; i < 16; i++) { const an = i * Math.PI / 8 + tm / 90, r1 = 92 * pulse, r2 = r1 + 28 + Math.sin(tm / 5 + i) * 10; g.fillStyle(i % 2 ? 0xff3a10 : 0xff9a20, .8).fillTriangle(ex + Math.cos(an - .1) * r1, ey + Math.sin(an - .1) * r1 * .55, ex + Math.cos(an) * r2, ey + Math.sin(an) * r2 * .62, ex + Math.cos(an + .1) * r1, ey + Math.sin(an + .1) * r1 * .55); }
+                g.fillStyle(0xff7a10, 1).fillEllipse(ex, ey, 180 * pulse, 90 * pulse);
+                g.fillStyle(0xffd060, .9).fillEllipse(ex, ey, 120 * pulse, 60 * pulse);
+                const px = ex + Math.cos(a) * 30, py = ey + Math.sin(a) * 12;
+                g.fillStyle(0x100404, 1).fillEllipse(px, py, 22, 72 * pulse);
+                g.lineStyle(3, 0x3a0a04, .8).strokeEllipse(ex, ey, 180 * pulse, 90 * pulse);
+                // kužeľ pohľadu smerom k hrdinovi, keď je blízko
+                const dh = Math.hypot(G.x - ex, G.y - ey);
+                if (dh < 1400) { g.fillStyle(0xff6a10, .07 + .03 * Math.sin(tm / 4)); g.fillTriangle(ex, ey, ex + Math.cos(a - .12) * dh, ey + Math.sin(a - .12) * dh, ex + Math.cos(a + .12) * dh, ey + Math.sin(a + .12) * dh); }
+            } else {
+                g.fillStyle(0x2a1a1a, 1); for (let k = 0; k < 7; k++) { const sx = ex - 70 + k * 24, h = 20 + ((k * 37) % 40); g.fillTriangle(sx - 8, ey + 60, sx + 8, ey + 60, sx + (k % 2 ? 4 : -4), ey + 60 - h); }
+                for (let k = 0; k < 6; k++) { const s = (tm * .3 + k * 25) % 150; g.fillStyle(0x3a3030, .3 - s / 600).fillCircle(ex + Math.sin(s * .05 + k) * 30 - 20 + k * 10, ey + 20 - s, 14 + s * .2); }
+            }
         }
         // Hora osudu: dym a pulz žiary
         if (this.doom) { for (let k = 0; k < 5; k++) { const s = (tm * .3 + k * 30) % 150; g.fillStyle(0x2a1a18, .35 - s / 500).fillCircle(this.doom.x + Math.sin(s * .05 + k) * 20 - 10, this.doom.y - this.doom.displayHeight * .9 - s * 1.2, 14 + s * .25); } }

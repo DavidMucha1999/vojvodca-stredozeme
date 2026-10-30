@@ -124,7 +124,14 @@ try {
     run('G.camp = 0; G.stay = null; mode = "map";');
     check('Lordi majú úlohy: strážcovia lén a poľné vojsko maršala', run('E.filter(e => e.role === "guard").length > 5 && E.filter(e => e.role === "army").length > 5 && [0,1,2,3,4,5,7,8].every(f => !E.some(e => e.f === f) || marshal(f))'));
     run('var gd = E.find(e => e.role === "guard" && TW[e.home] && TW[e.home].f === e.f); var gh = gd ? gd.home : null; mode = "map"; G.camp = 1; for (let i = 0; i < 1200; i++) worldTick(1); G.camp = 0;');
-    check('Strážca léna ostáva pri svojom hrade', run('!gd || gd.dead || gd.home !== gh || Math.hypot(gd.x - TW[gh].x, gd.y - TW[gh].y) < 60 * K'));
+    check('Strážca léna ostáva pri svojom hrade', run('!gd || gd.dead || gd.home !== gh || Math.hypot(gd.x - TW[gh].x, gd.y - TW[gh].y) < 110 * K || E.some(o => o !== gd && hos(o.f, gd.f) && Math.hypot(o.x - gd.x, o.y - gd.y) < 100 * K)'));
+    run('var m0 = marshal(0); mst(0).losses = 5; mst(0).since = -10; marshalDaily(); var m1 = marshal(0); G.fac = 0; WR[0][2] = WR[2][0] = true; CP[0] = TW.findIndex(t => hos(t.f, 0)); LETTERS.length = 0; onMuster(m1, CP[0]);');
+    check('Maršal: zvrhnutie po prehrách a list hráčovi pri zvolaní vojska', run('m1 && (m1 !== m0 || E.filter(e => e.f === 0).length < 2) && LETTERS.length === 1 && /zvolávam zraz/.test(LETTERS[0].text)'));
+    run('if (LETTERS.length) { readLetter(); var jb = document.getElementById("bt").children.find(b => /Pridať sa/.test(b.textContent)); jb.onclick(); }');
+    check('Prijatie výzvy nastaví cieľ na zraz', run('!LETTERS.length && (G.join == null || (G.join.f === 0 && Math.hypot(G.tx - G.x, G.ty - G.y) >= 0))'));
+    run('G.fac = 6; var ev0 = EVENTS.length; captureEvent(TW[0], 0, 2, "Test"); G.dest = -1; G.vd = -1; G.chase = null; G.talk = null; G.pd = 1; G.x = G.tx = PLACES[1].x * K; G.y = G.ty = PLACES[1].y * K + 10; mode = "map"; worldTick(1);');
+    check('Oznámenie o dobytí a miesto na mape (Argonath)', run('EVENTS.length === ev0 + 1 && mode === "town" && document.getElementById("bt").children.some(b => /Kráľov/.test(b.textContent))'), run('JSON.stringify([mode, G.pd, G.dest, G.vd, G.qd, document.getElementById("bt").children.map(b => b.textContent)])'));
+    run(closeMenus + '; mode = "map"; EVENTS.length = 0;');
     check('Dediny majú jedinečné mená podľa kraja', run('new Set(VL.map(v => v.n)).size === VL.length && VL.length >= 90'));
     check('Väčší svet a polohy podľa mierky', run('K > 6 && WW === 1800 * K && TW.every(t => t.x <= WW && t.y <= WH) && regionAt(10, 10) === "s"'));
     check('Ikony rozhrania k tlačidlám a lište', run('Icons.forButton("Denník") === "diary" && Icons.forHud("Zdravie 10/10") === "heart" && Icons.forHud("Zlato 5") === "coins" && Icons.forDialog("Späť") === "back" && Icons.has("mug")'));

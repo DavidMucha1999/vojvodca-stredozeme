@@ -28,7 +28,7 @@ function startBattleBase(en, al) {
         for (let i = 0; i < Math.min(Math.ceil(al.n), 12); i++)
             U.push(Object.assign(mk(0, 'i'), { ally: 1 }));
     for (let i = 0; i < en.n; i++)
-        U.push(mk(1, en.nz ? 'z' : (i % 3 === 1 && FK[en.f] && FK[en.f].length ? FK[en.f][i % 2] : ek(en.f, i)), en.f));
+        U.push(mk(1, en.nz ? 'z' : en.trolls || en.beorn ? 't' : en.spiders ? 'w' : (i % 3 === 1 && FK[en.f] && FK[en.f].length ? FK[en.f][i % 2] : ek(en.f, i)), en.f));   // miesta: trollovia, Beorn (medveď), pavúky
     if (en.siege)
         U.forEach(u => {
             if (u.t)
@@ -182,6 +182,7 @@ function endBattle(win) {
             G.safe = 180;
             G.chase = null;
             roar(0);
+            if (LB && LB.id != null && MAR[LB.f] === LB.id && typeof mst === 'function') { if (win) mst(LB.f).losses++; else mst(LB.f).wins++; }   // maršal v bitke s hráčom
             E = E.filter(e => e !== LB);
             if (win) {
                 const loot = LB.n * 7 + 10 + (LB.siege ? 120 : 0) + (LB.vil ? 80 + Math.floor(Math.random() * 80) : 0);
@@ -190,6 +191,7 @@ function endBattle(win) {
                     LB.vil.st = 8;
                 if (LB.siege) {
                     lg('Dobyl si hrad ' + LB.t.n + ' aj s okolitými dedinami.');
+                    captureEvent(LB.t, LB.t.f, G.fac, G.name);
                     (LB.lords || []).forEach(e => { e.n = Math.max(2, e.n * .4); e.home = null; e.role = 'army'; });   // obrancovia z hradu utekajú zdecimovaní
                     LB.t.f = G.fac;
                     LB.t.g = 8;

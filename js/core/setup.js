@@ -1,7 +1,7 @@
 /*
  * Základ: plátno, rozmery sveta, náhodný generátor, globálny stav hry a denník.
  */
-const cv = document.getElementById('c'), ctx = cv.getContext('2d'), W = 720, H = 480, WW = 11700, WH = 7800, K = 6.5, BW = 1440, BH = 960, ov = document.getElementById('ov'), hud = document.getElementById('hud');
+const cv = document.getElementById('c'), ctx = cv.getContext('2d'), W = 720, H = 480, WW = 14400, WH = 9600, K = 8, BW = 1440, BH = 960, ov = document.getElementById('ov'), hud = document.getElementById('hud');
 cv.width = W;
 cv.height = H;
 let seed = 11;
