@@ -65,7 +65,7 @@ class RoomScene extends Phaser.Scene {
             pl.x = Math.max(24, Math.min(W - 24, pl.x + dx * sp)); pl.y = Math.max(r.floorY + 10, Math.min(H - 30, pl.y + dy * sp));
             if (r.block) for (const [bx, by, bw, bh] of r.block) if (pl.x > bx && pl.x < bx + bw && pl.y > by && pl.y < by + bh) { pl.x -= dx * sp; pl.y -= dy * sp; this.plT = null; }
             if (dx) pl.setFlipX(dx < 0);
-            this.plStep += dt; pl.setFrame(Math.floor(this.plStep / 7) % 2);
+            this.plStep += dt; pl.setFrame(1 + Math.floor(this.plStep / 5) % 4);
         } else pl.setFrame(0);
         pl.setDepth(pl.y); this.plLbl.setPosition(pl.x, pl.y + 8);
         this.people.forEach(p => { const near = Math.hypot(p.x - pl.x, p.y - pl.y) < 70; p.lbl.setColor(near ? '#ffd24a' : p.spot ? '#ffe8b0' : '#f4e8d0'); });

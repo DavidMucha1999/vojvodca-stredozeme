@@ -865,6 +865,7 @@ const BUILDINGS = [['m', 'Mlyn (+10 zlata denne)', 200], ['k', 'Kasárne (+1 pe�
 function daily2() {
     TW.forEach(t => { t.pr = Math.min(100, (t.pr ?? 40) + 1 + (t.bd && t.bd.m ? 1 : 0) + (t.bd && t.bd.t ? 1 : 0)); if (t.mine)
         G.gold += lvl(t) * 4 + (t.bd && t.bd.t ? lvl(t) * 2 : 0); });
+    if (G.camp && G.stay) G.hp = Math.min(mh(), G.hp + 25);   // pobyt v hrade: rýchlejšie hojenie
     dailyTrade();
     dailyWeather();
     compDaily();
@@ -4535,9 +4536,20 @@ const Figures = (() => {
         // plášť
         const cape = o.cape || CAPES[0];
         { const cg = c.createLinearGradient(-9, 0, 3, 0); cg.addColorStop(0, dark(A.pat === 'robe' ? '#0a0a10' : cape, .7)); cg.addColorStop(1, A.pat === 'robe' ? '#0a0a10' : cape); c.fillStyle = cg; P(c, [[-2, -18], [3, -18], [2, -2 + (M ? 2 : 0)], [-9 - walk * .3, 0]]); c.fill(); c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = .5; c.beginPath(); c.moveTo(-1, -17); c.lineTo(-5 - walk * .2, -1); c.stroke(); }
-        // nohy
-        if (!M) { for (const d of [walk, -walk]) { c.fillStyle = A.pat === 'robe' ? '#0a0a10' : '#3a2a1a'; P(c, [[-2 + d * .2, -8], [2 + d * .2, -8], [2 + d, 0], [-2 + d, 0]]); c.fill(); c.fillStyle = '#2a1a10'; c.fillRect(-2.5 + d, -1.5, 5, 1.5); } }
-        else { c.fillStyle = A.pat === 'robe' ? '#0a0a10' : '#3a2a1a'; P(c, [[1, -8], [5, -8], [6, 2], [3, 3]]); c.fill(); c.fillStyle = '#2a1a10'; c.fillRect(2.5, 2, 4.5, 1.6); }
+        // nohy: stehno a lýtko s kolenom (zadná noha tmavšia), čižmy
+        const trous = A.pat === 'robe' ? '#0a0a10' : o.trous || '#3a2a1a';
+        if (!M) {
+            [[-walk, 1], [walk, 0]].forEach(([d, back]) => {
+                c.strokeStyle = back ? dark(trous, .7) : trous; c.lineWidth = 2.6; c.lineCap = 'round'; c.lineJoin = 'round';
+                const kx = d * .45 + Math.abs(walk) * .25, ky = -5.5 - Math.abs(d) * .15;
+                c.beginPath(); c.moveTo(0, -10.5); c.lineTo(kx, ky); c.lineTo(d, -1.2); c.stroke();
+                c.fillStyle = back ? '#1a1008' : '#2a1a10'; c.beginPath(); c.roundRect ? c.roundRect(d - 2.2, -2.2, 5.2, 2.2, 1) : c.rect(d - 2.2, -2.2, 5.2, 2.2); c.fill();   // čižma
+            });
+            c.translate(0, -3);                                                            // dlhšie nohy: horná časť tela vyššie
+        }
+        else { c.strokeStyle = trous; c.lineWidth = 2.6; c.lineCap = 'round'; c.lineJoin = 'round'; c.beginPath(); c.moveTo(2, -8); c.lineTo(5, -2); c.lineTo(5.5, 2.5); c.stroke(); c.fillStyle = '#2a1a10'; c.fillRect(3, 1.8, 5, 1.8); }
+        // krk
+        c.fillStyle = dark(skin, .85); c.fillRect(-1.3, -22, 2.6, 3);
         // trup
         const pad = A.pad || 1;
         const tg = c.createLinearGradient(-4 * pad, 0, 4 * pad, 0); tg.addColorStop(0, dark(A.col, .75)); tg.addColorStop(.6, A.col); tg.addColorStop(1, dark(A.col, .9));
@@ -4554,10 +4566,13 @@ const Figures = (() => {
         if (A.spikes) { c.fillStyle = A.rim || '#666'; for (const sx of [-4, 0, 4]) { P(c, [[sx - 1, -20], [sx, -24], [sx + 1, -20]]); c.fill(); } }
         if (A.hand) { c.fillStyle = '#eee'; E(c, 0, -14, 1.6, 2); c.fill(); }
         if (A.rust) { c.fillStyle = 'rgba(120,60,20,.35)'; c.fillRect(-2, -16, 3, 2); c.fillRect(1, -11, 2, 2); }
-        // ramená a ruky
+        // opasok s prackou
+        if (A.pat !== 'robe') { c.fillStyle = '#2a1a10'; c.fillRect(-4 * pad, -9.6, 8 * pad, 1.6); c.fillStyle = A.rim || '#c8a040'; c.fillRect(-.9, -9.9, 1.8, 2.2); }
+        // ramená (plátové zbroje majú náplecníky) a ruky
         c.fillStyle = A.col; E(c, -4 * pad, -18, 2.2, 2.2); c.fill(); E(c, 4 * pad, -18, 2.2, 2.2); c.fill();
+        if (A.pat === 'plate' || A.pat === 'dwarf' || A.pat === 'scale') { c.fillStyle = dark(A.col, 1.15); E(c, -4.2 * pad, -18.6, 2.8, 2); c.fill(); E(c, 4.2 * pad, -18.6, 2.8, 2); c.fill(); c.strokeStyle = A.rim || '#888'; c.lineWidth = .5; E(c, 4.2 * pad, -18.6, 2.8, 2); c.stroke(); }
         c.strokeStyle = skin === '#000' ? '#0a0a10' : A.col; c.lineWidth = 2.4; c.lineCap = 'round';
-        if (Wp) { c.beginPath(); c.moveTo(4 * pad, -17); c.lineTo(8, -12); c.stroke(); c.fillStyle = skin; E(c, 8.5, -11.5, 1.6, 1.6); c.fill(); weapon(c, Wp, 8.5, -11.5, fr); }   // pravá ruka so zbraňou
+        if (Wp) { c.beginPath(); c.moveTo(4 * pad, -17); c.lineTo(6.5, -14.5); c.lineTo(8, -12); c.stroke(); c.strokeStyle = dark(A.col, .8); c.lineWidth = 1; c.beginPath(); c.moveTo(6.5, -14.5); c.lineTo(8, -12); c.stroke(); c.fillStyle = skin; E(c, 8.5, -11.5, 1.6, 1.6); c.fill(); weapon(c, Wp, 8.5, -11.5, fr); }   // pravá ruka so zbraňou (rameno, lakeť, dlaň)
         else { c.beginPath(); c.moveTo(4 * pad, -17); c.lineTo(6, -9); c.stroke(); c.fillStyle = skin; E(c, 6, -8.5, 1.6, 1.6); c.fill(); if (o.mug) { c.fillStyle = '#c8903a'; c.fillRect(6.5, -11, 3.5, 4); c.fillStyle = '#fff4dc'; c.fillRect(6.5, -11.8, 3.5, 1.2); } }
         if (S) shield(c, S, -7, -12);
         else { c.strokeStyle = A.col; c.beginPath(); c.moveTo(-4 * pad, -17); c.lineTo(-6, -10); c.stroke(); }
@@ -4567,7 +4582,8 @@ const Figures = (() => {
         const hg = c.createLinearGradient(-4, 0, 4, 0); hg.addColorStop(0, dark(skin, .8)); hg.addColorStop(1, skin);
         c.fillStyle = hg;
         if (o.orc) { P(c, [[-4, -27], [2, -28.5], [5, -25], [5.5, -21], [2, -19.5], [-3.5, -20.5]]); c.fill(); }
-        else { E(c, 0, -24, 4, 4.4); c.fill(); }
+        else { E(c, 0, -24, 4, 4.4); c.fill(); c.fillStyle = 'rgba(200,90,70,.18)'; E(c, 2.2, -22.6, 1.4, .9); c.fill(); }   // líce
+        c.strokeStyle = 'rgba(0,0,0,.3)'; c.lineWidth = .4; c.stroke();
         if (o.elf) { c.fillStyle = skin; P(c, [[-3.5, -25], [-7, -28], [-3, -22.5]]); c.fill(); } else if (!o.nazgul) { c.fillStyle = dark(skin, .9); E(c, -3.6, -24, 1, 1.4); c.fill(); }   // ucho
         if (!o.nazgul) {
             c.fillStyle = '#f4f0ea'; E(c, 2, -24.8, 1.1, .8); c.fill();                            // oko
@@ -5007,6 +5023,7 @@ function vill(i) {
 }
 function town(i) {
     const t = TW[i];
+    if (typeof ROOM !== 'undefined' && ROOM && ROOM.i === i && !ROOM.menu) return roomReturn();   // „Späť“ z okna otvoreného na nádvorí/v sieni/v krčme
     G.dest = -1;
     mode = 'town';
     if (hos(t.f, G.fac)) {
@@ -5018,6 +5035,7 @@ function town(i) {
     qChk('v', t.n);
     questEvent('v', t.n);
     show(t.n + ' (' + FN[t.f] + ')', 'Zlato ' + G.gold + ', vojsko ' + ar() + ', zdravie ' + Math.ceil(G.hp) + '/' + mh() + '. Posádka hradu: ' + t.g + (t.lord ? ', léno drží ' + t.lord : '') + '.');
+    if (typeof roomsOk === 'function' && roomsOk()) btn('Vstúpiť na nádvorie (prejsť sa po hrade)', () => enterCastle(i, 'yard'), 0, 'castle');
     [['r', 'Verbovanie vojakov', 'recruit'], ['e', 'Kováč a zbrojnica', 'anvil'], ['v', 'Vojsko, zajatci a odpočinok', 'rest'], ...(t.mine ? [['h', 'Správa hradu', 'castle']] : []), ['d', 'Dvor a diplomacia', 'court']].forEach(([c, n, ic]) => btn(n, () => tsub(i, c), 0, ic));
     btn('Trh', () => market(t, () => town(i)), 0, 'scales');
     btn('Krčma' + (compsAt(t).length ? ' (niekto tu čaká)' : ''), () => enterTavern(i), 0, 'mug');
@@ -5170,7 +5188,7 @@ function lord(e) {
                     msg(e.nm + ' odmieta. Potrebuje vyšší vzťah alebo väčšiu slávu.', end);
                 }
             }, G.gold < 100);
-        btn('Odísť', () => { ov.classList.add('hide'); mode = 'map'; });
+        btn(typeof ROOM !== 'undefined' && ROOM ? 'Späť do siene' : 'Odísť', () => { if (typeof ROOM !== 'undefined' && ROOM) return roomReturn(); ov.classList.add('hide'); mode = 'map'; });
     }
     const p = document.querySelector('#ov p');
     if (p)
@@ -5411,6 +5429,8 @@ function enterTavern(i) {
     ov.classList.add('hide');
     mode = 'tavern';
     G.dest = -1;
+    ROOM = { i, room: 'tavern', from: ROOM && ROOM.i === i ? ROOM.room : null };
+    if (game.scene.isActive('Castle')) game.scene.stop('Castle');
     const sc = game.scene.getScene('Tavern');
     if (game.scene.isActive('Map')) game.scene.sleep('Map');          // mapa pod krčmou spí (čas stojí)
     if (sc.scene.isActive()) sc.scene.restart({ i }); else game.scene.start('Tavern', { i });
@@ -5469,6 +5489,125 @@ function rumor(t) {
     if (G.ring === 1) R.push('Niečo sa deje. Vrany lietajú na východ a v noci sa ľuďom sníva o ohni. Vravia, že sa niečo stratené našlo.');
     R.push(MW.n !== 'clear' ? 'Počasie sa kazí. Starí ľudia vravia, že ' + WNAME[MW.n] + ' potrvá ešte pár dní.' : 'Pekné dni. Vraj to dlho nevydrží – nikdy nevydrží.');
     return R[Math.floor(Math.random() * R.length)];
+}
+
+</script>
+<script>
+/*
+ * Nádvorie a sieň hradu (scéna Castle v js/engine/scenes/CastleScene.js) a rozhovory na nich.
+ * ROOM = { i, room, from } hovorí, v ktorej miestnosti hráč je ('yard', 'hall', 'tavern'); okná otvorené z miestnosti
+ * sa po „Späť“ (town(i)) vracajú do nej (roomReturn). Bez Phaseru (index.html, testy) sa nádvorie nepoužíva.
+ */
+let ROOM = null;
+const roomsOk = () => typeof game !== 'undefined' && game.scene && game.scene.getScene('Castle');
+
+/** Vstup na nádvorie ('yard') alebo do siene ('hall') hradu i. */
+function enterCastle(i, room = 'yard') {
+    if (!roomsOk()) return town(i);
+    ov.classList.add('hide');
+    mode = 'castle';
+    G.dest = -1;
+    ROOM = { i, room, from: ROOM && ROOM.i === i ? ROOM.room : null };
+    if (game.scene.isActive('Map')) game.scene.sleep('Map');
+    if (game.scene.isActive('Tavern')) game.scene.stop('Tavern');
+    const sc = game.scene.getScene('Castle');
+    if (sc.scene.isActive()) sc.scene.restart({ i, room }); else game.scene.start('Castle', { i, room });
+}
+/** Odchod z hradu na mapu. */
+function leaveCastle() {
+    ROOM = null;
+    ov.classList.add('hide');
+    mode = 'map';
+    if (roomsOk()) { if (game.scene.isActive('Castle')) game.scene.stop('Castle'); if (game.scene.isSleeping('Map')) game.scene.wake('Map'); }
+}
+/** Zavrie okno a vráti hráča do miestnosti, v ktorej bol. */
+function roomReturn() {
+    if (!ROOM) return;
+    ov.classList.add('hide');
+    if (ROOM.room === 'tavern') { mode = 'tavern'; return; }
+    mode = 'castle';
+    const sc = roomsOk() && game.scene.getScene('Castle');
+    if (sc && !sc.scene.isActive()) enterCastle(ROOM.i, ROOM.room);
+}
+const inRoom = () => !!ROOM;
+
+/** Kováč na nádvorí: krátky rozhovor, potom kováčňa. */
+function castleSmith(i) {
+    const t = TW[i], sc = game.scene.getScene('Castle'), evil = heroSide() === 1;
+    mode = 'castle';
+    PORTRAIT = sc.looks ? sc.looks.smith : null;
+    show(evil ? 'Orkský kováč' : 'Kováč hradu ' + t.n, '„' + (evil ? 'Železo je horúce a ja mám málo času. Čo chceš prekuť?' : t.bd && t.bd.s ? 'Dielňa beží dňom i nocou, pane. Pre teba o pätinu lacnejšie.' : 'Dobrá oceľ, poctivá práca. Pozri si tovar.') + '“');
+    btn('Pozrieť si zbrane a výstroj', () => smithy(i), 0, 'anvil');
+    btn('Čo vieš o výbave?', () => { mode = 'castle'; msg('„' + (evil ? 'Čím ťažšie, tým lepšie. Orkská šabľa ide cez kosť ako cez maslo, ale skutočné zbrane pre pánov Tieňa nájdeš len v hradoch zla.' : 'Každý kraj kuje inak: Gondor plát, Rohan krúžkovú zbroj, elfovia ľahké šupiny, trpaslíci pevný plát z Ereboru. Najlepšie kusy majú vlastnú dušu – a cenu.') + '“', () => castleSmith(i)); }, 0, 'book');
+    btn('Späť na nádvorie', roomReturn, 0, 'back');
+}
+/** Kupec na nádvorí: rozhovor a trh. */
+function castleMerchant(i) {
+    const t = TW[i], sc = game.scene.getScene('Castle');
+    mode = 'castle';
+    const best = GOODS.map(g => [g, price(t, g.k)]).sort((a, b) => b[1] - a[1])[0];
+    PORTRAIT = sc.looks ? sc.looks.merc : null;
+    show('Kupec v ' + t.n, '„Tovar z celej Stredozeme, pane. ' + (best ? 'Najviac tu dnes zaplatíme za ' + best[0].n.toLowerCase() + ' (' + best[1] + ' zlata za kus).' : '') + (cargoCount() ? ' Vidím, že voz máš plný – pozrime sa, čo vezieš.' : '') + '“');
+    btn('Obchodovať', () => market(t, () => town(i)), 0, 'scales');
+    btn('Kde sa oplatí predávať?', () => { mode = 'castle'; const rich = TW.filter(x => !hos(x.f, G.fac) && x !== t).sort((a, b) => (b.pr || 40) - (a.pr || 40))[0]; msg('„' + (rich ? 'Najbohatší trh je teraz v ' + rich.n + '. Kto tam dovezie, čo im chýba, zarobí dvojnásobok.' : 'Všade je zle, pane. Vojna kazí obchod.') + '“', () => castleMerchant(i)); }, 0, 'map');
+    btn('Späť na nádvorie', roomReturn, 0, 'back');
+}
+/** Veliteľ posádky: verbovanie a stav obrany. */
+function castleCaptain(i) {
+    const t = TW[i], sc = game.scene.getScene('Castle');
+    mode = 'castle';
+    PORTRAIT = sc.looks ? sc.looks.cap : null;
+    show('Veliteľ posádky, ' + t.n, '„Posádka má ' + t.g + ' mužov, hradby stupeň ' + (t.wl || 0) + '. ' + (t.g < 12 ? 'Je nás málo – ak prídu, dlho sa neudržíme.' : 'Hradby udržíme.') + ' Hľadáš vojakov? Pár chlapov by šlo.“');
+    btn('Verbovať vojakov', () => tsub(i, 'r'), 0, 'recruit');
+    btn('Vojsko, zajatci a odpočinok', () => tsub(i, 'v'), 0, 'rest');
+    btn('Turnaj v aréne (vstupné 20)', () => { G.gold -= 20; upd(); ROOM = null; ov.classList.add('hide'); if (game.scene.isActive('Castle')) game.scene.stop('Castle'); if (game.scene.isSleeping('Map')) game.scene.wake('Map'); startBattle({ n: 3 + Math.floor(G.lv / 2), f: t.f, ar: 1, t }); }, G.gold < 20, 'attack');
+    btn('Späť na nádvorie', roomReturn, 0, 'back');
+}
+function castleWell(i) {
+    mode = 'castle';
+    const heal = Math.min(mh() - G.hp, 10);
+    if (heal > 0) { G.hp += heal; upd(); }
+    msg('Studená voda zo studne. ' + (heal > 0 ? 'Zdravie +' + Math.round(heal) + '.' : 'Osviežila ťa, aj keď si zranený nebol.'), roomReturn);
+}
+function castleTemple(i) {
+    mode = 'castle';
+    const done = G.tpray === G.day;
+    show('Chrám', done ? 'Dnes si sa už pomodlil. Ticho a vôňa kadidla ťa upokojujú.' : 'V chráme je ticho. Môžeš sa pomodliť za svojich mužov (česť +1, raz za deň).');
+    btn('Pomodliť sa', () => { G.tpray = G.day; G.hon = (G.hon || 0) + 1; upd(); msg('Odchádzaš s pokojnejšou mysľou. Česť +1.', roomReturn); }, done, 'honor');
+    btn('Späť na nádvorie', roomReturn, 0, 'back');
+}
+function castleTraining(i) {
+    mode = 'castle';
+    const done = G.ttrain === G.day, cost = 10;
+    show('Cvičisko', done ? 'Dnes si už cvičil; svaly ťa bolia.' : 'Panák z dreva a slamy. Za ' + cost + ' zlata si zacvičíš s posádkou: skúsenosti +5 (raz za deň).');
+    btn('Cvičiť (' + cost + ' zlata)', () => { G.gold -= cost; G.ttrain = G.day; G.xp += 5; upd(); msg('Ruka si pamätá údery. Skúsenosti +5.', roomReturn); }, done || G.gold < cost, 'attack');
+    btn('Späť na nádvorie', roomReturn, 0, 'back');
+}
+/** Pán hradu v sieni: bežný rozhovor s lordom. */
+function castleLord(i, e) { lord(e); }
+/** Správca hradu v sieni: správa, dvor, úlohy, nocľah. */
+function castleSteward(i) {
+    const t = TW[i], sc = game.scene.getScene('Castle'), mine = t.mine;
+    mode = 'castle';
+    PORTRAIT = sc.stewardLook || null;
+    const bd = t.bd || {}, built = BUILDINGS.filter(([k]) => bd[k]).map(([, n]) => n.split(' (')[0]);
+    show('Správca hradu ' + t.n, '„' + (mine ? 'Vitaj doma, pane. Hrad má prosperitu ' + Math.round(t.pr ?? 40) + ' %, denný príjem ' + castleIncome(t) + ' zlata' + (built.length ? ', postavené: ' + built.join(', ') : '') + '.' : 'Vitaj v sieni ' + t.n + '. ' + (t.lord ? 'Léno drží ' + t.lord + '. ' : '') + 'Pán ' + (sc.lord ? 'je práve doma.' : 'je na výprave; v jeho mene hovorím ja.')) + '“');
+    if (mine) btn('Správa hradu (stavby, hradby, léna)', () => tsub(i, 'h'), 0, 'castle');
+    btn('Dvor a diplomacia', () => tsub(i, 'd'), 0, 'court');
+    questsAt(t).forEach(q => { const d = qDef(q), s = qStep(q); if (s.k === 'r') btn('Úloha: uzavrieť „' + d.n + '“', () => { questComplete(q); msg('„' + qText(q, d.done) + '“', roomReturn); }, 0, 'quest'); else btn('Úloha: odovzdať ' + s.n + '× ' + goodOf(s.a).n, () => { if (questDeliver(q)) msg(q.step >= d.steps.length ? '„' + qText(q, d.done) + '“' : 'Tovar odovzdaný.', roomReturn); }, ((G.cargo || {})[s.a] || 0) < s.n, 'quest'); });
+    if (G.ring === 1 && t.n === 'Barad-dûr' && bloc(G.fac) === 1) btn('Odovzdať Prsteň Sauronovi', () => { G.ring = 2; G.gold += 1000; G.ren += 10; lg('Odovzdal si Jeden prsteň Sauronovi.'); ach(); upd(); roomReturn(); }, 0, 'ring');
+    btn('Zostať v hrade (čas plynie, hojíš sa)', () => stayInCastle(i), 0, 'rest');
+    btn('Uložiť hru', () => saveMenu(() => castleSteward(i)), 0, 'chest');
+    btn('Späť do siene', roomReturn, 0, 'back');
+}
+/** Pobyt v hrade: ako táborenie – hráč stojí pri hrade, dni plynú, zdravie sa hojí rýchlejšie. Klik na mapu pobyt ukončí. */
+function stayInCastle(i) {
+    const t = TW[i];
+    G.camp = 1; G.stay = t.n; G.x = G.tx = t.x; G.y = G.ty = t.y + 30;
+    const b = [...tb.children].find(x => /tábor/i.test(x.textContent)); if (b) b.textContent = 'Zrušiť pobyt';
+    leaveCastle();
+    TS = { s: 'Zostávaš v hrade ' + t.n + '. Čas plynie a hojíš sa; klikni na mapu, keď chceš vyraziť.', l: 320 };
+    upd();
 }
 
 </script>
@@ -5707,7 +5846,7 @@ wrapEl.appendChild(tb);
 tb.style.flexWrap = 'wrap';
 tb.style.maxWidth = '70%';
 [['Tábor', function () { if (!G || mode !== 'map')
-            return; G.camp = !G.camp; this.textContent = G.camp ? 'Zrušiť tábor' : 'Tábor'; upd(); }], ['Encyklopédia', () => { if (G && mode === 'map')
+            return; G.camp = !G.camp; if (!G.camp) G.stay = null; this.textContent = G.camp ? 'Zrušiť tábor' : 'Tábor'; upd(); }], ['Encyklopédia', () => { if (G && mode === 'map')
             ency(); }], ['Celá obrazovka', () => fsc()]].forEach(([n, fn]) => { const b = document.createElement('button'); b.textContent = n; b.style.cssText = 'font-size:.8rem;padding:.3rem .55rem'; b.onclick = fn; tb.appendChild(b); });
 
 </script>
@@ -6324,7 +6463,7 @@ const Icons = (() => {
     const DLG = [[/^Späť/, 'back'], [/^(Odísť|Zavrieť|Pokračovať na mapu)/, 'door'], [/^(Uložiť|Načítať|Pozícia|Automatick)/, 'chest'], [/^Trh/, 'scales'], [/^Krčma/, 'mug'], [/^Kováč/, 'anvil'], [/^Verbovanie/, 'recruit'], [/^Obliehať|^Zaútočiť/, 'ram'], [/^(Prijať úlohu|Úloha)/, 'quest'], [/^Hovoriť|^Rozhovor|^Porozprávať/, 'group'], [/^Kúpiť|^Predať/, 'coins'], [/^Vyrabovať/, 'fire'], [/^Diplomacia/, 'honor'], [/^Hrdina/, 'hero'], [/^Turnaj/, 'attack'], [/^Správa hradu/, 'castle'], [/^Dvor/, 'court'], [/^Vojsko,/, 'rest'], [/^Nová hra|^Vyraziť/, 'sword']];
     const forDialog = text => { const m = DLG.find(([re]) => re.test(text.trim())); return m ? m[1] : null; };
     const forHud = (text, first) => { const m = HUD.find(([re]) => re.test(text)); return m ? m[1] : first ? 'helm' : null; };
-    const forButton = text => { const t = text.trim(); if (/^Zvuk: vyp/.test(t)) return 'soundoff'; if (/^Zvuk/.test(t)) return 'sound'; if (/^Tábor/.test(t)) return 'tent'; return BTN[t] || null; };
+    const forButton = text => { const t = text.trim(); if (/^Zvuk: vyp/.test(t)) return 'soundoff'; if (/^Zvuk/.test(t)) return 'sound'; if (/tábor|pobyt/i.test(t)) return 'tent'; return BTN[t] || null; };
     return { tex, canvas, has, forHud, forButton, forDialog, SZ };
 })();
 
@@ -6456,7 +6595,7 @@ function ambTick() {
     if (!ac || !G || mode === 'intro') { if (AMB) for (const k in AMB.src) ambSet(k, 0); return; }
     ambInit();
     if (mu) { for (const k in AMB.src) ambSet(k, 0); return; }
-    const battle = mode === 'battle', inside = mode === 'town' || mode === 'tavern';   // v hrade a v krčme vonkajšie zvuky nepočuť
+    const battle = mode === 'battle', inside = mode === 'town' || mode === 'tavern' || mode === 'castle';   // v hrade a v krčme vonkajšie zvuky nepočuť
     const w = inside ? 'clear' : battle ? WX.n : MW.n, night = battle ? WX.night : isNight();
     const se = season();
     ambSet('rain', w === 'rain' ? .1 : w === 'storm' ? .18 : w === 'ash' ? .05 : 0);            // dážď tichý, len ako podkres
@@ -6730,7 +6869,7 @@ class MapScene extends Phaser.Scene {
     click(p) {
         if (mode !== 'map' || !G) return;
         const ui = this.scene.get('UI'); if (ui && (ui.big || ui.menu)) { if (ui.menu) ui.menu = null; return; }   // otvorená veľká mapa alebo ponuka
-        if (G.camp) { G.camp = 0; const b = [...tb.children].find(x => /tábor/i.test(x.textContent)); if (b) b.textContent = 'Tábor'; upd(); }
+        if (G.camp) { G.camp = 0; G.stay = null; const b = [...tb.children].find(x => /tábor|pobyt/i.test(x.textContent)); if (b) b.textContent = 'Tábor'; upd(); }
         G.dest = -1; G.vd = -1; G.chase = null; G.talk = null;
         const sx = p.x / RES, sy = p.y / RES;
         if (sx > MM.x && sy > MM.y) { G.tx = (sx - MM.x) / MM.w * WW; G.ty = (sy - MM.y) / MM.h * WH; return; }
@@ -6772,7 +6911,10 @@ class MapScene extends Phaser.Scene {
             const f = TW[o.v.t].f, b = o.v.st > 0, L = lvl(o.v), key = f + (b ? 'b' : '') + (this.newArt ? L : '');
             if (o.key !== key) {
                 o.key = key;
-                if (this.newArt) o.spr.setTexture(b ? 'map_village_burn' : 'map_village_' + regionAt(o.v.x, o.v.y) + L).setScale(.36);
+                if (this.newArt) {   // dediny zla majú tmavé mordorské chatrče, dediny dobra kraj podľa polohy
+                    const evil = bloc(f) === 1 && f !== 4, reg = evil ? 'a' : regionAt(o.v.x, o.v.y);
+                    o.spr.setTexture(b ? 'map_village_burn' : 'map_village_' + reg + L).setScale(.36).setTint(evil && !b ? 0xb8a8a0 : 0xffffff);
+                }
                 else { const k = Art.village(this, f, b); o.spr.setTexture(k).setScale(Art.scale[k] || 1 / RES); }
                 o.txt.setColor(b ? '#c08070' : FC[f]);
             }
@@ -7074,13 +7216,107 @@ class BattleScene extends Phaser.Scene {
 </script>
 <script>
 /*
+ * ENGINE: spoločný základ „miestností“, po ktorých chodí hráčova postava (krčma, nádvorie hradu, sieň hradu).
+ * Dáva: hráčovu postavičku podľa výbavy a vzhľadu, chôdzu klikom na podlahu alebo šípkami/WASD,
+ * postavy (person) a miesta (spot), ku ktorým hráč po kliknutí dôjde a potom sa spustí akcia,
+ * oblohu v okne podľa dennej doby a počasia (drawSky), tlačidlo na odchod a klávesu Esc.
+ * Potomok nastaví this.room = { mode, floorY, title, leave: 'text', spawn: [x, y] } a nakreslí miestnosť v create().
+ */
+class RoomScene extends Phaser.Scene {
+    /** Spoločná príprava po nakreslení miestnosti: hráč, podlaha, klávesy, tlačidlo odchodu. */
+    setupRoom(r) {
+        this.room = r;
+        this.people = this.people || [];
+        this.add.text(W / 2, 72, r.title, txtStyle(17, '#f0d9a8', { fontFamily: TITLE_FONT, stroke: '#000', strokeThickness: 4 })).setOrigin(.5).setDepth(50);
+        this.hint = this.add.text(W / 2, H - 14, r.hint || 'Klik na zem alebo šípky/WASD = chôdza  •  klik na postavu alebo miesto = akcia  •  Esc = odísť', txtStyle(10, '#d8c8a8', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5).setDepth(50);
+        const ui = this.scene.get('UI');
+        this.leaveBtn = ui.button.call(this, W - 128, H - 34, 118, 24, r.leave, () => this.leave(), { size: 11, icon: Icons.tex(this, 'door') });
+        this.leaveBtn.forEach(o => o.setDepth(51));
+        const pk = Art.bigFigure(this, { ...G.eq, m: 0 }, { king: !!G.king, cape: heroSide() === 1 ? '#2a1414' : '#6a2a2a', ...Figures.lookOpts(Portraits.hero()) });
+        const [sx, sy] = r.spawn || [W / 2, H - 40];
+        this.pl = Art.image(this, sx, sy, pk).setDepth(sy);
+        this.plT = null; this.plDo = null; this.plStep = 0;
+        this.plLbl = this.add.text(sx, sy + 8, G.name, txtStyle(10, '#ffd24a', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5, 0).setDepth(45);
+        this.floor = this.add.rectangle(0, r.floorY, W, H - r.floorY, 0, 0).setOrigin(0).setInteractive().setDepth(-1);
+        this.floor.on('pointerup', p => { if (ov.classList.contains('hide')) this.goTo(p.x / RES, p.y / RES, null); });
+        this.keys = this.input.keyboard.addKeys('W,A,S,D,UP,LEFT,DOWN,RIGHT');
+        this.input.keyboard.on('keydown-ESC', () => { if (ov.classList.contains('hide')) this.leave(); });
+        this.events.on('shutdown', () => this.input.keyboard.removeAllListeners());
+        this.light = this.add.graphics().setDepth(40);
+    }
+
+    /** Postava, ku ktorej sa dá prísť a prihovoriť; sc = mierka. */
+    person(x, y, [eq, o], name, onClick, sc = 1) {
+        const key = Art.bigFigure(this, eq, o);
+        const spr = Art.image(this, x, y, key).setScale((Art.scale[key] || 1 / RES) * sc).setDepth(y);
+        spr.setInteractive({ useHandCursor: true });
+        const ring = this.add.graphics().setDepth(y - 1).setVisible(false);
+        ring.lineStyle(2, 0xffd24a, .9).strokeEllipse(x, y + 2, 44 * sc, 14 * sc);
+        const lbl = this.add.text(x, y + 8, name, txtStyle(10, '#f4e8d0', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5, 0).setDepth(45);
+        spr.on('pointerover', () => ring.setVisible(true)); spr.on('pointerout', () => ring.setVisible(false));
+        spr.on('pointerup', () => { if (!ov.classList.contains('hide')) return; this.goTo(x + (this.pl.x < x ? -46 : 46), y + 4, onClick); });
+        this.people.push({ spr, ring, lbl, name, x, y, t0: Math.random() * 6 });
+        return spr;
+    }
+    /** Miesto (dvere, stánok…): neviditeľná plocha w × h okolo (x, y) s popiskom; hráč k nemu dôjde a vykoná fn. */
+    spot(x, y, w, h, name, fn, standY) {
+        const z = this.add.rectangle(x, y, w, h, 0xffd24a, 0).setInteractive({ useHandCursor: true }).setDepth(44);
+        const lbl = this.add.text(x, y + h / 2 + 2, name, txtStyle(10, '#ffe8b0', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5, 0).setDepth(45);
+        z.on('pointerover', () => { z.setFillStyle(0xffd24a, .12); }); z.on('pointerout', () => { z.setFillStyle(0xffd24a, 0); });
+        z.on('pointerup', () => { if (!ov.classList.contains('hide')) return; this.goTo(x, standY ?? (y + h / 2 + 14), fn); });
+        this.people.push({ spr: z, ring: this.add.graphics(), lbl, name, x, y: standY ?? y, t0: 0, spot: 1 });
+        return z;
+    }
+    clearPeople() { this.people.forEach(p => { p.spr.destroy(); p.ring.destroy(); p.lbl.destroy(); }); this.people = []; }
+
+    /** Hráč ide na miesto (x, y); po príchode zavolá fn. */
+    goTo(x, y, fn) { const r = this.room; this.plT = { x: Math.max(24, Math.min(W - 24, x)), y: Math.max(r.floorY + 10, Math.min(H - 30, y)) }; this.plDo = fn; }
+    movePlayer(dt = 1) {
+        const pl = this.pl, k = this.keys, r = this.room, dlgOpen = !ov.classList.contains('hide');
+        let dx = 0, dy = 0;
+        if (!dlgOpen && k) { if (k.A.isDown || k.LEFT.isDown) dx -= 1; if (k.D.isDown || k.RIGHT.isDown) dx += 1; if (k.W.isDown || k.UP.isDown) dy -= 1; if (k.S.isDown || k.DOWN.isDown) dy += 1; }
+        if (dx || dy) { this.plT = null; this.plDo = null; }
+        else if (this.plT) { const ddx = this.plT.x - pl.x, ddy = this.plT.y - pl.y, d = Math.hypot(ddx, ddy); if (d < 2.5 * dt) { const fn = this.plDo; this.plT = null; this.plDo = null; if (fn) fn(); } else { dx = ddx / d; dy = ddy / d; } }
+        if (dx || dy) {
+            const sp = 2 * dt;
+            pl.x = Math.max(24, Math.min(W - 24, pl.x + dx * sp)); pl.y = Math.max(r.floorY + 10, Math.min(H - 30, pl.y + dy * sp));
+            if (r.block) for (const [bx, by, bw, bh] of r.block) if (pl.x > bx && pl.x < bx + bw && pl.y > by && pl.y < by + bh) { pl.x -= dx * sp; pl.y -= dy * sp; this.plT = null; }
+            if (dx) pl.setFlipX(dx < 0);
+            this.plStep += dt; pl.setFrame(Math.floor(this.plStep / 7) % 2);
+        } else pl.setFrame(0);
+        pl.setDepth(pl.y); this.plLbl.setPosition(pl.x, pl.y + 8);
+        this.people.forEach(p => { const near = Math.hypot(p.x - pl.x, p.y - pl.y) < 70; p.lbl.setColor(near ? '#ffd24a' : p.spot ? '#ffe8b0' : '#f4e8d0'); });
+    }
+
+    /** Obloha v obdĺžniku (okno, nebo nad hradbami) podľa dennej doby a počasia. */
+    drawSky(s, x, y, w, h, round) {
+        const nn = nightness(), day = 1 - nn, t = tm;
+        s.fillStyle(Phaser.Display.Color.GetColor(40 + 120 * day, 60 + 120 * day, 90 + 140 * day), 1);
+        if (round) s.fillCircle(x + w / 2, y + h / 2, Math.min(w, h) / 2); else s.fillRect(x, y, w, h);
+        if (nn > .4) { s.fillStyle(0xfff4d0, 1).fillCircle(x + w * .72, y + h * .25, Math.min(7, h / 8)); s.fillStyle(0xffffff, 1); for (let k = 0; k < 6 + w / 20; k++) s.fillRect(x + 6 + (k * 37) % (w - 12), y + 4 + (k * 29) % (h * .7), 1.5, 1.5); }
+        else if (day > .6) { s.fillStyle(0xffffff, .6); s.fillEllipse(x + w * .3 + (t * .1) % (w * .6), y + h * .3, w * .22, h * .14); s.fillEllipse(x + w * .3 + (t * .1 + w * .2) % (w * .6), y + h * .34, w * .14, h * .1); }
+        if (MW.n === 'rain' || MW.n === 'storm') { s.lineStyle(1, 0xcfe0f0, .6); for (let k = 0; k < w / 6; k++) { const rx = x + (k * 37 + t * 2) % w, ry = y + (k * 53 + t * 6) % h; s.lineBetween(rx, ry, rx - 2, ry + 6); } }
+        if (MW.n === 'snow') { s.fillStyle(0xffffff, .9); for (let k = 0; k < w / 7; k++) s.fillRect(x + (k * 41 + t) % w, y + (k * 29 + t * 2) % h, 2, 2); }
+        if (MW.n === 'fog') { s.fillStyle(0xbec8d2, .35).fillRect(x, y, w, h); }
+        if (MW.n === 'ash') { s.fillStyle(0x3a2a24, .35).fillRect(x, y, w, h); }
+    }
+
+    /** Odchod z miestnosti; potomok prepíše. */
+    leave() { }
+    /** Ukončí scénu a prípadne zobudí mapu. */
+    closeRoom() { this.scene.stop(); if (this.scene.isSleeping('Map')) this.scene.wake('Map'); }
+}
+
+</script>
+<script>
+/*
  * ENGINE: krčma – miestnosť, do ktorej hráč vstúpi z hradu. Beží nad mapou (mode = 'tavern', čas stojí).
  * Interiér sa kreslí kódom podľa témy hradu (ľudia, hobiti, elfovia, trpaslíci, zlo) a náhodného rozloženia
  * daného číslom hradu: krb, výčap s krčmárom, stoly so sviečkami, okno s dennou dobou a počasím, zástava frakcie.
  * Postavy: krčmár a spoločníci z filmu, ktorí tu čakajú (Figures vo veľkom). Klik na postavu otvorí rozhovor (js/ui/tavern.js).
  * Hudba krčmy je vlastná (sound.js, pásmo 't'/'tv'); hudba mapy ostáva nezmenená.
  */
-class TavernScene extends Phaser.Scene {
+class TavernScene extends RoomScene {
     constructor() { super('Tavern'); }
     init(d) { this.ti = d.i; }
 
@@ -7165,27 +7401,11 @@ class TavernScene extends Phaser.Scene {
         // zástava frakcie a výzdoba
         const bkey = Art.banner(this, t.f); this.add.image(this.winX + 150, 40, bkey).setOrigin(0, 0).setScale(2.4).setDepth(1);
         this.decor(g, th, HZ);
-        // svetlo: vinety a žiara krbu/sviečok sa kreslia v update
-        this.light = this.add.graphics().setDepth(40);
         // postavy
         this.people = [];
         this.spawn(t, th, HZ);
-        // popisky a ovládanie
-        this.add.text(W / 2, 72, (th === 'evil' ? 'Brloh v ' : th === 'elf' ? 'Sieň v ' : 'Krčma v ') + t.n, txtStyle(17, '#f0d9a8', { fontFamily: TITLE_FONT, stroke: '#000', strokeThickness: 4 })).setOrigin(.5).setDepth(50);
-        this.hint = this.add.text(W / 2, H - 14, 'Klik na podlahu alebo šípky/WASD = chôdza  •  klik na postavu = rozhovor  •  Esc = odísť', txtStyle(10, '#d8c8a8', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5).setDepth(50);
-        const ui = this.scene.get('UI');
-        this.leaveBtn = ui.button.call(this, W - 120, H - 34, 110, 24, 'Odísť z krčmy', () => this.leave(), { size: 11, icon: Icons.tex(this, 'door') });
-        this.leaveBtn.forEach(o => o.setDepth(51));
-        // hráčova postava: vchádza dverami (dole v strede) a chodí po miestnosti klikom alebo šípkami/WASD
-        const pk = Art.bigFigure(this, { ...G.eq, m: 0 }, { king: !!G.king, cape: heroSide() === 1 ? '#2a1414' : '#6a2a2a', ...Figures.lookOpts(Portraits.hero()) });
-        this.pl = Art.image(this, W / 2, H - 40, pk).setDepth(H - 40);
-        this.plK = pk; this.plT = null; this.plDo = null; this.plStep = 0;
-        this.plLbl = this.add.text(W / 2, H - 32, G.name, txtStyle(10, '#ffd24a', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5, 0).setDepth(45);
-        this.floor = this.add.rectangle(0, 290, W, H - 290, 0, 0).setOrigin(0).setInteractive().setDepth(-1);
-        this.floor.on('pointerup', p => { if (ov.classList.contains('hide')) this.goTo(p.x / RES, p.y / RES, null); });
-        this.keys = this.input.keyboard.addKeys('W,A,S,D,UP,LEFT,DOWN,RIGHT');
-        this.input.keyboard.on('keydown-ESC', () => { if (ov.classList.contains('hide')) this.leave(); });
-        this.events.on('shutdown', () => this.input.keyboard.removeAllListeners());
+        this.setupRoom({ mode: 'tavern', floorY: 290, title: (th === 'evil' ? 'Brloh v ' : th === 'elf' ? 'Sieň v ' : 'Krčma v ') + t.n, leave: 'Odísť z krčmy', spawn: [W / 2, H - 40],
+            block: [[this.barX - 6, HZ + 34, 192, 66]] });
     }
 
     /** Tematická výzdoba steny. */
@@ -7217,65 +7437,26 @@ class TavernScene extends Phaser.Scene {
         this.comps = list;
     }
 
-    person(x, y, [eq, o], name, onClick, sc) {
-        const key = Art.bigFigure(this, eq, o);
-        const spr = Art.image(this, x, y, key).setScale((Art.scale[key] || 1 / RES) * sc).setDepth(y);
-        spr.setInteractive({ useHandCursor: true });
-        const ring = this.add.graphics().setDepth(y - 1).setVisible(false);
-        ring.lineStyle(2, 0xffd24a, .9).strokeEllipse(x, y + 2, 44 * sc, 14 * sc);
-        const lbl = this.add.text(x, y + 8, name, txtStyle(10, '#f4e8d0', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5, 0).setDepth(45);
-        spr.on('pointerover', () => ring.setVisible(true)); spr.on('pointerout', () => ring.setVisible(false));
-        spr.on('pointerup', () => { if (!ov.classList.contains('hide')) return; this.goTo(x + (this.pl.x < x ? -46 : 46), y + 4, onClick); });
-        this.people.push({ spr, ring, lbl, name, x, y, t0: Math.random() * 6 });
-    }
-
-    /** Hráč ide na miesto (x, y); po príchode zavolá fn (napr. rozhovor). */
-    goTo(x, y, fn) { this.plT = { x: Math.max(24, Math.min(W - 24, x)), y: Math.max(300, Math.min(H - 30, y)) }; this.plDo = fn; }
-    movePlayer(dt = 1) {
-        const pl = this.pl, k = this.keys, dlgOpen = !ov.classList.contains('hide');
-        let dx = 0, dy = 0;
-        if (!dlgOpen && k) { if (k.A.isDown || k.LEFT.isDown) dx -= 1; if (k.D.isDown || k.RIGHT.isDown) dx += 1; if (k.W.isDown || k.UP.isDown) dy -= 1; if (k.S.isDown || k.DOWN.isDown) dy += 1; }
-        if (dx || dy) { this.plT = null; this.plDo = null; }
-        else if (this.plT) { const ddx = this.plT.x - pl.x, ddy = this.plT.y - pl.y, d = Math.hypot(ddx, ddy); if (d < 2.5 * dt) { const fn = this.plDo; this.plT = null; this.plDo = null; if (fn) fn(); } else { dx = ddx / d; dy = ddy / d; } }
-        const moving = dx || dy;
-        if (moving) {
-            const sp = 2 * dt;
-            pl.x = Math.max(24, Math.min(W - 24, pl.x + dx * sp)); pl.y = Math.max(300, Math.min(H - 30, pl.y + dy * sp));
-            if (dx) pl.setFlipX(dx < 0);
-            this.plStep += dt; pl.setFrame(Math.floor(this.plStep / 7) % 2);
-        } else pl.setFrame(0);
-        pl.setDepth(pl.y); this.plLbl.setPosition(pl.x, pl.y + 8);
-        // priblíženie k postave zvýrazní jej meno
-        this.people.forEach(p => { const near = Math.hypot(p.x - pl.x, p.y - pl.y) < 70; p.lbl.setColor(near ? '#ffd24a' : '#f4e8d0'); });
-    }
-
     /** Po pripojení spoločníka alebo zmene obnoví postavy. */
-    refresh() {
-        this.people.forEach(p => { p.spr.destroy(); p.ring.destroy(); p.lbl.destroy(); });
-        this.people = [];
-        this.spawn(TW[this.ti], this.th, 290);
-    }
+    refresh() { this.clearPeople(); this.spawn(TW[this.ti], this.th, 290); }
 
     leave() {
         if (mode !== 'tavern') return;
+        if (typeof ROOM !== 'undefined' && ROOM && ROOM.from === 'yard') { this.scene.stop(); enterCastle(this.ti, 'yard'); return; }   // späť na nádvorie
+        ROOM = null;
         mode = 'town';
-        this.scene.stop();
-        if (this.scene.isSleeping('Map')) this.scene.wake('Map');
+        this.closeRoom();
         town(this.ti);
     }
 
     update(time, delta) {
         const dt = Math.min(3, (delta || 16.7) / 16.67);
-        if (mode !== 'tavern') { if (mode !== 'town') { this.scene.stop(); if (this.scene.isSleeping('Map')) this.scene.wake('Map'); } return; }
+        if (mode !== 'tavern') { if (mode !== 'town' && mode !== 'castle') this.closeRoom(); return; }
         const C = this.C, th = this.th, HZ = 290, t = tm;
         // obloha v okne podľa dennej doby a počasia
         const s = this.sky; s.clear();
-        const nn = nightness(), day = 1 - nn, wx = this.winX, wy = this.winY;
-        s.fillStyle(Phaser.Display.Color.GetColor(40 + 120 * day, 60 + 120 * day, 90 + 140 * day), 1);
-        if (th === 'hobbit') s.fillCircle(wx + 40, wy + 30, 36); else s.fillRect(wx, wy, 80, 60);
-        if (nn > .4) { s.fillStyle(0xfff4d0, 1).fillCircle(wx + 58, wy + 16, 7); s.fillStyle(0xffffff, 1); for (let k = 0; k < 6; k++) s.fillRect(wx + 8 + (k * 13) % 70, wy + 6 + (k * 29) % 40, 1.5, 1.5); }
-        if (MW.n === 'rain' || MW.n === 'storm') { s.lineStyle(1, 0xcfe0f0, .6); for (let k = 0; k < 14; k++) { const x = wx + (k * 37 + t * 2) % 80, y = wy + (k * 53 + t * 6) % 60; s.lineBetween(x, y, x - 2, y + 6); } }
-        if (MW.n === 'snow') { s.fillStyle(0xffffff, .9); for (let k = 0; k < 12; k++) s.fillRect(wx + (k * 41 + t) % 80, wy + (k * 29 + t * 2) % 60, 2, 2); }
+        const nn = nightness(), wx = this.winX, wy = this.winY;
+        this.drawSky(s, wx, wy, 80, 60, th === 'hobbit');
         s.fillStyle(C.beam, 1).fillRect(wx + 38, wy, 4, 60).fillRect(wx, wy + 28, 80, 4);     // kríž okna
         // oheň
         const f = this.fire; f.clear();
@@ -7295,6 +7476,225 @@ class TavernScene extends Phaser.Scene {
         L.fillStyle(0x000000, .35).fillRect(0, 0, W, 14);
         // jemné pohupovanie postáv
         this.people.forEach(p => { p.spr.y = p.y + Math.sin(t / 9 + p.t0) * .8; });
+        this.movePlayer(dt);
+    }
+}
+
+</script>
+<script>
+/*
+ * ENGINE: nádvorie a sieň hradu – miestnosti, po ktorých chodí hráč (základ RoomScene).
+ * init({ i, room }): i = hrad, room = 'yard' (nádvorie) alebo 'hall' (sieň). mode = 'castle'.
+ * Vzhľad podľa frakcie hradu (biely kameň Gondoru, drevo Rohanu, čierne železo Mordoru, Sarumanova veža,
+ * pieskovec Haradu, tesaný kameň Ereboru, červený kameň Rhûnu, mallorny Lothlórienu, palisáda banditov)
+ * a podľa čísla hradu (poloha studne, stánkov, počet debien). Postavené budovy (stajňa, chrám, trhovisko) vidno na nádvorí.
+ * Postavy: kováč, kupec, veliteľ posádky, stráže; v sieni správca hradu alebo pán, ak je práve doma (js/ui/castle.js).
+ */
+class CastleScene extends RoomScene {
+    constructor() { super('Castle'); }
+    init(d) { this.ti = d.i; this.roomKind = d.room || 'yard'; }
+
+    /** Téma hradu podľa frakcie. */
+    theme() {
+        const t = TW[this.ti]; let f = t.f;
+        if (f === 6) f = heroSide() === 1 ? 2 : 0;
+        return ['gondor', 'rohan', 'mordor', 'isengard', 'harad', 'erebor', 'gondor', 'rhun', 'lorien', 'bandit'][f] || 'gondor';
+    }
+    palette(th) {
+        return {
+            gondor: { wall: 0xcfd3d8, wall2: 0xb4b9c0, trim: 0x8a9098, ground: 0xb9b5aa, ground2: 0xa8a49a, roof: 0x4a6a9a, light: 0xfff0d0, hall: 0xe8e8ec, hall2: 0xcfd3d8, floor: 0xb0b4ba, carpet: 0x2a3a6a },
+            rohan: { wall: 0x8a6a3a, wall2: 0x6a4e2a, trim: 0xd9a441, ground: 0x7a6a40, ground2: 0x6a5a34, roof: 0x5a3a1a, light: 0xffd080, hall: 0x7a5a30, hall2: 0x5a4020, floor: 0x6a4a28, carpet: 0x3a6a2a },
+            mordor: { wall: 0x2a2628, wall2: 0x1a1618, trim: 0x5a2a1a, ground: 0x2e2a2a, ground2: 0x242020, roof: 0x141214, light: 0xff6a30, hall: 0x1e1a1c, hall2: 0x141012, floor: 0x262224, carpet: 0x5a1010 },
+            isengard: { wall: 0x3a3a40, wall2: 0x2a2a30, trim: 0x8a8a90, ground: 0x3e3a38, ground2: 0x343030, roof: 0x1a1a1e, light: 0xfff0d0, hall: 0x2e2e34, hall2: 0x222226, floor: 0x343438, carpet: 0x1a1a1a },
+            harad: { wall: 0xc8a06a, wall2: 0xb08850, trim: 0xd9a441, ground: 0xc8b080, ground2: 0xb8a070, roof: 0x8a2a1a, light: 0xffd080, hall: 0xb89060, hall2: 0xa07a48, floor: 0xa89068, carpet: 0xa02a1a },
+            erebor: { wall: 0x6a6a72, wall2: 0x52525a, trim: 0xd9a441, ground: 0x5a5a60, ground2: 0x4a4a50, roof: 0x3a3a42, light: 0xffb060, hall: 0x4a4a52, hall2: 0x3a3a42, floor: 0x44444c, carpet: 0x3a4a7a },
+            rhun: { wall: 0x8a3a30, wall2: 0x6a2a22, trim: 0xd9a441, ground: 0x9a7a58, ground2: 0x8a6a48, roof: 0x5a1f4a, light: 0xffd080, hall: 0x6a2a22, hall2: 0x4a1a14, floor: 0x7a5a40, carpet: 0x5a1f4a },
+            lorien: { wall: 0x9aa890, wall2: 0x7a8a70, trim: 0xd8d0a0, ground: 0x5a7a4a, ground2: 0x4a6a3a, roof: 0x3a5a3a, light: 0xc8e8ff, hall: 0x7a8a70, hall2: 0x5a6a50, floor: 0x6a7a5a, carpet: 0x9ab07a },
+            bandit: { wall: 0x6a4a2a, wall2: 0x4a3018, trim: 0x3a2a1a, ground: 0x5a4a30, ground2: 0x4a3a24, roof: 0x3a2a1a, light: 0xffb060, hall: 0x5a3a1a, hall2: 0x3a2810, floor: 0x4a3a20, carpet: 0x4a3a2a }
+        }[th];
+    }
+
+    create() {
+        this.cameras.main.setZoom(RES).setOrigin(0, 0);
+        const t = TW[this.ti], th = this.theme(), C = this.palette(th), seed = this.ti * 11 + 5, R = n => { const x = Math.sin((seed + n) * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
+        this.th = th; this.C = C; this.R = R; this.t = t;
+        this.sky = this.add.graphics().setDepth(this.roomKind === 'hall' ? 1.2 : 0);
+        this.fx = this.add.graphics().setDepth(2);
+        if (this.roomKind === 'hall') this.buildHall(t, th, C, R); else this.buildYard(t, th, C, R);
+    }
+
+    /* ---------- nádvorie ---------- */
+    buildYard(t, th, C, R) {
+        const g = this.add.graphics().setDepth(1), HZ = 236, bd = t.bd || {};
+        this.HZ = HZ; this.skyRect = [0, 0, W, 112];
+        // hradby a palác v pozadí
+        const wallTop = 96;
+        g.fillStyle(C.wall, 1).fillRect(0, wallTop, W, HZ - wallTop);
+        if (th === 'lorien') { for (let x = 30; x < W; x += 120) { g.fillStyle(0x6a5a40, 1).fillRect(x, wallTop - 30, 22, HZ - wallTop + 30); g.fillStyle(0xd8c870, .9).fillCircle(x + 11, wallTop - 40, 46); g.fillStyle(0xe8dc90, .8).fillCircle(x + 2, wallTop - 52, 30); } g.fillStyle(C.wall, .55).fillRect(0, wallTop + 30, W, HZ - wallTop - 30); }
+        else if (th === 'rohan' || th === 'bandit') { for (let x = 0; x < W; x += 18) { g.fillStyle(x % 36 ? C.wall : C.wall2, 1).fillRect(x, wallTop, 18, HZ - wallTop); } for (let y = wallTop + 20; y < HZ; y += 40) g.fillStyle(0x000000, .15).fillRect(0, y, W, 2); }
+        else { for (let y = wallTop; y < HZ; y += 16) for (let x = -16 + ((y / 16) % 2) * 20; x < W; x += 40) g.fillStyle((x + y) % 80 < 40 ? C.wall : C.wall2, 1).fillRoundedRect(x + 1, y + 1, 38, 14, 2); }
+        // cimburie a veže
+        g.fillStyle(C.wall2, 1); for (let x = 0; x < W; x += 28) g.fillRect(x, wallTop - 12, 16, 14);
+        for (const tx of [60, W - 60]) { g.fillStyle(C.wall2, 1).fillRect(tx - 34, wallTop - 60, 68, HZ - wallTop + 60); g.fillStyle(C.wall, 1).fillRect(tx - 30, wallTop - 56, 60, HZ - wallTop + 56); g.fillStyle(C.roof, 1); if (th === 'mordor' || th === 'isengard') g.fillTriangle(tx - 38, wallTop - 58, tx + 38, wallTop - 58, tx, wallTop - 120); else g.fillTriangle(tx - 38, wallTop - 58, tx + 38, wallTop - 58, tx, wallTop - 100); for (let y = wallTop - 40; y < HZ; y += 40) { g.fillStyle(0x100c0a, 1).fillRoundedRect(tx - 5, y, 10, 16, 3); } }
+        // brána do siene
+        const gx = W / 2;
+        g.fillStyle(C.trim, 1).fillRect(gx - 54, wallTop + 10, 108, HZ - wallTop - 10);
+        g.fillStyle(0x15100c, 1).fillRoundedRect(gx - 40, wallTop + 40, 80, HZ - wallTop - 40, { tl: 36, tr: 36, bl: 0, br: 0 });
+        g.fillStyle(th === 'mordor' ? 0x1a1414 : 0x6a4a2a, 1).fillRoundedRect(gx - 34, wallTop + 48, 68, HZ - wallTop - 48, { tl: 30, tr: 30, bl: 0, br: 0 });
+        g.fillStyle(0x2a1a10, 1).fillRect(gx - 1.5, wallTop + 60, 3, HZ - wallTop - 60);
+        for (let y = wallTop + 70; y < HZ; y += 26) { g.fillStyle(0x8a8a90, 1).fillRect(gx - 30, y, 60, 3); }
+        if (th === 'mordor') { g.fillStyle(0x3a3a40, 1); for (let k = 0; k < 5; k++) g.fillTriangle(gx - 30 + k * 15, wallTop + 44, gx - 22 + k * 15, wallTop + 44, gx - 26 + k * 15, wallTop + 30); }
+        if (th === 'gondor') { g.fillStyle(0xffffff, 1); const ty = wallTop + 26; g.fillRect(gx - 1, ty - 12, 2, 14); for (const [dx, dy] of [[-8, -4], [8, -4], [-5, -9], [5, -9]]) g.fillCircle(gx + dx, ty + dy, 3); }
+        if (th === 'rohan') { g.fillStyle(0xd9a441, 1); g.fillTriangle(gx - 40, wallTop + 12, gx + 40, wallTop + 12, gx, wallTop - 30); g.fillStyle(0xf4f0e4, 1).fillEllipse(gx, wallTop + 2, 16, 8); }
+        if (th === 'isengard') { g.fillStyle(0xeeeeee, 1).fillEllipse(gx, wallTop + 24, 8, 10); for (let k = -2; k <= 2; k++) g.fillRect(gx + k * 3.5 - 1.2, wallTop + 8, 2.4, 10); }
+        if (th === 'harad') { g.fillStyle(0xd9a441, 1); for (let k = 0; k < 7; k++) g.fillTriangle(gx - 48 + k * 16, wallTop + 10, gx - 36 + k * 16, wallTop + 10, gx - 42 + k * 16, wallTop + 24); }
+        if (th === 'erebor') { g.fillStyle(0xd9a441, 1).fillRect(gx - 50, wallTop + 12, 100, 4); g.fillStyle(0x3a8ae0, 1).fillRect(gx - 4, wallTop + 22, 8, 8); }
+        // zástavy po bokoch brány
+        const bk = Art.banner(this, t.f);
+        this.add.image(gx - 80, wallTop + 20, bk).setOrigin(.5, 0).setScale(2).setDepth(1.5);
+        this.add.image(gx + 80, wallTop + 20, bk).setOrigin(.5, 0).setScale(2).setDepth(1.5);
+        // zem
+        g.fillStyle(C.ground, 1).fillRect(0, HZ, W, H - HZ);
+        if (th === 'rohan' || th === 'bandit') { for (let y = HZ; y < H; y += 14) { g.fillStyle(y % 28 ? C.ground2 : C.ground, 1).fillRect(0, y, W, 14); } for (let k = 0; k < 40; k++) { g.fillStyle(0xc8b060, .5).fillRect(R(60 + k) * W, HZ + 10 + R(100 + k) * (H - HZ - 20), 6, 1.5); } }
+        else if (th === 'lorien') { for (let k = 0; k < 60; k++) { g.fillStyle(0x6a8a5a, .5).fillEllipse(R(60 + k) * W, HZ + 10 + R(100 + k) * (H - HZ - 20), 14, 5); } }
+        else { for (let y = HZ; y < H; y += 20) for (let x = ((y / 20) % 2) * 20; x < W; x += 40) { g.fillStyle(((x + y) / 20) % 3 ? C.ground2 : C.ground, 1).fillRoundedRect(x + 1, y + 1, 38, 18, 4); } }
+        g.fillStyle(0x000000, .22).fillRect(0, HZ, W, 10);                                   // tieň pod hradbou
+        // studňa
+        const wx = 300 + Math.floor(R(1) * 3) * 60, wy = HZ + 90 + Math.floor(R(2) * 2) * 50;
+        g.fillStyle(0x000000, .25).fillEllipse(wx, wy + 14, 60, 18);
+        g.fillStyle(0x7a7a80, 1).fillEllipse(wx, wy, 52, 22); g.fillStyle(0x15100c, 1).fillEllipse(wx, wy - 2, 36, 13);
+        g.fillStyle(0x5a3a1a, 1).fillRect(wx - 24, wy - 50, 5, 50).fillRect(wx + 19, wy - 50, 5, 50); g.fillStyle(0x6a3a1a, 1).fillTriangle(wx - 32, wy - 48, wx + 32, wy - 48, wx, wy - 66);
+        g.fillStyle(0x3a2a1a, 1).fillRect(wx - 20, wy - 30, 40, 3); g.fillStyle(0x8a8a90, 1).fillRect(wx - 3, wy - 30, 6, 12);
+        this.well = [wx, wy];
+        // kováčňa vľavo
+        const sx = 110, sy = HZ + 60;
+        g.fillStyle(0x3a2a1a, 1).fillRect(sx - 60, sy - 70, 120, 8); for (const px of [sx - 56, sx + 50]) g.fillRect(px, sy - 70, 6, 80);           // prístrešok
+        g.fillStyle(0x4a3a30, 1).fillRect(sx - 30, sy - 40, 36, 40); g.fillStyle(0x15100c, 1).fillRect(sx - 24, sy - 30, 24, 20);                    // vyhňa
+        g.fillStyle(0x3a3a40, 1).fillRect(sx + 14, sy - 14, 30, 10).fillRect(sx + 22, sy - 4, 14, 12); g.fillStyle(0x8a8a90, 1).fillRect(sx + 12, sy - 17, 34, 5);  // nákova
+        g.fillStyle(0x6a4a2a, 1).fillRect(sx + 48, sy - 16, 12, 24);                                                                              // sud s vodou
+        this.forge = [sx - 12, sy - 20];
+        // stánok kupca vpravo
+        const mx = W - 120, my = HZ + 70;
+        g.fillStyle(0x5a3a1a, 1).fillRect(mx - 52, my - 60, 5, 62).fillRect(mx + 47, my - 60, 5, 62);
+        g.fillStyle(C.roof === 0x141214 ? 0x4a2a2a : [0x4a6a9a, 0x3a6a2a, 0x5a1010, 0x2a2a2a, 0xa02a1a, 0x3a4a7a, 0x6a2a2a, 0x5a1f4a, 0x9ab07a, 0x4a3a2a][t.f] || 0x8a2a1a, 1);
+        for (let k = 0; k < 6; k++) g.fillRect(mx - 56 + k * 19, my - 72, 19, 14 + (k % 2) * 6);
+        g.fillStyle(0x8a6a3a, 1).fillRect(mx - 50, my - 10, 100, 16); g.fillStyle(0x6a4a2a, 1).fillRect(mx - 50, my + 6, 100, 4);
+        for (let k = 0; k < 4; k++) { g.fillStyle([0xc8a040, 0x7a3a2a, 0x4a7a3a, 0xd8d0c0][k], 1).fillRect(mx - 44 + k * 24, my - 22, 18, 12); }
+        for (let k = 0; k < 2 + Math.floor(R(3) * 3); k++) { g.fillStyle(0x8a6a3a, 1).fillRect(mx - 70 - k * 22, my + 10, 20, 18); g.fillStyle(0x3a2a1a, 1).fillRect(mx - 70 - k * 22, my + 18, 20, 2); }
+        // dvere do krčmy (vpravo dole pri veži)
+        const tx = W - 70, ty = HZ - 2;
+        g.fillStyle(0x15100c, 1).fillRoundedRect(tx - 16, ty - 44, 32, 44, { tl: 14, tr: 14, bl: 0, br: 0 });
+        g.fillStyle(0x6a4a2a, 1).fillRoundedRect(tx - 12, ty - 40, 24, 40, { tl: 10, tr: 10, bl: 0, br: 0 });
+        g.fillStyle(0x8a6a3a, 1).fillRect(tx - 18, ty - 62, 36, 14); g.fillStyle(0xc8903a, 1).fillRect(tx - 5, ty - 60, 7, 10); g.fillStyle(0xfff4dc, 1).fillRect(tx - 5, ty - 61, 7, 3);   // vývesný štít s korbeľom
+        // budovy podľa správy hradu
+        if (bd.j) { const hx = 40, hy = HZ + 170; g.fillStyle(0x5a3a1a, 1).fillRect(hx - 30, hy - 40, 90, 44); g.fillStyle(0x3a2a1a, 1).fillRect(hx - 30, hy - 48, 90, 10); for (let k = 0; k < 3; k++) g.fillStyle(0x15100c, 1).fillRect(hx - 22 + k * 28, hy - 30, 20, 30); this.add.image(hx + 20, hy + 2, Art.figure(this, { w: null, a: 0, s: 0, h: null, m: 2 }, { cape: '#3a2a1a' })).setScale(1.3).setDepth(hy); }
+        if (bd.c) { const cx = gx + 170, cy = HZ + 12; g.fillStyle(C.wall2, 1).fillRect(cx - 24, cy - 70, 48, 70); g.fillStyle(C.roof, 1).fillTriangle(cx - 30, cy - 70, cx + 30, cy - 70, cx, cy - 100); g.fillStyle(0xffd24a, 1).fillRect(cx - 1.5, cy - 112, 3, 14).fillRect(cx - 5, cy - 108, 10, 2.5); g.fillStyle(0x15100c, 1).fillRoundedRect(cx - 8, cy - 30, 16, 30, { tl: 8, tr: 8, bl: 0, br: 0 }); }
+        if (bd.t) { for (let k = 0; k < 2; k++) { const bx = mx - 170 - k * 60, by = my + 40; g.fillStyle(0x5a3a1a, 1).fillRect(bx - 20, by - 40, 4, 44).fillRect(bx + 16, by - 40, 4, 44); g.fillStyle(k ? 0x3a6a2a : 0xa02a1a, 1).fillRect(bx - 24, by - 48, 48, 10); g.fillStyle(0x8a6a3a, 1).fillRect(bx - 20, by - 6, 40, 10); } }
+        // cvičný panák
+        const dx = 220 + Math.floor(R(4) * 2) * 300, dy = HZ + 150 + R(5) * 40;
+        g.fillStyle(0x5a3a1a, 1).fillRect(dx - 2, dy - 40, 4, 40).fillRect(dx - 14, dy - 32, 28, 3); g.fillStyle(0xc8a870, 1).fillRect(dx - 7, dy - 36, 14, 18); g.fillStyle(0xe8c39e, 1).fillCircle(dx, dy - 42, 5);
+        // postavy
+        this.people = [];
+        this.spawnYard(t, th, HZ);
+        this.setupRoom({ mode: 'castle', floorY: HZ - 10, title: t.n + ' – nádvorie', leave: 'Opustiť hrad', spawn: [W / 2, H - 36], block: [[wx - 28, wy - 14, 56, 26], [sx - 32, sy - 42, 60, 44], [mx - 52, my - 12, 104, 22]] });
+        // miesta
+        this.spot(gx, HZ - 40, 70, 80, 'Sieň hradu', () => enterCastle(this.ti, 'hall'), HZ + 14);
+        this.spot(tx, ty - 22, 36, 44, 'Krčma', () => enterTavern(this.ti), HZ + 14);
+        this.spot(wx, wy - 20, 56, 40, 'Studňa', () => castleWell(this.ti), wy + 24);
+        if (bd.c) this.spot(gx + 170, HZ - 30, 48, 60, 'Chrám', () => castleTemple(this.ti), HZ + 14);
+        this.spot(dx, dy - 24, 30, 48, 'Cvičisko', () => castleTraining(this.ti), dy + 10);
+    }
+    spawnYard(t, th, HZ) {
+        const race = Portraits.forLord({ nm: 'x', f: t.f === 6 ? (heroSide() === 1 ? 2 : 0) : t.f }).race, evil = race === 'orc' || race === 'uruk';
+        const L = (name) => { const l = Portraits.forLord({ nm: name + t.n, f: t.f === 6 ? (heroSide() === 1 ? 2 : 0) : t.f }); delete l.crown; delete l.helm; return l; };
+        const smithL = L('kovac'), mercL = L('kupec'), capL = L('velitel');
+        this.looks = { smith: smithL, merc: mercL, cap: capL };
+        this.person(this.forge[0] + 30, this.HZ + 70, [{ w: null, a: evil ? 11 : 0, s: 0, h: null, m: 0 }, { apron: 1, ...Figures.lookOpts(smithL) }], evil ? 'Orkský kováč' : 'Kováč', () => castleSmith(this.ti), 1);
+        this.person(W - 120, this.HZ + 98, [{ w: null, a: evil ? 11 : 0, s: 0, h: null, m: 0 }, { ...Figures.lookOpts(mercL) }], evil ? 'Kupec z východu' : 'Kupec', () => castleMerchant(this.ti), 1);
+        const [ceq, co] = Figures.lordEq({ f: t.f === 6 ? (heroSide() === 1 ? 2 : 0) : t.f, id: this.ti, nm: 'velitel' });
+        this.person(W / 2 + 150, this.HZ + 64, [{ ...ceq, m: 0 }, { ...co, flag: null, king: 0, ...Figures.lookOpts(capL) }], 'Veliteľ posádky', () => castleCaptain(this.ti), 1);
+        for (const gx of [W / 2 - 92, W / 2 + 92]) this.add.image(gx, this.HZ + 6, Art.bigFigure(this, { ...ceq, m: 0 }, { ...co, flag: null, king: 0, ...Figures.lookOpts(L('straz' + gx)) })).setScale(.5 * .8).setDepth(this.HZ + 6).setFlipX(gx > W / 2);
+    }
+
+    /* ---------- sieň ---------- */
+    buildHall(t, th, C, R) {
+        const g = this.add.graphics().setDepth(1), HZ = 210;
+        this.HZ = HZ; this.skyRect = null;
+        // steny a stĺpy
+        g.fillStyle(C.hall, 1).fillRect(0, 0, W, HZ);
+        if (th === 'rohan' || th === 'bandit') { for (let x = 0; x < W; x += 22) g.fillStyle(x % 44 ? C.hall : C.hall2, 1).fillRect(x, 0, 22, HZ); }
+        else if (th === 'lorien') { for (let x = 0; x < W; x += 80) { g.lineStyle(2, 0xd8d0a0, .6); for (const d of [-1, 1]) { g.beginPath(); for (let k = 0; k <= 10; k++) { const u = k / 10; const px = x + 40 + d * 50 * u * u, py = HZ - HZ * u; k ? g.lineTo(px, py) : g.moveTo(px, py); } g.strokePath(); } } }
+        else { for (let y = 0; y < HZ; y += 18) for (let x = -18 + ((y / 18) % 2) * 24; x < W; x += 48) g.fillStyle((x + y) % 96 < 48 ? C.hall : C.hall2, 1).fillRoundedRect(x + 1, y + 1, 46, 16, 2); }
+        for (const px of [90, W - 90]) { g.fillStyle(C.hall2, 1).fillRect(px - 16, 0, 32, HZ + 20); g.fillStyle(C.hall, 1).fillRect(px - 10, 0, 12, HZ + 20); g.fillStyle(C.trim, 1).fillRect(px - 20, HZ + 14, 40, 8).fillRect(px - 20, 0, 40, 8); }
+        // okná
+        this.windows = [[200, 40], [W - 200, 40]];
+        for (const [wx, wy] of this.windows) { g.fillStyle(C.trim, 1).fillRect(wx - 24, wy - 6, 48, 92); }
+        // dais a trón
+        const dx = W / 2, dy = HZ + 40;
+        g.fillStyle(C.hall2, 1).fillRect(dx - 150, dy - 30, 300, 36); g.fillStyle(C.trim, 1).fillRect(dx - 150, dy - 30, 300, 4);
+        g.fillStyle(0x000000, .25).fillRect(dx - 150, dy + 6, 300, 6);
+        const thr = th === 'mordor' || th === 'isengard' ? 0x1a1414 : th === 'rohan' ? 0x8a5a2a : th === 'lorien' ? 0xd8d0a0 : 0x6a4a2a;
+        g.fillStyle(thr, 1).fillRect(dx - 22, dy - 110, 44, 84); g.fillStyle(C.trim, 1).fillRect(dx - 26, dy - 114, 52, 6);
+        if (th === 'mordor') { g.fillStyle(0x3a3a40, 1); for (let k = 0; k < 5; k++) g.fillTriangle(dx - 22 + k * 11, dy - 110, dx - 14 + k * 11, dy - 110, dx - 18 + k * 11, dy - 128); }
+        if (th === 'gondor') { g.fillStyle(0xffffff, 1).fillRect(dx - 1, dy - 150, 2, 36); for (const [ox, oy] of [[-10, -6], [10, -6], [-6, -14], [6, -14]]) g.fillCircle(dx + ox, dy - 146 + oy, 4); }
+        if (th === 'rohan') { g.fillStyle(0xd9a441, 1).fillEllipse(dx, dy - 130, 40, 14); g.fillStyle(0xf4f0e4, 1).fillEllipse(dx, dy - 130, 16, 7); }
+        g.fillStyle(0xd8402a, .9).fillRect(dx - 18, dy - 100, 36, 70);                           // vankúš
+        // koberec, stoly, ohne
+        g.fillStyle(C.floor, 1).fillRect(0, HZ, W, H - HZ);
+        for (let y = HZ; y < H; y += 24) for (let x = ((y / 24) % 2) * 24; x < W; x += 48) g.fillStyle(0x000000, .08).fillRect(x, y, 24, 24);
+        g.fillStyle(C.carpet, 1).fillRect(dx - 40, dy + 8, 80, H - dy - 8); g.fillStyle(C.trim, .6).fillRect(dx - 40, dy + 8, 3, H - dy - 8).fillRect(dx + 37, dy + 8, 3, H - dy - 8);
+        for (const side of [-1, 1]) {
+            const tx = dx + side * 190, ty = dy + 90;
+            g.fillStyle(0x000000, .22).fillEllipse(tx, ty + 24, 150, 20);
+            g.fillStyle(0x5a3a1a, 1).fillRect(tx - 70, ty, 140, 10).fillRect(tx - 62, ty + 10, 8, 22).fillRect(tx + 54, ty + 10, 8, 22);
+            for (let k = 0; k < 4; k++) { g.fillStyle(0xf0e0c0, 1).fillRect(tx - 50 + k * 30, ty - 12, 3, 12); g.fillStyle(0xc8903a, 1).fillRect(tx - 40 + k * 30, ty - 8, 7, 8); }
+            const bx = dx + side * 110, by = dy + 30;                                                // ohnisko
+            g.fillStyle(0x3a3a40, 1).fillRect(bx - 14, by - 6, 28, 10).fillRect(bx - 3, by + 4, 6, 20); this.braziers = this.braziers || []; this.braziers.push([bx, by - 8]);
+        }
+        // zástavy
+        const bk = Art.banner(this, t.f);
+        for (const bx of [dx - 70, dx + 70, 150, W - 150]) this.add.image(bx, 10, bk).setOrigin(.5, 0).setScale(2.2).setDepth(1.5);
+        this.people = [];
+        this.spawnHall(t, th);
+        this.setupRoom({ mode: 'castle', floorY: HZ + 12, title: t.n + ' – sieň', leave: 'Späť na nádvorie', spawn: [W / 2, H - 36], block: [[dx - 150, dy - 30, 300, 40], [dx - 260, dy + 86, 140, 36], [dx + 120, dy + 86, 140, 36]] });
+    }
+    spawnHall(t, th) {
+        const f = t.f === 6 ? (heroSide() === 1 ? 2 : 0) : t.f;
+        const lord = E.find(e => e.f === t.f && !hos(e.f, G.fac) && Math.hypot(e.x - t.x, e.y - t.y) < 90);
+        this.lord = lord;
+        if (lord) {
+            const [eq, o] = Figures.lordEq(lord);
+            this.person(W / 2, this.HZ + 36, [{ ...eq, m: 0 }, { ...o, flag: null }], lord.nm + (lord.kr ? ' (panovník)' : ' (pán hradu)'), () => castleLord(this.ti, lord), 1.05);
+        }
+        const stL = Portraits.forLord({ nm: 'spravca' + t.n, f }); delete stL.crown; delete stL.helm; stL.age = .7; this.stewardLook = stL;
+        this.person(W / 2 + (lord ? 120 : 0), this.HZ + (lord ? 70 : 36), [{ w: null, a: Portraits.forLord({ nm: 'x', f }).race === 'orc' ? 11 : 0, s: 0, h: null, m: 0 }, { ...Figures.lookOpts(stL) }], 'Správca hradu', () => castleSteward(this.ti), 1);
+        const [geq, go] = Figures.lordEq({ f, id: this.ti + 3, nm: 'straz' });
+        for (const gx of [W / 2 - 200, W / 2 + 200]) this.add.image(gx, this.HZ + 30, Art.bigFigure(this, { ...geq, m: 0 }, { ...go, flag: null, king: 0 })).setScale(.5 * .85).setDepth(this.HZ + 30).setFlipX(gx > W / 2);
+    }
+
+    leave() {
+        if (mode !== 'castle') return;
+        if (this.roomKind === 'hall') { this.scene.stop(); enterCastle(this.ti, 'yard'); return; }
+        leaveCastle();
+    }
+
+    update(time, delta) {
+        const dt = Math.min(3, (delta || 16.7) / 16.67);
+        if (mode !== 'castle') { if (mode !== 'town' && mode !== 'tavern') this.closeRoom(); return; }
+        const t = tm, nn = nightness(), C = this.C, s = this.sky, f = this.fx;
+        s.clear(); f.clear();
+        if (this.skyRect) { this.drawSky(s, ...this.skyRect); }
+        else for (const [wx, wy] of this.windows) { this.drawSky(s, wx - 20, wy, 40, 80); s.fillStyle(C.trim, 1).fillRect(wx - 2, wy, 4, 80).fillRect(wx - 20, wy + 38, 40, 4); }
+        // vyhňa a ohniská
+        if (this.forge) { const [fx, fy] = this.forge; for (let k = 0; k < 5; k++) { const ph = t / 3 + k * 1.9, h = 10 + Math.sin(ph) * 4; f.fillStyle(0xff7a20, .9).fillTriangle(fx - 8 + k * 4 - 3, fy, fx - 8 + k * 4 + 3, fy, fx - 8 + k * 4 + Math.sin(ph) * 2, fy - h); } f.fillStyle(0xffd060, .9).fillTriangle(fx - 4, fy, fx + 4, fy, fx, fy - 6 - Math.sin(t / 2) * 2); for (let k = 0; k < 4; k++) { const a = (t * .9 + k * 17) % 50; f.fillStyle(0xffc040, .9 - a / 60).fillRect(fx - 6 + ((k * 5 + a * .4) % 12), fy - 12 - a, 1.5, 1.5); } }
+        if (this.braziers) for (const [bx, by] of this.braziers) { for (let k = 0; k < 4; k++) { const ph = t / 3 + k * 1.7, h = 12 + Math.sin(ph) * 4; f.fillStyle(this.th === 'mordor' ? 0xff3a10 : 0xff7a20, .9).fillTriangle(bx - 8 + k * 5 - 3, by, bx - 8 + k * 5 + 3, by, bx - 8 + k * 5 + Math.sin(ph) * 2, by - h); } }
+        // svetlo
+        const L = this.light; L.clear();
+        const dark = this.roomKind === 'hall' ? .2 + nn * .25 : nn * .45;
+        L.fillStyle(this.roomKind === 'hall' ? 0x000000 : 0x080e28, dark).fillRect(0, 0, W, H);
+        if (this.roomKind === 'hall') { for (const [bx, by] of this.braziers || []) for (let k = 1; k <= 8; k++) L.fillStyle(C.light, (.06 + Math.sin(t / 2 + bx) * .01) / 4).fillCircle(bx, by, 20 + k * 20); }
+        else if (this.forge) { for (let k = 1; k <= 6; k++) L.fillStyle(0xff9a40, (.05 + Math.sin(t / 2) * .01) / 3 * (1 + nn)).fillCircle(this.forge[0], this.forge[1], 15 + k * 18); if (nn > .3) for (const gx of [W / 2 - 62, W / 2 + 62]) for (let k = 1; k <= 5; k++) L.fillStyle(0xffb060, .03 * nn).fillCircle(gx, this.HZ - 30, 15 + k * 18); }
+        this.people.forEach(p => { if (!p.spot) p.spr.y = p.y + Math.sin(t / 9 + p.t0) * .8; });
         this.movePlayer(dt);
     }
 }
@@ -7356,7 +7756,7 @@ class UIScene extends Phaser.Scene {
     update(time, delta) {
         const dt = Math.min(2, delta / 16.67);
         tm += dt;
-        const scene = this.scene.isActive('Battle') ? 'battle' : this.scene.isActive('Tavern') ? 'tavern' : this.scene.isActive('Map') ? 'map' : 'intro';
+        const scene = this.scene.isActive('Battle') ? 'battle' : this.scene.isActive('Tavern') || this.scene.isActive('Castle') ? 'tavern' : this.scene.isActive('Map') ? 'map' : 'intro';
         this.drawOverlay(scene, dt);
         this.syncHud();
         this.syncBars();
@@ -7467,7 +7867,7 @@ class UIScene extends Phaser.Scene {
     }
 
     syncBars() {
-        const vis = el => el.style.display !== 'none' && !!G && !this.dlg && mode !== 'tavern';
+        const vis = el => el.style.display !== 'none' && !!G && !this.dlg && mode !== 'tavern' && mode !== 'castle';
         if (this.dlg || !vis(tb)) this.menu = null;
         const sig = [vis(tb), vis(od), this.menu, this.big, ...[...tb.children, ...od.children].map(b => b.textContent + (b.style.opacity || ''))].join('|');
         if (sig === this.sig.bars) return;
@@ -7487,7 +7887,7 @@ class UIScene extends Phaser.Scene {
             };
             // lupa a Tábor ostávajú priamo na paneli
             all.filter(b => /^[−+]$/.test(b.textContent.trim())).forEach(b => put('', Icons.forButton(b.textContent), () => b.click()));
-            const camp = find('Tábor') || find('Zrušiť tábor');
+            const camp = find('Tábor') || find('Zrušiť tábor') || find('Zrušiť pobyt');
             if (camp) put(camp.textContent, 'tent', () => camp.click());
             put('Mapa (M)', 'map', () => { this.big = !this.big; });
             // skupinové tlačidlá, ktoré rozbalia ponuku
@@ -7506,7 +7906,7 @@ class UIScene extends Phaser.Scene {
                 });
             }
             // tlačidlá, ktoré nepatria do žiadnej skupiny ani nie sú vyššie (nové položky), ostanú viditeľné
-            all.filter(b => { const t = b.textContent.trim(); return !/^[−+]$/.test(t) && !/tábor/i.test(t) && ![...grouped].some(n => t.startsWith(n)); })
+            all.filter(b => { const t = b.textContent.trim(); return !/^[−+]$/.test(t) && !/tábor|pobyt/i.test(t) && ![...grouped].some(n => t.startsWith(n)); })
                .forEach(b => put(b.textContent, Icons.forButton(b.textContent), () => b.click()));
             this.barLayer.add(out);
             if (this.pause) this.pause.y = y - 14;
@@ -7829,7 +8229,7 @@ const game = new Phaser.Game({
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     render: { antialias: true, roundPixels: false },
     input: { mouse: { preventDefaultWheel: true } },
-    scene: [BootScene, IntroScene, MapScene, BattleScene, TavernScene, UIScene]
+    scene: [BootScene, IntroScene, MapScene, BattleScene, TavernScene, CastleScene, UIScene]
 });
 
 </script>

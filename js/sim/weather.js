@@ -38,5 +38,5 @@ const weatherSlow = () => ({ clear: 1, rain: .9, storm: .75, fog: .9, snow: .7, 
 function battleWeather() {
     const map = { clear: ['clear', 190], rain: ['rain', 130], storm: ['storm', 110], fog: ['fog', 120], snow: ['snow', 150], ash: ['ash', 125] }[MW.n] || ['clear', 190];
     const night = isNight();
-    return { n: map[0], r: Math.round(map[1] * (night ? .7 : 1)), night };
+    return { n: map[0], r: Math.round(map[1] * (night ? .7 : 1) * (G && G.relf ? 1.1 : 1)), night };   // elf: lukostrelci dostrelia ďalej
 }

@@ -52,7 +52,9 @@ function newGame() {
             startGear(1);   // hrdina zla začína s orkskou výbavou
         if (typeof creatorResult === 'function') {   // tvorba postavy: vzhľad, povaha, schopnosti
             const cr = creatorResult();
-            G.look = cr.look; G.trait = cr.trait; Object.assign(G.s, cr.s);
+            G.look = cr.look; G.trait = cr.trait; G.race = cr.race; Object.assign(G.s, cr.s);
+            if (G.fac === 6) G.side = cr.side;                              // nezávislý hrdina: strana zvolená pri tvorbe postavy
+            if (typeof RACES !== 'undefined' && RACES[cr.race]) RACES[cr.race].fx(G);
             if (TRAITS[cr.trait]) TRAITS[cr.trait].fx(G);
             if (G.trel) E.forEach(e => { if (!bloc(e.f)) e.rl = (e.rl || 0) + G.trel; });
         }

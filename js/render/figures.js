@@ -176,6 +176,7 @@ const Figures = (() => {
         let seat = 0, lx = 0;
         if (M) ({ seat, lx } = mount(c, M, fr, o));
         c.save(); c.translate(lx, seat - bob);
+        if (o.rscale && o.rscale !== 1) c.scale(o.rscale > 1 ? 1 : 1.05, o.rscale);   // rasa: trpaslík a hobit nižší, uruk vyšší
         // zástava za chrbtom
         if (o.flag != null) { c.strokeStyle = '#3a2a1a'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-6, -2); c.lineTo(-6, -40); c.stroke(); tm = fr * 14.1; bnr(-6, -40, o.flag, 16, 20); }
         // plášť
@@ -217,10 +218,11 @@ const Figures = (() => {
         c.fillStyle = A.col; E(c, -4 * pad, -18, 2.2, 2.2); c.fill(); E(c, 4 * pad, -18, 2.2, 2.2); c.fill();
         if (A.pat === 'plate' || A.pat === 'dwarf' || A.pat === 'scale') { c.fillStyle = dark(A.col, 1.15); E(c, -4.2 * pad, -18.6, 2.8, 2); c.fill(); E(c, 4.2 * pad, -18.6, 2.8, 2); c.fill(); c.strokeStyle = A.rim || '#888'; c.lineWidth = .5; E(c, 4.2 * pad, -18.6, 2.8, 2); c.stroke(); }
         c.strokeStyle = skin === '#000' ? '#0a0a10' : A.col; c.lineWidth = 2.4; c.lineCap = 'round';
-        if (Wp) { c.beginPath(); c.moveTo(4 * pad, -17); c.lineTo(6.5, -14.5); c.lineTo(8, -12); c.stroke(); c.strokeStyle = dark(A.col, .8); c.lineWidth = 1; c.beginPath(); c.moveTo(6.5, -14.5); c.lineTo(8, -12); c.stroke(); c.fillStyle = skin; E(c, 8.5, -11.5, 1.6, 1.6); c.fill(); weapon(c, Wp, 8.5, -11.5, fr); }   // pravá ruka so zbraňou (rameno, lakeť, dlaň)
-        else { c.beginPath(); c.moveTo(4 * pad, -17); c.lineTo(6, -9); c.stroke(); c.fillStyle = skin; E(c, 6, -8.5, 1.6, 1.6); c.fill(); if (o.mug) { c.fillStyle = '#c8903a'; c.fillRect(6.5, -11, 3.5, 4); c.fillStyle = '#fff4dc'; c.fillRect(6.5, -11.8, 3.5, 1.2); } }
+        const aw = M ? 0 : walk * .35, hx = 8 - aw, hy = -12 + Math.abs(aw) * .3;   // ruky sa pri chôdzi kývu proti nohám
+        if (Wp) { c.beginPath(); c.moveTo(4 * pad, -17); c.lineTo(6.5 - aw * .5, -14.5); c.lineTo(hx, hy); c.stroke(); c.strokeStyle = dark(A.col, .8); c.lineWidth = 1; c.beginPath(); c.moveTo(6.5 - aw * .5, -14.5); c.lineTo(hx, hy); c.stroke(); c.fillStyle = skin; E(c, hx + .5, hy + .5, 1.6, 1.6); c.fill(); weapon(c, Wp, hx + .5, hy + .5, fr); }   // pravá ruka so zbraňou (rameno, lakeť, dlaň)
+        else { c.beginPath(); c.moveTo(4 * pad, -17); c.lineTo(6 - aw, -9); c.stroke(); c.fillStyle = skin; E(c, 6 - aw, -8.5, 1.6, 1.6); c.fill(); if (o.mug) { c.fillStyle = '#c8903a'; c.fillRect(6.5, -11, 3.5, 4); c.fillStyle = '#fff4dc'; c.fillRect(6.5, -11.8, 3.5, 1.2); } }
         if (S) shield(c, S, -7, -12);
-        else { c.strokeStyle = A.col; c.beginPath(); c.moveTo(-4 * pad, -17); c.lineTo(-6, -10); c.stroke(); }
+        else { c.strokeStyle = A.col; c.beginPath(); c.moveTo(-4 * pad, -17); c.lineTo(-6 + aw, -10); c.stroke(); c.fillStyle = skin; E(c, -6 + aw, -9.5, 1.5, 1.5); c.fill(); }
         // hlava a tvár (z profilu, hľadí doprava): tieňovaná pleť, oko s dúhovkou, obočie, nos, ústa, ucho, vlasy a brada
         const hcol = o.hcol || (typeof o.hair === 'string' && o.hair[0] === '#' ? o.hair : '#4a3020'), hs = o.hstyle || (o.hair === 'long' ? 'long' : 'short');
         if (!o.nazgul && (hs === 'long' || hs === 'lank')) { c.fillStyle = hcol; P(c, [[-4.5, -27], [1, -28], [1.5, -22], [-3.5, -14 + (hs === 'lank' ? 2 : 0)], [-5.5, -16]]); c.fill(); }   // vlasy vzadu
@@ -278,7 +280,8 @@ const Figures = (() => {
         if (!L) return {};
         const SK = ['#e8c39e', '#c9956a', '#7a4a2e', '#efe1d2'];
         return { skin: typeof L.skin === 'string' ? L.skin : L.race === 'orc' ? '#5f7a4a' : L.race === 'uruk' ? '#3e4a34' : L.race === 'dark' ? '#7a4a2e' : L.race === 'wraith' ? '#000' : SK[L.skin | 0],
-            hcol: L.hcol || '#4a3020', hstyle: L.hair || (L.sex === 'f' ? 'long' : 'short'), beard: L.beard && L.beard !== 'none' ? L.beard : null, eyes: L.eyes, elf: L.race === 'elf', orc: L.race === 'orc' || L.race === 'uruk', nazgul: L.race === 'wraith' };
+            hcol: L.hcol || '#4a3020', hstyle: L.hair || (L.sex === 'f' ? 'long' : 'short'), beard: L.beard && L.beard !== 'none' ? L.beard : null, eyes: L.eyes, elf: L.race === 'elf', orc: L.race === 'orc' || L.race === 'uruk', nazgul: L.race === 'wraith',
+            rscale: L.race === 'dwarf' ? .86 : L.race === 'hobbit' ? .8 : L.race === 'uruk' ? 1.08 : 1 };
     }
     /** Výbava spoločníka c (postava z filmu) pre postavičku; bez koňa v interiéri (noMount). */
     function compEq(c, noMount) {
@@ -293,6 +296,6 @@ const Figures = (() => {
         if (c.look && !c.look.helm && c.eq && c.eq.h === 0) r[0].h = null;    // bez prilby vidno tvár
         return r;
     }
-    const key = (eq, o) => 'figure_' + [eq.w == null ? 'n' : typeof eq.w === 'object' ? 'x' + eq.w.t : eq.w, eq.a, eq.s, eq.h, eq.m, o.flag ?? '', o.king ? 1 : 0, o.cape || '', o.beard || '', o.nazgul ? 1 : 0, o.orc ? 1 : 0, o.dark ? 1 : 0, o.hair || '', o.apron ? 1 : 0, o.mug ? 1 : 0, o.skin || '', o.hcol || '', o.hstyle || '', o.eyes || '', o.elf ? 1 : 0].join('_');
+    const key = (eq, o) => 'figure_' + [eq.w == null ? 'n' : typeof eq.w === 'object' ? 'x' + eq.w.t : eq.w, eq.a, eq.s, eq.h, eq.m, o.flag ?? '', o.king ? 1 : 0, o.cape || '', o.beard || '', o.nazgul ? 1 : 0, o.orc ? 1 : 0, o.dark ? 1 : 0, o.hair || '', o.apron ? 1 : 0, o.mug ? 1 : 0, o.skin || '', o.hcol || '', o.hstyle || '', o.eyes || '', o.elf ? 1 : 0, o.rscale || 1].join('_');
     return { draw, lordEq, compEq, lookOpts, key, CAPES };
 })();

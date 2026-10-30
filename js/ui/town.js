@@ -4,7 +4,7 @@
 function skills(i) {
     mode = 'town';
     PORTRAIT = Portraits.hero();
-    show('Hrdina ' + G.name, 'Povaha: ' + traitName() + '. Úroveň ' + G.lv + ', voľné body: ' + G.sk + '. Každá schopnosť môže mať až 5 stupňov.');
+    show('Hrdina ' + G.name, 'Rasa: ' + raceName() + ', povaha: ' + traitName() + '. Úroveň ' + G.lv + ', voľné body: ' + G.sk + '. Každá schopnosť môže mať až 5 stupňov.');
     [['st', 'Sila (+3 útok)'], ['od', 'Odolnosť (+15 zdravie)'], ['ob', 'Obratnosť (+8 % rýchlosť)'], ['pr', 'Presviedčanie (+6 pri prehováraní)'], ['ls', 'Lukostrelba (+1 zranenie šípov)']].forEach(([k, n]) => btn(n + ' [' + G.s[k] + ']', () => { G.sk--; G.s[k]++; upd(); skills(i); }, !G.sk || G.s[k] >= 5));
     btn('Späť', () => town(i));
 }

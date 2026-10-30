@@ -219,7 +219,7 @@ const Art = {
     /** Trikrát väčšia postavička (krčma, rozhovory). */
     bigFigure(scene, eq, o) {
         const key = 'bigfig_' + Figures.key(eq, o).slice(7);
-        return Art.ensure(scene, key, () => [0, 2].map(k => () => { tm = 0; ctx.scale(3, 3); Figures.draw(ctx, eq, o, k); }));   // 0 = stojí, 1 = krok
+        return Art.ensure(scene, key, () => [0, 1, 2, 3, 4].map(k => () => { tm = 0; ctx.scale(3, 3); Figures.draw(ctx, eq, o, k); }));   // 0 = stojí, 1–4 = cyklus chôdze
     },
     heroFigure(scene) {
         const evil = typeof heroSide === 'function' && heroSide() === 1;

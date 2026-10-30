@@ -60,3 +60,8 @@ input,select{font:inherit;font-size:1.05rem;padding:.45rem .6rem;background:#2a2
 #cre .cre-sk{display:flex;align-items:center;gap:.2rem;font-size:.75rem}
 #cre .cre-sk button{padding:0 .45rem;font-size:.8rem;margin:0;min-width:1.4rem;line-height:1.3}
 #cre .cre-sk b{min-width:1rem;text-align:center;color:var(--gold)}
+#cre .cre-side{align-items:center}
+#cre .cre-tab{padding:.2rem .8rem;font-size:.85rem;margin:0;opacity:.55}
+#cre .cre-tab.on{opacity:1;outline:2px solid #ffd24a}
+#cre .cre-rnd{margin-left:auto;padding:.2rem .7rem;font-size:.8rem}
+#creCtl{grid-template-columns:repeat(4,1fr)}

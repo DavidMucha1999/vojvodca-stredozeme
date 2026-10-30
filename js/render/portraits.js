@@ -1,8 +1,9 @@
 /*
  * Portréty: tvár spredu kreslená kódom podľa popisu look = { race, sex, skin, hair, hcol, beard, eyes, age, scar, paint, hood, turban, helm, crown }.
- *   race: human | elf | dwarf | hobbit | orc | uruk | dark (juh) | wraith;  sex: m | f
- *   skin: 0 svetlá, 1 opálená, 2 tmavá, 3 bledá (alebo farba '#rrggbb');  hair: short | long | bald | tied | curly | lank | braids
- *   hcol: farba vlasov; beard: none | stubble | full | long | braided; eyes: farba dúhovky; age 0–1 (vrásky); scar, paint (biela ruka), hood, turban, helm, crown.
+ *   race: human | elf | dwarf | hobbit | orc | uruk | dark (juh) | east (Rhûn) | wraith;  sex: m | f
+ *   eyeShape: almond | round | narrow | deep;  nose: straight | hooked | wide | small | flat;  mouth: neutral | smile | stern | thin;  brows: flat | arched | thick | angry
+ *   skin: 0 svetlá, 1 opálená, 2 tmavá, 3 bledá (alebo farba '#rrggbb');  hair: short | long | bald | tied | curly | lank | braids | wavy | mohawk | topknot
+ *   hcol: farba vlasov; beard: none | stubble | full | long | braided | goatee | mustache; eyes: farba dúhovky; age 0–1 (vrásky); scar, paint (biela ruka), hood, turban, helm, crown.
  * Portraits.canvas(look, size) vráti plátno; Portraits.forLord(e) a Portraits.hero() odvodia popis z dát hry.
  * Používa sa v rozhovoroch (okno dostane plátno .por) a pri tvorbe postavy.
  */
@@ -13,91 +14,132 @@ const Portraits = (() => {
     const P = (c, pts) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); };
 
     function draw(c, L) {
-        const race = L.race || 'human', f = L.sex === 'f', skin = typeof L.skin === 'string' ? L.skin : race === 'orc' ? '#5f7a4a' : race === 'uruk' ? '#3e4a34' : race === 'wraith' ? '#111' : race === 'dark' ? '#7a4a2e' : SKIN[L.skin | 0] || SKIN[0];
-        const hcol = L.hcol || '#4a3020', eyes = L.eyes || (race === 'orc' || race === 'uruk' ? '#e8c040' : '#4a6a8a');
-        const cx = 48, cy = 50, hw = race === 'dwarf' ? 25 : race === 'elf' ? 20 : race === 'hobbit' ? 23 : f ? 20.5 : 22.5, hh = race === 'elf' ? 29 : race === 'hobbit' ? 25 : 27;
-        // pozadie a ramená
-        const bg = c.createRadialGradient(cx, cy, 10, cx, cy, 60); bg.addColorStop(0, L.bg || '#3a2c20'); bg.addColorStop(1, '#120e0c');
+        const race = L.race || 'human', f = L.sex === 'f', orcish = race === 'orc' || race === 'uruk';
+        const skin = typeof L.skin === 'string' ? L.skin : race === 'orc' ? '#5f7a4a' : race === 'uruk' ? '#3e4a34' : race === 'wraith' ? '#111' : race === 'dark' ? '#7a4a2e' : SKIN[L.skin | 0] || SKIN[0];
+        const hcol = L.hcol || '#4a3020', eyes = L.eyes || (orcish ? '#e8c040' : '#4a6a8a');
+        const cx = 48, cy = 50, hw = race === 'dwarf' ? 25 : race === 'elf' ? 20 : race === 'hobbit' ? 23.5 : race === 'uruk' ? 23.5 : f ? 20.5 : 22.5, hh = race === 'elf' ? 29 : race === 'hobbit' ? 25 : race === 'dwarf' ? 26 : 27;
+        const eyeShape = L.eyeShape || (race === 'east' ? 'narrow' : race === 'hobbit' ? 'round' : race === 'elf' ? 'almond' : orcish ? 'deep' : 'almond');
+        const nose = L.nose || (race === 'dwarf' ? 'wide' : race === 'hobbit' ? 'small' : orcish ? 'flat' : 'straight');
+        const mouth = L.mouth || (L.smile ? 'smile' : L.angry || orcish ? 'stern' : 'neutral');
+        const brows = L.brows || (L.angry || orcish ? 'angry' : race === 'dwarf' ? 'thick' : f ? 'arched' : 'flat');
+        // pozadie, ramená a golier v farbe frakcie
+        const bg = c.createRadialGradient(cx, cy, 10, cx, cy, 62); bg.addColorStop(0, L.bg || '#3a2c20'); bg.addColorStop(1, '#0e0a08');
         c.fillStyle = bg; c.fillRect(0, 0, 96, 96);
-        c.fillStyle = L.cloth || (race === 'orc' || race === 'uruk' || race === 'wraith' ? '#1e1a18' : '#4a3a2a');
-        E(c, cx, 104, 44, 30); c.fill();
-        c.fillStyle = shade(skin, .85); c.fillRect(cx - 9, cy + hh - 6, 18, 16);                    // krk
+        const cloth = L.cloth || (orcish || race === 'wraith' ? '#1e1a18' : '#4a3a2a');
+        const cg = c.createLinearGradient(0, 78, 0, 110); cg.addColorStop(0, shade(cloth, 1.25)); cg.addColorStop(1, shade(cloth, .7));
+        c.fillStyle = cg; E(c, cx, 106, 46, 32); c.fill();
+        c.fillStyle = shade(cloth, .6); c.beginPath(); c.moveTo(cx - 14, cy + hh + 4); c.lineTo(cx - 24, 96); c.lineTo(cx + 24, 96); c.lineTo(cx + 14, cy + hh + 4); c.closePath(); c.fill();   // golier
+        if (orcish) { c.fillStyle = '#6a6a70'; for (const sx of [-30, -18, 18, 30]) { c.beginPath(); c.moveTo(cx + sx - 3, 90); c.lineTo(cx + sx, 80); c.lineTo(cx + sx + 3, 90); c.fill(); } }   // ostne na pleciach
+        if (race === 'dark') { c.fillStyle = '#d9a441'; c.fillRect(cx - 20, 88, 40, 3); }
+        // krk s tieňom
+        const ng = c.createLinearGradient(0, cy + hh - 6, 0, cy + hh + 10); ng.addColorStop(0, shade(skin, .6)); ng.addColorStop(1, shade(skin, .85));
+        c.fillStyle = ng; c.fillRect(cx - 9, cy + hh - 6, 18, 17);
         // vlasy vzadu
         const hair = L.hair || (f ? 'long' : 'short');
-        if (race !== 'wraith' && (hair === 'long' || hair === 'braids')) { c.fillStyle = hcol; P(c, [[cx - hw - 4, cy - 10], [cx + hw + 4, cy - 10], [cx + hw + 7, cy + 40], [cx - hw - 7, cy + 40]]); c.fill(); }
-        if (race !== 'wraith' && hair === 'lank') { c.fillStyle = hcol; P(c, [[cx - hw - 2, cy - 12], [cx + hw + 2, cy - 12], [cx + hw + 3, cy + 30], [cx - hw - 3, cy + 30]]); c.fill(); }
-        // hlava
-        const g = c.createLinearGradient(cx - hw, 0, cx + hw, 0); g.addColorStop(0, shade(skin, .8)); g.addColorStop(.45, skin); g.addColorStop(1, shade(skin, .92));
+        const hairBack = (w, bottom) => { c.fillStyle = shade(hcol, .8); P(c, [[cx - hw - w, cy - 10], [cx + hw + w, cy - 10], [cx + hw + w + 3, cy + bottom], [cx - hw - w - 3, cy + bottom]]); c.fill(); for (let k = 0; k < 6; k++) { c.strokeStyle = shade(hcol, k % 2 ? 1.15 : .7); c.lineWidth = 1.2; c.beginPath(); c.moveTo(cx - hw - w + 2 + k * (2 * hw + 2 * w - 4) / 5, cy - 6); c.lineTo(cx - hw - w - 1 + k * (2 * hw + 2 * w + 2) / 5, cy + bottom - 2); c.stroke(); } };
+        if (race !== 'wraith') { if (hair === 'long' || hair === 'braids' || hair === 'wavy') hairBack(4, 40); if (hair === 'lank') hairBack(2, 30); }
+        // hlava s tieňovaním pleti (svetlo zľava hore)
+        const g = c.createRadialGradient(cx - 8, cy - 10, 4, cx, cy + 4, hh + 14); g.addColorStop(0, shade(skin, 1.1)); g.addColorStop(.6, skin); g.addColorStop(1, shade(skin, .72));
         c.fillStyle = g;
-        if (race === 'orc' || race === 'uruk') { P(c, [[cx - hw, cy - hh * .7], [cx - hw * .6, cy - hh], [cx + hw * .6, cy - hh], [cx + hw, cy - hh * .7], [cx + hw * .95, cy + hh * .3], [cx + hw * .5, cy + hh], [cx - hw * .5, cy + hh], [cx - hw * .95, cy + hh * .3]]); c.fill(); }
+        if (orcish) { P(c, [[cx - hw, cy - hh * .7], [cx - hw * .6, cy - hh], [cx + hw * .6, cy - hh], [cx + hw, cy - hh * .7], [cx + hw * .95, cy + hh * .3], [cx + hw * .5, cy + hh], [cx - hw * .5, cy + hh], [cx - hw * .95, cy + hh * .3]]); c.fill(); }
         else if (race === 'wraith') { c.fillStyle = '#050508'; E(c, cx, cy, hw, hh); c.fill(); }
-        else { c.beginPath(); c.moveTo(cx - hw, cy - 4); c.quadraticCurveTo(cx - hw, cy - hh - 2, cx, cy - hh - 2); c.quadraticCurveTo(cx + hw, cy - hh - 2, cx + hw, cy - 4); c.quadraticCurveTo(cx + hw, cy + hh * .55, cx + (race === 'dwarf' ? 10 : 6), cy + hh); c.lineTo(cx - (race === 'dwarf' ? 10 : 6), cy + hh); c.quadraticCurveTo(cx - hw, cy + hh * .55, cx - hw, cy - 4); c.fill(); }
+        else { c.beginPath(); c.moveTo(cx - hw, cy - 4); c.quadraticCurveTo(cx - hw, cy - hh - 2, cx, cy - hh - 2); c.quadraticCurveTo(cx + hw, cy - hh - 2, cx + hw, cy - 4); c.quadraticCurveTo(cx + hw, cy + hh * .55, cx + (race === 'dwarf' ? 10 : f ? 5 : 7), cy + hh); c.lineTo(cx - (race === 'dwarf' ? 10 : f ? 5 : 7), cy + hh); c.quadraticCurveTo(cx - hw, cy + hh * .55, cx - hw, cy - 4); c.fill(); }
+        if (race !== 'wraith') {
+            c.fillStyle = 'rgba(0,0,0,.12)'; E(c, cx, cy + hh - 4, hw * .55, 4); c.fill();                                         // tieň pod bradou
+            for (const s of [-1, 1]) { c.fillStyle = 'rgba(255,255,255,.08)'; E(c, cx + s * 12, cy + 4, 5, 3, s * .4); c.fill(); }     // lícne kosti
+            if (race === 'hobbit' || L.rosy) { c.fillStyle = 'rgba(220,90,80,.22)'; E(c, cx - 12, cy + 7, 5, 3); c.fill(); E(c, cx + 12, cy + 7, 5, 3); c.fill(); }
+            if (race === 'orc') { c.fillStyle = shade(skin, .75); for (const [wx, wy] of [[-14, -2], [10, 12], [16, -8]]) { c.beginPath(); c.arc(cx + wx, cy + wy, 1.6, 0, 7); c.fill(); } }   // bradavice
+        }
         // uši
         if (race !== 'wraith') {
             c.fillStyle = shade(skin, .9);
-            if (race === 'elf' || race === 'orc' || race === 'uruk') { const e = race === 'elf' ? 14 : 9; P(c, [[cx - hw + 2, cy - 2], [cx - hw - e, cy - 8 - (race === 'elf' ? 4 : 0)], [cx - hw + 1, cy + 7]]); c.fill(); P(c, [[cx + hw - 2, cy - 2], [cx + hw + e, cy - 8 - (race === 'elf' ? 4 : 0)], [cx + hw - 1, cy + 7]]); c.fill(); }
-            else { E(c, cx - hw, cy + 1, 3.5, 5.5); c.fill(); E(c, cx + hw, cy + 1, 3.5, 5.5); c.fill(); }
+            if (race === 'elf' || orcish) { const e = race === 'elf' ? 14 : 9, up = race === 'elf' ? 6 : 2; for (const s of [-1, 1]) { P(c, [[cx + s * (hw - 2), cy - 2], [cx + s * (hw + e), cy - 8 - up], [cx + s * (hw - 1), cy + 7]]); c.fill(); c.fillStyle = shade(skin, .75); P(c, [[cx + s * (hw - 1), cy - 1], [cx + s * (hw + e * .6), cy - 6 - up * .6], [cx + s * (hw - .5), cy + 5]]); c.fill(); c.fillStyle = shade(skin, .9); } }
+            else for (const s of [-1, 1]) { E(c, cx + s * hw, cy + 1, 3.5, 5.5); c.fill(); c.fillStyle = shade(skin, .75); E(c, cx + s * hw, cy + 1.5, 1.6, 3); c.fill(); c.fillStyle = shade(skin, .9); }
+            if (L.earring) { c.strokeStyle = '#d9a441'; c.lineWidth = 1; c.beginPath(); c.arc(cx + hw + 1, cy + 7, 2.2, 0, 7); c.stroke(); }
         }
         // oči
-        const ey = cy - 3, ex = race === 'dwarf' ? 9 : 8.5, er = race === 'orc' || race === 'uruk' ? 3.2 : 4;
+        const ey = cy - 3, ex = race === 'dwarf' ? 9 : 8.5, erx = eyeShape === 'narrow' ? 4.4 : eyeShape === 'round' ? 3.8 : 4.2, ery = eyeShape === 'round' ? 3 : eyeShape === 'narrow' ? 1.4 : eyeShape === 'deep' ? 2.1 : 2.5;
         if (race === 'wraith') { c.save(); c.shadowColor = '#ff3020'; c.shadowBlur = 8; c.fillStyle = '#ff5030'; E(c, cx - ex, ey, 2.5, 1); c.fill(); E(c, cx + ex, ey, 2.5, 1); c.fill(); c.restore(); }
         else for (const s of [-1, 1]) {
             const x = cx + s * ex;
-            c.fillStyle = shade(skin, .78); E(c, x, ey + 1, er + 1.5, er * .9); c.fill();            // očná jamka
-            c.fillStyle = race === 'orc' || race === 'uruk' ? '#f0e0a0' : '#f4f0ea'; E(c, x, ey, er, er * .62); c.fill();
-            c.fillStyle = eyes; c.beginPath(); c.arc(x + (L.look || 0), ey, er * .5, 0, 7); c.fill();
-            c.fillStyle = '#0a0806'; c.beginPath(); c.arc(x + (L.look || 0), ey, er * .25, 0, 7); c.fill();
-            c.fillStyle = '#fff'; c.beginPath(); c.arc(x + .8 + (L.look || 0), ey - .9, .7, 0, 7); c.fill();
-            c.strokeStyle = shade(skin, .6); c.lineWidth = .9; c.beginPath(); c.arc(x, ey, er, Math.PI, 0); c.stroke();   // viečko
+            c.fillStyle = shade(skin, eyeShape === 'deep' ? .68 : .8); E(c, x, ey + 1, erx + 1.6, ery + 1.8); c.fill();         // očná jamka
+            c.fillStyle = orcish ? '#f0e0a0' : '#f4f0ea'; E(c, x, ey, erx, ery); c.fill();
+            c.save(); c.beginPath(); c.ellipse(x, ey, erx, ery, 0, 0, 7); c.clip();
+            const ir = Math.min(erx, ery + 1.2) * .78;
+            const ig = c.createRadialGradient(x + (L.look || 0), ey, .2, x + (L.look || 0), ey, ir); ig.addColorStop(0, shade(eyes, 1.3)); ig.addColorStop(1, shade(eyes, .6));
+            c.fillStyle = ig; c.beginPath(); c.arc(x + (L.look || 0), ey, ir, 0, 7); c.fill();
+            c.fillStyle = '#0a0806'; c.beginPath(); c.arc(x + (L.look || 0), ey, ir * .45, 0, 7); c.fill();
+            c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(x - erx, ey - ery, erx * 2, ery * .55);                                        // tieň horného viečka
+            c.restore();
+            c.fillStyle = '#fff'; c.beginPath(); c.arc(x + .9 + (L.look || 0), ey - .9, .8, 0, 7); c.fill();
+            c.strokeStyle = shade(skin, .5); c.lineWidth = f ? 1.3 : 1; c.beginPath(); c.ellipse(x, ey, erx, ery, 0, Math.PI, 0); c.stroke();   // horné viečko
+            c.strokeStyle = shade(skin, .7); c.lineWidth = .7; c.beginPath(); c.ellipse(x, ey, erx, ery, 0, 0, Math.PI); c.stroke();
+            if (f) { c.strokeStyle = '#1a1210'; c.lineWidth = .8; for (let k = 0; k < 3; k++) { c.beginPath(); c.moveTo(x + s * (erx - k * 1.2), ey - ery + .2); c.lineTo(x + s * (erx + 1 - k * 1.2), ey - ery - 1.6); c.stroke(); } }   // mihalnice
             // obočie
-            c.strokeStyle = race === 'orc' || race === 'uruk' ? '#2a2a1a' : hcol; c.lineWidth = f ? 1.3 : 2.2; c.lineCap = 'round';
-            const angry = L.angry || race === 'orc' || race === 'uruk';
-            c.beginPath(); c.moveTo(x - s * (er + 1.5), ey - 5.5 + (angry ? -1 : 0)); c.lineTo(x + s * (er - .5), ey - 5.5 + (angry ? 2.5 : 0)); c.stroke();
+            c.strokeStyle = orcish ? '#2a2a1a' : shade(hcol, .85); c.lineWidth = brows === 'thick' ? 3 : f ? 1.3 : 2.2; c.lineCap = 'round';
+            const by = ey - 6.5, tilt = brows === 'angry' ? 3 : brows === 'arched' ? -1 : 0;
+            c.beginPath(); c.moveTo(x - s * (erx + 1.5), by - (brows === 'angry' ? 1 : 0) - (brows === 'arched' ? 0 : 0)); c.quadraticCurveTo(x, by - 2.5 + (brows === 'arched' ? -1.5 : 0) + (brows === 'angry' ? 2 : 0), x + s * (erx - .5), by + tilt); c.stroke();
         }
         // nos
         if (race !== 'wraith') {
-            c.strokeStyle = shade(skin, .7); c.lineWidth = 1.4; c.lineCap = 'round';
-            if (race === 'orc' || race === 'uruk') { c.fillStyle = shade(skin, .8); E(c, cx, cy + 6, 5, 3); c.fill(); c.fillStyle = '#1a1a12'; E(c, cx - 2.2, cy + 6.5, 1.3, .9); c.fill(); E(c, cx + 2.2, cy + 6.5, 1.3, .9); c.fill(); }
-            else { c.beginPath(); c.moveTo(cx - 1, cy); c.lineTo(cx - 2.5, cy + 7); c.quadraticCurveTo(cx, cy + 9.5, cx + 3, cy + 7); c.stroke(); c.fillStyle = shade(skin, 1.08); E(c, cx + 1, cy + 3, 1.6, 4); c.fill(); }
+            c.strokeStyle = shade(skin, .68); c.lineWidth = 1.3; c.lineCap = 'round';
+            if (nose === 'flat') { c.fillStyle = shade(skin, .82); E(c, cx, cy + 6, 5.5, 3.2); c.fill(); c.fillStyle = '#1a1a12'; E(c, cx - 2.4, cy + 6.6, 1.4, .9); c.fill(); E(c, cx + 2.4, cy + 6.6, 1.4, .9); c.fill(); }
+            else {
+                const nw = nose === 'wide' ? 4.2 : nose === 'small' ? 2.4 : 3.2, nl = nose === 'small' ? 5.5 : 7.5, hook = nose === 'hooked' ? 1.5 : 0;
+                c.beginPath(); c.moveTo(cx - 1, cy - 1); c.quadraticCurveTo(cx - 2.5 - hook, cy + nl * .5, cx - nw * .7, cy + nl); c.quadraticCurveTo(cx, cy + nl + 2.2, cx + nw, cy + nl - .4); c.stroke();
+                c.fillStyle = shade(skin, 1.12); E(c, cx + 1 + hook * .6, cy + 2.5, 1.5, nl * .5); c.fill();                       // svetlo na chrbte nosa
+                c.fillStyle = shade(skin, .6); E(c, cx - nw * .45, cy + nl - .2, 1.1, .7); c.fill(); E(c, cx + nw * .55, cy + nl - .4, 1.1, .7); c.fill();   // nozdry
+            }
         }
         // ústa
         const my = cy + (race === 'dwarf' ? 14 : 13.5);
         if (race === 'wraith') { c.fillStyle = '#e8d8c8'; c.fillRect(cx - 6, my - 1, 12, 3.2); c.strokeStyle = '#3a1010'; c.lineWidth = .7; c.beginPath(); c.moveTo(cx - 6, my + .6); c.lineTo(cx + 6, my + .6); c.stroke(); }
         else {
-            c.fillStyle = race === 'orc' || race === 'uruk' ? '#3a2a24' : shade(skin, .7); E(c, cx, my, race === 'orc' || race === 'uruk' ? 8 : 5.5, 1.6); c.fill();
-            if (L.smile) { c.strokeStyle = shade(skin, .6); c.lineWidth = 1; c.beginPath(); c.arc(cx, my - 2.5, 6, .3, Math.PI - .3); c.stroke(); }
-            if (f) { c.fillStyle = '#b05a58'; E(c, cx, my + .6, 5, 1.5); c.fill(); }
-            if (race === 'orc' || race === 'uruk') { c.fillStyle = '#e8e0c8'; P(c, [[cx - 6, my], [cx - 4.5, my - 4], [cx - 3, my]]); c.fill(); P(c, [[cx + 6, my], [cx + 4.5, my - 4], [cx + 3, my]]); c.fill(); }
+            const mw = orcish ? 8 : mouth === 'thin' ? 4.5 : 5.5, curve = mouth === 'smile' ? -2 : mouth === 'stern' ? 1.6 : 0;
+            c.strokeStyle = shade(skin, .55); c.lineWidth = 1.3; c.beginPath(); c.moveTo(cx - mw, my + curve * .5); c.quadraticCurveTo(cx, my + 1.2 - curve, cx + mw, my + curve * .5); c.stroke();   // čiara úst
+            c.fillStyle = f ? '#b05a58' : shade(skin, .78); c.beginPath(); c.moveTo(cx - mw, my + curve * .5); c.quadraticCurveTo(cx, my + 3.2 - curve * .4, cx + mw, my + curve * .5); c.quadraticCurveTo(cx, my + 1 - curve, cx - mw, my + curve * .5); c.fill();   // spodná pera
+            c.fillStyle = 'rgba(255,255,255,.18)'; E(c, cx, my + 1.6 - curve * .3, mw * .45, .7); c.fill();
+            if (orcish) { c.fillStyle = '#e8e0c8'; for (const s of [-1, 1]) { P(c, [[cx + s * 6, my + 1], [cx + s * 4.6, my - 4.5], [cx + s * 3, my + 1]]); c.fill(); } }
+            if (race === 'hobbit' && mouth === 'smile') { c.fillStyle = '#f4f0ea'; c.fillRect(cx - 3, my - .4, 6, 1.4); }
         }
-        // vrásky, jazva, bojové maľovanie
-        if (L.age > .4 && race !== 'wraith') { c.strokeStyle = shade(skin, .72); c.lineWidth = .8; for (const s of [-1, 1]) { c.beginPath(); c.moveTo(cx + s * 4, cy + 8); c.lineTo(cx + s * 8, cy + 16); c.stroke(); } c.beginPath(); c.moveTo(cx - 8, cy - 14); c.lineTo(cx + 8, cy - 14); c.stroke(); }
-        if (L.scar) { c.strokeStyle = '#8a3a30'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(cx + 10, cy - 12); c.lineTo(cx + 6, cy + 10); c.stroke(); }
+        // vrásky, jazva, maľovanie, tetovanie
+        if (L.age > .4 && race !== 'wraith') { c.strokeStyle = shade(skin, .72); c.lineWidth = .8; for (const s of [-1, 1]) { c.beginPath(); c.moveTo(cx + s * 4, cy + 8); c.quadraticCurveTo(cx + s * 7, cy + 12, cx + s * 8, cy + 17); c.stroke(); c.beginPath(); c.moveTo(cx + s * 12, cy - 1); c.lineTo(cx + s * 15, cy + 1); c.stroke(); } c.beginPath(); c.moveTo(cx - 8, cy - 15); c.quadraticCurveTo(cx, cy - 17, cx + 8, cy - 15); c.stroke(); if (L.age > .7) { c.beginPath(); c.moveTo(cx - 9, cy - 11.5); c.quadraticCurveTo(cx, cy - 13.5, cx + 9, cy - 11.5); c.stroke(); } }
+        if (L.scar) { c.strokeStyle = '#8a3a30'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(cx + 10, cy - 12); c.lineTo(cx + 6, cy + 10); c.stroke(); c.strokeStyle = 'rgba(138,58,48,.6)'; c.lineWidth = .7; for (let k = 0; k < 4; k++) { const yy = cy - 8 + k * 5, xx = cx + 9.3 - k * .9; c.beginPath(); c.moveTo(xx - 2, yy); c.lineTo(xx + 2, yy + .4); c.stroke(); } }
         if (L.paint) { c.fillStyle = 'rgba(240,240,240,.9)'; E(c, cx, cy + 2, 5, 7); c.fill(); for (let k = -2; k <= 2; k++) c.fillRect(cx + k * 2.4 - .8, cy - 16, 1.6, 10); }
-        // brada
+        if (L.warpaint) { c.fillStyle = L.warpaint === true ? 'rgba(200,40,30,.8)' : L.warpaint; for (const s of [-1, 1]) { c.fillRect(cx + s * 9 - 3, cy + 2, 6, 1.6); c.fillRect(cx + s * 9 - 3, cy + 5, 6, 1.6); } }
+        if (L.tattoo) { c.strokeStyle = 'rgba(30,50,90,.75)'; c.lineWidth = 1; c.beginPath(); c.moveTo(cx - 16, cy - 6); c.quadraticCurveTo(cx - 10, cy - 14, cx - 4, cy - 18); c.moveTo(cx - 16, cy); c.lineTo(cx - 10, cy - 10); c.stroke(); }
+        if (L.eyepatch) { c.fillStyle = '#1a1210'; E(c, cx + ex, ey, 5.5, 4.5); c.fill(); c.strokeStyle = '#1a1210'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(cx + ex - 5, ey - 3); c.lineTo(cx - hw, cy - 12); c.moveTo(cx + ex + 5, ey - 2); c.lineTo(cx + hw, cy - 10); c.stroke(); }
+        // brada a fúzy s textúrou
         const beard = L.beard || 'none';
+        const beardTex = (poly, col) => { c.fillStyle = col; P(c, poly); c.fill(); c.save(); P(c, poly); c.clip(); for (let k = 0; k < 14; k++) { c.strokeStyle = k % 2 ? shade(col, 1.25) : shade(col, .7); c.lineWidth = .9; c.beginPath(); const xx = cx - 18 + k * 2.8; c.moveTo(xx, cy + 6); c.quadraticCurveTo(xx + (k % 2 ? 2 : -2), cy + 22, xx + (k - 7) * .6, cy + 50); c.stroke(); } c.restore(); };
         if (race !== 'wraith' && beard !== 'none' && !f) {
-            c.fillStyle = beard === 'stubble' ? 'rgba(40,30,20,.35)' : hcol;
-            if (beard === 'stubble') { P(c, [[cx - hw + 3, cy + 6], [cx + hw - 3, cy + 6], [cx + 6, cy + hh + 1], [cx - 6, cy + hh + 1]]); c.fill(); }
-            else if (beard === 'full') { P(c, [[cx - hw + 1, cy + 4], [cx - hw + 5, cy + 20], [cx, cy + hh + 8], [cx + hw - 5, cy + 20], [cx + hw - 1, cy + 4], [cx + hw - 4, cy + 12], [cx + 7, cy + 10], [cx - 7, cy + 10], [cx - hw + 4, cy + 12]]); c.fill(); }
-            else { P(c, [[cx - hw + 1, cy + 4], [cx - hw + 3, cy + 28], [cx - 8, cy + 46], [cx + 8, cy + 46], [cx + hw - 3, cy + 28], [cx + hw - 1, cy + 4], [cx + hw - 4, cy + 12], [cx + 7, cy + 10], [cx - 7, cy + 10], [cx - hw + 4, cy + 12]]); c.fill(); if (beard === 'braided') { c.strokeStyle = '#d9a441'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(cx - 4, cy + 34); c.lineTo(cx + 4, cy + 34); c.moveTo(cx - 3, cy + 41); c.lineTo(cx + 3, cy + 41); c.stroke(); } }
-            if (beard !== 'stubble') { c.fillStyle = shade(skin, .7); E(c, cx, my, 5, 1.4); c.fill(); }   // ústa cez bradu
+            if (beard === 'stubble') { c.fillStyle = 'rgba(40,30,20,.3)'; P(c, [[cx - hw + 3, cy + 6], [cx + hw - 3, cy + 6], [cx + 6, cy + hh + 1], [cx - 6, cy + hh + 1]]); c.fill(); c.fillStyle = 'rgba(30,20,10,.35)'; for (let k = 0; k < 40; k++) { const px = cx - 14 + (k * 7.3) % 28, py = cy + 8 + (k * 5.1) % 18; if (Math.abs(px - cx) < 6 && py < my + 3 && py > my - 3) continue; c.fillRect(px, py, .9, .9); } }
+            else if (beard === 'mustache') { c.strokeStyle = hcol; c.lineWidth = 2.2; c.lineCap = 'round'; c.beginPath(); c.moveTo(cx - 1, my - 3); c.quadraticCurveTo(cx - 6, my - 4.5, cx - 10, my); c.moveTo(cx + 1, my - 3); c.quadraticCurveTo(cx + 6, my - 4.5, cx + 10, my); c.stroke(); }
+            else if (beard === 'goatee') { beardTex([[cx - 5, my - 1], [cx + 5, my - 1], [cx + 6, cy + hh + 6], [cx - 6, cy + hh + 6]], hcol); c.strokeStyle = hcol; c.lineWidth = 2; c.beginPath(); c.moveTo(cx - 1, my - 3); c.quadraticCurveTo(cx - 6, my - 4.5, cx - 9, my - 1); c.moveTo(cx + 1, my - 3); c.quadraticCurveTo(cx + 6, my - 4.5, cx + 9, my - 1); c.stroke(); }
+            else if (beard === 'full') beardTex([[cx - hw + 1, cy + 4], [cx - hw + 5, cy + 20], [cx, cy + hh + 9], [cx + hw - 5, cy + 20], [cx + hw - 1, cy + 4], [cx + hw - 4, cy + 12], [cx + 7, cy + 10], [cx - 7, cy + 10], [cx - hw + 4, cy + 12]], hcol);
+            else { beardTex([[cx - hw + 1, cy + 4], [cx - hw + 3, cy + 28], [cx - 9, cy + 47], [cx + 9, cy + 47], [cx + hw - 3, cy + 28], [cx + hw - 1, cy + 4], [cx + hw - 4, cy + 12], [cx + 7, cy + 10], [cx - 7, cy + 10], [cx - hw + 4, cy + 12]], hcol); if (beard === 'braided') { c.strokeStyle = '#d9a441'; c.lineWidth = 1.6; for (const yy of [cy + 33, cy + 41]) { c.beginPath(); c.moveTo(cx - 5, yy); c.lineTo(cx + 5, yy); c.stroke(); } c.fillStyle = '#d9a441'; c.beginPath(); c.arc(cx, cy + 46, 1.6, 0, 7); c.fill(); } }
+            if (beard !== 'stubble' && beard !== 'mustache' && beard !== 'goatee') { c.fillStyle = shade(skin, .72); E(c, cx, my, 5, 1.4); c.fill(); }
         }
-        // vlasy vpredu
+        // vlasy vpredu s prameňmi a leskom
         if (race !== 'wraith' && !L.hood && !L.helm && !L.turban) {
-            c.fillStyle = hcol;
-            if (hair === 'short' || hair === 'tied' || hair === 'long' || hair === 'lank') { c.beginPath(); c.moveTo(cx - hw - 1, cy - 6); c.quadraticCurveTo(cx - hw, cy - hh - 5, cx, cy - hh - 5); c.quadraticCurveTo(cx + hw, cy - hh - 5, cx + hw + 1, cy - 6); c.quadraticCurveTo(cx + hw * .7, cy - hh * .7, cx + 4, cy - hh * .75); c.quadraticCurveTo(cx - 6, cy - hh * .85, cx - hw * .8, cy - hh * .5); c.fill(); }
-            if (hair === 'curly') { for (let k = 0; k < 9; k++) { const a = Math.PI + k * Math.PI / 8; E(c, cx + Math.cos(a) * (hw - 1), cy - 6 + Math.sin(a) * (hh - 2), 6, 6); c.fill(); } }
-            if (hair === 'braids') { c.strokeStyle = hcol; c.lineWidth = 4; c.beginPath(); c.moveTo(cx - hw, cy); c.lineTo(cx - hw - 2, cy + 40); c.moveTo(cx + hw, cy); c.lineTo(cx + hw + 2, cy + 40); c.stroke(); c.strokeStyle = '#d9a441'; c.lineWidth = 1; for (let y = cy + 10; y < cy + 40; y += 8) { c.beginPath(); c.moveTo(cx - hw - 4, y); c.lineTo(cx - hw, y); c.moveTo(cx + hw, y); c.lineTo(cx + hw + 4, y); c.stroke(); } }
-            if (hair === 'bald' && race !== 'orc') { c.fillStyle = shade(skin, 1.06); E(c, cx - 6, cy - hh + 6, 5, 3); c.fill(); }
-            if (hair === 'tied') { c.fillStyle = hcol; E(c, cx, cy - hh - 4, 7, 4); c.fill(); }
+            const front = (path) => { c.fillStyle = hcol; path(); c.fill(); c.save(); path(); c.clip(); for (let k = 0; k < 9; k++) { c.strokeStyle = k % 3 === 1 ? shade(hcol, 1.3) : shade(hcol, .72); c.lineWidth = 1.1; c.beginPath(); const xx = cx - hw + 2 + k * (hw * 2 - 4) / 8; c.moveTo(xx, cy - hh - 6); c.quadraticCurveTo(xx + (k % 2 ? 3 : -3), cy - hh * .8, xx + (k - 4) * 1.2, cy - hh * .5 + 3); c.stroke(); } c.fillStyle = 'rgba(255,255,255,.14)'; E(c, cx - 6, cy - hh - 1, 10, 2.6, .2); c.fill(); c.restore(); };
+            if (hair === 'short' || hair === 'tied' || hair === 'long' || hair === 'lank' || hair === 'wavy') front(() => { c.beginPath(); c.moveTo(cx - hw - 1, cy - 6); c.quadraticCurveTo(cx - hw, cy - hh - 5, cx, cy - hh - 5); c.quadraticCurveTo(cx + hw, cy - hh - 5, cx + hw + 1, cy - 6); c.quadraticCurveTo(cx + hw * .7, cy - hh * .7, cx + 4, cy - hh * .75); c.quadraticCurveTo(cx - 6, cy - hh * .85, cx - hw * .8, cy - hh * .5); });
+            if (hair === 'wavy') { c.fillStyle = hcol; for (let k = 0; k < 5; k++) { E(c, cx - hw - 2 + k * 3, cy + 20 + k * 3, 4, 7); c.fill(); E(c, cx + hw + 2 - k * 3, cy + 20 + k * 3, 4, 7); c.fill(); } }
+            if (hair === 'curly') { for (let k = 0; k < 11; k++) { const a = Math.PI + k * Math.PI / 10; c.fillStyle = k % 2 ? shade(hcol, 1.2) : hcol; E(c, cx + Math.cos(a) * (hw - 1), cy - 6 + Math.sin(a) * (hh - 2), 6, 6); c.fill(); } for (let k = 0; k < 4; k++) { c.fillStyle = shade(hcol, .85); E(c, cx - 12 + k * 8, cy - hh + 2, 5, 5); c.fill(); } }
+            if (hair === 'braids') { for (const s of [-1, 1]) { c.strokeStyle = hcol; c.lineWidth = 4.5; c.beginPath(); c.moveTo(cx + s * hw, cy); c.lineTo(cx + s * (hw + 2), cy + 42); c.stroke(); c.strokeStyle = shade(hcol, .65); c.lineWidth = 1; for (let y = cy + 4; y < cy + 42; y += 5) { c.beginPath(); c.moveTo(cx + s * (hw - 2), y); c.lineTo(cx + s * (hw + 4), y + 3); c.stroke(); } c.strokeStyle = '#d9a441'; c.lineWidth = 1.2; for (const y of [cy + 14, cy + 30]) { c.beginPath(); c.moveTo(cx + s * (hw - 3), y); c.lineTo(cx + s * (hw + 5), y); c.stroke(); } } front(() => { c.beginPath(); c.moveTo(cx - hw - 1, cy - 6); c.quadraticCurveTo(cx - hw, cy - hh - 5, cx, cy - hh - 5); c.quadraticCurveTo(cx + hw, cy - hh - 5, cx + hw + 1, cy - 6); c.quadraticCurveTo(cx, cy - hh * .6, cx - hw - 1, cy - 6); }); }
+            if (hair === 'mohawk') { c.fillStyle = hcol; for (let k = 0; k < 7; k++) { P(c, [[cx - 12 + k * 4, cy - hh + 2], [cx - 10 + k * 4, cy - hh - 14 - Math.abs(3 - k) * -2], [cx - 8 + k * 4, cy - hh + 2]]); c.fill(); } }
+            if (hair === 'topknot') { front(() => { c.beginPath(); c.moveTo(cx - hw - 1, cy - 6); c.quadraticCurveTo(cx - hw, cy - hh - 5, cx, cy - hh - 5); c.quadraticCurveTo(cx + hw, cy - hh - 5, cx + hw + 1, cy - 6); c.quadraticCurveTo(cx, cy - hh * .55, cx - hw - 1, cy - 6); }); c.fillStyle = hcol; E(c, cx, cy - hh - 7, 6, 5); c.fill(); c.fillStyle = '#d9a441'; c.fillRect(cx - 6, cy - hh - 4, 12, 1.5); }
+            if (hair === 'bald') { c.fillStyle = 'rgba(255,255,255,.14)'; E(c, cx - 6, cy - hh + 7, 6, 3.2, .3); c.fill(); }
+            if (hair === 'tied') { c.fillStyle = hcol; E(c, cx, cy - hh - 4, 8, 4.2); c.fill(); c.fillStyle = '#5a3a1a'; c.fillRect(cx - 3, cy - hh - 5.5, 6, 2); }
         }
         // pokrývky hlavy
-        if (L.hood) { c.fillStyle = L.hood === true ? '#2a2420' : L.hood; c.beginPath(); c.moveTo(cx - hw - 8, cy + 30); c.quadraticCurveTo(cx - hw - 10, cy - hh - 14, cx, cy - hh - 16); c.quadraticCurveTo(cx + hw + 10, cy - hh - 14, cx + hw + 8, cy + 30); c.lineTo(cx + hw - 2, cy + 30); c.quadraticCurveTo(cx + hw + 2, cy - hh + 2, cx, cy - hh); c.quadraticCurveTo(cx - hw - 2, cy - hh + 2, cx - hw + 2, cy + 30); c.closePath(); c.fill(); c.fillStyle = 'rgba(0,0,0,.35)'; P(c, [[cx - hw + 2, cy - hh + 2], [cx + hw - 2, cy - hh + 2], [cx + hw - 4, cy - 2], [cx - hw + 4, cy - 2]]); c.fill(); }
-        if (L.turban) { c.fillStyle = L.turban === true ? '#c84a2a' : L.turban; c.beginPath(); c.moveTo(cx - hw - 3, cy - 8); c.quadraticCurveTo(cx - hw - 2, cy - hh - 12, cx, cy - hh - 12); c.quadraticCurveTo(cx + hw + 2, cy - hh - 12, cx + hw + 3, cy - 8); c.lineTo(cx + hw, cy - 4); c.quadraticCurveTo(cx, cy - hh + 2, cx - hw, cy - 4); c.fill(); c.strokeStyle = '#d9a441'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(cx - hw, cy - 12); c.quadraticCurveTo(cx, cy - 20, cx + hw, cy - 12); c.stroke(); }
-        if (L.helm) { const col = typeof L.helm === 'string' ? L.helm : '#8a8c92'; c.fillStyle = col; c.beginPath(); c.moveTo(cx - hw - 2, cy - 2); c.quadraticCurveTo(cx - hw - 2, cy - hh - 8, cx, cy - hh - 8); c.quadraticCurveTo(cx + hw + 2, cy - hh - 8, cx + hw + 2, cy - 2); c.lineTo(cx + hw, cy - 8); c.quadraticCurveTo(cx, cy - hh + 4, cx - hw, cy - 8); c.fill(); c.fillStyle = shade(col, 1.25); c.fillRect(cx - 1.5, cy - hh - 6, 3, 14); if (L.wings) { c.fillStyle = '#eef0f4'; P(c, [[cx - hw, cy - 10], [cx - hw - 16, cy - 26], [cx - hw + 2, cy - 20]]); c.fill(); P(c, [[cx + hw, cy - 10], [cx + hw + 16, cy - 26], [cx + hw - 2, cy - 20]]); c.fill(); } }
-        if (L.crown) { c.fillStyle = '#ffd24a'; P(c, [[cx - 16, cy - hh - 2], [cx - 16, cy - hh - 14], [cx - 8, cy - hh - 6], [cx, cy - hh - 17], [cx + 8, cy - hh - 6], [cx + 16, cy - hh - 14], [cx + 16, cy - hh - 2]]); c.fill(); c.fillStyle = '#d8402a'; c.beginPath(); c.arc(cx, cy - hh - 7, 2, 0, 7); c.fill(); }
+        if (L.hood) { const hc = L.hood === true ? '#2a2420' : L.hood, hg = c.createLinearGradient(cx - hw, 0, cx + hw, 0); hg.addColorStop(0, shade(hc, 1.2)); hg.addColorStop(1, shade(hc, .6)); c.fillStyle = hg; c.beginPath(); c.moveTo(cx - hw - 8, cy + 30); c.quadraticCurveTo(cx - hw - 10, cy - hh - 14, cx, cy - hh - 16); c.quadraticCurveTo(cx + hw + 10, cy - hh - 14, cx + hw + 8, cy + 30); c.lineTo(cx + hw - 2, cy + 30); c.quadraticCurveTo(cx + hw + 2, cy - hh + 2, cx, cy - hh); c.quadraticCurveTo(cx - hw - 2, cy - hh + 2, cx - hw + 2, cy + 30); c.closePath(); c.fill(); c.fillStyle = 'rgba(0,0,0,.4)'; P(c, [[cx - hw + 2, cy - hh + 2], [cx + hw - 2, cy - hh + 2], [cx + hw - 4, cy - 2], [cx - hw + 4, cy - 2]]); c.fill(); }
+        if (L.turban) { const tc = L.turban === true ? '#c84a2a' : L.turban; c.fillStyle = tc; c.beginPath(); c.moveTo(cx - hw - 3, cy - 8); c.quadraticCurveTo(cx - hw - 2, cy - hh - 12, cx, cy - hh - 12); c.quadraticCurveTo(cx + hw + 2, cy - hh - 12, cx + hw + 3, cy - 8); c.lineTo(cx + hw, cy - 4); c.quadraticCurveTo(cx, cy - hh + 2, cx - hw, cy - 4); c.fill(); for (let k = 0; k < 3; k++) { c.strokeStyle = k % 2 ? shade(tc, .7) : shade(tc, 1.2); c.lineWidth = 1.5; c.beginPath(); c.moveTo(cx - hw - 1, cy - 10 - k * 6); c.quadraticCurveTo(cx + (k % 2 ? 10 : -10), cy - hh - 4 - k * 2, cx + hw + 1, cy - 10 - k * 6); c.stroke(); } c.strokeStyle = '#d9a441'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(cx - hw, cy - 12); c.quadraticCurveTo(cx, cy - 20, cx + hw, cy - 12); c.stroke(); c.fillStyle = '#d8402a'; c.beginPath(); c.arc(cx, cy - hh - 2, 2.2, 0, 7); c.fill(); }
+        if (L.helm) { const col = typeof L.helm === 'string' ? L.helm : '#8a8c92', hg = c.createLinearGradient(cx - hw, 0, cx + hw, 0); hg.addColorStop(0, shade(col, 1.3)); hg.addColorStop(.5, col); hg.addColorStop(1, shade(col, .6)); c.fillStyle = hg; c.beginPath(); c.moveTo(cx - hw - 2, cy - 2); c.quadraticCurveTo(cx - hw - 2, cy - hh - 8, cx, cy - hh - 8); c.quadraticCurveTo(cx + hw + 2, cy - hh - 8, cx + hw + 2, cy - 2); c.lineTo(cx + hw, cy - 8); c.quadraticCurveTo(cx, cy - hh + 4, cx - hw, cy - 8); c.fill(); c.fillStyle = shade(col, 1.25); c.fillRect(cx - 1.5, cy - hh - 6, 3, 14); c.strokeStyle = shade(col, .5); c.lineWidth = .8; c.beginPath(); c.moveTo(cx - hw, cy - 8); c.quadraticCurveTo(cx, cy - hh + 4, cx + hw, cy - 8); c.stroke(); if (L.wings) { c.fillStyle = '#eef0f4'; for (const s of [-1, 1]) { P(c, [[cx + s * hw, cy - 10], [cx + s * (hw + 16), cy - 26], [cx + s * (hw - 2), cy - 20]]); c.fill(); c.strokeStyle = '#c8ccd4'; c.lineWidth = .6; for (let k = 1; k < 4; k++) { c.beginPath(); c.moveTo(cx + s * hw, cy - 10 - k * 2.5); c.lineTo(cx + s * (hw + 12 - k * 2), cy - 22 - k * 1.2); c.stroke(); } } } }
+        if (L.crown) { c.fillStyle = '#ffd24a'; P(c, [[cx - 16, cy - hh - 2], [cx - 16, cy - hh - 14], [cx - 8, cy - hh - 6], [cx, cy - hh - 17], [cx + 8, cy - hh - 6], [cx + 16, cy - hh - 14], [cx + 16, cy - hh - 2]]); c.fill(); c.fillStyle = '#b08020'; c.fillRect(cx - 16, cy - hh - 4, 32, 2); for (const [px, col] of [[-16, '#3a8ae0'], [0, '#d8402a'], [16, '#3a8ae0']]) { c.fillStyle = col; c.beginPath(); c.arc(cx + px, cy - hh - (px ? 14 : 8), 2, 0, 7); c.fill(); } }
         // rám
         c.strokeStyle = '#d9a441'; c.lineWidth = 2; c.strokeRect(1, 1, 94, 94);
+        c.strokeStyle = 'rgba(255,230,160,.35)'; c.lineWidth = .8; c.strokeRect(4, 4, 88, 88);
     }
 
     function canvas(look, size = 96) {
@@ -110,18 +152,18 @@ const Portraits = (() => {
     function forLord(e) {
         const h = hashOf(e.nm + e.f), pick = (arr, k) => arr[(h >> k) % arr.length];
         const H = ['#2a1a10', '#4a3020', '#8a5a30', '#c8a060', '#6a6a6a'];
-        const base = { human: { race: 'human', skin: pick([0, 0, 1, 3], 2), hair: pick(['short', 'long', 'tied', 'short'], 4), hcol: pick(H, 6), beard: pick(['none', 'stubble', 'full', 'short'], 8), age: (h % 7) / 7 } };
+        const base = { human: { race: 'human', skin: pick([0, 0, 1, 3], 2), hair: pick(['short', 'long', 'tied', 'wavy'], 4), hcol: pick(H, 6), beard: pick(['none', 'stubble', 'full', 'goatee', 'mustache'], 8), age: (h % 7) / 7, eyeShape: pick(['almond', 'round', 'narrow', 'deep'], 12), nose: pick(['straight', 'hooked', 'wide', 'small'], 14), mouth: pick(['neutral', 'stern', 'thin', 'neutral'], 16), brows: pick(['flat', 'thick', 'arched', 'angry'], 18) } };
         let L;
         switch (e.f) {
             case 0: L = { ...base.human, helm: pick([0, '#c8ccd4'], 10), wings: !!pick([0, 1], 11) }; break;
             case 1: L = { ...base.human, hair: 'long', hcol: pick(['#c8a060', '#e8d0a0', '#8a5a30'], 6), beard: pick(['full', 'stubble'], 8) }; break;
-            case 2: L = { race: 'orc', hair: 'bald', beard: 'none', angry: 1, scar: !!(h % 2), helm: pick([0, '#3a3632'], 10) }; break;
+            case 2: L = { race: 'orc', hair: pick(['bald', 'mohawk', 'lank'], 4), hcol: '#1a1410', beard: 'none', angry: 1, scar: !!(h % 2), helm: pick([0, '#3a3632'], 10), eyepatch: h % 5 === 0 }; break;
             case 3: L = { race: 'uruk', hair: 'lank', hcol: '#1a1410', beard: 'none', angry: 1, paint: !!(h % 3 === 0) }; break;
-            case 4: L = { race: 'dark', hair: 'short', hcol: '#1a1410', beard: pick(['none', 'stubble', 'full'], 8), turban: pick(['#c84a2a', '#d9a441', '#8a2a5a'], 5) }; break;
+            case 4: L = { race: 'dark', hair: 'short', hcol: '#1a1410', beard: pick(['none', 'stubble', 'full'], 8), turban: pick(['#c84a2a', '#d9a441', '#8a2a5a'], 5), earring: !!(h % 2), warpaint: !!(h % 3 === 0) }; break;
             case 5: L = { race: 'dwarf', hair: pick(['long', 'braids', 'bald'], 4), hcol: pick(['#b05a20', '#4a3020', '#8a8a8a', '#c8a060'], 6), beard: pick(['long', 'braided'], 8) }; break;
-            case 7: L = { race: 'human', skin: 1, hair: 'tied', hcol: '#1a1410', beard: pick(['none', 'stubble', 'full'], 8), helm: pick([0, '#c09030'], 10) }; break;
+            case 7: L = { race: 'east', skin: 1, hair: pick(['tied', 'topknot'], 4), hcol: '#1a1410', beard: pick(['none', 'mustache', 'goatee'], 8), helm: pick([0, '#c09030'], 10) }; break;
             case 8: L = { race: 'elf', skin: pick([0, 3], 2), hair: 'long', hcol: pick(['#e8d8a0', '#2a1a10', '#8a7a60'], 6), beard: 'none' }; break;
-            case 9: L = { ...base.human, hood: true, scar: !!(h % 2) }; break;
+            case 9: L = { ...base.human, hood: true, scar: !!(h % 2), eyepatch: h % 4 === 0 }; break;
             default: L = { ...base.human };
         }
         if (e.nz) L = { race: 'wraith', hood: '#0a0a10' };

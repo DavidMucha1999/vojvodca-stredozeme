@@ -6,6 +6,7 @@
  * a podľa čísla hradu (poloha studne, stánkov, počet debien). Postavené budovy (stajňa, chrám, trhovisko) vidno na nádvorí.
  * Postavy: kováč, kupec, veliteľ posádky, stráže; v sieni správca hradu alebo pán, ak je práve doma (js/ui/castle.js).
  */
+const BFhex = f => Phaser.Display.Color.HexStringToColor(BF[f] || '#4a3a2a').color;
 class CastleScene extends RoomScene {
     constructor() { super('Castle'); }
     init(d) { this.ti = d.i; this.roomKind = d.room || 'yard'; }
@@ -106,6 +107,7 @@ class CastleScene extends RoomScene {
         if (bd.j) { const hx = 40, hy = HZ + 170; g.fillStyle(0x5a3a1a, 1).fillRect(hx - 30, hy - 40, 90, 44); g.fillStyle(0x3a2a1a, 1).fillRect(hx - 30, hy - 48, 90, 10); for (let k = 0; k < 3; k++) g.fillStyle(0x15100c, 1).fillRect(hx - 22 + k * 28, hy - 30, 20, 30); this.add.image(hx + 20, hy + 2, Art.figure(this, { w: null, a: 0, s: 0, h: null, m: 2 }, { cape: '#3a2a1a' })).setScale(1.3).setDepth(hy); }
         if (bd.c) { const cx = gx + 170, cy = HZ + 12; g.fillStyle(C.wall2, 1).fillRect(cx - 24, cy - 70, 48, 70); g.fillStyle(C.roof, 1).fillTriangle(cx - 30, cy - 70, cx + 30, cy - 70, cx, cy - 100); g.fillStyle(0xffd24a, 1).fillRect(cx - 1.5, cy - 112, 3, 14).fillRect(cx - 5, cy - 108, 10, 2.5); g.fillStyle(0x15100c, 1).fillRoundedRect(cx - 8, cy - 30, 16, 30, { tl: 8, tr: 8, bl: 0, br: 0 }); }
         if (bd.t) { for (let k = 0; k < 2; k++) { const bx = mx - 170 - k * 60, by = my + 40; g.fillStyle(0x5a3a1a, 1).fillRect(bx - 20, by - 40, 4, 44).fillRect(bx + 16, by - 40, 4, 44); g.fillStyle(k ? 0x3a6a2a : 0xa02a1a, 1).fillRect(bx - 24, by - 48, 48, 10); g.fillStyle(0x8a6a3a, 1).fillRect(bx - 20, by - 6, 40, 10); } }
+        this.detailYard(g, t, th, C, R, HZ);
         // cvičný panák
         const dx = 220 + Math.floor(R(4) * 2) * 300, dy = HZ + 150 + R(5) * 40;
         g.fillStyle(0x5a3a1a, 1).fillRect(dx - 2, dy - 40, 4, 40).fillRect(dx - 14, dy - 32, 28, 3); g.fillStyle(0xc8a870, 1).fillRect(dx - 7, dy - 36, 14, 18); g.fillStyle(0xe8c39e, 1).fillCircle(dx, dy - 42, 5);
@@ -132,6 +134,49 @@ class CastleScene extends RoomScene {
         for (const gx of [W / 2 - 92, W / 2 + 92]) this.add.image(gx, this.HZ + 6, Art.bigFigure(this, { ...ceq, m: 0 }, { ...co, flag: null, king: 0, ...Figures.lookOpts(L('straz' + gx)) })).setScale(.5 * .8).setDepth(this.HZ + 6).setFlipX(gx > W / 2);
     }
 
+    /** Drobnosti nádvoria: textúra kameňa, tiene, fakle, debny, seno, kvety alebo klietky podľa strany, mláky. */
+    detailYard(g, t, th, C, R, HZ) {
+        const evil = th === 'mordor' || th === 'isengard' || th === 'bandit';
+        // zrno kameňa a stopy na zemi
+        for (let k = 0; k < 220; k++) { const x = R(300 + k) * W, y = HZ + R(600 + k) * (H - HZ); g.fillStyle(k % 2 ? 0xffffff : 0x000000, .05 + R(900 + k) * .05).fillRect(x, y, 2 + R(1200 + k) * 5, 1.5); }
+        for (let k = 0; k < 3; k++) { const x = 120 + R(40 + k) * (W - 240), y = HZ + 60 + R(50 + k) * (H - HZ - 90); g.fillStyle(0x000000, .1).fillEllipse(x, y, 40 + R(60 + k) * 30, 10); if (MW.n === 'rain' || MW.n === 'storm') g.fillStyle(0x5a7a9a, .4).fillEllipse(x, y, 34 + R(60 + k) * 30, 8); }   // mláky
+        // fakle na hradbách
+        this.torches = [];
+        for (const tx of [W / 2 - 140, W / 2 + 140, 160, W - 160]) { g.fillStyle(0x3a2a1a, 1).fillRect(tx - 2, HZ - 60, 4, 26); g.fillStyle(0x2a2a2e, 1).fillRect(tx - 4, HZ - 64, 8, 6); this.torches.push([tx, HZ - 66]); }
+        // okná v paláci
+        for (const wx of [W / 2 - 180, W / 2 + 180, W / 2 - 230, W / 2 + 230]) { g.fillStyle(0x15100c, 1).fillRoundedRect(wx - 7, HZ - 110, 14, 26, { tl: 7, tr: 7, bl: 0, br: 0 }); g.fillStyle(0x6a7a9a, .55).fillRoundedRect(wx - 5, HZ - 108, 10, 22, { tl: 5, tr: 5, bl: 0, br: 0 }); g.fillStyle(C.trim, 1).fillRect(wx - 8, HZ - 84, 16, 3); }
+        // seno a debny
+        const hx = 60 + R(7) * 40, hy = HZ + 120 + R(8) * 60;
+        g.fillStyle(0x000000, .2).fillEllipse(hx, hy + 10, 50, 12); g.fillStyle(0xc8a860, 1).fillEllipse(hx, hy, 44, 20); g.fillStyle(0xd8b870, 1).fillEllipse(hx - 6, hy - 4, 24, 10); for (let k = 0; k < 10; k++) g.fillStyle(0xa88840, 1).fillRect(hx - 20 + k * 4, hy - 6 + (k % 3) * 5, 5, 1.2);
+        for (let k = 0; k < 2 + Math.floor(R(9) * 2); k++) { const bx = W - 60 - k * 26, by = HZ + 150 + (k % 2) * 14; g.fillStyle(0x000000, .2).fillRect(bx - 11, by + 10, 26, 4); g.fillStyle(0x8a6a3a, 1).fillRect(bx - 11, by - 12, 22, 22); g.fillStyle(0x5a3a1a, 1).fillRect(bx - 11, by - 2, 22, 2).fillRect(bx - 1, by - 12, 2, 22); }
+        if (!evil) { for (let k = 0; k < 4; k++) { const fx = 150 + k * 30, fy = HZ + 24; g.fillStyle(0x5a3a1a, 1).fillRect(fx - 8, fy, 16, 8); g.fillStyle([0xd8402a, 0xe8c040, 0xf0f0f0, 0xa040c0][k], 1).fillCircle(fx - 4, fy - 3, 3).fillCircle(fx + 4, fy - 2, 3); g.fillStyle(0x4a8a3a, 1).fillRect(fx - 1, fy - 2, 2, 4); } }   // kvetináče
+        else { const cx = 140 + R(11) * 40, cy = HZ + 40; g.fillStyle(0x2a2a2e, 1).fillRect(cx - 1.5, cy - 70, 3, 30); g.lineStyle(2, 0x3a3a40, 1).strokeRect(cx - 14, cy - 40, 28, 40); for (let k = -1; k <= 1; k++) g.lineBetween(cx + k * 9, cy - 40, cx + k * 9, cy); g.fillStyle(0xe8e4d8, 1).fillCircle(cx, cy - 26, 5); g.fillRect(cx - 3, cy - 22, 6, 4); for (const sx of [W / 2 - 120, W / 2 + 120]) { g.fillStyle(0x3a2a1a, 1).fillRect(sx - 1.5, HZ - 40, 3, 40); g.fillStyle(0xe8e4d8, 1).fillCircle(sx, HZ - 44, 5); g.fillStyle(0x1a1210, 1).fillCircle(sx - 2, HZ - 45, 1.3).fillCircle(sx + 2, HZ - 45, 1.3); } }   // klietka a lebky na koloch
+        // kura / vrany
+        if (!evil) for (let k = 0; k < 3; k++) { const kx = 300 + R(20 + k) * 200, ky = HZ + 200 + R(30 + k) * 40; g.fillStyle(0xf0e8d8, 1).fillEllipse(kx, ky, 7, 5); g.fillCircle(kx + 4, ky - 3, 2.5); g.fillStyle(0xd8402a, 1).fillRect(kx + 3, ky - 6, 2, 2); g.fillStyle(0xe8a030, 1).fillTriangle(kx + 6, ky - 3, kx + 9, ky - 2.5, kx + 6, ky - 2); }
+        else for (let k = 0; k < 3; k++) { const kx = 200 + R(20 + k) * 320; g.fillStyle(0x1a1a1e, 1).fillEllipse(kx, HZ - 128, 6, 4); g.fillCircle(kx + 4, HZ - 131, 2.2); }
+    }
+    /** Drobnosti siene: gobelíny, luster, hlavice stĺpov, vzor koberca, štíty na stenách, hostina na stoloch. */
+    detailHall(g, t, th, C, R, HZ, dx, dy) {
+        const evil = th === 'mordor' || th === 'isengard' || th === 'bandit';
+        // hlavice stĺpov a pätky
+        for (const px of [90, W - 90]) { g.fillStyle(C.trim, 1).fillRect(px - 22, 8, 44, 10); g.fillStyle(0x000000, .25).fillRect(px + 2, 0, 8, HZ + 20); }
+        // luster
+        g.fillStyle(0x3a3a40, 1).fillRect(dx - 1.5, 0, 3, 90); g.fillStyle(0x5a5a60, 1).fillEllipse(dx, 94, 90, 10); g.fillStyle(0x3a3a40, 1).fillEllipse(dx, 96, 84, 6);
+        this.candles = []; for (let k = 0; k < 7; k++) { const cxk = dx - 36 + k * 12; g.fillStyle(0xf0e0c0, 1).fillRect(cxk - 1.2, 84, 2.4, 8); this.candles.push([cxk, 83]); }
+        // gobelíny po bokoch (veľké zástavy s textúrou)
+        for (const gx of [40, W - 40]) { g.fillStyle(0x000000, .3).fillRect(gx - 18, 64, 36, 120); g.fillStyle(BFhex(t.f), 1).fillRect(gx - 16, 62, 32, 116); for (let k = 0; k < 5; k++) g.fillStyle(k % 2 ? 0xffffff : 0x000000, .07).fillRect(gx - 16 + k * 6.4, 62, 6.4, 116); g.fillStyle(0xd9a441, 1).fillRect(gx - 16, 62, 32, 3).fillRect(gx - 16, 175, 32, 3); for (let k = 0; k < 4; k++) g.fillRect(gx - 14 + k * 9, 178, 3, 6); }
+        // štíty a zbrane na stenách
+        for (const sx of [W / 2 - 250, W / 2 + 250]) { g.fillStyle(0x3a2a1a, 1).fillRect(sx - 1.5, 90, 3, 60); g.fillStyle(0x3a2a1a, 1).fillRect(sx - 30, 118, 60, 3); g.fillStyle(evil ? 0x2a2a30 : 0x8a8c92, 1).fillTriangle(sx - 14, 90, sx + 14, 90, sx, 130); g.fillStyle(evil ? 0x8a1a10 : 0xd9a441, 1).fillTriangle(sx - 10, 94, sx + 10, 94, sx, 124); }
+        // vzor koberca
+        for (let y = dy + 16; y < H; y += 24) { g.fillStyle(0xffffff, .1).fillRect(dx - 30, y, 60, 2); g.fillStyle(0x000000, .15).fillRect(dx - 3, y + 8, 6, 6); }
+        // hostina: taniere a poháre
+        for (const side of [-1, 1]) { const tx = dx + side * 190, ty = dy + 90; for (let k = 0; k < 3; k++) { g.fillStyle(0xd8d0c0, 1).fillEllipse(tx - 45 + k * 40, ty + 4, 10, 4); g.fillStyle(0xa86a3a, 1).fillEllipse(tx - 45 + k * 40, ty + 3, 5, 2); } g.fillStyle(0xd9a441, 1).fillRect(tx + 50, ty - 6, 4, 8).fillRect(tx + 48, ty - 8, 8, 2); }
+        // zrno kameňa na podlahe
+        for (let k = 0; k < 160; k++) { const x = R(400 + k) * W, y = HZ + R(700 + k) * (H - HZ); g.fillStyle(k % 2 ? 0xffffff : 0x000000, .05).fillRect(x, y, 2 + R(1000 + k) * 4, 1.2); }
+        if (evil) { for (const sx of [dx - 60, dx + 60]) { g.fillStyle(0x3a3a40, 1); for (let k = 0; k < 3; k++) g.fillTriangle(sx - 8 + k * 8, dy - 30, sx - 2 + k * 8, dy - 30, sx - 5 + k * 8, dy - 46); g.fillStyle(0xe8e4d8, 1).fillCircle(sx, dy - 50, 4); } }
+        else { for (const sx of [dx - 60, dx + 60]) { g.fillStyle(C.trim, 1).fillRect(sx - 4, dy - 60, 8, 32); g.fillStyle(0xf0e0c0, 1).fillRect(sx - 1.5, dy - 70, 3, 10); this.candles.push([sx, dy - 71]); } }
+    }
+
     /* ---------- sieň ---------- */
     buildHall(t, th, C, R) {
         const g = this.add.graphics().setDepth(1), HZ = 210;
@@ -143,7 +188,7 @@ class CastleScene extends RoomScene {
         else { for (let y = 0; y < HZ; y += 18) for (let x = -18 + ((y / 18) % 2) * 24; x < W; x += 48) g.fillStyle((x + y) % 96 < 48 ? C.hall : C.hall2, 1).fillRoundedRect(x + 1, y + 1, 46, 16, 2); }
         for (const px of [90, W - 90]) { g.fillStyle(C.hall2, 1).fillRect(px - 16, 0, 32, HZ + 20); g.fillStyle(C.hall, 1).fillRect(px - 10, 0, 12, HZ + 20); g.fillStyle(C.trim, 1).fillRect(px - 20, HZ + 14, 40, 8).fillRect(px - 20, 0, 40, 8); }
         // okná
-        this.windows = [[200, 40], [W - 200, 40]];
+        this.windows = [[200, 66], [W - 200, 66]];
         for (const [wx, wy] of this.windows) { g.fillStyle(C.trim, 1).fillRect(wx - 24, wy - 6, 48, 92); }
         // dais a trón
         const dx = W / 2, dy = HZ + 40;
@@ -169,7 +214,8 @@ class CastleScene extends RoomScene {
         }
         // zástavy
         const bk = Art.banner(this, t.f);
-        for (const bx of [dx - 70, dx + 70, 150, W - 150]) this.add.image(bx, 10, bk).setOrigin(.5, 0).setScale(2.2).setDepth(1.5);
+        for (const bx of [dx - 70, dx + 70, 150, W - 150]) this.add.image(bx, 58, bk).setOrigin(.5, 0).setScale(2.2).setDepth(1.5);
+        this.detailHall(g, t, th, C, R, HZ, dx, dy);
         this.people = [];
         this.spawnHall(t, th);
         this.setupRoom({ mode: 'castle', floorY: HZ + 12, title: t.n + ' – sieň', leave: 'Späť na nádvorie', spawn: [W / 2, H - 36], block: [[dx - 150, dy - 30, 300, 40], [dx - 260, dy + 86, 140, 36], [dx + 120, dy + 86, 140, 36]] });
@@ -203,13 +249,15 @@ class CastleScene extends RoomScene {
         else for (const [wx, wy] of this.windows) { this.drawSky(s, wx - 20, wy, 40, 80); s.fillStyle(C.trim, 1).fillRect(wx - 2, wy, 4, 80).fillRect(wx - 20, wy + 38, 40, 4); }
         // vyhňa a ohniská
         if (this.forge) { const [fx, fy] = this.forge; for (let k = 0; k < 5; k++) { const ph = t / 3 + k * 1.9, h = 10 + Math.sin(ph) * 4; f.fillStyle(0xff7a20, .9).fillTriangle(fx - 8 + k * 4 - 3, fy, fx - 8 + k * 4 + 3, fy, fx - 8 + k * 4 + Math.sin(ph) * 2, fy - h); } f.fillStyle(0xffd060, .9).fillTriangle(fx - 4, fy, fx + 4, fy, fx, fy - 6 - Math.sin(t / 2) * 2); for (let k = 0; k < 4; k++) { const a = (t * .9 + k * 17) % 50; f.fillStyle(0xffc040, .9 - a / 60).fillRect(fx - 6 + ((k * 5 + a * .4) % 12), fy - 12 - a, 1.5, 1.5); } }
+        if (this.torches) for (const [tx, ty] of this.torches) { const ph = t / 2.5 + tx; f.fillStyle(0xff8a30, .95).fillTriangle(tx - 3, ty, tx + 3, ty, tx + Math.sin(ph) * 1.5, ty - 9 - Math.sin(ph * 1.7) * 2); f.fillStyle(0xffe080, .95).fillTriangle(tx - 1.5, ty, tx + 1.5, ty, tx + Math.sin(ph) * .8, ty - 4); }
+        if (this.candles) for (const [cx2, cy2] of this.candles) { const ph = t / 2 + cx2; f.fillStyle(0xffd060, .95).fillEllipse(cx2 + Math.sin(ph) * .4, cy2 - 2, 1.6, 3.2); }
         if (this.braziers) for (const [bx, by] of this.braziers) { for (let k = 0; k < 4; k++) { const ph = t / 3 + k * 1.7, h = 12 + Math.sin(ph) * 4; f.fillStyle(this.th === 'mordor' ? 0xff3a10 : 0xff7a20, .9).fillTriangle(bx - 8 + k * 5 - 3, by, bx - 8 + k * 5 + 3, by, bx - 8 + k * 5 + Math.sin(ph) * 2, by - h); } }
         // svetlo
         const L = this.light; L.clear();
         const dark = this.roomKind === 'hall' ? .2 + nn * .25 : nn * .45;
         L.fillStyle(this.roomKind === 'hall' ? 0x000000 : 0x080e28, dark).fillRect(0, 0, W, H);
-        if (this.roomKind === 'hall') { for (const [bx, by] of this.braziers || []) for (let k = 1; k <= 8; k++) L.fillStyle(C.light, (.06 + Math.sin(t / 2 + bx) * .01) / 4).fillCircle(bx, by, 20 + k * 20); }
-        else if (this.forge) { for (let k = 1; k <= 6; k++) L.fillStyle(0xff9a40, (.05 + Math.sin(t / 2) * .01) / 3 * (1 + nn)).fillCircle(this.forge[0], this.forge[1], 15 + k * 18); if (nn > .3) for (const gx of [W / 2 - 62, W / 2 + 62]) for (let k = 1; k <= 5; k++) L.fillStyle(0xffb060, .03 * nn).fillCircle(gx, this.HZ - 30, 15 + k * 18); }
+        if (this.roomKind === 'hall') { for (const [bx, by] of this.braziers || []) for (let k = 1; k <= 8; k++) L.fillStyle(C.light, (.06 + Math.sin(t / 2 + bx) * .01) / 4).fillCircle(bx, by, 20 + k * 20); for (let k = 1; k <= 5; k++) L.fillStyle(0xffe0a0, .02).fillCircle(W / 2, 92, 30 + k * 25); }
+        else if (this.forge) { for (let k = 1; k <= 6; k++) L.fillStyle(0xff9a40, (.05 + Math.sin(t / 2) * .01) / 3 * (1 + nn)).fillCircle(this.forge[0], this.forge[1], 15 + k * 18); if (nn > .2 && this.torches) for (const [tx, ty] of this.torches) for (let k = 1; k <= 4; k++) L.fillStyle(0xffb060, .035 * nn).fillCircle(tx, ty, 12 + k * 14); if (nn > .3) for (const gx of [W / 2 - 62, W / 2 + 62]) for (let k = 1; k <= 5; k++) L.fillStyle(0xffb060, .03 * nn).fillCircle(gx, this.HZ - 30, 15 + k * 18); }
         this.people.forEach(p => { if (!p.spot) p.spr.y = p.y + Math.sin(t / 9 + p.t0) * .8; });
         this.movePlayer(dt);
     }
