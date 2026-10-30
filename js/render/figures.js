@@ -181,9 +181,20 @@ const Figures = (() => {
         // plášť
         const cape = o.cape || CAPES[0];
         { const cg = c.createLinearGradient(-9, 0, 3, 0); cg.addColorStop(0, dark(A.pat === 'robe' ? '#0a0a10' : cape, .7)); cg.addColorStop(1, A.pat === 'robe' ? '#0a0a10' : cape); c.fillStyle = cg; P(c, [[-2, -18], [3, -18], [2, -2 + (M ? 2 : 0)], [-9 - walk * .3, 0]]); c.fill(); c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = .5; c.beginPath(); c.moveTo(-1, -17); c.lineTo(-5 - walk * .2, -1); c.stroke(); }
-        // nohy
-        if (!M) { for (const d of [walk, -walk]) { c.fillStyle = A.pat === 'robe' ? '#0a0a10' : '#3a2a1a'; P(c, [[-2 + d * .2, -8], [2 + d * .2, -8], [2 + d, 0], [-2 + d, 0]]); c.fill(); c.fillStyle = '#2a1a10'; c.fillRect(-2.5 + d, -1.5, 5, 1.5); } }
-        else { c.fillStyle = A.pat === 'robe' ? '#0a0a10' : '#3a2a1a'; P(c, [[1, -8], [5, -8], [6, 2], [3, 3]]); c.fill(); c.fillStyle = '#2a1a10'; c.fillRect(2.5, 2, 4.5, 1.6); }
+        // nohy: stehno a lýtko s kolenom (zadná noha tmavšia), čižmy
+        const trous = A.pat === 'robe' ? '#0a0a10' : o.trous || '#3a2a1a';
+        if (!M) {
+            [[-walk, 1], [walk, 0]].forEach(([d, back]) => {
+                c.strokeStyle = back ? dark(trous, .7) : trous; c.lineWidth = 2.6; c.lineCap = 'round'; c.lineJoin = 'round';
+                const kx = d * .45 + Math.abs(walk) * .25, ky = -5.5 - Math.abs(d) * .15;
+                c.beginPath(); c.moveTo(0, -10.5); c.lineTo(kx, ky); c.lineTo(d, -1.2); c.stroke();
+                c.fillStyle = back ? '#1a1008' : '#2a1a10'; c.beginPath(); c.roundRect ? c.roundRect(d - 2.2, -2.2, 5.2, 2.2, 1) : c.rect(d - 2.2, -2.2, 5.2, 2.2); c.fill();   // čižma
+            });
+            c.translate(0, -3);                                                            // dlhšie nohy: horná časť tela vyššie
+        }
+        else { c.strokeStyle = trous; c.lineWidth = 2.6; c.lineCap = 'round'; c.lineJoin = 'round'; c.beginPath(); c.moveTo(2, -8); c.lineTo(5, -2); c.lineTo(5.5, 2.5); c.stroke(); c.fillStyle = '#2a1a10'; c.fillRect(3, 1.8, 5, 1.8); }
+        // krk
+        c.fillStyle = dark(skin, .85); c.fillRect(-1.3, -22, 2.6, 3);
         // trup
         const pad = A.pad || 1;
         const tg = c.createLinearGradient(-4 * pad, 0, 4 * pad, 0); tg.addColorStop(0, dark(A.col, .75)); tg.addColorStop(.6, A.col); tg.addColorStop(1, dark(A.col, .9));
@@ -200,10 +211,13 @@ const Figures = (() => {
         if (A.spikes) { c.fillStyle = A.rim || '#666'; for (const sx of [-4, 0, 4]) { P(c, [[sx - 1, -20], [sx, -24], [sx + 1, -20]]); c.fill(); } }
         if (A.hand) { c.fillStyle = '#eee'; E(c, 0, -14, 1.6, 2); c.fill(); }
         if (A.rust) { c.fillStyle = 'rgba(120,60,20,.35)'; c.fillRect(-2, -16, 3, 2); c.fillRect(1, -11, 2, 2); }
-        // ramená a ruky
+        // opasok s prackou
+        if (A.pat !== 'robe') { c.fillStyle = '#2a1a10'; c.fillRect(-4 * pad, -9.6, 8 * pad, 1.6); c.fillStyle = A.rim || '#c8a040'; c.fillRect(-.9, -9.9, 1.8, 2.2); }
+        // ramená (plátové zbroje majú náplecníky) a ruky
         c.fillStyle = A.col; E(c, -4 * pad, -18, 2.2, 2.2); c.fill(); E(c, 4 * pad, -18, 2.2, 2.2); c.fill();
+        if (A.pat === 'plate' || A.pat === 'dwarf' || A.pat === 'scale') { c.fillStyle = dark(A.col, 1.15); E(c, -4.2 * pad, -18.6, 2.8, 2); c.fill(); E(c, 4.2 * pad, -18.6, 2.8, 2); c.fill(); c.strokeStyle = A.rim || '#888'; c.lineWidth = .5; E(c, 4.2 * pad, -18.6, 2.8, 2); c.stroke(); }
         c.strokeStyle = skin === '#000' ? '#0a0a10' : A.col; c.lineWidth = 2.4; c.lineCap = 'round';
-        if (Wp) { c.beginPath(); c.moveTo(4 * pad, -17); c.lineTo(8, -12); c.stroke(); c.fillStyle = skin; E(c, 8.5, -11.5, 1.6, 1.6); c.fill(); weapon(c, Wp, 8.5, -11.5, fr); }   // pravá ruka so zbraňou
+        if (Wp) { c.beginPath(); c.moveTo(4 * pad, -17); c.lineTo(6.5, -14.5); c.lineTo(8, -12); c.stroke(); c.strokeStyle = dark(A.col, .8); c.lineWidth = 1; c.beginPath(); c.moveTo(6.5, -14.5); c.lineTo(8, -12); c.stroke(); c.fillStyle = skin; E(c, 8.5, -11.5, 1.6, 1.6); c.fill(); weapon(c, Wp, 8.5, -11.5, fr); }   // pravá ruka so zbraňou (rameno, lakeť, dlaň)
         else { c.beginPath(); c.moveTo(4 * pad, -17); c.lineTo(6, -9); c.stroke(); c.fillStyle = skin; E(c, 6, -8.5, 1.6, 1.6); c.fill(); if (o.mug) { c.fillStyle = '#c8903a'; c.fillRect(6.5, -11, 3.5, 4); c.fillStyle = '#fff4dc'; c.fillRect(6.5, -11.8, 3.5, 1.2); } }
         if (S) shield(c, S, -7, -12);
         else { c.strokeStyle = A.col; c.beginPath(); c.moveTo(-4 * pad, -17); c.lineTo(-6, -10); c.stroke(); }
@@ -213,7 +227,8 @@ const Figures = (() => {
         const hg = c.createLinearGradient(-4, 0, 4, 0); hg.addColorStop(0, dark(skin, .8)); hg.addColorStop(1, skin);
         c.fillStyle = hg;
         if (o.orc) { P(c, [[-4, -27], [2, -28.5], [5, -25], [5.5, -21], [2, -19.5], [-3.5, -20.5]]); c.fill(); }
-        else { E(c, 0, -24, 4, 4.4); c.fill(); }
+        else { E(c, 0, -24, 4, 4.4); c.fill(); c.fillStyle = 'rgba(200,90,70,.18)'; E(c, 2.2, -22.6, 1.4, .9); c.fill(); }   // líce
+        c.strokeStyle = 'rgba(0,0,0,.3)'; c.lineWidth = .4; c.stroke();
         if (o.elf) { c.fillStyle = skin; P(c, [[-3.5, -25], [-7, -28], [-3, -22.5]]); c.fill(); } else if (!o.nazgul) { c.fillStyle = dark(skin, .9); E(c, -3.6, -24, 1, 1.4); c.fill(); }   // ucho
         if (!o.nazgul) {
             c.fillStyle = '#f4f0ea'; E(c, 2, -24.8, 1.1, .8); c.fill();                            // oko

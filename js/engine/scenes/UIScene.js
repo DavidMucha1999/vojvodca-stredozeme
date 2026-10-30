@@ -53,7 +53,7 @@ class UIScene extends Phaser.Scene {
     update(time, delta) {
         const dt = Math.min(2, delta / 16.67);
         tm += dt;
-        const scene = this.scene.isActive('Battle') ? 'battle' : this.scene.isActive('Tavern') ? 'tavern' : this.scene.isActive('Map') ? 'map' : 'intro';
+        const scene = this.scene.isActive('Battle') ? 'battle' : this.scene.isActive('Tavern') || this.scene.isActive('Castle') ? 'tavern' : this.scene.isActive('Map') ? 'map' : 'intro';
         this.drawOverlay(scene, dt);
         this.syncHud();
         this.syncBars();
@@ -164,7 +164,7 @@ class UIScene extends Phaser.Scene {
     }
 
     syncBars() {
-        const vis = el => el.style.display !== 'none' && !!G && !this.dlg && mode !== 'tavern';
+        const vis = el => el.style.display !== 'none' && !!G && !this.dlg && mode !== 'tavern' && mode !== 'castle';
         if (this.dlg || !vis(tb)) this.menu = null;
         const sig = [vis(tb), vis(od), this.menu, this.big, ...[...tb.children, ...od.children].map(b => b.textContent + (b.style.opacity || ''))].join('|');
         if (sig === this.sig.bars) return;
@@ -184,7 +184,7 @@ class UIScene extends Phaser.Scene {
             };
             // lupa a Tábor ostávajú priamo na paneli
             all.filter(b => /^[−+]$/.test(b.textContent.trim())).forEach(b => put('', Icons.forButton(b.textContent), () => b.click()));
-            const camp = find('Tábor') || find('Zrušiť tábor');
+            const camp = find('Tábor') || find('Zrušiť tábor') || find('Zrušiť pobyt');
             if (camp) put(camp.textContent, 'tent', () => camp.click());
             put('Mapa (M)', 'map', () => { this.big = !this.big; });
             // skupinové tlačidlá, ktoré rozbalia ponuku
@@ -203,7 +203,7 @@ class UIScene extends Phaser.Scene {
                 });
             }
             // tlačidlá, ktoré nepatria do žiadnej skupiny ani nie sú vyššie (nové položky), ostanú viditeľné
-            all.filter(b => { const t = b.textContent.trim(); return !/^[−+]$/.test(t) && !/tábor/i.test(t) && ![...grouped].some(n => t.startsWith(n)); })
+            all.filter(b => { const t = b.textContent.trim(); return !/^[−+]$/.test(t) && !/tábor|pobyt/i.test(t) && ![...grouped].some(n => t.startsWith(n)); })
                .forEach(b => put(b.textContent, Icons.forButton(b.textContent), () => b.click()));
             this.barLayer.add(out);
             if (this.pause) this.pause.y = y - 14;

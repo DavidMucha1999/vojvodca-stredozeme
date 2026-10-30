@@ -8,6 +8,8 @@ function enterTavern(i) {
     ov.classList.add('hide');
     mode = 'tavern';
     G.dest = -1;
+    ROOM = { i, room: 'tavern', from: ROOM && ROOM.i === i ? ROOM.room : null };
+    if (game.scene.isActive('Castle')) game.scene.stop('Castle');
     const sc = game.scene.getScene('Tavern');
     if (game.scene.isActive('Map')) game.scene.sleep('Map');          // mapa pod krčmou spí (čas stojí)
     if (sc.scene.isActive()) sc.scene.restart({ i }); else game.scene.start('Tavern', { i });

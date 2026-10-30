@@ -225,6 +225,7 @@ const BUILDINGS = [['m', 'Mlyn (+10 zlata denne)', 200], ['k', 'Kasárne (+1 pe�
 function daily2() {
     TW.forEach(t => { t.pr = Math.min(100, (t.pr ?? 40) + 1 + (t.bd && t.bd.m ? 1 : 0) + (t.bd && t.bd.t ? 1 : 0)); if (t.mine)
         G.gold += lvl(t) * 4 + (t.bd && t.bd.t ? lvl(t) * 2 : 0); });
+    if (G.camp && G.stay) G.hp = Math.min(mh(), G.hp + 25);   // pobyt v hrade: rýchlejšie hojenie
     dailyTrade();
     dailyWeather();
     compDaily();

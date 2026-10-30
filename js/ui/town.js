@@ -80,6 +80,7 @@ function vill(i) {
 }
 function town(i) {
     const t = TW[i];
+    if (typeof ROOM !== 'undefined' && ROOM && ROOM.i === i && !ROOM.menu) return roomReturn();   // „Späť“ z okna otvoreného na nádvorí/v sieni/v krčme
     G.dest = -1;
     mode = 'town';
     if (hos(t.f, G.fac)) {
@@ -91,6 +92,7 @@ function town(i) {
     qChk('v', t.n);
     questEvent('v', t.n);
     show(t.n + ' (' + FN[t.f] + ')', 'Zlato ' + G.gold + ', vojsko ' + ar() + ', zdravie ' + Math.ceil(G.hp) + '/' + mh() + '. Posádka hradu: ' + t.g + (t.lord ? ', léno drží ' + t.lord : '') + '.');
+    if (typeof roomsOk === 'function' && roomsOk()) btn('Vstúpiť na nádvorie (prejsť sa po hrade)', () => enterCastle(i, 'yard'), 0, 'castle');
     [['r', 'Verbovanie vojakov', 'recruit'], ['e', 'Kováč a zbrojnica', 'anvil'], ['v', 'Vojsko, zajatci a odpočinok', 'rest'], ...(t.mine ? [['h', 'Správa hradu', 'castle']] : []), ['d', 'Dvor a diplomacia', 'court']].forEach(([c, n, ic]) => btn(n, () => tsub(i, c), 0, ic));
     btn('Trh', () => market(t, () => town(i)), 0, 'scales');
     btn('Krčma' + (compsAt(t).length ? ' (niekto tu čaká)' : ''), () => enterTavern(i), 0, 'mug');
@@ -243,7 +245,7 @@ function lord(e) {
                     msg(e.nm + ' odmieta. Potrebuje vyšší vzťah alebo väčšiu slávu.', end);
                 }
             }, G.gold < 100);
-        btn('Odísť', () => { ov.classList.add('hide'); mode = 'map'; });
+        btn(typeof ROOM !== 'undefined' && ROOM ? 'Späť do siene' : 'Odísť', () => { if (typeof ROOM !== 'undefined' && ROOM) return roomReturn(); ov.classList.add('hide'); mode = 'map'; });
     }
     const p = document.querySelector('#ov p');
     if (p)

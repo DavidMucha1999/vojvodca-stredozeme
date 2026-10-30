@@ -192,7 +192,7 @@ class MapScene extends Phaser.Scene {
     click(p) {
         if (mode !== 'map' || !G) return;
         const ui = this.scene.get('UI'); if (ui && (ui.big || ui.menu)) { if (ui.menu) ui.menu = null; return; }   // otvorená veľká mapa alebo ponuka
-        if (G.camp) { G.camp = 0; const b = [...tb.children].find(x => /tábor/i.test(x.textContent)); if (b) b.textContent = 'Tábor'; upd(); }
+        if (G.camp) { G.camp = 0; G.stay = null; const b = [...tb.children].find(x => /tábor|pobyt/i.test(x.textContent)); if (b) b.textContent = 'Tábor'; upd(); }
         G.dest = -1; G.vd = -1; G.chase = null; G.talk = null;
         const sx = p.x / RES, sy = p.y / RES;
         if (sx > MM.x && sy > MM.y) { G.tx = (sx - MM.x) / MM.w * WW; G.ty = (sy - MM.y) / MM.h * WH; return; }
@@ -234,7 +234,10 @@ class MapScene extends Phaser.Scene {
             const f = TW[o.v.t].f, b = o.v.st > 0, L = lvl(o.v), key = f + (b ? 'b' : '') + (this.newArt ? L : '');
             if (o.key !== key) {
                 o.key = key;
-                if (this.newArt) o.spr.setTexture(b ? 'map_village_burn' : 'map_village_' + regionAt(o.v.x, o.v.y) + L).setScale(.36);
+                if (this.newArt) {   // dediny zla majú tmavé mordorské chatrče, dediny dobra kraj podľa polohy
+                    const evil = bloc(f) === 1 && f !== 4, reg = evil ? 'a' : regionAt(o.v.x, o.v.y);
+                    o.spr.setTexture(b ? 'map_village_burn' : 'map_village_' + reg + L).setScale(.36).setTint(evil && !b ? 0xb8a8a0 : 0xffffff);
+                }
                 else { const k = Art.village(this, f, b); o.spr.setTexture(k).setScale(Art.scale[k] || 1 / RES); }
                 o.txt.setColor(b ? '#c08070' : FC[f]);
             }

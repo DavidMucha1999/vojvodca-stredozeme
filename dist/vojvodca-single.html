@@ -25,6 +25,7 @@ button{font:inherit;font-size:clamp(.9rem,2.3vw,1.1rem);color:#1a120a;background
 button:hover:not(:disabled){background:#ecb957}
 button:disabled{background:#4a4036;color:#9a8c78;cursor:default}
 button:focus-visible{outline:3px solid var(--elf);outline-offset:3px}
+#ov canvas.por{display:block;width:96px;height:96px;margin:0 auto .4rem;border-radius:4px}
 button canvas.ico{width:32px;height:32px;vertical-align:middle;margin:-6px .5rem -6px -.3rem;background:rgba(244,230,196,.5);border-radius:3px}
 input,select{font:inherit;font-size:1.05rem;padding:.45rem .6rem;background:#2a211b;color:var(--ink);border:1px solid #6a5a46;border-radius:2px;max-width:100%}
 
@@ -56,6 +57,18 @@ input,select{font:inherit;font-size:1.05rem;padding:.45rem .6rem;background:#2a2
 .bar{height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden}
 .bar b{display:block;height:100%;border-radius:3px}
 .sec{color:#d9a441;font-family:"Uncial Antiqua",Georgia,serif;font-size:1.05rem;margin:.2rem 0}
+/* tvorba postavy na úvodnej obrazovke */
+#cre{margin:.6rem auto;max-width:620px;text-align:left;font-size:.85rem;background:rgba(0,0,0,.25);border:1px solid rgba(217,164,65,.5);border-radius:6px;padding:.5rem .7rem}
+#cre .cre-row{display:flex;gap:.6rem;align-items:flex-start;flex-wrap:wrap;margin:.3rem 0}
+#cre canvas{width:96px;height:96px;border-radius:4px;flex:none}
+#creCtl{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.2rem .6rem;flex:1}
+#cre label{display:flex;flex-direction:column;font-size:.75rem;color:var(--gold)}
+#cre select{font-size:.8rem;padding:.15rem .3rem;margin:0}
+#cre .cre-note{flex:1;font-size:.78rem;opacity:.85;align-self:center}
+#creSk{display:flex;gap:.4rem;flex-wrap:wrap}
+#cre .cre-sk{display:flex;align-items:center;gap:.2rem;font-size:.75rem}
+#cre .cre-sk button{padding:0 .45rem;font-size:.8rem;margin:0;min-width:1.4rem;line-height:1.3}
+#cre .cre-sk b{min-width:1rem;text-align:center;color:var(--gold)}
 
 </style>
 <style>
@@ -470,59 +483,60 @@ const QUESTS = [
  * side: 0 dobro, 1 zlo (ponúkajú sa len hrdinovi tejto strany). at: hrad, kde sa dá spoločník nájsť.
  * p: cena za pripojenie (zlato), ren: potrebná sláva. hp, d, sp, r: sila v bitke. art: druh kreslenia
  * (kľúč z Soldiers.UNITS alebo vlastný hrdina cez eq = výbava).
+ * look: popis tváre pre portrét (js/render/portraits.js).
  * Texty: join (pri pripojení), lines (hlášky na mape a v rozhovore), battle (pokriky v bitke), leave (pri odchode).
  */
 const COMPANIONS = [
-    { id: 'aragorn', n: 'Aragorn', t: 'Dúnadan, dedič Isildura', side: 0, at: 'Bree', p: 400, ren: 6, hp: 220, d: 24, sp: 1.35, r: 9, eq: { w: 3, a: 0, s: 0, h: 0, m: 0 },
+    { id: 'aragorn', n: 'Aragorn', t: 'Dúnadan, dedič Isildura', look: { race: 'human', skin: 1, hair: 'long', hcol: '#2a1a10', beard: 'stubble', eyes: '#6a7a7a', age: .5 }, side: 0, at: 'Bree', p: 400, ren: 6, hp: 220, d: 24, sp: 1.35, r: 9, eq: { w: 3, a: 0, s: 0, h: 0, m: 0 },
       join: 'Ak chceš, aby som šiel s tebou, pôjdem. Ale nie všetko, čo je zlato, sa blyští, a nie každý, kto blúdi, je stratený.',
       lines: ['Nebezpečenstvo je ešte ďaleko. Nie však tak ďaleko, ako by sme chceli.', 'Jedného dňa možno príde deň, keď odvaha ľudí zlyhá. Ale nie dnes.', 'Mám pre teba jednu radu: nikdy neopúšťaj cestu, ktorú si si vybral, kým neuvidíš, kam vedie.', 'Nie som Isildur. Jeho slabosť nenesiem, len jeho meč.', 'Arwen... nie, to nie je dôležité. Poďme ďalej.'],
       battle: ['Za Gondor!', 'Elendil!', 'Držte šík!', 'Nie dnes! Nie dnes!'], leave: 'Rozchádzame sa, ale cesty sa možno ešte spoja. Zbohom.' },
-    { id: 'legolas', n: 'Legolas', t: 'elfský princ z Temného hvozdu', side: 0, at: 'Lothlórien', p: 380, ren: 6, hp: 150, d: 16, sp: 1.6, r: 7, art: 'uL2', archer: 1,
+    { id: 'legolas', n: 'Legolas', t: 'elfský princ z Temného hvozdu', look: { race: 'elf', skin: 0, hair: 'long', hcol: '#e8d8a0', beard: 'none', eyes: '#4a8ad0' }, side: 0, at: 'Lothlórien', p: 380, ren: 6, hp: 150, d: 16, sp: 1.6, r: 7, art: 'uL2', archer: 1,
       join: 'Máš moj luk. Elfovia si dlho pamätajú, kto stál pri nich.',
       lines: ['Červené slnko vychádza. Dnes v noci tiekla krv.', 'Sú to orkovia... a nesú ich do Isengardu.', 'Niečo sa tam hýbe. Niečo, čo tam nemá byť.', 'Trpaslík chrápe tak hlasno, že ho počuť až v Mordore.', 'Mám dobrý zrak. Vidím, že sa usmievaš. To je zriedkavé.'],
       battle: ['Yrch!', 'Strieľajte!', 'Mám ich sedemnásť!', 'Vpred!'], leave: 'Les ma volá. Nech ťa hviezdy chránia.' },
-    { id: 'gimli', n: 'Gimli', t: 'syn Glóinov z Ereboru', side: 0, at: 'Erebor', p: 350, ren: 5, hp: 240, d: 22, sp: 1.0, r: 8, art: 'uE1',
+    { id: 'gimli', n: 'Gimli', t: 'syn Glóinov z Ereboru', look: { race: 'dwarf', skin: 1, hair: 'long', hcol: '#b05a20', beard: 'braided', eyes: '#4a4a3a', age: .5 }, side: 0, at: 'Erebor', p: 350, ren: 5, hp: 240, d: 22, sp: 1.0, r: 8, art: 'uE1',
       join: 'Moja sekera je tvoja! A ak si myslíš, že budem jazdiť na koni, tak si sa zmýlil.',
       lines: ['Nikto nehádže trpaslíka! Okrem... no dobre, bola to výnimka.', 'Toto sa počíta ako jeden! Aj keď bol veľký.', 'Elf má lepší zrak, ale ja mám lepšiu sekeru.', 'Keby som mal pivo z Ereboru, bolo by to ľahšie. Ale aj tak to zvládnem.', 'Mal som štyridsaťtri. Legolas má len štyridsaťdva. Chi chi.'],
       battle: ['Baruk Khazâd!', 'Khazâd ai-mênu!', 'Toto sa počíta ako jeden!', 'Na nich!'], leave: 'Dobrá bitka, dobrí ľudia. Trpaslík nezabúda.' },
-    { id: 'boromir', n: 'Boromir', t: 'kapitán Bielej veže', side: 0, at: 'Minas Tirith', p: 360, ren: 5, hp: 230, d: 23, sp: 1.2, r: 9, eq: { w: 3, a: 2, s: 2, h: 0, m: 0 },
+    { id: 'boromir', n: 'Boromir', t: 'kapitán Bielej veže', look: { race: 'human', skin: 0, hair: 'long', hcol: '#8a5a30', beard: 'stubble', eyes: '#4a6a8a', age: .4 }, side: 0, at: 'Minas Tirith', p: 360, ren: 5, hp: 230, d: 23, sp: 1.2, r: 9, eq: { w: 3, a: 2, s: 2, h: 0, m: 0 },
       join: 'Gondor nemá kráľa. Gondor nepotrebuje kráľa. Ale potrebuje spojencov. Pôjdem s tebou.',
       lines: ['Jeden nie len tak vojde do Mordoru.', 'Je to zvláštny osud, že máme trpieť toľko strachu kvôli takej malej veci.', 'Môj otec je ušľachtilý muž. Ale jeho vláda zlyháva.', 'Videl som Biele mesto, ako žiari za úsvitu. Pre to bojujem.', 'Roh Gondoru zaznie, keď bude treba. Vždy zaznel.'],
       battle: ['Za Gondor!', 'Biele mesto!', 'Ku mne!', 'Držte sa!'], leave: 'Moja cesta vedie do Minas Tirith. Možno sa ešte stretneme pod bielym stromom.' },
-    { id: 'eowyn', n: 'Éowyn', t: 'štítonosička Rohanu', side: 0, at: 'Edoras', p: 300, ren: 4, hp: 170, d: 20, sp: 1.3, r: 8, eq: { w: 2, a: 1, s: 1, h: 1, m: 2 },
+    { id: 'eowyn', n: 'Éowyn', t: 'štítonosička Rohanu', look: { race: 'human', sex: 'f', skin: 0, hair: 'long', hcol: '#e8d0a0', beard: 'none', eyes: '#4a8ad0' }, side: 0, at: 'Edoras', p: 300, ren: 4, hp: 170, d: 20, sp: 1.3, r: 8, eq: { w: 2, a: 1, s: 1, h: 1, m: 2 },
       join: 'Nebojím sa smrti ani bolesti. Bojím sa klietky. Vezmi ma so sebou.',
       lines: ['Ženy tejto krajiny sa dávno naučili, že kto nemá meč, môže naň zomrieť.', 'Nie som muž. A to je jeho smola.', 'Edoras je krásny z diaľky. Zblízka je plný šepotu.', 'Strýko bol veľký kráľ. Bude ním znova.', 'Kone ma poznajú. Ľudia menej.'],
       battle: ['Za Rohan!', 'Smrť!', 'Eorlingovia!', 'Vpred, za kráľa!'], leave: 'Vraciam sa do Edorasu. Ale už nie do klietky.' },
-    { id: 'faramir', n: 'Faramir', t: 'kapitán Ithilienu', side: 0, at: 'Osgiliath', p: 320, ren: 4, hp: 180, d: 18, sp: 1.3, r: 7, art: 'uG2', archer: 1,
+    { id: 'faramir', n: 'Faramir', t: 'kapitán Ithilienu', look: { race: 'human', skin: 0, hair: 'long', hcol: '#8a4a28', beard: 'stubble', eyes: '#4a6a8a', age: .3 }, side: 0, at: 'Osgiliath', p: 320, ren: 4, hp: 180, d: 18, sp: 1.3, r: 7, art: 'uG2', archer: 1,
       join: 'Nemilujem meč pre jeho ostrosť ani šíp pre jeho rýchlosť. Milujem to, čo bránia. Ak brániš to isté, pôjdem s tebou.',
       lines: ['Vojna urobí z nás všetkých mŕtvoly.', 'Otec... môj otec miluje Boromira. Ja som sa naučil s tým žiť.', 'Ithilien bol kedysi záhradou Gondoru. Bude ňou znova.', 'Nezobral by som tú vec, ani keby ležala pri ceste.', 'Hraničiari vidia všetko a hovoria málo. Učím sa od nich.'],
       battle: ['Za Ithilien!', 'Šípy!', 'Držte brod!', 'Gondor!'], leave: 'Hliadky ma potrebujú. Nech ťa cesta vedie bezpečne.' },
-    { id: 'sam', n: 'Samved Gamdží', t: 'záhradník z Hobitova', side: 0, at: 'Hobitov', p: 120, ren: 1, hp: 110, d: 10, sp: 1.1, r: 6, eq: { w: 0, a: 0, s: 0, h: 0, m: 0 },
+    { id: 'sam', n: 'Samved Gamdží', t: 'záhradník z Hobitova', look: { race: 'hobbit', skin: 0, hair: 'curly', hcol: '#8a5a30', beard: 'none', eyes: '#5a7a5a', smile: 1 }, side: 0, at: 'Hobitov', p: 120, ren: 1, hp: 110, d: 10, sp: 1.1, r: 6, eq: { w: 0, a: 0, s: 0, h: 0, m: 0 },
       join: 'Sľúbil som, že neodídem. Tak neodídem. A varím lepšie než ktokoľvek v tvojej družine.',
       lines: ['Zemiaky. Uvar ich, rozpuč, daj do gulášu.', 'Je ešte nejaké dobro na tomto svete. A oplatí sa zaň bojovať.', 'Rosie Cottonová... prepáč, zamyslel som sa.', 'Ak urobím ešte jeden krok, budem najďalej od domova, ako som kedy bol.', 'Pán Frodo by vedel, čo povedať. Ja viem len to, že ideme ďalej.'],
       battle: ['Za Kraj!', 'Nechaj ho!', 'Tu máš!', 'Pán Frodo!'], leave: 'Idem domov. Záhrada čaká. Zbohom.' },
     // --- zlo ---
-    { id: 'lurtz', n: 'Lurtz', t: 'prvý z Uruk-hai', side: 1, at: 'Isengard', p: 380, ren: 5, hp: 260, d: 24, sp: 1.2, r: 9, art: 'uI1',
+    { id: 'lurtz', n: 'Lurtz', t: 'prvý z Uruk-hai', look: { race: 'uruk', hair: 'lank', hcol: '#1a1410', beard: 'none', angry: 1, paint: 1 }, side: 1, at: 'Isengard', p: 380, ren: 5, hp: 260, d: 24, sp: 1.2, r: 9, art: 'uI1',
       join: 'Saruman ma stvoril, aby som zabíjal. Ty mi dáš koho. To je celá dohoda.',
       lines: ['Nájdite polovičíkov. A ostatných zabite.', 'Mäso. Je na jedálnom lístku.', 'Rohan padne a ja budem stáť na jeho kostiach.', 'Uruk-hai nepozná strach. Nepozná ani únavu. Pozná len rozkaz.', 'Biela ruka ukáže a my ideme.'],
       battle: ['Zabite ich!', 'Uruk-hai!', 'Žiadne zajatce!', 'Vpred!'], leave: 'Isengard volá. Nabudúce možno budeš ty na jedálnom lístku.' },
-    { id: 'gothmog', n: 'Gothmog', t: 'poručík Morgulu', side: 1, at: 'Minas Morgul', p: 420, ren: 6, hp: 240, d: 23, sp: 1.1, r: 9, art: 'orc',
+    { id: 'gothmog', n: 'Gothmog', t: 'poručík Morgulu', look: { race: 'orc', hair: 'bald', beard: 'none', angry: 1, scar: 1 }, side: 1, at: 'Minas Morgul', p: 420, ren: 6, hp: 240, d: 23, sp: 1.1, r: 9, art: 'orc',
       join: 'Vek ľudí sa skončil. Nastal čas orka. Ak bojuješ za Tieň, bojuješ so mnou.',
       lines: ['Ohnivé strely! Pošlite tie krysy do kameňa!', 'Netreba sa báť tmy. Tma je naša.', 'Biele mesto zhorí. Videl som to v plameňoch Oka.', 'Čarodejník ich zachráni? Nikto ich nezachráni.', 'Bolesť je len slabosť, ktorá opúšťa telo. Mne už dávno opustila.'],
       battle: ['Vek orka!', 'Pošlite ich do kameňa!', 'Zabite všetko!', 'Za Oko!'], leave: 'Morgul ma čaká. Oko ťa bude sledovať.' },
-    { id: 'grima', n: 'Gríma Červivý jazyk', t: 'radca v Sarumanových službách', side: 1, at: 'Edoras', p: 200, ren: 2, hp: 90, d: 8, sp: 1.2, r: 6, eq: { w: 9, a: 0, s: 0, h: 0, m: 0 }, talker: 1,
+    { id: 'grima', n: 'Gríma Červivý jazyk', t: 'radca v Sarumanových službách', look: { race: 'human', skin: 3, hair: 'lank', hcol: '#1a1410', beard: 'none', eyes: '#8a8a9a', age: .3 }, side: 1, at: 'Edoras', p: 200, ren: 2, hp: 90, d: 8, sp: 1.2, r: 6, eq: { w: 9, a: 0, s: 0, h: 0, m: 0 }, talker: 1,
       join: 'Môj pane... som len skromný radca. Ale radca, ktorý pozná každé tajomstvo Zlatej siene. Môžem byť užitočný.',
       lines: ['Zbroj by vám slušala, pane. Ale slová sú ostrejšie.', 'Théoden starne. Každý deň o kúsok. Zariadil som to.', 'Éowyn... Nie. Nič.', 'Saruman sľúbil. Saruman vždy sľubuje.', 'Nikdy nestojte v prvom rade, pane. Prvý rad je pre hlupákov s mečom.'],
       battle: ['Ochráňte ma!', 'Zabite toho!', 'Nie ja, oni!', 'Pane, pozor!'], leave: 'Vraciam sa k Sarumanovi. Alebo k Théodenovi. Podľa toho, kto platí.' },
-    { id: 'shagrat', n: 'Šagrat', t: 'kapitán Cirith Ungolu', side: 1, at: 'Barad-dûr', p: 260, ren: 3, hp: 190, d: 19, sp: 1.25, r: 8, art: 'uM1',
+    { id: 'shagrat', n: 'Šagrat', t: 'kapitán Cirith Ungolu', look: { race: 'orc', hair: 'bald', beard: 'none', angry: 1, helm: '#3a3632' }, side: 1, at: 'Barad-dûr', p: 260, ren: 3, hp: 190, d: 19, sp: 1.25, r: 8, art: 'uM1',
       join: 'Veliteľ veže. To som ja. Teraz som tvoj veliteľ veže, ak platíš lepšie než Lugbúrz.',
       lines: ['Tá košeľa z mithrilu... ten malý krysák ju mal. Ešte ju nájdem.', 'Gorbag bol kamarát. Potom chcel môj poklad. Už nie je kamarát.', 'Pavúčica dostane svoje. Vždy dostane svoje.', 'Nazgûli sú hore, my sme dole. Tak to má byť.', 'Elfské špinavé čepele. Nenávidím ich lesk.'],
       battle: ['Za Lugbúrz!', 'Roztrhám vás!', 'Chyťte ich!', 'Krv!'], leave: 'Cirith Ungol volá. Netráp sa, veža ma potrebuje viac než ty.' },
-    { id: 'suladan', n: 'Suladân', t: 'náčelník Haradu', side: 1, at: 'Umbar', p: 340, ren: 4, hp: 200, d: 21, sp: 1.3, r: 8, art: 'uH1',
+    { id: 'suladan', n: 'Suladân', t: 'náčelník Haradu', look: { race: 'dark', hair: 'short', hcol: '#1a1410', beard: 'full', eyes: '#2a1a10', turban: '#c84a2a' }, side: 1, at: 'Umbar', p: 340, ren: 4, hp: 200, d: 21, sp: 1.3, r: 8, art: 'uH1',
       join: 'Juh pôjde s tebou, kým pôjdeš s juhom. Moji jazdci počúvajú môj hlas a môj hlas počúva zlato.',
       lines: ['Olifanty nepotrebujú cestu. Cesta potrebuje olifanty.', 'Sauron sľúbil juhu sever. Ja chcem len dobré pastviny.', 'V Harade slnko páli. Tu len svieti. Slabé.', 'Gondorčania majú hradby. My máme trpezlivosť.', 'Hadí znak na mojom štíte je starší než Gondor. Pamätaj si to.'],
       battle: ['Za Harad!', 'Had uštipne!', 'Vpred, jazdci!', 'Juh!'], leave: 'Slnko ma volá domov. Zbohom, severan.' },
-    { id: 'mouth', n: 'Ústa Saurona', t: 'posol Barad-dûru', side: 1, at: 'Morannon', p: 450, ren: 7, hp: 200, d: 22, sp: 1.2, r: 9, eq: { w: 15, a: 13, s: 0, h: 8, m: 7 },
+    { id: 'mouth', n: 'Ústa Saurona', t: 'posol Barad-dûru', look: { race: 'human', skin: 3, hair: 'bald', beard: 'none', helm: '#141418', eyes: '#111' }, side: 1, at: 'Morannon', p: 450, ren: 7, hp: 200, d: 22, sp: 1.2, r: 9, eq: { w: 15, a: 13, s: 0, h: 8, m: 7 },
       join: 'Môj Pán Sauron Veľký ťa víta. Ja som jeho hlas. Budem hovoriť za teba, kým budeš slúžiť.',
       lines: ['Som Ústa Saurona. Meno som zabudol. Nepotrebujem ho.', 'Starý sivák. Myslí si, že slová ho zachránia.', 'Mithrilová košeľa polovičíka. Pán ju má. Alebo mal.', 'Pán Mordoru ponúka podmienky. Vždy ponúka podmienky. Potom ich zmení.', 'Čierna reč je krásna, ak ju vieš čítať. Ty ju nevieš.'],
       battle: ['Za Saurona!', 'Oko vidí!', 'Zomrite!', 'Lugbúrz!'], leave: 'Pán ma volá k Čiernej bráne. Nezabudne na teba. Nikdy.' }
@@ -1012,6 +1026,7 @@ function buyGood(o, k, n) {
     const inv = stock(o); n = Math.min(n, inv[k], CARGO_MAX - cargoCount());
     let cost = 0;
     for (let i = 0; i < n; i++) { cost += price(o, k); inv[k]--; }
+    if (G.tmerc) cost = Math.round(cost * .95);          // chamtivý hrdina zjedná lepšiu cenu
     if (G.gold < cost) { inv[k] += n; return 0; }
     G.gold -= cost; G.cargo = G.cargo || {}; G.cargo[k] = (G.cargo[k] || 0) + n;
     G.st.tr = (G.st.tr || 0) + cost;
@@ -1021,6 +1036,7 @@ function sellGood(o, k, n) {
     const inv = stock(o); n = Math.min(n, (G.cargo || {})[k] || 0);
     let gain = 0;
     for (let i = 0; i < n; i++) { gain += price(o, k); inv[k]++; }
+    if (G.tmerc) gain = Math.round(gain * 1.05);
     G.gold += gain; G.cargo[k] -= n;
     G.st.tr = (G.st.tr || 0) + gain;
     if (o.pr != null) o.pr = Math.min(100, o.pr + n * .1);      // obchod pomáha prosperite
@@ -1434,7 +1450,7 @@ function endBattle(win) {
                 G.cav = Math.max(0, G.cav - dC);
                 G.gold += loot;
                 G.ren++;
-                G.xp += LB.n * 5;
+                G.xp += Math.round(LB.n * 5 * (G.twise ? 1.1 : 1));
                 G.hp = Math.max(20, U[0].hp);
                 while (G.xp >= G.lv * 30) {
                     G.xp -= G.lv * 30;
@@ -1841,6 +1857,12 @@ function newGame() {
             spawnX();
         if (bloc(f0))
             startGear(1);   // hrdina zla začína s orkskou výbavou
+        if (typeof creatorResult === 'function') {   // tvorba postavy: vzhľad, povaha, schopnosti
+            const cr = creatorResult();
+            G.look = cr.look; G.trait = cr.trait; Object.assign(G.s, cr.s);
+            if (TRAITS[cr.trait]) TRAITS[cr.trait].fx(G);
+            if (G.trel) E.forEach(e => { if (!bloc(e.f)) e.rl = (e.rl || 0) + G.trel; });
+        }
         if (f0 !== 6) {
             const t = TW.find(t => t.f === f0);
             G.fac = f0;
@@ -3341,211 +3363,6 @@ function introScene() {
 </script>
 <script>
 /*
- * Portréty veliteľov a snímky obrázkov pre encyklopédiu.
- */
-function snap(w, h, fn) {
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, w, h);
-    try {
-        fn();
-    }
-    catch (e) { }
-    ctx.restore();
-    const c = document.createElement('canvas');
-    c.width = w;
-    c.height = h;
-    c.getContext('2d').drawImage(cv, 0, 0, w, h, 0, 0, w, h);
-    return c.toDataURL();
-}
-function portrait(e) {
-    const f = e.f, ev = bloc(f) && f !== 4 && f !== 7 && !e.kr, h = ((e.id || 1) * 2654435761) >>> 0;
-    const g = ctx.createLinearGradient(0, 0, 0, 96);
-    g.addColorStop(0, BF[f]);
-    g.addColorStop(1, '#0c0907');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, 84, 96);
-    ctx.globalAlpha = .2;
-    emb(42, 38, 28, f);
-    ctx.globalAlpha = 1;
-    if (e.nz) {
-        ctx.fillStyle = 'rgba(160,0,0,.45)';
-        ctx.beginPath();
-        ctx.arc(42, 46, 40, 0, 7);
-        ctx.fill();
-    }
-    ctx.fillStyle = e.nz ? '#08080a' : TB[f];
-    ctx.beginPath();
-    ctx.moveTo(4, 96);
-    ctx.quadraticCurveTo(8, 62, 42, 59);
-    ctx.quadraticCurveTo(76, 62, 80, 96);
-    ctx.fill();
-    if (e.nz) {
-        ctx.fillStyle = '#050507';
-        ctx.beginPath();
-        ctx.moveTo(20, 66);
-        ctx.quadraticCurveTo(42, 2, 64, 66);
-        ctx.fill();
-        ctx.fillStyle = '#000';
-        ctx.beginPath();
-        ctx.ellipse(42, 44, 10, 13, 0, 0, 7);
-        ctx.fill();
-        ctx.fillStyle = '#ff3a2a';
-        ctx.fillRect(36, 41, 3, 2);
-        ctx.fillRect(45, 41, 3, 2);
-        ctx.fillStyle = '#9aa0a8';
-        ctx.beginPath();
-        ctx.moveTo(26, 22);
-        ctx.lineTo(42, 10);
-        ctx.lineTo(58, 22);
-        ctx.lineTo(54, 28);
-        ctx.lineTo(30, 28);
-        ctx.fill();
-        return;
-    }
-    ctx.fillStyle = '#8a8e94';
-    ctx.beginPath();
-    ctx.ellipse(16, 70, 12, 7, -.4, 0, 7);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(68, 70, 12, 7, .4, 0, 7);
-    ctx.fill();
-    ctx.fillStyle = BF[f];
-    ctx.fillRect(32, 67, 20, 29);
-    ctx.strokeStyle = '#d9a441';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(32, 67, 20, 29);
-    emb(42, 80, 7, f);
-    const skin = ev ? ['#6a7a4a', '#5a6a3a', '#7a7a5a'][h % 3] : f === 4 ? ['#8a5a3a', '#7a4a2a'][h % 2] : ['#e8c9a0', '#d8b088', '#c89870'][h % 3];
-    ctx.fillStyle = skin;
-    ctx.fillRect(37, 50, 10, 12);
-    ctx.beginPath();
-    ctx.ellipse(42, 40, f === 5 ? 14 : 12, 15, 0, 0, 7);
-    ctx.fill();
-    const hc = ['#3a2a1a', '#6a4a2a', '#a88a5a', '#d8d0c0', '#1a1a1a'][h % 5];
-    if (f === 8) {
-        ctx.fillStyle = '#e8d890';
-        ctx.fillRect(28, 30, 5, 30);
-        ctx.fillRect(51, 30, 5, 30);
-    }
-    if (f === 5 || (!ev && h % 3 === 0)) {
-        ctx.fillStyle = f === 5 ? ['#8a3a1a', '#5a3a2a', '#c8c0b0'][h % 3] : hc;
-        ctx.beginPath();
-        ctx.moveTo(29, 42);
-        ctx.quadraticCurveTo(42, f === 5 ? 76 : 62, 55, 42);
-        ctx.fill();
-    }
-    ctx.fillStyle = ev ? '#ff3a2a' : '#2a1a10';
-    ctx.fillRect(35, 37, 3.5, 2.5);
-    ctx.fillRect(45.5, 37, 3.5, 2.5);
-    if (ev) {
-        ctx.fillStyle = '#e8e0c0';
-        ctx.fillRect(37, 48, 2, 3);
-        ctx.fillRect(45, 48, 2, 3);
-    }
-    ctx.strokeStyle = 'rgba(60,20,10,.7)';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.moveTo(38, 47);
-    ctx.lineTo(46, 47);
-    ctx.stroke();
-    ctx.fillStyle = HM[f];
-    if (f === 0) {
-        ctx.beginPath();
-        ctx.arc(42, 35, 14, Math.PI, 0);
-        ctx.fill();
-        ctx.fillRect(28, 33, 28, 4);
-        ctx.beginPath();
-        ctx.moveTo(28, 32);
-        ctx.lineTo(18, 16);
-        ctx.lineTo(31, 26);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.moveTo(56, 32);
-        ctx.lineTo(66, 16);
-        ctx.lineTo(53, 26);
-        ctx.fill();
-    }
-    else if (f === 1) {
-        ctx.beginPath();
-        ctx.arc(42, 35, 14, Math.PI, 0);
-        ctx.fill();
-        ctx.fillStyle = '#e8e0c0';
-        ctx.beginPath();
-        ctx.moveTo(42, 20);
-        ctx.quadraticCurveTo(60, 18, 64, 40);
-        ctx.lineTo(60, 40);
-        ctx.quadraticCurveTo(56, 26, 42, 24);
-        ctx.fill();
-    }
-    else if (f === 2 || f === 3) {
-        ctx.beginPath();
-        ctx.arc(42, 35, 14, Math.PI, 0);
-        ctx.fill();
-        for (let k = 0; k < 5; k++) {
-            const a = Math.PI + (k + .5) * Math.PI / 5;
-            ctx.beginPath();
-            ctx.moveTo(42 + Math.cos(a - .2) * 13, 35 + Math.sin(a - .2) * 13);
-            ctx.lineTo(42 + Math.cos(a) * 22, 35 + Math.sin(a) * 22);
-            ctx.lineTo(42 + Math.cos(a + .2) * 13, 35 + Math.sin(a + .2) * 13);
-            ctx.fill();
-        }
-        if (f === 3) {
-            ctx.fillStyle = '#f0f0f0';
-            ctx.fillRect(40, 22, 4, 6);
-        }
-    }
-    else if (f === 4) {
-        ctx.beginPath();
-        ctx.ellipse(42, 28, 15, 9, 0, 0, 7);
-        ctx.fill();
-        ctx.fillStyle = '#b02a1a';
-        ctx.fillRect(28, 30, 28, 3);
-    }
-    else if (f === 5) {
-        ctx.beginPath();
-        ctx.arc(42, 34, 15, Math.PI, 0);
-        ctx.fill();
-        ctx.fillRect(40, 34, 4, 9);
-        ctx.fillStyle = '#d9a441';
-        ctx.fillRect(27, 32, 30, 3);
-    }
-    else if (f === 7) {
-        ctx.beginPath();
-        ctx.moveTo(26, 36);
-        ctx.lineTo(42, 12);
-        ctx.lineTo(58, 36);
-        ctx.fill();
-        ctx.fillStyle = '#5a1f4a';
-        ctx.fillRect(28, 33, 28, 3);
-    }
-    else if (f === 8) {
-        ctx.strokeStyle = '#e8d870';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(30, 30);
-        ctx.quadraticCurveTo(42, 26, 54, 30);
-        ctx.stroke();
-        ctx.fillStyle = '#9fe0ff';
-        ctx.beginPath();
-        ctx.arc(42, 27.5, 1.8, 0, 7);
-        ctx.fill();
-    }
-    else {
-        ctx.beginPath();
-        ctx.moveTo(24, 50);
-        ctx.quadraticCurveTo(42, 8, 60, 50);
-        ctx.lineTo(54, 50);
-        ctx.quadraticCurveTo(42, 24, 30, 50);
-        ctx.fill();
-    }
-    if (e.kr)
-        crown(42, 14);
-}
-
-</script>
-<script>
-/*
  * Kreslenie vojakov a výbavy (pohľad zhora, vojak hľadí doprava).
  *
  * Používa ho:
@@ -4376,6 +4193,166 @@ const Soldiers = (() => {
 </script>
 <script>
 /*
+ * Portréty: tvár spredu kreslená kódom podľa popisu look = { race, sex, skin, hair, hcol, beard, eyes, age, scar, paint, hood, turban, helm, crown }.
+ *   race: human | elf | dwarf | hobbit | orc | uruk | dark (juh) | wraith;  sex: m | f
+ *   skin: 0 svetlá, 1 opálená, 2 tmavá, 3 bledá (alebo farba '#rrggbb');  hair: short | long | bald | tied | curly | lank | braids
+ *   hcol: farba vlasov; beard: none | stubble | full | long | braided; eyes: farba dúhovky; age 0–1 (vrásky); scar, paint (biela ruka), hood, turban, helm, crown.
+ * Portraits.canvas(look, size) vráti plátno; Portraits.forLord(e) a Portraits.hero() odvodia popis z dát hry.
+ * Používa sa v rozhovoroch (okno dostane plátno .por) a pri tvorbe postavy.
+ */
+const Portraits = (() => {
+    const SKIN = ['#e8c39e', '#c9956a', '#7a4a2e', '#efe1d2'];
+    const shade = (col, k) => { const n = parseInt(col.slice(1), 16), f = v => Math.max(0, Math.min(255, Math.round(v * k))); return '#' + [f(n >> 16 & 255), f(n >> 8 & 255), f(n & 255)].map(v => v.toString(16).padStart(2, '0')).join(''); };
+    const E = (c, x, y, rx, ry, rot = 0) => { c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, 7); };
+    const P = (c, pts) => { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); };
+
+    function draw(c, L) {
+        const race = L.race || 'human', f = L.sex === 'f', skin = typeof L.skin === 'string' ? L.skin : race === 'orc' ? '#5f7a4a' : race === 'uruk' ? '#3e4a34' : race === 'wraith' ? '#111' : race === 'dark' ? '#7a4a2e' : SKIN[L.skin | 0] || SKIN[0];
+        const hcol = L.hcol || '#4a3020', eyes = L.eyes || (race === 'orc' || race === 'uruk' ? '#e8c040' : '#4a6a8a');
+        const cx = 48, cy = 50, hw = race === 'dwarf' ? 25 : race === 'elf' ? 20 : race === 'hobbit' ? 23 : f ? 20.5 : 22.5, hh = race === 'elf' ? 29 : race === 'hobbit' ? 25 : 27;
+        // pozadie a ramená
+        const bg = c.createRadialGradient(cx, cy, 10, cx, cy, 60); bg.addColorStop(0, L.bg || '#3a2c20'); bg.addColorStop(1, '#120e0c');
+        c.fillStyle = bg; c.fillRect(0, 0, 96, 96);
+        c.fillStyle = L.cloth || (race === 'orc' || race === 'uruk' || race === 'wraith' ? '#1e1a18' : '#4a3a2a');
+        E(c, cx, 104, 44, 30); c.fill();
+        c.fillStyle = shade(skin, .85); c.fillRect(cx - 9, cy + hh - 6, 18, 16);                    // krk
+        // vlasy vzadu
+        const hair = L.hair || (f ? 'long' : 'short');
+        if (race !== 'wraith' && (hair === 'long' || hair === 'braids')) { c.fillStyle = hcol; P(c, [[cx - hw - 4, cy - 10], [cx + hw + 4, cy - 10], [cx + hw + 7, cy + 40], [cx - hw - 7, cy + 40]]); c.fill(); }
+        if (race !== 'wraith' && hair === 'lank') { c.fillStyle = hcol; P(c, [[cx - hw - 2, cy - 12], [cx + hw + 2, cy - 12], [cx + hw + 3, cy + 30], [cx - hw - 3, cy + 30]]); c.fill(); }
+        // hlava
+        const g = c.createLinearGradient(cx - hw, 0, cx + hw, 0); g.addColorStop(0, shade(skin, .8)); g.addColorStop(.45, skin); g.addColorStop(1, shade(skin, .92));
+        c.fillStyle = g;
+        if (race === 'orc' || race === 'uruk') { P(c, [[cx - hw, cy - hh * .7], [cx - hw * .6, cy - hh], [cx + hw * .6, cy - hh], [cx + hw, cy - hh * .7], [cx + hw * .95, cy + hh * .3], [cx + hw * .5, cy + hh], [cx - hw * .5, cy + hh], [cx - hw * .95, cy + hh * .3]]); c.fill(); }
+        else if (race === 'wraith') { c.fillStyle = '#050508'; E(c, cx, cy, hw, hh); c.fill(); }
+        else { c.beginPath(); c.moveTo(cx - hw, cy - 4); c.quadraticCurveTo(cx - hw, cy - hh - 2, cx, cy - hh - 2); c.quadraticCurveTo(cx + hw, cy - hh - 2, cx + hw, cy - 4); c.quadraticCurveTo(cx + hw, cy + hh * .55, cx + (race === 'dwarf' ? 10 : 6), cy + hh); c.lineTo(cx - (race === 'dwarf' ? 10 : 6), cy + hh); c.quadraticCurveTo(cx - hw, cy + hh * .55, cx - hw, cy - 4); c.fill(); }
+        // uši
+        if (race !== 'wraith') {
+            c.fillStyle = shade(skin, .9);
+            if (race === 'elf' || race === 'orc' || race === 'uruk') { const e = race === 'elf' ? 14 : 9; P(c, [[cx - hw + 2, cy - 2], [cx - hw - e, cy - 8 - (race === 'elf' ? 4 : 0)], [cx - hw + 1, cy + 7]]); c.fill(); P(c, [[cx + hw - 2, cy - 2], [cx + hw + e, cy - 8 - (race === 'elf' ? 4 : 0)], [cx + hw - 1, cy + 7]]); c.fill(); }
+            else { E(c, cx - hw, cy + 1, 3.5, 5.5); c.fill(); E(c, cx + hw, cy + 1, 3.5, 5.5); c.fill(); }
+        }
+        // oči
+        const ey = cy - 3, ex = race === 'dwarf' ? 9 : 8.5, er = race === 'orc' || race === 'uruk' ? 3.2 : 4;
+        if (race === 'wraith') { c.save(); c.shadowColor = '#ff3020'; c.shadowBlur = 8; c.fillStyle = '#ff5030'; E(c, cx - ex, ey, 2.5, 1); c.fill(); E(c, cx + ex, ey, 2.5, 1); c.fill(); c.restore(); }
+        else for (const s of [-1, 1]) {
+            const x = cx + s * ex;
+            c.fillStyle = shade(skin, .78); E(c, x, ey + 1, er + 1.5, er * .9); c.fill();            // očná jamka
+            c.fillStyle = race === 'orc' || race === 'uruk' ? '#f0e0a0' : '#f4f0ea'; E(c, x, ey, er, er * .62); c.fill();
+            c.fillStyle = eyes; c.beginPath(); c.arc(x + (L.look || 0), ey, er * .5, 0, 7); c.fill();
+            c.fillStyle = '#0a0806'; c.beginPath(); c.arc(x + (L.look || 0), ey, er * .25, 0, 7); c.fill();
+            c.fillStyle = '#fff'; c.beginPath(); c.arc(x + .8 + (L.look || 0), ey - .9, .7, 0, 7); c.fill();
+            c.strokeStyle = shade(skin, .6); c.lineWidth = .9; c.beginPath(); c.arc(x, ey, er, Math.PI, 0); c.stroke();   // viečko
+            // obočie
+            c.strokeStyle = race === 'orc' || race === 'uruk' ? '#2a2a1a' : hcol; c.lineWidth = f ? 1.3 : 2.2; c.lineCap = 'round';
+            const angry = L.angry || race === 'orc' || race === 'uruk';
+            c.beginPath(); c.moveTo(x - s * (er + 1.5), ey - 5.5 + (angry ? -1 : 0)); c.lineTo(x + s * (er - .5), ey - 5.5 + (angry ? 2.5 : 0)); c.stroke();
+        }
+        // nos
+        if (race !== 'wraith') {
+            c.strokeStyle = shade(skin, .7); c.lineWidth = 1.4; c.lineCap = 'round';
+            if (race === 'orc' || race === 'uruk') { c.fillStyle = shade(skin, .8); E(c, cx, cy + 6, 5, 3); c.fill(); c.fillStyle = '#1a1a12'; E(c, cx - 2.2, cy + 6.5, 1.3, .9); c.fill(); E(c, cx + 2.2, cy + 6.5, 1.3, .9); c.fill(); }
+            else { c.beginPath(); c.moveTo(cx - 1, cy); c.lineTo(cx - 2.5, cy + 7); c.quadraticCurveTo(cx, cy + 9.5, cx + 3, cy + 7); c.stroke(); c.fillStyle = shade(skin, 1.08); E(c, cx + 1, cy + 3, 1.6, 4); c.fill(); }
+        }
+        // ústa
+        const my = cy + (race === 'dwarf' ? 14 : 13.5);
+        if (race === 'wraith') { c.fillStyle = '#e8d8c8'; c.fillRect(cx - 6, my - 1, 12, 3.2); c.strokeStyle = '#3a1010'; c.lineWidth = .7; c.beginPath(); c.moveTo(cx - 6, my + .6); c.lineTo(cx + 6, my + .6); c.stroke(); }
+        else {
+            c.fillStyle = race === 'orc' || race === 'uruk' ? '#3a2a24' : shade(skin, .7); E(c, cx, my, race === 'orc' || race === 'uruk' ? 8 : 5.5, 1.6); c.fill();
+            if (L.smile) { c.strokeStyle = shade(skin, .6); c.lineWidth = 1; c.beginPath(); c.arc(cx, my - 2.5, 6, .3, Math.PI - .3); c.stroke(); }
+            if (f) { c.fillStyle = '#b05a58'; E(c, cx, my + .6, 5, 1.5); c.fill(); }
+            if (race === 'orc' || race === 'uruk') { c.fillStyle = '#e8e0c8'; P(c, [[cx - 6, my], [cx - 4.5, my - 4], [cx - 3, my]]); c.fill(); P(c, [[cx + 6, my], [cx + 4.5, my - 4], [cx + 3, my]]); c.fill(); }
+        }
+        // vrásky, jazva, bojové maľovanie
+        if (L.age > .4 && race !== 'wraith') { c.strokeStyle = shade(skin, .72); c.lineWidth = .8; for (const s of [-1, 1]) { c.beginPath(); c.moveTo(cx + s * 4, cy + 8); c.lineTo(cx + s * 8, cy + 16); c.stroke(); } c.beginPath(); c.moveTo(cx - 8, cy - 14); c.lineTo(cx + 8, cy - 14); c.stroke(); }
+        if (L.scar) { c.strokeStyle = '#8a3a30'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(cx + 10, cy - 12); c.lineTo(cx + 6, cy + 10); c.stroke(); }
+        if (L.paint) { c.fillStyle = 'rgba(240,240,240,.9)'; E(c, cx, cy + 2, 5, 7); c.fill(); for (let k = -2; k <= 2; k++) c.fillRect(cx + k * 2.4 - .8, cy - 16, 1.6, 10); }
+        // brada
+        const beard = L.beard || 'none';
+        if (race !== 'wraith' && beard !== 'none' && !f) {
+            c.fillStyle = beard === 'stubble' ? 'rgba(40,30,20,.35)' : hcol;
+            if (beard === 'stubble') { P(c, [[cx - hw + 3, cy + 6], [cx + hw - 3, cy + 6], [cx + 6, cy + hh + 1], [cx - 6, cy + hh + 1]]); c.fill(); }
+            else if (beard === 'full') { P(c, [[cx - hw + 1, cy + 4], [cx - hw + 5, cy + 20], [cx, cy + hh + 8], [cx + hw - 5, cy + 20], [cx + hw - 1, cy + 4], [cx + hw - 4, cy + 12], [cx + 7, cy + 10], [cx - 7, cy + 10], [cx - hw + 4, cy + 12]]); c.fill(); }
+            else { P(c, [[cx - hw + 1, cy + 4], [cx - hw + 3, cy + 28], [cx - 8, cy + 46], [cx + 8, cy + 46], [cx + hw - 3, cy + 28], [cx + hw - 1, cy + 4], [cx + hw - 4, cy + 12], [cx + 7, cy + 10], [cx - 7, cy + 10], [cx - hw + 4, cy + 12]]); c.fill(); if (beard === 'braided') { c.strokeStyle = '#d9a441'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(cx - 4, cy + 34); c.lineTo(cx + 4, cy + 34); c.moveTo(cx - 3, cy + 41); c.lineTo(cx + 3, cy + 41); c.stroke(); } }
+            if (beard !== 'stubble') { c.fillStyle = shade(skin, .7); E(c, cx, my, 5, 1.4); c.fill(); }   // ústa cez bradu
+        }
+        // vlasy vpredu
+        if (race !== 'wraith' && !L.hood && !L.helm && !L.turban) {
+            c.fillStyle = hcol;
+            if (hair === 'short' || hair === 'tied' || hair === 'long' || hair === 'lank') { c.beginPath(); c.moveTo(cx - hw - 1, cy - 6); c.quadraticCurveTo(cx - hw, cy - hh - 5, cx, cy - hh - 5); c.quadraticCurveTo(cx + hw, cy - hh - 5, cx + hw + 1, cy - 6); c.quadraticCurveTo(cx + hw * .7, cy - hh * .7, cx + 4, cy - hh * .75); c.quadraticCurveTo(cx - 6, cy - hh * .85, cx - hw * .8, cy - hh * .5); c.fill(); }
+            if (hair === 'curly') { for (let k = 0; k < 9; k++) { const a = Math.PI + k * Math.PI / 8; E(c, cx + Math.cos(a) * (hw - 1), cy - 6 + Math.sin(a) * (hh - 2), 6, 6); c.fill(); } }
+            if (hair === 'braids') { c.strokeStyle = hcol; c.lineWidth = 4; c.beginPath(); c.moveTo(cx - hw, cy); c.lineTo(cx - hw - 2, cy + 40); c.moveTo(cx + hw, cy); c.lineTo(cx + hw + 2, cy + 40); c.stroke(); c.strokeStyle = '#d9a441'; c.lineWidth = 1; for (let y = cy + 10; y < cy + 40; y += 8) { c.beginPath(); c.moveTo(cx - hw - 4, y); c.lineTo(cx - hw, y); c.moveTo(cx + hw, y); c.lineTo(cx + hw + 4, y); c.stroke(); } }
+            if (hair === 'bald' && race !== 'orc') { c.fillStyle = shade(skin, 1.06); E(c, cx - 6, cy - hh + 6, 5, 3); c.fill(); }
+            if (hair === 'tied') { c.fillStyle = hcol; E(c, cx, cy - hh - 4, 7, 4); c.fill(); }
+        }
+        // pokrývky hlavy
+        if (L.hood) { c.fillStyle = L.hood === true ? '#2a2420' : L.hood; c.beginPath(); c.moveTo(cx - hw - 8, cy + 30); c.quadraticCurveTo(cx - hw - 10, cy - hh - 14, cx, cy - hh - 16); c.quadraticCurveTo(cx + hw + 10, cy - hh - 14, cx + hw + 8, cy + 30); c.lineTo(cx + hw - 2, cy + 30); c.quadraticCurveTo(cx + hw + 2, cy - hh + 2, cx, cy - hh); c.quadraticCurveTo(cx - hw - 2, cy - hh + 2, cx - hw + 2, cy + 30); c.closePath(); c.fill(); c.fillStyle = 'rgba(0,0,0,.35)'; P(c, [[cx - hw + 2, cy - hh + 2], [cx + hw - 2, cy - hh + 2], [cx + hw - 4, cy - 2], [cx - hw + 4, cy - 2]]); c.fill(); }
+        if (L.turban) { c.fillStyle = L.turban === true ? '#c84a2a' : L.turban; c.beginPath(); c.moveTo(cx - hw - 3, cy - 8); c.quadraticCurveTo(cx - hw - 2, cy - hh - 12, cx, cy - hh - 12); c.quadraticCurveTo(cx + hw + 2, cy - hh - 12, cx + hw + 3, cy - 8); c.lineTo(cx + hw, cy - 4); c.quadraticCurveTo(cx, cy - hh + 2, cx - hw, cy - 4); c.fill(); c.strokeStyle = '#d9a441'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(cx - hw, cy - 12); c.quadraticCurveTo(cx, cy - 20, cx + hw, cy - 12); c.stroke(); }
+        if (L.helm) { const col = typeof L.helm === 'string' ? L.helm : '#8a8c92'; c.fillStyle = col; c.beginPath(); c.moveTo(cx - hw - 2, cy - 2); c.quadraticCurveTo(cx - hw - 2, cy - hh - 8, cx, cy - hh - 8); c.quadraticCurveTo(cx + hw + 2, cy - hh - 8, cx + hw + 2, cy - 2); c.lineTo(cx + hw, cy - 8); c.quadraticCurveTo(cx, cy - hh + 4, cx - hw, cy - 8); c.fill(); c.fillStyle = shade(col, 1.25); c.fillRect(cx - 1.5, cy - hh - 6, 3, 14); if (L.wings) { c.fillStyle = '#eef0f4'; P(c, [[cx - hw, cy - 10], [cx - hw - 16, cy - 26], [cx - hw + 2, cy - 20]]); c.fill(); P(c, [[cx + hw, cy - 10], [cx + hw + 16, cy - 26], [cx + hw - 2, cy - 20]]); c.fill(); } }
+        if (L.crown) { c.fillStyle = '#ffd24a'; P(c, [[cx - 16, cy - hh - 2], [cx - 16, cy - hh - 14], [cx - 8, cy - hh - 6], [cx, cy - hh - 17], [cx + 8, cy - hh - 6], [cx + 16, cy - hh - 14], [cx + 16, cy - hh - 2]]); c.fill(); c.fillStyle = '#d8402a'; c.beginPath(); c.arc(cx, cy - hh - 7, 2, 0, 7); c.fill(); }
+        // rám
+        c.strokeStyle = '#d9a441'; c.lineWidth = 2; c.strokeRect(1, 1, 94, 94);
+    }
+
+    function canvas(look, size = 96) {
+        const cv = document.createElement('canvas'); cv.width = cv.height = size * 2; const c = cv.getContext('2d');
+        c.scale(size * 2 / 96, size * 2 / 96); draw(c, look || {});
+        return cv;
+    }
+    const hashOf = s => { let h = 7; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h; };
+    /** Portrét lorda podľa frakcie a mena (vždy rovnaký pre rovnaké meno). */
+    function forLord(e) {
+        const h = hashOf(e.nm + e.f), pick = (arr, k) => arr[(h >> k) % arr.length];
+        const H = ['#2a1a10', '#4a3020', '#8a5a30', '#c8a060', '#6a6a6a'];
+        const base = { human: { race: 'human', skin: pick([0, 0, 1, 3], 2), hair: pick(['short', 'long', 'tied', 'short'], 4), hcol: pick(H, 6), beard: pick(['none', 'stubble', 'full', 'short'], 8), age: (h % 7) / 7 } };
+        let L;
+        switch (e.f) {
+            case 0: L = { ...base.human, helm: pick([0, '#c8ccd4'], 10), wings: !!pick([0, 1], 11) }; break;
+            case 1: L = { ...base.human, hair: 'long', hcol: pick(['#c8a060', '#e8d0a0', '#8a5a30'], 6), beard: pick(['full', 'stubble'], 8) }; break;
+            case 2: L = { race: 'orc', hair: 'bald', beard: 'none', angry: 1, scar: !!(h % 2), helm: pick([0, '#3a3632'], 10) }; break;
+            case 3: L = { race: 'uruk', hair: 'lank', hcol: '#1a1410', beard: 'none', angry: 1, paint: !!(h % 3 === 0) }; break;
+            case 4: L = { race: 'dark', hair: 'short', hcol: '#1a1410', beard: pick(['none', 'stubble', 'full'], 8), turban: pick(['#c84a2a', '#d9a441', '#8a2a5a'], 5) }; break;
+            case 5: L = { race: 'dwarf', hair: pick(['long', 'braids', 'bald'], 4), hcol: pick(['#b05a20', '#4a3020', '#8a8a8a', '#c8a060'], 6), beard: pick(['long', 'braided'], 8) }; break;
+            case 7: L = { race: 'human', skin: 1, hair: 'tied', hcol: '#1a1410', beard: pick(['none', 'stubble', 'full'], 8), helm: pick([0, '#c09030'], 10) }; break;
+            case 8: L = { race: 'elf', skin: pick([0, 3], 2), hair: 'long', hcol: pick(['#e8d8a0', '#2a1a10', '#8a7a60'], 6), beard: 'none' }; break;
+            case 9: L = { ...base.human, hood: true, scar: !!(h % 2) }; break;
+            default: L = { ...base.human };
+        }
+        if (e.nz) L = { race: 'wraith', hood: '#0a0a10' };
+        if (e.kr && e.f !== 2 && e.f !== 3) L.crown = 1;
+        L.cloth = ['#2a3a6a', '#3a6a2a', '#2a1010', '#1a1a1a', '#a03020', '#3a4a7a', '#4a3a2a', '#5a1f4a', '#9ab07a', '#4a3a2a'][e.f] || '#4a3a2a';
+        return L;
+    }
+    /** Portrét hrdinu z G.look (predvolený, ak chýba). */
+    function hero() {
+        const L = { race: 'human', sex: 'm', skin: 0, hair: 'short', hcol: '#4a3020', beard: 'stubble', eyes: '#4a6a8a', ...(G && G.look || {}) };
+        if (G && G.king) L.crown = 1;
+        L.cloth = G && typeof heroSide === 'function' && heroSide() === 1 ? '#2a1414' : '#6a2a2a';
+        return L;
+    }
+    return { draw, canvas, forLord, hero, SKIN, hashOf };
+})();
+
+/** Snímka z pôvodného plátna (encyklopédia: zástavy, jednotky, hrady). */
+function snap(w, h, fn) {
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    try {
+        fn();
+    }
+    catch (e) { }
+    ctx.restore();
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    c.getContext('2d').drawImage(cv, 0, 0, w, h, 0, 0, w, h);
+    return c.toDataURL();
+}
+
+</script>
+<script>
+/*
  * Postavičky na mape (pohľad zboku): hrdina podľa kúpenej výbavy a lordi podľa svojej frakcie.
  * Figures.draw(ctx, eq, o, frame) nakreslí jazdca alebo pešiaka okolo bodu (0, 0) – nohy stoja na y = 0.
  *   eq = { w, a, s, h, m } (poradie vecí ako u kováča, Soldiers.GEAR), o = { fac, king, cape, beard, nazgul, flag }.
@@ -4546,7 +4523,7 @@ const Figures = (() => {
     function draw(c, eq, o, fr) {
         const M = eq.m > 0 ? g('m', eq.m) : null, A = g('a', eq.a), S = eq.s > 0 ? g('s', eq.s) : null, Hm = eq.h == null ? null : g('h', eq.h);
         const Wp = eq.w == null ? null : typeof eq.w === 'object' ? eq.w : g('w', eq.w);   // objekt = vlastná zbraň (napr. luk), null = bez zbrane
-        const skin = o.nazgul ? '#000' : o.orc ? '#5f7a4a' : o.dark ? '#8a5a3a' : '#e2bf96';
+        const skin = o.skin || (o.nazgul ? '#000' : o.orc ? '#5f7a4a' : o.dark ? '#8a5a3a' : '#e2bf96');
         const bob = M ? 0 : Math.abs(Math.sin(fr * Math.PI / 2)) * 1.2, walk = Math.sin(fr * Math.PI / 2) * 3.5;
         // tieň
         c.fillStyle = 'rgba(0,0,0,.32)'; E(c, 0, 0, M ? 18 * (M.s || 1) : 7, M ? 5 : 2.5); c.fill();
@@ -4557,13 +4534,15 @@ const Figures = (() => {
         if (o.flag != null) { c.strokeStyle = '#3a2a1a'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-6, -2); c.lineTo(-6, -40); c.stroke(); tm = fr * 14.1; bnr(-6, -40, o.flag, 16, 20); }
         // plášť
         const cape = o.cape || CAPES[0];
-        if (!o.nazgul || 1) { c.fillStyle = A.pat === 'robe' ? '#0a0a10' : cape; P(c, [[-2, -18], [3, -18], [2, -2 + (M ? 2 : 0)], [-9 - walk * .3, 0]]); c.fill(); }
+        { const cg = c.createLinearGradient(-9, 0, 3, 0); cg.addColorStop(0, dark(A.pat === 'robe' ? '#0a0a10' : cape, .7)); cg.addColorStop(1, A.pat === 'robe' ? '#0a0a10' : cape); c.fillStyle = cg; P(c, [[-2, -18], [3, -18], [2, -2 + (M ? 2 : 0)], [-9 - walk * .3, 0]]); c.fill(); c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = .5; c.beginPath(); c.moveTo(-1, -17); c.lineTo(-5 - walk * .2, -1); c.stroke(); }
         // nohy
         if (!M) { for (const d of [walk, -walk]) { c.fillStyle = A.pat === 'robe' ? '#0a0a10' : '#3a2a1a'; P(c, [[-2 + d * .2, -8], [2 + d * .2, -8], [2 + d, 0], [-2 + d, 0]]); c.fill(); c.fillStyle = '#2a1a10'; c.fillRect(-2.5 + d, -1.5, 5, 1.5); } }
         else { c.fillStyle = A.pat === 'robe' ? '#0a0a10' : '#3a2a1a'; P(c, [[1, -8], [5, -8], [6, 2], [3, 3]]); c.fill(); c.fillStyle = '#2a1a10'; c.fillRect(2.5, 2, 4.5, 1.6); }
         // trup
         const pad = A.pad || 1;
-        c.fillStyle = A.col; P(c, [[-4.5 * pad, -20], [4.5 * pad, -20], [4 * pad, -7], [-4 * pad, -7]]); c.fill();
+        const tg = c.createLinearGradient(-4 * pad, 0, 4 * pad, 0); tg.addColorStop(0, dark(A.col, .75)); tg.addColorStop(.6, A.col); tg.addColorStop(1, dark(A.col, .9));
+        c.fillStyle = tg; P(c, [[-4.5 * pad, -20], [4.5 * pad, -20], [4 * pad, -7], [-4 * pad, -7]]); c.fill();
+        c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = .5; c.stroke();
         if (A.glow) glow(c, A.glow, 6, () => { c.fillStyle = A.glow; c.globalAlpha = .35; c.fillRect(-4 * pad, -19, 8 * pad, 11); c.globalAlpha = 1; });
         if (A.pat === 'mail') { c.fillStyle = 'rgba(255,255,255,.22)'; for (let yy = -18; yy < -8; yy += 2.2) for (let xx = -3.5; xx < 3.5; xx += 2) { E(c, xx + (yy % 4 ? 1 : 0), yy, .7, .7); c.fill(); } }
         if (A.pat === 'plate') { c.fillStyle = 'rgba(255,255,255,.18)'; c.fillRect(-4 * pad, -19, 8 * pad, 1); c.fillRect(-4 * pad, -14, 8 * pad, 1); c.fillRect(-4 * pad, -10, 8 * pad, 1); c.fillStyle = A.rim || '#fff'; c.fillRect(-4.5 * pad, -20, 9 * pad, 1.2); }
@@ -4582,13 +4561,34 @@ const Figures = (() => {
         else { c.beginPath(); c.moveTo(4 * pad, -17); c.lineTo(6, -9); c.stroke(); c.fillStyle = skin; E(c, 6, -8.5, 1.6, 1.6); c.fill(); if (o.mug) { c.fillStyle = '#c8903a'; c.fillRect(6.5, -11, 3.5, 4); c.fillStyle = '#fff4dc'; c.fillRect(6.5, -11.8, 3.5, 1.2); } }
         if (S) shield(c, S, -7, -12);
         else { c.strokeStyle = A.col; c.beginPath(); c.moveTo(-4 * pad, -17); c.lineTo(-6, -10); c.stroke(); }
-        // hlava
-        c.fillStyle = skin; E(c, 0, -24, 4, 4.3); c.fill();
-        if (o.beard) { c.fillStyle = o.beard; P(c, [[-3.5, -23], [3.5, -23], [2, -14], [-2, -14]]); c.fill(); }
-        if (!o.nazgul) { c.fillStyle = '#1a1210'; c.fillRect(1.5, -25, 1.2, 1.2); }
+        // hlava a tvár (z profilu, hľadí doprava): tieňovaná pleť, oko s dúhovkou, obočie, nos, ústa, ucho, vlasy a brada
+        const hcol = o.hcol || (typeof o.hair === 'string' && o.hair[0] === '#' ? o.hair : '#4a3020'), hs = o.hstyle || (o.hair === 'long' ? 'long' : 'short');
+        if (!o.nazgul && (hs === 'long' || hs === 'lank')) { c.fillStyle = hcol; P(c, [[-4.5, -27], [1, -28], [1.5, -22], [-3.5, -14 + (hs === 'lank' ? 2 : 0)], [-5.5, -16]]); c.fill(); }   // vlasy vzadu
+        const hg = c.createLinearGradient(-4, 0, 4, 0); hg.addColorStop(0, dark(skin, .8)); hg.addColorStop(1, skin);
+        c.fillStyle = hg;
+        if (o.orc) { P(c, [[-4, -27], [2, -28.5], [5, -25], [5.5, -21], [2, -19.5], [-3.5, -20.5]]); c.fill(); }
+        else { E(c, 0, -24, 4, 4.4); c.fill(); }
+        if (o.elf) { c.fillStyle = skin; P(c, [[-3.5, -25], [-7, -28], [-3, -22.5]]); c.fill(); } else if (!o.nazgul) { c.fillStyle = dark(skin, .9); E(c, -3.6, -24, 1, 1.4); c.fill(); }   // ucho
+        if (!o.nazgul) {
+            c.fillStyle = '#f4f0ea'; E(c, 2, -24.8, 1.1, .8); c.fill();                            // oko
+            c.fillStyle = o.eyes || (o.orc ? '#e8c040' : '#3a5a7a'); E(c, 2.3, -24.8, .6, .7); c.fill();
+            c.fillStyle = '#0a0806'; E(c, 2.4, -24.8, .3, .5); c.fill();
+            c.strokeStyle = o.orc ? '#1a1a10' : dark(hcol, .8); c.lineWidth = .6; c.beginPath(); c.moveTo(.8, -26.4); c.lineTo(3.4, -26.1 + (o.orc ? .6 : 0)); c.stroke();   // obočie
+            c.fillStyle = dark(skin, .85); P(c, [[3.6, -24.2], [5.2, -22.6], [3.6, -22.2]]); c.fill();   // nos
+            c.strokeStyle = dark(skin, .6); c.lineWidth = .5; c.beginPath(); c.moveTo(2.2, -21.3); c.lineTo(3.8, -21.1); c.stroke();   // ústa
+            if (o.orc) { c.fillStyle = '#e8e0c8'; P(c, [[3, -21], [3.6, -22.6], [4.2, -21]]); c.fill(); }
+        }
+        if (o.beard && o.beard !== 'none') { c.fillStyle = o.beard === 'stubble' ? 'rgba(40,30,20,.4)' : (o.beard[0] === '#' ? o.beard : hcol); const bl = o.beard === 'long' || o.beard === 'braided' ? -12 : o.beard === 'stubble' ? -20.5 : -17; P(c, [[-2.5, -22], [4.2, -22.2], [3.2, -20.3], [2, bl], [-1.5, bl], [-3, -20.5]]); c.fill(); }
         if (o.nazgul) { c.fillStyle = '#0a0a10'; P(c, [[-6, -16], [-5, -30], [0, -33], [5, -30], [5, -20]]); c.fill(); }
         else if (Hm) helm(c, Hm, 0, -25, o);
-        else { c.fillStyle = o.hair || '#4a3020'; c.beginPath(); c.arc(0, -25.5, 4.2, Math.PI, 0); c.fill(); if (o.hair === 'long') { c.fillRect(-4.2, -25.5, 2, 8); } if (o.king) helm(c, { kind: 'none', col: '#000' }, 0, -25, o); }
+        else {
+            c.fillStyle = hcol;
+            if (hs !== 'bald') { c.beginPath(); c.arc(0, -25.6, 4.3, Math.PI, 0); c.lineTo(4.3, -24.5); c.quadraticCurveTo(1, -26.5, -4.3, -24.5); c.closePath(); c.fill(); }
+            if (hs === 'curly') for (let k = 0; k < 5; k++) { E(c, -3.5 + k * 1.8, -28 + Math.abs(k - 2) * .5, 1.4, 1.3); c.fill(); }
+            if (hs === 'tied') { E(c, -4.5, -27, 1.6, 1.6); c.fill(); }
+            if (hs === 'braids') { c.fillRect(-5, -26, 1.6, 9); c.fillStyle = '#d9a441'; c.fillRect(-5, -20, 1.6, .8); }
+            if (o.king) helm(c, { kind: 'none', col: '#000' }, 0, -25, o);
+        }
         if (o.apron) { c.fillStyle = '#e8dcc0'; P(c, [[-3.5, -16], [3.5, -16], [3, -4], [-3, -4]]); c.fill(); }
         c.restore();
     }
@@ -4610,7 +4610,14 @@ const Figures = (() => {
         if (e.nz) return [{ w: 13, a: 10, s: 0, h: 8, m: 8 }, { cape: '#000', nazgul: 1 }];
         let r = T[e.f];
         if (!r) r = (typeof heroSide === 'function' && heroSide() === 1) ? T[2] : T[0];   // vlastní vazali podľa strany hráča
-        return [r[0], { ...r[1], king: !!e.kr, flag: e.f }];
+        return [r[0], { ...r[1], king: !!e.kr, flag: e.f, ...(typeof Portraits !== 'undefined' ? lookOpts(Portraits.forLord(e)) : {}) }];
+    }
+    /** Voľby postavičky z popisu tváre (Portraits look): pleť, vlasy, brada, oči, rasa. */
+    function lookOpts(L) {
+        if (!L) return {};
+        const SK = ['#e8c39e', '#c9956a', '#7a4a2e', '#efe1d2'];
+        return { skin: typeof L.skin === 'string' ? L.skin : L.race === 'orc' ? '#5f7a4a' : L.race === 'uruk' ? '#3e4a34' : L.race === 'dark' ? '#7a4a2e' : L.race === 'wraith' ? '#000' : SK[L.skin | 0],
+            hcol: L.hcol || '#4a3020', hstyle: L.hair || (L.sex === 'f' ? 'long' : 'short'), beard: L.beard && L.beard !== 'none' ? L.beard : null, eyes: L.eyes, elf: L.race === 'elf', orc: L.race === 'orc' || L.race === 'uruk', nazgul: L.race === 'wraith' };
     }
     /** Výbava spoločníka c (postava z filmu) pre postavičku; bez koňa v interiéri (noMount). */
     function compEq(c, noMount) {
@@ -4620,14 +4627,13 @@ const Figures = (() => {
             uN1: [{ w: 10, a: 8, s: 7, h: 7, m: 0 }, { cape: '#5a1f4a' }], z: [{ w: 13, a: 10, s: 0, h: 8, m: 0 }, { nazgul: 1, cape: '#000' }], t: [{ w: 12, a: 9, s: 0, h: 5, m: 0 }, { orc: 1, cape: '#2a1a10' }],
             e: [{ w: { t: 'bow', L: 2.8 }, a: 3, s: 0, h: 3, m: 0 }, { cape: '#9ab07a' }], a: [{ w: { t: 'bow', L: 2.6 }, a: 0, s: 0, h: 0, m: 0 }, { cape: '#4a3a2a' }] };
         let r = c.eq ? [{ ...c.eq }, { cape: c.side ? '#2a1414' : '#6a2a2a' }] : (ART[c.art] || [{ w: 0, a: c.side ? 11 : 0, s: 0, h: 0, m: 0 }, { cape: '#4a3a2a' }]);
-        r = [{ ...r[0] }, { ...r[1] }];
+        r = [{ ...r[0] }, { ...r[1], ...lookOpts(c.look) }];
         if (noMount) r[0].m = 0;
-        if (c.id === 'sam') { r[1].hair = '#b08a50'; r[0].h = null; }
-        if (c.id === 'eowyn') { r[1].hair = 'long'; r[0].h = null; }
+        if (c.look && !c.look.helm && c.eq && c.eq.h === 0) r[0].h = null;    // bez prilby vidno tvár
         return r;
     }
-    const key = (eq, o) => 'figure_' + [eq.w == null ? 'n' : typeof eq.w === 'object' ? 'x' + eq.w.t : eq.w, eq.a, eq.s, eq.h, eq.m, o.flag ?? '', o.king ? 1 : 0, o.cape || '', o.beard || '', o.nazgul ? 1 : 0, o.orc ? 1 : 0, o.dark ? 1 : 0, o.hair || '', o.apron ? 1 : 0, o.mug ? 1 : 0].join('_');
-    return { draw, lordEq, compEq, key, CAPES };
+    const key = (eq, o) => 'figure_' + [eq.w == null ? 'n' : typeof eq.w === 'object' ? 'x' + eq.w.t : eq.w, eq.a, eq.s, eq.h, eq.m, o.flag ?? '', o.king ? 1 : 0, o.cape || '', o.beard || '', o.nazgul ? 1 : 0, o.orc ? 1 : 0, o.dark ? 1 : 0, o.hair || '', o.apron ? 1 : 0, o.mug ? 1 : 0, o.skin || '', o.hcol || '', o.hstyle || '', o.eyes || '', o.elf ? 1 : 0].join('_');
+    return { draw, lordEq, compEq, lookOpts, key, CAPES };
 })();
 
 </script>
@@ -4876,11 +4882,16 @@ function btn(label, fn, off, icon) {
     document.getElementById('bt').appendChild(b);
     return b;
 }
-let LOG = [], TS = null, BI = 'g', RN = null;
+let LOG = [], TS = null, BI = 'g', RN = null, PORTRAIT = null;
+/** Okno s nadpisom h a textom body. Ak je pred volaním nastavený PORTRAIT (popis tváre), okno dostane portrét (plátno .por). */
 function show(h, body) {
     ov.classList.remove('encv');
     {
         ov.innerHTML = '<h1>' + h + '</h1><p>' + body + '</p><div id="bt"></div>';
+        if (PORTRAIT && typeof Portraits !== 'undefined') {
+            try { const c = Portraits.canvas(PORTRAIT); c.className = 'por'; c.dataset.key = 'por_' + JSON.stringify(PORTRAIT); ov.insertBefore(c, ov.firstChild); } catch (e) { }
+        }
+        PORTRAIT = null;
         ov.classList.remove('hide');
     }
 }
@@ -4919,7 +4930,8 @@ function upd() {
  */
 function skills(i) {
     mode = 'town';
-    show('Hrdina ' + G.name, 'Úroveň ' + G.lv + ', voľné body: ' + G.sk + '. Každá schopnosť môže mať až 5 stupňov.');
+    PORTRAIT = Portraits.hero();
+    show('Hrdina ' + G.name, 'Povaha: ' + traitName() + '. Úroveň ' + G.lv + ', voľné body: ' + G.sk + '. Každá schopnosť môže mať až 5 stupňov.');
     [['st', 'Sila (+3 útok)'], ['od', 'Odolnosť (+15 zdravie)'], ['ob', 'Obratnosť (+8 % rýchlosť)'], ['pr', 'Presviedčanie (+6 pri prehováraní)'], ['ls', 'Lukostrelba (+1 zranenie šípov)']].forEach(([k, n]) => btn(n + ' [' + G.s[k] + ']', () => { G.sk--; G.s[k]++; upd(); skills(i); }, !G.sk || G.s[k] >= 5));
     btn('Späť', () => town(i));
 }
@@ -5033,7 +5045,7 @@ function tsub(i, c) {
         btn('Odpočinúť si (plné zdravie)', () => { G.hp = mh(); re(); }, G.hp >= mh(), 'heart');
         btn('Povýšiť pešiaka na veterána (20 zlata, 15 skúseností)', () => { G.gold -= 20; G.txp -= 15; G.inf--; G.vet++; re(); }, G.gold < 20 || G.txp < 15 || G.inf < 1, { u: 'v' });
         btn('Naverbovať zajatcov (8 zlata/ks)', () => { const n = Math.min(G.cap, Math.floor(G.gold / 8)); G.gold -= n * 8; G.inf += n; G.cap -= n; re(); }, !G.cap || G.gold < 8, 'chain');
-        btn('Predať zajatcov (12 zlata/ks)', () => { G.gold += G.cap * 12; G.cap = 0; re(); }, !G.cap, 'coins');
+        btn('Predať zajatcov (' + (G.tcun ? 15 : 12) + ' zlata/ks)', () => { G.gold += G.cap * (G.tcun ? 15 : 12); G.cap = 0; re(); }, !G.cap, 'coins');
         btn('Výkupné za zajatých veliteľov (' + G.pri.length * 80 + ')', () => { G.gold += G.pri.length * 80; G.pri = []; re(); }, !G.pri.length, 'coins');
     }
     if (c === 'h') {
@@ -5137,6 +5149,7 @@ function lord(e) {
     {
         mode = 'town';
         e.rl = e.rl || 0;
+        PORTRAIT = Portraits.forLord(e);
         show(e.nm + ' (' + FN[e.f] + ')', 'Vzťah: ' + e.rl + '. Vojakov: ' + Math.ceil(e.n) + '. Tvoja sláva: ' + G.ren + '.');
         btn('Porozprávať sa', () => talk(e));
         btn('Darovať 50 zlata (+8 vzťah)', () => { G.gold -= 50; e.rl += 8; upd(); lord(e); }, G.gold < 50);
@@ -5186,6 +5199,7 @@ function talk(e, line, used = {}) {
     per(e);
     const c = dlgCtx(e), say = s => '„' + s + '“';
     mode = 'town';
+    PORTRAIT = Portraits.forLord(e);
     show(e.nm + ', ' + TR[e.tr][0] + ' veliteľ ' + FN[e.f], say(line || DLG.greet(c)));
     const topic = (key, label, fn) => { if (used[key]) return; btn(label, () => { used[key] = 1; const r = fn(c); if (typeof r === 'string') talk(e, r, used); else { e.rl = (e.rl || 0) + r.d; upd(); talk(e, r.t, used); } }); };
     topic('world', 'Čo sa deje vo svete?', c => DLG.pick(DLG.WORLD[c.f] || DLG.WORLD[0]));
@@ -5210,6 +5224,7 @@ function talk(e, line, used = {}) {
 function questOffer(e, qo) {
     mode = 'town';
     const d = qo.def, king = e.kr;
+    PORTRAIT = Portraits.forLord(e);
     show(d.n, '„' + d.intro.replace(/\{Y\}/g, G.name) + '“\n\nOdmena: ' + d.r + ' zlata, sláva +' + d.ren + ', vzťah (' + e.nm + ') +' + d.rl * (king ? 2 : 1) + (king ? ', panovník: zlepší sa aj vzťah s frakciou ' + FN[e.f] : '') + '.');
     btn('Prijať úlohu', () => { questAccept(e, d, qo.home); talk(e, ['Dobre. Viem, že slovo dodržíš.', 'Výborne. Zlato čaká, keď bude hotovo.', 'Ďakujem. Naozaj ďakujem.', 'Dobre. Nesklam ma, mám na teba plány.', 'Tak choď. A nevracaj sa s prázdnymi rukami.', 'Múdra voľba. Budem sledovať, ako si počínaš.'][e.tr]); });
     btn('Odmietnuť', () => talk(e, ['Škoda. Ale vážim si, že si to povedal rovno.', 'Tvoja strata. Zlato si nájde iné ruky.', 'Ach... dobre. Chápem.', 'Zapamätám si, že si odmietol.', 'Zbabelec. Choď mi z očí.', 'Rozumiem. Možno inokedy.'][e.tr]));
@@ -5376,6 +5391,7 @@ function party(back) {
 }
 function compTalk(c, back, line) {
     mode = 'town';
+    PORTRAIT = c.look;
     show(c.n, '„' + (line || compLine(c)) + '“');
     btn('Povedz niečo', () => compTalk(c, back, compLine(c)));
     btn('Ako sa ti darí?', () => { const hp = G.chp && G.chp[c.id] != null ? G.chp[c.id] : 1; compTalk(c, back, hp > .8 ? 'Som pripravený. Kam ideme?' : hp > .5 ? 'Rany sa hoja. Ešte deň či dva a budem ako nový.' : 'Zle. Potrebujem odpočinok, nie ďalšiu bitku.'); });
@@ -5407,10 +5423,12 @@ function tavRefresh() { const sc = typeof game !== 'undefined' && game.scene.get
 /** Rozhovor so spoločníkom c, ktorý čaká v krčme hradu i. */
 function tavTalk(i, c, line) {
     mode = 'tavern';
+    PORTRAIT = c.look;
     show(c.n + ', ' + c.t, '„' + (line || c.join) + '“');
     const full = (G.comp || []).length >= 4, ok = G.ren >= c.ren && G.gold >= c.p && !full;
     btn('Pripojiť sa k družine (' + c.p + ' zlata' + (G.ren < c.ren ? ', treba slávu ' + c.ren : '') + (full ? ', družina je plná' : '') + ')', () => {
         G.gold -= c.p; compJoin(c); upd();
+        PORTRAIT = c.look;
         show(c.n, '„' + compLine(c) + '“ ' + c.n + ' vstáva od stola a pridáva sa k tebe. V bitke bude bojovať po tvojom boku.');
         btn('Späť do krčmy', () => { tavBack(); tavRefresh(); });
     }, !ok, 'group');
@@ -5419,11 +5437,16 @@ function tavTalk(i, c, line) {
     btn('Späť do krčmy', tavBack, 0, 'back');
 }
 
+/** Tváre krčmárov podľa témy krčmy. */
+const KEEPER_LOOK = { human: { race: 'human', skin: 1, hair: 'short', hcol: '#4a3020', beard: 'full', age: .6, smile: 1, cloth: '#6a4a2a' }, hobbit: { race: 'hobbit', skin: 0, hair: 'curly', hcol: '#b08a50', beard: 'none', age: .5, smile: 1, cloth: '#6a4a2a' },
+    elf: { race: 'elf', skin: 3, sex: 'f', hair: 'long', hcol: '#e8d8a0', beard: 'none', eyes: '#6a9ad0', cloth: '#5a7a5a' }, dwarf: { race: 'dwarf', skin: 1, hair: 'bald', hcol: '#c8a060', beard: 'braided', age: .6, smile: 1, cloth: '#5a5250' },
+    evil: { race: 'orc', hair: 'bald', beard: 'none', angry: 1, scar: 1, cloth: '#2a2020' }, harad: { race: 'dark', hair: 'short', hcol: '#1a1410', beard: 'full', turban: '#d9a441', cloth: '#7a4a2a' } };
 /** Krčmár: klebety, runda, nocľah, dobrovoľníci. */
 function tavKeeper(i, line) {
     const t = TW[i], evil = heroSide() === 1, th = (typeof game !== 'undefined' && game.scene.getScene('Tavern') || {}).th;
     mode = 'tavern';
     const hello = evil ? 'Čo chceš? Mäso došlo, zostalo len to z včera. Plať, alebo sa prac.' : th === 'elf' ? 'Vitaj, pútnik. Posaď sa; víno z Dorwinionu je staršie než tvoj rod.' : th === 'dwarf' ? 'Sadaj! Pivo je silné, pečienka horúca a účet sa platí vopred.' : th === 'hobbit' ? 'Dobrý večer! Pivo, koláč, alebo oboje? U nás sa zvyčajne berie oboje.' : 'Vitaj, pane. Čo si dáš? Pivo, chlieb, alebo novinky?';
+    PORTRAIT = KEEPER_LOOK[th] || KEEPER_LOOK.human;
     show((th === 'evil' ? 'Správca brlohu' : th === 'elf' ? 'Hostiteľ' : 'Krčmár') + ' v ' + t.n, '„' + (line || hello) + '“');
     btn('Vypočuť si klebety (5 zlata)', () => { G.gold -= 5; upd(); tavKeeper(i, rumor(t)); }, G.gold < 5, 'book');
     btn('Zaplatiť rundu pre všetkých (' + (10 + G.ren) + ' zlata, sláva +1)', () => { G.gold -= 10 + G.ren; G.ren++; G.tround = G.day; lg('Zaplatil si rundu v ' + t.n + '. Ľudia si ťa pamätajú.'); upd(); tavKeeper(i, evil ? 'Chlapi revú. Dobre, dnes ťa nikto neokradne.' : 'Na tvoje zdravie, pane! O tomto sa bude hovoriť.'); }, G.gold < 10 + G.ren || G.tround === G.day, 'mug');
@@ -5447,6 +5470,68 @@ function rumor(t) {
     R.push(MW.n !== 'clear' ? 'Počasie sa kazí. Starí ľudia vravia, že ' + WNAME[MW.n] + ' potrvá ešte pár dní.' : 'Pekné dni. Vraj to dlho nevydrží – nikdy nevydrží.');
     return R[Math.floor(Math.random() * R.length)];
 }
+
+</script>
+<script>
+/*
+ * Tvorba postavy na úvodnej obrazovke: vzhľad (portrét), povaha a rozdelenie bodov schopností.
+ * Ovládanie sa vloží do úvodného okna (#ov) pod meno a frakciu; newGame() si výsledok prečíta cez creatorResult().
+ * Povahy (TRAITS) dávajú počiatočné bonusy a menia, ako o hrdinovi hovoria iní.
+ */
+const TRAITS = {
+    cestny: { n: 'Čestný', d: 'Drží slovo a chráni slabých. Česť +3, lordi dobra ti veria (vzťah +5).', fx: G => { G.hon = (G.hon || 0) + 3; G.trel = 5; } },
+    chamtivy: { n: 'Chamtivý', d: 'Zlato je odpoveď na všetko. +120 zlata, ceny u kupcov o 5 % lepšie, česť −1.', fx: G => { G.gold += 120; G.hon = (G.hon || 0) - 1; G.tmerc = 1; } },
+    odvazny: { n: 'Odvážny', d: 'Prvý v boji, posledný v ústupe. Sila +1, zdravie +10, strach +1.', fx: G => { G.s.st++; G.hp += 10; G.fear = (G.fear || 0) + 1; } },
+    prefikany: { n: 'Prefíkaný', d: 'Slová sú zbraň. Presviedčanie +2, zajatci sa predávajú drahšie.', fx: G => { G.s.pr += 2; G.tcun = 1; } },
+    kruty: { n: 'Krutý', d: 'Nepriatelia sa ťa boja skôr, než ťa uvidia. Strach +3, česť −2, +2 pešiaci.', fx: G => { G.fear = (G.fear || 0) + 3; G.hon = (G.hon || 0) - 2; G.inf += 2; } },
+    mudry: { n: 'Múdry', d: 'Učí sa z každého dňa. +2 body schopností, skúsenosti rastú o 10 % rýchlejšie.', fx: G => { G.sk += 2; G.twise = 1; } }
+};
+const CRE = { sex: 'm', skin: 0, hair: 'short', hcol: '#4a3020', beard: 'stubble', eyes: '#4a6a8a', trait: 'cestny', s: { st: 1, od: 1, ob: 1, pr: 1, ls: 1 } };
+const CRE_POINTS = 5;
+const CRE_OPT = {
+    hair: [['short', 'krátke'], ['long', 'dlhé'], ['tied', 'zviazané'], ['curly', 'kučeravé'], ['lank', 'spustené'], ['bald', 'holá hlava']],
+    hcol: [['#4a3020', 'hnedé'], ['#2a1a10', 'čierne'], ['#c8a060', 'plavé'], ['#b05a20', 'ryšavé'], ['#8a8a8a', 'šedivé'], ['#e8d8a0', 'svetlé']],
+    beard: [['none', 'bez brady'], ['stubble', 'strnisko'], ['full', 'plná'], ['long', 'dlhá'], ['braided', 'zapletená']],
+    eyes: [['#4a6a8a', 'modré'], ['#5a7a5a', 'zelené'], ['#6a4a2a', 'hnedé'], ['#6a7a7a', 'sivé']],
+    skin: [[0, 'svetlá'], [1, 'opálená'], [2, 'tmavá'], [3, 'bledá']]
+};
+const SKILL_N = { st: 'Sila', od: 'Odolnosť', ob: 'Obratnosť', pr: 'Presviedčanie', ls: 'Lukostreľba' };
+const creLook = () => ({ race: 'human', sex: CRE.sex, skin: CRE.skin, hair: CRE.hair, hcol: CRE.hcol, beard: CRE.sex === 'f' ? 'none' : CRE.beard, eyes: CRE.eyes });
+
+/** Vloží tvorbu postavy do úvodného okna (raz). */
+function buildCreator() {
+    const fs = document.getElementById('fs');
+    if (!fs || document.getElementById('cre') || typeof Portraits === 'undefined') return;
+    const box = document.createElement('div'); box.id = 'cre';
+    box.innerHTML = '<div class="cre-row"><canvas id="crePor" width="192" height="192"></canvas><div id="creCtl"></div></div>'
+        + '<div class="cre-row"><label>Povaha <select id="creTrait"></select></label><div id="creTraitD" class="cre-note"></div></div>'
+        + '<div class="cre-row"><span>Schopnosti (voľné body: <b id="crePts"></b>)</span><div id="creSk"></div></div>';
+    fs.parentNode.insertBefore(box, fs.nextSibling);
+    const ctl = document.getElementById('creCtl');
+    const sel = (key, opts, label) => { const l = document.createElement('label'); l.textContent = label + ' '; const s = document.createElement('select'); opts.forEach(([v, n]) => { const o = document.createElement('option'); o.value = v; o.textContent = n; if (String(CRE[key]) === String(v)) o.selected = true; s.appendChild(o); }); s.onchange = () => { CRE[key] = key === 'skin' ? +s.value : s.value; creDraw(); }; l.appendChild(s); ctl.appendChild(l); };
+    sel('sex', [['m', 'muž'], ['f', 'žena']], 'Postava'); sel('skin', CRE_OPT.skin, 'Pleť'); sel('hair', CRE_OPT.hair, 'Vlasy'); sel('hcol', CRE_OPT.hcol, 'Farba vlasov'); sel('beard', CRE_OPT.beard, 'Brada'); sel('eyes', CRE_OPT.eyes, 'Oči');
+    const tr = document.getElementById('creTrait'); Object.entries(TRAITS).forEach(([k, t]) => { const o = document.createElement('option'); o.value = k; o.textContent = t.n; tr.appendChild(o); }); tr.value = CRE.trait;
+    tr.onchange = () => { CRE.trait = tr.value; creDraw(); };
+    const sk = document.getElementById('creSk');
+    Object.keys(SKILL_N).forEach(k => { const d = document.createElement('div'); d.className = 'cre-sk'; d.innerHTML = '<span>' + SKILL_N[k] + '</span><button type="button" data-k="' + k + '" data-d="-1">−</button><b id="creS_' + k + '"></b><button type="button" data-k="' + k + '" data-d="1">+</button>'; sk.appendChild(d); });
+    sk.onclick = e => { const b = e.target.closest('button'); if (!b) return; const k = b.dataset.k, d = +b.dataset.d, used = Object.values(CRE.s).reduce((a, v) => a + v, 0); if (d > 0 && (used >= CRE_POINTS || CRE.s[k] >= 3)) return; if (d < 0 && CRE.s[k] <= 0) return; CRE.s[k] += d; creDraw(); };
+    creDraw();
+}
+/** Prekreslí portrét a čísla v tvorbe postavy. */
+function creDraw() {
+    const cv = document.getElementById('crePor');
+    if (cv) { const c = cv.getContext('2d'); c.clearRect(0, 0, 192, 192); c.drawImage(Portraits.canvas(creLook()), 0, 0, 192, 192); }
+    const t = TRAITS[CRE.trait]; const d = document.getElementById('creTraitD'); if (d) d.textContent = t.d;
+    const used = Object.values(CRE.s).reduce((a, v) => a + v, 0), pts = document.getElementById('crePts'); if (pts) pts.textContent = CRE_POINTS - used;
+    Object.keys(SKILL_N).forEach(k => { const b = document.getElementById('creS_' + k); if (b) b.textContent = CRE.s[k]; });
+}
+/** Výsledok tvorby postavy pre newGame(): vzhľad, povaha a schopnosti (aj bez formulára dá predvolené hodnoty). */
+function creatorResult() {
+    return { look: creLook(), trait: CRE.trait, s: { ...CRE.s } };
+}
+/** Krátky popis povahy hrdinu (do okna Hrdina a rozhovorov). */
+const traitName = () => (G && G.trait && TRAITS[G.trait] ? TRAITS[G.trait].n : 'Nevyhranený');
+if (typeof document !== 'undefined' && document.getElementById && document.getElementById('fs')) { try { buildCreator(); } catch (e) { } }
 
 </script>
 <script>
@@ -5551,7 +5636,7 @@ function ency(c) {
         h += '<div class="chips"><button data-ef="-1" style="--fc:#d9a441" class="' + (EF < 0 ? 'on' : '') + '">Všetci</button>' + F.filter(f => E.some(e => e.f === f)).map(f => '<button data-ef="' + f + '" style="--fc:' + FC[f] + '" class="' + (EF === f ? 'on' : '') + '">' + eesc(FN[f]) + '</button>').join('') + '</div><div class="egrid">';
         E.filter(e => EF < 0 || e.f === EF).sort((a, b) => (b.kr | 0) - (a.kr | 0) || (b.nz | 0) - (a.nz | 0) || a.f - b.f).forEach(e => {
             per(e);
-            const img = snap(84, 96, () => portrait(e)), hs = hos(e.f, G.fac), r = Math.round(e.rl || 0);
+            const img = Portraits.canvas(Portraits.forLord(e), 84).toDataURL(), hs = hos(e.f, G.fac), r = Math.round(e.rl || 0);
             h += '<div class="card" style="--fc:' + FC[e.f] + '"><img src="' + img + '" width="72" height="82" alt=""><div class="cb"><div class="nm">' + eesc(e.nm) + '</div>' + epill(eesc(FN[e.f]), FC[e.f], 1) + (e.kr ? epill('Panovník', '#ffd24a') : '') + (e.nz ? epill('Prsteňový prízrak', '#c0392b') : '') + (e.vas ? epill('Tvoj vazal', '#d9a441') : '') + (e.f !== 9 && !e.nz ? epill(TR[e.tr][0], '#9fb8a0') : '') + epill(hs ? 'Nepriateľ' : 'Priateľ', hs ? '#c0392b' : '#4a9a4a') +
                 '<div class="desc">' + (e.nz ? 'Jeden z deviatich služobníkov Temného pána, ktorý cíti Jeden prsteň na veľkú diaľku.' : e.f === 9 ? 'Vodca lúpežníckej tlupy, ktorý prepadáva dediny a pocestných.' : eesc(TR[e.tr][1] + ' ' + BO[e.bo])) + '</div><div class="st"><span>Vojsko ' + Math.ceil(e.n) + '</span>' + ebar(e.n, 40, FC[e.f]) + '<span>Vzťah ' + r + '</span>' + ebar(r + 100, 200, r < 0 ? '#c0392b' : '#4a9a4a') + '</div></div></div>';
         });
@@ -6084,11 +6169,11 @@ const Art = {
     /** Trikrát väčšia postavička (krčma, rozhovory). */
     bigFigure(scene, eq, o) {
         const key = 'bigfig_' + Figures.key(eq, o).slice(7);
-        return Art.ensure(scene, key, () => [() => { tm = 0; ctx.scale(3, 3); Figures.draw(ctx, eq, o, 0); }]);
+        return Art.ensure(scene, key, () => [0, 2].map(k => () => { tm = 0; ctx.scale(3, 3); Figures.draw(ctx, eq, o, k); }));   // 0 = stojí, 1 = krok
     },
     heroFigure(scene) {
         const evil = typeof heroSide === 'function' && heroSide() === 1;
-        return Art.figure(scene, G.eq, { flag: G.fac, king: !!G.king, cape: evil ? '#2a1414' : '#6a2a2a' });
+        return Art.figure(scene, G.eq, { flag: G.fac, king: !!G.king, cape: evil ? '#2a1414' : '#6a2a2a', ...Figures.lookOpts(Portraits.hero()) });
     },
 
     castle(scene, f) {
@@ -6371,16 +6456,17 @@ function ambTick() {
     if (!ac || !G || mode === 'intro') { if (AMB) for (const k in AMB.src) ambSet(k, 0); return; }
     ambInit();
     if (mu) { for (const k in AMB.src) ambSet(k, 0); return; }
-    const battle = mode === 'battle', w = battle ? WX.n : MW.n, night = battle ? WX.night : isNight();
-    const se = season(), tav = mode === 'tavern', shop = tav || (mode === 'town' && ov && /^(Trh|Krčma)/.test((ov.querySelector('h1') || {}).textContent || ''));
-    ambSet('rain', w === 'rain' ? .22 : w === 'storm' ? .4 : w === 'ash' ? .08 : 0);
-    const windy = w === 'snow' || w === 'storm' || se === 3 || (w === 'fog' ? .5 : 0);
-    ambSet('wind', w === 'snow' ? .3 : w === 'storm' ? .22 : se === 3 ? .12 : w === 'fog' ? .08 : 0);
+    const battle = mode === 'battle', inside = mode === 'town' || mode === 'tavern';   // v hrade a v krčme vonkajšie zvuky nepočuť
+    const w = inside ? 'clear' : battle ? WX.n : MW.n, night = battle ? WX.night : isNight();
+    const se = season();
+    ambSet('rain', w === 'rain' ? .1 : w === 'storm' ? .18 : w === 'ash' ? .05 : 0);            // dážď tichý, len ako podkres
+    const windy = w === 'snow' || w === 'storm' || (!inside && se === 3) || (w === 'fog' ? .5 : 0);
+    ambSet('wind', w === 'snow' ? .18 : w === 'storm' ? .14 : !inside && se === 3 ? .08 : w === 'fog' ? .06 : 0);
     if (windy) AMB.src.wind.f.frequency.setTargetAtTime(300 + 250 * (.5 + .5 * Math.sin(tm / 90)), ac.currentTime, .5);
-    ambSet('fire', battle && night ? .12 : tav ? .1 : 0);
-    ambSet('crowd', tav ? .2 : shop ? .14 : 0);
+    ambSet('fire', battle && night ? .12 : 0);
+    ambSet('crowd', 0);                                                                         // v krčme hrá iba hudba
     const now = ac.currentTime;
-    if (w === 'storm' && now > thunderAt) { thunder(); thunderAt = now + 5 + Math.random() * 10; }
+    if (w === 'storm' && !inside && now > thunderAt) { thunder(); thunderAt = now + 5 + Math.random() * 10; }
     if (battle && night && now > crackleAt) { crackle(); crackleAt = now + .15 + Math.random() * .5; }
 }
 {   // napojenie na zvukový interval hry
@@ -6509,6 +6595,11 @@ class MapScene extends Phaser.Scene {
         this.events.once('shutdown', () => this.input.removeAllListeners());
     }
 
+    /** Je bod blízko cesty? (cesty sú prepočítané body kriviek) */
+    nearRoad(x, y, d) { const P = this.roadPts || []; for (let i = 0; i < P.length; i++) { const dx = P[i].x - x; if (dx > d || dx < -d) continue; const dy = P[i].y - y; if (dx * dx + dy * dy < d * d) return true; } return false; }
+    /** Voľný priestor okolo hradov, dedín a ciest – nech obraz nie je nahádzaný na kope. */
+    clearZone(x, y) { return TW.some(t => Math.hypot(t.x - x, t.y - y) < 165) || VL.some(v => Math.hypot(v.x - x, v.y - y) < 95) || this.nearRoad(x, y, 30); }
+
     /** Les ako jednotlivé stromy: hustý vnútri, pri okraji redší a s náhodne vysunutými stromami, aby hranica nebola kockatá. */
     buildForest(T) {
         const ts = WW / T.cols, rnd = n => { const x = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
@@ -6540,8 +6631,9 @@ class MapScene extends Phaser.Scene {
             // samostatné stromy kúsok za okrajom lesa (riedky lem)
             if (edge && !dead && rnd(seed * 23) < .35) { const a = rnd(seed * 29) * 6.283, d = ts * (1 + rnd(seed * 31) * .8); trees.push([(i + .5) * ts + Math.cos(a) * d, (j + .5) * ts + Math.sin(a) * d, .22 + rnd(seed * 37) * .1, rnd(seed * 41) < .5 ? 'tree_1' : 'tree_2']); }
         }
-        trees.sort((a, b) => a[1] - b[1]);
-        for (const [x, y, sc, key] of trees) layer.add(this.add.image(x, y, 'map_trees', KEYS.indexOf(key)).setOrigin(.5, .89).setScale(sc));
+        const kept = trees.filter(([x, y]) => !this.clearZone(x, y));
+        kept.sort((a, b) => a[1] - b[1]);
+        for (const [x, y, sc, key] of kept) layer.add(this.add.image(x, y, 'map_trees', KEYS.indexOf(key)).setOrigin(.5, .89).setScale(sc));
         return [layer];
     }
 
@@ -6577,6 +6669,7 @@ class MapScene extends Phaser.Scene {
         g.lineStyle(14 * k * .75, 0x2c5b73, 1).strokePoints(river); g.lineStyle(7 * k * .75, 0x4a86a0, 1).strokePoints(river); g.lineStyle(2 * k * .75, 0x8ac0d8, .5).strokePoints(river);
         // cesty: tmavší okraj, svetlý stred, vyjazdené koľaje
         const roads = MAPDATA.roads.map(([a, b]) => { const A = TW[a], B = TW[b]; return new Phaser.Curves.QuadraticBezier(new Phaser.Math.Vector2(A.x, A.y), new Phaser.Math.Vector2((A.x + B.x) / 2 + 30 * k, (A.y + B.y) / 2 - 25 * k), new Phaser.Math.Vector2(B.x, B.y)).getPoints(28); });
+        this.roadPts = roads.flat();                                   // body ciest pre „voľný priestor“ (stromy a skaly sa cestám vyhýbajú)
         g.lineStyle(5.5 * k * .75, 0x7a6a44, .55); roads.forEach(r => g.strokePoints(r));
         g.lineStyle(3.6 * k * .75, 0xc4ad78, .85); roads.forEach(r => g.strokePoints(r));
         g.lineStyle(.5 * k * .75, 0x8a7a50, .6); roads.forEach(r => { g.strokePoints(r.map(p => ({ x: p.x, y: p.y - 1.1 * k * .75 }))); g.strokePoints(r.map(p => ({ x: p.x, y: p.y + 1.1 * k * .75 }))); });
@@ -6589,8 +6682,8 @@ class MapScene extends Phaser.Scene {
             }
             // polia okolo dedín a skalky po krajine
             const rnd = (n) => ((n * 9301 + 49297) % 233280) / 233280;
-            VL.forEach((v, i) => { for (let f = 0; f < 2; f++) { const a = rnd(i * 3 + f) * 6.283, d = 48 + rnd(i * 7 + f) * 20; out.push(this.add.image(v.x + Math.cos(a) * d, v.y + Math.sin(a) * d * .7, 'map_field_' + regionAt(v.x, v.y) + ((i + f) % 2)).setScale(.4).setAlpha(.9).setRotation((rnd(i + f * 5) - .5) * .6).setDepth(-8.6)); } });
-            for (let i = 0; i < 160; i++) { const x = rnd(i * 11 + 1) * WW, y = rnd(i * 13 + 2) * WH; if (!TW.some(t => Math.hypot(t.x - x, t.y - y) < 150) && !VL.some(v => Math.hypot(v.x - x, v.y - y) < 90)) out.push(this.add.image(x, y, 'map_rocks_' + (i % 3)).setScale(.4).setDepth(-8.4)); }
+            VL.forEach((v, i) => { for (let f = 0; f < 1; f++) { const a = rnd(i * 3 + f) * 6.283, d = 48 + rnd(i * 7 + f) * 20; out.push(this.add.image(v.x + Math.cos(a) * d, v.y + Math.sin(a) * d * .7, 'map_field_' + regionAt(v.x, v.y) + ((i + f) % 2)).setScale(.4).setAlpha(.9).setRotation((rnd(i + f * 5) - .5) * .6).setDepth(-8.6)); } });
+            for (let i = 0; i < 70; i++) { const x = rnd(i * 11 + 1) * WW, y = rnd(i * 13 + 2) * WH; if (!TW.some(t => Math.hypot(t.x - x, t.y - y) < 200) && !VL.some(v => Math.hypot(v.x - x, v.y - y) < 120) && !this.nearRoad(x, y, 60)) out.push(this.add.image(x, y, 'map_rocks_' + (i % 3)).setScale(.4).setDepth(-8.4)); }
         }
         // mäkký tmavý podklad pod lesmi: zjemní hranice dlaždíc a dá lesu hĺbku
         const fc = document.createElement('canvas'); fc.width = T.cols; fc.height = T.rows;
@@ -7053,7 +7146,7 @@ class TavernScene extends Phaser.Scene {
         for (let k = 0; k < 4; k++) { g.fillStyle(0x7a5a30, 1).fillRoundedRect(bx + 14 + k * 40, 96, 26, 24, 4); g.fillStyle(0x3a2a1a, 1).fillRect(bx + 14 + k * 40, 102, 26, 2).fillRect(bx + 14 + k * 40, 114, 26, 2); } // sudy na polici
         // sudy pri výčape
         const sdx = bx < W / 2 ? bx + 190 : bx - 44;
-        for (let k = 0; k < 2; k++) { const sx = sdx + k * 6, sy = HZ + 44 + k * 34; g.fillStyle(0x6a4a2a, 1).fillRoundedRect(sx, sy, 34, 44, 6); g.fillStyle(0x3a2a1a, 1).fillRect(sx, sy + 10, 34, 3).fillRect(sx, sy + 32, 34, 3); }
+        for (let k = 0; k < 2; k++) { const sx = sdx + k * 6, sy = HZ + 44 + k * 34; g.fillStyle(0x000000, .25).fillEllipse(sx + 17, sy + 46, 40, 10); g.fillStyle(0x8a6a3a, 1).fillRoundedRect(sx, sy, 34, 44, 6); g.fillStyle(0x5a3e22, 1).fillRect(sx + 24, sy + 2, 8, 40); g.fillStyle(0x3a2a1a, 1).fillRect(sx, sy + 10, 34, 3).fillRect(sx, sy + 32, 34, 3); }
         // stoly
         this.tables = [];
         const nt = 2 + Math.floor(R(4) * 2);
@@ -7079,10 +7172,18 @@ class TavernScene extends Phaser.Scene {
         this.spawn(t, th, HZ);
         // popisky a ovládanie
         this.add.text(W / 2, 72, (th === 'evil' ? 'Brloh v ' : th === 'elf' ? 'Sieň v ' : 'Krčma v ') + t.n, txtStyle(17, '#f0d9a8', { fontFamily: TITLE_FONT, stroke: '#000', strokeThickness: 4 })).setOrigin(.5).setDepth(50);
-        this.hint = this.add.text(W / 2, H - 14, 'Klikni na postavu a porozprávaj sa  •  Esc = odísť', txtStyle(10, '#d8c8a8', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5).setDepth(50);
+        this.hint = this.add.text(W / 2, H - 14, 'Klik na podlahu alebo šípky/WASD = chôdza  •  klik na postavu = rozhovor  •  Esc = odísť', txtStyle(10, '#d8c8a8', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5).setDepth(50);
         const ui = this.scene.get('UI');
         this.leaveBtn = ui.button.call(this, W - 120, H - 34, 110, 24, 'Odísť z krčmy', () => this.leave(), { size: 11, icon: Icons.tex(this, 'door') });
         this.leaveBtn.forEach(o => o.setDepth(51));
+        // hráčova postava: vchádza dverami (dole v strede) a chodí po miestnosti klikom alebo šípkami/WASD
+        const pk = Art.bigFigure(this, { ...G.eq, m: 0 }, { king: !!G.king, cape: heroSide() === 1 ? '#2a1414' : '#6a2a2a', ...Figures.lookOpts(Portraits.hero()) });
+        this.pl = Art.image(this, W / 2, H - 40, pk).setDepth(H - 40);
+        this.plK = pk; this.plT = null; this.plDo = null; this.plStep = 0;
+        this.plLbl = this.add.text(W / 2, H - 32, G.name, txtStyle(10, '#ffd24a', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5, 0).setDepth(45);
+        this.floor = this.add.rectangle(0, 290, W, H - 290, 0, 0).setOrigin(0).setInteractive().setDepth(-1);
+        this.floor.on('pointerup', p => { if (ov.classList.contains('hide')) this.goTo(p.x / RES, p.y / RES, null); });
+        this.keys = this.input.keyboard.addKeys('W,A,S,D,UP,LEFT,DOWN,RIGHT');
         this.input.keyboard.on('keydown-ESC', () => { if (ov.classList.contains('hide')) this.leave(); });
         this.events.on('shutdown', () => this.input.keyboard.removeAllListeners());
     }
@@ -7105,6 +7206,7 @@ class TavernScene extends Phaser.Scene {
         const keeperEq = { evil: [{ w: null, a: 11, s: 0, h: 5, m: 0 }, { orc: 1, mug: 1 }], harad: [{ w: null, a: 8, s: 0, h: 7, m: 0 }, { dark: 1, mug: 1 }], elf: [{ w: null, a: 3, s: 0, h: null, m: 0 }, { hair: 'long', mug: 1 }],
             dwarf: [{ w: null, a: 4, s: 0, h: null, m: 0 }, { beard: '#c8a060', apron: 1, mug: 1 }], hobbit: [{ w: null, a: 0, s: 0, h: null, m: 0 }, { hair: '#b08a50', apron: 1, mug: 1 }], human: [{ w: null, a: 0, s: 0, h: null, m: 0 }, { apron: 1, mug: 1 }] }[th];
         const kn = { evil: 'Shagrat, správca brlohu', harad: 'Hostinský z juhu', elf: 'Hostiteľ siene', dwarf: 'Krčmár Bofur', hobbit: 'Hostinský Jačmienko', human: 'Krčmár' }[th];
+        keeperEq[1] = { ...keeperEq[1], ...Figures.lookOpts(KEEPER_LOOK[th] || KEEPER_LOOK.human) };
         this.person(this.barX + 90, HZ + 44, keeperEq, kn, () => tavKeeper(this.ti), .85);
         const list = compsAt(t);
         list.forEach((c, k) => {
@@ -7123,8 +7225,28 @@ class TavernScene extends Phaser.Scene {
         ring.lineStyle(2, 0xffd24a, .9).strokeEllipse(x, y + 2, 44 * sc, 14 * sc);
         const lbl = this.add.text(x, y + 8, name, txtStyle(10, '#f4e8d0', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5, 0).setDepth(45);
         spr.on('pointerover', () => ring.setVisible(true)); spr.on('pointerout', () => ring.setVisible(false));
-        spr.on('pointerup', () => { if (ov.classList.contains('hide')) onClick(); });
+        spr.on('pointerup', () => { if (!ov.classList.contains('hide')) return; this.goTo(x + (this.pl.x < x ? -46 : 46), y + 4, onClick); });
         this.people.push({ spr, ring, lbl, name, x, y, t0: Math.random() * 6 });
+    }
+
+    /** Hráč ide na miesto (x, y); po príchode zavolá fn (napr. rozhovor). */
+    goTo(x, y, fn) { this.plT = { x: Math.max(24, Math.min(W - 24, x)), y: Math.max(300, Math.min(H - 30, y)) }; this.plDo = fn; }
+    movePlayer(dt = 1) {
+        const pl = this.pl, k = this.keys, dlgOpen = !ov.classList.contains('hide');
+        let dx = 0, dy = 0;
+        if (!dlgOpen && k) { if (k.A.isDown || k.LEFT.isDown) dx -= 1; if (k.D.isDown || k.RIGHT.isDown) dx += 1; if (k.W.isDown || k.UP.isDown) dy -= 1; if (k.S.isDown || k.DOWN.isDown) dy += 1; }
+        if (dx || dy) { this.plT = null; this.plDo = null; }
+        else if (this.plT) { const ddx = this.plT.x - pl.x, ddy = this.plT.y - pl.y, d = Math.hypot(ddx, ddy); if (d < 2.5 * dt) { const fn = this.plDo; this.plT = null; this.plDo = null; if (fn) fn(); } else { dx = ddx / d; dy = ddy / d; } }
+        const moving = dx || dy;
+        if (moving) {
+            const sp = 2 * dt;
+            pl.x = Math.max(24, Math.min(W - 24, pl.x + dx * sp)); pl.y = Math.max(300, Math.min(H - 30, pl.y + dy * sp));
+            if (dx) pl.setFlipX(dx < 0);
+            this.plStep += dt; pl.setFrame(Math.floor(this.plStep / 7) % 2);
+        } else pl.setFrame(0);
+        pl.setDepth(pl.y); this.plLbl.setPosition(pl.x, pl.y + 8);
+        // priblíženie k postave zvýrazní jej meno
+        this.people.forEach(p => { const near = Math.hypot(p.x - pl.x, p.y - pl.y) < 70; p.lbl.setColor(near ? '#ffd24a' : '#f4e8d0'); });
     }
 
     /** Po pripojení spoločníka alebo zmene obnoví postavy. */
@@ -7142,7 +7264,8 @@ class TavernScene extends Phaser.Scene {
         town(this.ti);
     }
 
-    update() {
+    update(time, delta) {
+        const dt = Math.min(3, (delta || 16.7) / 16.67);
         if (mode !== 'tavern') { if (mode !== 'town') { this.scene.stop(); if (this.scene.isSleeping('Map')) this.scene.wake('Map'); } return; }
         const C = this.C, th = this.th, HZ = 290, t = tm;
         // obloha v okne podľa dennej doby a počasia
@@ -7172,6 +7295,7 @@ class TavernScene extends Phaser.Scene {
         L.fillStyle(0x000000, .35).fillRect(0, 0, W, 14);
         // jemné pohupovanie postáv
         this.people.forEach(p => { p.spr.y = p.y + Math.sin(t / 9 + p.t0) * .8; });
+        this.movePlayer(dt);
     }
 }
 
@@ -7500,12 +7624,17 @@ class UIScene extends Phaser.Scene {
         const layout = list => {
             const items = [];
             let y = 0, col = 0, rowH = 0;
-            if (title) { const t = this.add.text(PW / 2, y, title, txtStyle(19, UI_C.gold, { fontFamily: TITLE_FONT, align: 'center', wordWrap: { width: IW } })).setOrigin(.5, 0); items.push(t); y += t.height + 5; }
+            // portrét (plátno .por) vľavo od nadpisu a prvého odseku
+            const por = ov.querySelector('canvas.por'), pk = por && por.dataset.key;
+            let px0 = 16, pw0 = IW, py0 = y, pimg = null;
+            if (por && pk) { if (!this.textures.exists(pk)) this.textures.addCanvas(pk, por); pimg = this.add.image(16, y, pk).setOrigin(0).setDisplaySize(78, 78); items.push(pimg); px0 = 16 + 86; pw0 = IW - 86; }
+            if (title) { const t = this.add.text(pimg ? px0 : PW / 2, y, title, txtStyle(19, UI_C.gold, { fontFamily: TITLE_FONT, align: pimg ? 'left' : 'center', wordWrap: { width: pw0 } })).setOrigin(pimg ? 0 : .5, 0); items.push(t); y += t.height + 5; }
             ov.querySelectorAll(':scope > p').forEach(p => {
                 if (!p.textContent.trim()) return;
-                const t = this.add.text(PW / 2, y, p.textContent, txtStyle(12, p.style.color ? UI_C.gold : UI_C.ink, { align: 'center', lineSpacing: 2, wordWrap: { width: IW } })).setOrigin(.5, 0);
+                const t = this.add.text(pimg ? px0 : PW / 2, y, p.textContent, txtStyle(12, p.style.color ? UI_C.gold : UI_C.ink, { align: pimg ? 'left' : 'center', lineSpacing: 2, wordWrap: { width: pw0 } })).setOrigin(pimg ? 0 : .5, 0);
                 items.push(t); y += t.height + 6;
             });
+            if (pimg) { y = Math.max(y, py0 + 84); px0 = 16; }
             y += 4;
             const flush = () => { if (col) { y += rowH + 5; col = 0; rowH = 0; } };
             list.forEach(k => {

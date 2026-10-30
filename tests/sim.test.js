@@ -117,6 +117,11 @@ try {
     check('Postavičky na mape: lordi podľa frakcie, hrdina podľa výbavy', run('[0,1,2,3,4,5,7,8,9].every(f => { const [eq, o] = Figures.lordEq({ f, id: f, nm: "L" }); return eq.w != null && o.flag === f; }) && Figures.key(G.eq, { flag: 6 }) !== Figures.key({ ...G.eq, m: 2 }, { flag: 6 }) && Figures.compEq(compDef("gimli"), true)[0].m === 0'));
     check('Tvorba postavy: povaha a schopnosti sa prenesú do hry', run('G.look && G.look.race === "human" && G.trait === "cestny" && (G.hon || 0) >= 3 && Object.values(G.s).reduce((a, b) => a + b, 0) >= 5 && TRAITS.mudry && traitName() === "Čestný"'));
     check('Portréty: lordi, spoločníci a hrdina', run('[0,2,3,5,8,9].every(f => typeof Portraits.forLord({ nm: "L", f }).race === "string") && COMPANIONS.every(c => c.look && c.look.race) && Portraits.hero().race === "human" && Portraits.forLord({ nm: "L", f: 2, kr: 1 }).race === "orc"'));
+    run(closeMenus + '; mode = "map"; enterCastle(0, "yard");');
+    check('Bez Phaseru vedie nádvorie na okno hradu', run('mode === "town" && ROOM === null && document.getElementById("bt").children.some(b => /Verbovanie/.test(b.textContent))'));
+    run(closeMenus + '; mode = "map"; G.hp = 30; stayInCastle(0); var hp0 = G.hp; daily2();');
+    check('Pobyt v hrade: čas plynie a hojí sa rýchlejšie', run('G.camp === 1 && G.stay === TW[0].n && G.hp >= hp0 + 20') );
+    run('G.camp = 0; G.stay = null; mode = "map";');
     check('Ikony rozhrania k tlačidlám a lište', run('Icons.forButton("Denník") === "diary" && Icons.forHud("Zdravie 10/10") === "heart" && Icons.forHud("Zlato 5") === "coins" && Icons.forDialog("Späť") === "back" && Icons.has("mug")'));
     run(closeMenus + '; mode = "map"; save(2); var d2 = G.day; G.day = 999; load(2);');
     check('Uloženie do pozície 2 a načítanie', run('G.day === d2 && slotInfo(2) && slotInfo(2).includes("deň " + d2) && G.comp.includes("aragorn")'));

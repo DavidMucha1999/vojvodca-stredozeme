@@ -96,6 +96,6 @@ const Icons = (() => {
     const DLG = [[/^Späť/, 'back'], [/^(Odísť|Zavrieť|Pokračovať na mapu)/, 'door'], [/^(Uložiť|Načítať|Pozícia|Automatick)/, 'chest'], [/^Trh/, 'scales'], [/^Krčma/, 'mug'], [/^Kováč/, 'anvil'], [/^Verbovanie/, 'recruit'], [/^Obliehať|^Zaútočiť/, 'ram'], [/^(Prijať úlohu|Úloha)/, 'quest'], [/^Hovoriť|^Rozhovor|^Porozprávať/, 'group'], [/^Kúpiť|^Predať/, 'coins'], [/^Vyrabovať/, 'fire'], [/^Diplomacia/, 'honor'], [/^Hrdina/, 'hero'], [/^Turnaj/, 'attack'], [/^Správa hradu/, 'castle'], [/^Dvor/, 'court'], [/^Vojsko,/, 'rest'], [/^Nová hra|^Vyraziť/, 'sword']];
     const forDialog = text => { const m = DLG.find(([re]) => re.test(text.trim())); return m ? m[1] : null; };
     const forHud = (text, first) => { const m = HUD.find(([re]) => re.test(text)); return m ? m[1] : first ? 'helm' : null; };
-    const forButton = text => { const t = text.trim(); if (/^Zvuk: vyp/.test(t)) return 'soundoff'; if (/^Zvuk/.test(t)) return 'sound'; if (/^Tábor/.test(t)) return 'tent'; return BTN[t] || null; };
+    const forButton = text => { const t = text.trim(); if (/^Zvuk: vyp/.test(t)) return 'soundoff'; if (/^Zvuk/.test(t)) return 'sound'; if (/tábor|pobyt/i.test(t)) return 'tent'; return BTN[t] || null; };
     return { tex, canvas, has, forHud, forButton, forDialog, SZ };
 })();
