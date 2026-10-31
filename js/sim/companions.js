@@ -24,15 +24,19 @@ const compLine = c => c.lines[Math.floor(Math.random() * c.lines.length)];
 /** Jednotky spoločníkov do bitky (volá startBattle). */
 function compUnits() {
     return myComps().filter(c => (G.chp && G.chp[c.id] != null ? G.chp[c.id] : 1) > .25 && !(G.cwound && G.cwound[c.id] > G.day)).map(c => ({
-        cp: c.id, t: 0, x: 120 + Math.random() * 40, y: BH / 2 - 60 + Math.random() * 120, hp: c.hp * (G.chp[c.id] || 1), mh: c.hp, sp: c.sp, d: c.d, c: 0, r: c.r, k: c.archer ? 'a' : 'i', uk: c.art && FU[c.art] ? c.art : undefined, f: 0, fc: G.fac, nm: c.n, bn: 0
+        cp: c.id, t: 0, x: 120 + Math.random() * 40, y: BH / 2 - 60 + Math.random() * 120, hp: c.hp * compBonus(c) * (G.chp[c.id] || 1), mh: c.hp * compBonus(c), sp: c.sp * ((G.cmount || {})[c.id] ? 1.3 : 1), d: c.d * compBonus(c), c: 0, r: c.r, k: c.archer ? 'a' : 'i', uk: c.art && FU[c.art] ? c.art : undefined, f: 0, fc: G.fac, nm: c.n, bn: 0, mnt: (G.cmount || {})[c.id] || 0
     }));
 }
 /** Po bitke: zdravie spoločníkov, zranenie pri páde. */
 function compAfterBattle() {
     if (!U) return;
     G.chp = G.chp || {}; G.cwound = G.cwound || {};
+    G.cxp = G.cxp || {}; G.ckills = G.ckills || {};
     for (const u of U) if (u.cp) {
         const c = compDef(u.cp);
+        const lv0 = compLv(c);
+        G.cxp[u.cp] = (G.cxp[u.cp] || 0) + (u.kills || 0) * 4 + Math.round((u.dmg || 0) / 20) + 3; G.ckills[u.cp] = (G.ckills[u.cp] || 0) + (u.kills || 0);
+        if (compLv(c) > lv0) lg(c.n + ' dosiahol úroveň ' + compLv(c) + '.');
         if (u.hp <= 0) { G.chp[u.cp] = .3; G.cwound[u.cp] = G.day + 3; lg(c.n + ' bol v bitke ranený a tri dni sa bude zotavovať.'); }
         else G.chp[u.cp] = Math.max(.3, u.hp / u.mh);
     }

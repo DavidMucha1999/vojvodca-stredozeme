@@ -14,14 +14,20 @@ function spawnE() {
 }
 function spawnX() {
     const r = Math.random;
-    if (E.filter(e => e.f === 9).length < 10) {
+    // tlupy bez pána: lupiči, orkské tlupy (viac v Mordore a pri Isengarde), vargovia na severe a v horách, dezertéri po vojne
+    const bands = E.filter(e => e.f === 9);
+    for (let b = 0; b < 2 && bands.length + b < 14; b++) {
         let x, y, k = 0;
         do {
             x = 200 + r() * (WW - 400);
             y = 200 + r() * (WH - 400);
             k++;
         } while ((TW.some(t => Math.hypot(t.x - x, t.y - y) < 300) || Math.hypot(G.x - x, G.y - y) < 500) && k < 30);
-        E.push({ id: ++NID, x, y, f: 9, n: 4 + Math.floor(r() * 6 + G.day / 4), vx: 0, vy: 0, w: 0, nm: BN[Math.floor(r() * BN.length)] });
+        const reg = typeof regionAt === 'function' ? regionAt(x, y) : 'g', q = r();
+        const kind = reg === 'a' || reg === 'd' ? (q < .7 ? 'orcs' : 'wolves') : reg === 's' ? (q < .5 ? 'wolves' : 'bandit') : q < .55 ? 'bandit' : q < .75 ? 'orcs' : q < .9 ? 'deserters' : 'wolves';
+        const n = (kind === 'orcs' ? 6 : kind === 'wolves' ? 5 : 4) + Math.floor(r() * 6 + G.day / 4);
+        const nm = kind === 'orcs' ? ['Orkská tlupa', 'Lúpežní orkovia', 'Gundabadskí orkovia', 'Orkovia z hôr'][Math.floor(r() * 4)] : kind === 'wolves' ? ['Vargovia', 'Vlčia svorka', 'Vargovia z Hmlistých hôr'][Math.floor(r() * 3)] : kind === 'deserters' ? ['Dezertéri', 'Zbehovia', 'Žoldnieri bez pána'][Math.floor(r() * 3)] : BN[Math.floor(r() * BN.length)];
+        E.push({ id: ++NID, x, y, f: 9, kind, n, vx: 0, vy: 0, w: 0, nm });
     }
     if (G.day >= 4 && E.filter(e => e.nz).length < 2) {
         const t = TW.find(t => t.f === 2);

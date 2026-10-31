@@ -5,18 +5,23 @@
  * Uložené pozície: 'vs1' = pozícia 1 (pôvodná), 'vs2', 'vs3' = ďalšie ručné, 'vsauto' = automatická (na konci každého dňa).
  * slot = 1, 2, 3 alebo 'auto'.
  */
-const SLOTS = [['1', 'Pozícia 1'], ['2', 'Pozícia 2'], ['3', 'Pozícia 3'], ['auto', 'Automatická (koniec dňa)']];
+const SLOTS = [['1', 'Pozícia 1'], ['2', 'Pozícia 2'], ['3', 'Pozícia 3'], ['4', 'Pozícia 4'], ['5', 'Pozícia 5'], ['6', 'Pozícia 6'], ['auto', 'Automatická (koniec dňa)']];
 const slotKey = slot => slot === 'auto' ? 'vsauto' : 'vs' + (slot || 1);
 /** Popis uloženej pozície alebo null, ak je prázdna. */
-function slotInfo(slot) {
+function slotInfo(slot) { const d = slotData(slot); return d ? d.text : null; }
+/** Náhľad uloženej pozície: text, vzhľad hrdinu (portrét), deň, frakcia… alebo null. */
+function slotData(slot) {
     try {
         const s = JSON.parse(localStorage.getItem(slotKey(slot)));
-        return s && s.G ? s.G.name + ', deň ' + s.G.day + ', ' + (s.G.kn || FN[s.G.fac]) + (s.when ? ', ' + s.when : '') : null;
+        if (!s || !s.G) return null;
+        const g = s.G, castles = (s.T || []).filter(t => t.mine).length;
+        const place = g.day != null && s.T ? (() => { let b = null, bd = 1e9; (MAPDATA.castles || []).forEach((c, i) => { const d = Math.hypot(c[1] * (s.K || K) - g.x, c[2] * (s.K || K) - g.y); if (d < bd) { bd = d; b = c[0]; } }); return b; })() : null;
+        return { g, look: g.look, text: g.name + ' · deň ' + g.day + ' · ' + (g.kn || FN[g.fac]) + ' · úroveň ' + (g.lv || 1) + (castles ? ' · hradov: ' + castles : '') + (place ? ' · pri ' + place : '') + (s.when ? ' · ' + s.when : '') };
     } catch (x) { return null; }
 }
 function save(slot) {
     try {
-        localStorage.setItem(slotKey(slot), JSON.stringify({ G: { ...G, chase: null, talk: null }, T: TW.map(t => ({ f: t.f, g: t.g, mine: t.mine, wl: t.wl || 0, pr: t.pr, bd: t.bd, lord: t.lord, inv: t.inv })), E: E.map(e => ({ id: e.id, x: e.x, y: e.y, f: e.f, n: e.n, nm: e.nm, kr: e.kr, nz: e.nz, rl: e.rl || 0, home: e.home, role: e.role, vx: 0, vy: 0, w: 0 })), WR, REL, AL, CP, VL, MW, K, when: new Date().toLocaleString('sk-SK', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) }));
+        localStorage.setItem(slotKey(slot), JSON.stringify({ G: { ...G, chase: null, talk: null }, T: TW.map(t => ({ f: t.f, g: t.g, mine: t.mine, wl: t.wl || 0, pr: t.pr, bd: t.bd, lord: t.lord, inv: t.inv })), E: E.map(e => ({ id: e.id, x: e.x, y: e.y, f: e.f, n: e.n, nm: e.nm, kr: e.kr, nz: e.nz, rl: e.rl || 0, home: e.home, role: e.role, cp: e.cp, vas: e.vas, loy: e.loy, kind: e.kind, vx: 0, vy: 0, w: 0 })), WR, REL, AL, CP, VL, MW, K, when: new Date().toLocaleString('sk-SK', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) }));
         return 1;
     }
     catch (x) {
@@ -88,6 +93,7 @@ function load(slot) {
             if (!G.own)   // staré uloženie: výbava sa kupovala postupne, takže hrdina vlastní všetko až po súčasnú vec
                 G.own = Object.fromEntries(Object.keys(G.eq).map(k => [k, Array.from({ length: G.eq[k] + 1 }, (_, i) => i)]));
             E = s.E;
+            if (typeof priMigrate === 'function') priMigrate();
             QS = bloc(G.fac) ? QE : QG;
             WR = s.WR.length < 10 ? mkWR() : s.WR;
             REL = s.REL.length < 10 ? mkREL() : s.REL;

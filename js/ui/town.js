@@ -59,10 +59,12 @@ function dipF(i, f) {
 }
 function vill(i) {
     const v = VL[i], f = TW[v.t].f;
+    if (typeof ROOM !== 'undefined' && ROOM && ROOM.room === 'village' && ROOM.vi === i && !ROOM.menu) return roomReturn();   // „Späť“ z okna otvoreného v dedine
     mode = 'town';
     G.dest = -1;
     if (!v.good) v.good = villageGood(v, i);
     show(v.n + ' (' + FN[f] + ')', v.st > 0 ? 'Dedina je vypálená, obnoví sa o ' + v.st + ' dní.' : 'Dedina patrí k hradu ' + TW[v.t].n + '. Vyrába: ' + goodOf(v.good).n + ' (' + goodOf(v.good).ico + '), prosperita úroveň ' + lvl(v) + '.');
+    if (!hos(f, G.fac) && typeof roomSceneOk === 'function' && roomSceneOk('Village')) btn('Vstúpiť do dediny (prejsť sa po návsi)', () => enterVillage(i), 0, 'village');
     if (v.st <= 0 && !hos(f, G.fac))
         btn('Trh (kúpiť a predať tovar)', () => market(v, () => vill(i)), 0, 'scales');
     if (v.st <= 0 && hos(f, G.fac))
@@ -121,7 +123,7 @@ function tsub(i, c) {
         btn('Povýšiť pešiaka na veterána (20 zlata, 15 skúseností)', () => { G.gold -= 20; G.txp -= 15; G.inf--; G.vet++; re(); }, G.gold < 20 || G.txp < 15 || G.inf < 1, { u: 'v' });
         btn('Naverbovať zajatcov (8 zlata/ks)', () => { const n = Math.min(G.cap, Math.floor(G.gold / 8)); G.gold -= n * 8; G.inf += n; G.cap -= n; re(); }, !G.cap || G.gold < 8, 'chain');
         btn('Predať zajatcov (' + (G.tcun ? 15 : 12) + ' zlata/ks)', () => { G.gold += G.cap * (G.tcun ? 15 : 12); G.cap = 0; re(); }, !G.cap, 'coins');
-        btn('Výkupné za zajatých veliteľov (' + G.pri.length * 80 + ')', () => { G.gold += G.pri.length * 80; G.pri = []; re(); }, !G.pri.length, 'coins');
+        btn('Zajatí velitelia (' + G.pri.length + '): výkupné, prepustenie', () => prisonersMenu(() => tsub(i, c)), 0, 'chain');
     }
     if (c === 'h') {
         const w = t.wl || 0, cw = 150 * (w + 1), bd = t.bd || (t.bd = {});
@@ -152,6 +154,8 @@ function tsub(i, c) {
     }
     if (c === 'd') {
         btn('Diplomacia s frakciami', () => dip(i), 0, 'honor');
+        btn('Dvor: lordi, vzťahy a spory' + (t.mine ? ', hostina' : ''), () => court(i), 0, 'court');
+        if (typeof kingdom === 'function' && (G.king || TW.some(x => x.mine))) btn('Kráľovstvo: léna, vazali, správa', () => kingdom(i), 0, 'crown');
         if (G.fac === 6 && t.f !== 6)
             btn('Vstúpiť do služieb: ' + FN[t.f], () => {
                 G.fac = t.f;
@@ -227,6 +231,7 @@ function lord(e) {
         PORTRAIT = Portraits.forLord(e);
         show(e.nm + ' (' + FN[e.f] + ')', 'Vzťah: ' + e.rl + '. Vojakov: ' + Math.ceil(e.n) + '. Tvoja sláva: ' + G.ren + '.');
         btn('Porozprávať sa', () => talk(e));
+        if (typeof friends === 'function') btn('Spýtať sa na iných lordov', () => { const fr = friends(e).map(o => o.nm), fo = foes(e).map(o => o.nm); PORTRAIT = Portraits.forLord(e); msg('„' + (fr.length ? 'S ' + fr.join(' a ') + ' sme bojovali bok po boku; na tých sa dá spoľahnúť. ' : '') + (fo.length ? fo.join(' a ') + ' – tých nech mi nikto nespomína. ' : '') + (!fr.length && !fo.length ? 'Držím sa stranou dvorných hádok.' : '') + (loyOf(e) < 6 ? ' A môj pán? Radšej mlčať. Nie som s ním spokojný.' : '') + '“', () => lord(e)); }, 0, 'talk');
         btn('Darovať 50 zlata (+8 vzťah)', () => { G.gold -= 50; e.rl += 8; upd(); lord(e); }, G.gold < 50);
         if (e.f !== G.fac && !e.kr)
             btn('Presvedčiť k prestúpeniu (100 zlata)', () => {
@@ -323,11 +328,18 @@ function questLog() {
 }
 
 /** Výber pozície na uloženie. */
+/** Tlačidlo pozície s portrétom hrdinu z uloženia. */
+function slotBtn(k, n, fn, off) {
+    const d = slotData(k), b = btn(n + ': ' + (d ? d.text : 'prázdna'), fn, off);
+    if (d && d.look && typeof Portraits !== 'undefined') { try { const c = Portraits.canvas(d.look, 34); c.className = 'ico'; b.dataset.icon = 'ico_por_' + k + '_' + (d.g.day || 0) + '_' + (d.g.name || ''); b.prepend(c); } catch (e) { } }
+    else if (!d && typeof Icons !== 'undefined') { const c = Icons.canvas('chest'); c.className = 'ico'; b.dataset.icon = 'ico_ui_chest'; b.prepend(c); }
+    return b;
+}
 function saveMenu(back) {
     mode = 'town';
-    show('Uložiť hru', 'Vyber pozíciu. Hra sa okrem toho sama ukladá na konci každého dňa do automatickej pozície.');
-    SLOTS.filter(([k]) => k !== 'auto').forEach(([k, n]) => { const info = slotInfo(k); btn(n + ': ' + (info || 'prázdna'), () => msg(save(k) ? 'Hra uložená do pozície ' + k + '.' : 'Ukladanie nie je v tomto prostredí dostupné.', back)); });
-    btn('Späť', back);
+    show('Uložiť hru', 'Vyber pozíciu (6 ručných). Hra sa okrem toho sama ukladá na konci každého dňa do automatickej pozície.');
+    SLOTS.filter(([k]) => k !== 'auto').forEach(([k, n]) => slotBtn(k, n, () => { const had = !!slotData(k); msg(save(k) ? 'Hra uložená do pozície ' + k + (had ? ' (pôvodná pozícia prepísaná).' : '.') : 'Ukladanie nie je v tomto prostredí dostupné.', back); }));
+    btn('Späť', back, 0, 'back');
 }
 /** Výber pozície na načítanie (z úvodu). */
 function loadMenu() {
@@ -335,6 +347,6 @@ function loadMenu() {
     if (!any) return load(1);
     show('Načítať hru', 'Vyber uloženú pozíciu.');
     ov.classList.add('intro');
-    SLOTS.forEach(([k, n]) => { const info = slotInfo(k); btn(n + ': ' + (info || 'prázdna'), () => load(k), !info); });
-    btn('Späť', () => location.reload());
+    SLOTS.forEach(([k, n]) => slotBtn(k, n, () => load(k), !slotData(k)));
+    btn('Späť', () => location.reload(), 0, 'back');
 }

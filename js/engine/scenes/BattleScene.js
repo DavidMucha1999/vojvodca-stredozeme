@@ -11,6 +11,18 @@ class BattleScene extends Phaser.Scene {
     constructor() { super('Battle'); }
 
     create() {
+        this.ready = false;
+        if (!Art.loaded.battle && Art.loading.battle) {   // textúry bojiska sa ešte dočítavajú na pozadí
+            this.cameras.main.setBackgroundColor('#0b0806');
+            const t = this.add.text(W * RES / 2, H * RES / 2, 'Vojská sa zoraďujú…', { fontFamily: '"IM Fell English", Georgia, serif', fontSize: 16 * RES + 'px', color: '#d9a441' }).setOrigin(.5).setScrollFactor(0);
+            Art.loading.battle.then(() => { if (this.scene.isActive('Battle')) { t.destroy(); this.build(); } });
+            return;
+        }
+        this.build();
+    }
+
+    build() {
+        this.ready = true;
         if (this.textures.exists('ground_g')) this.buildField();
         else {
             const c = document.createElement('canvas');
@@ -68,27 +80,38 @@ class BattleScene extends Phaser.Scene {
         this.units.set(u, o);
     }
 
-    /** Bojisko z textúr: zem podľa krajiny, rieka s brodom, stromy, skaly a pri obliehaní hrad. */
+    /** Bojisko z textúr podľa miesta na mape (FIELD): zem podľa krajiny, rieka s brodom len pri Anduine, lesné zhluky podľa hustoty lesa,
+     *  kopec s výhodou pre obrancu pri horách, skaly; pri obliehaní hrad. */
     buildField() {
-        const b = { g: 'g', a: 'a', d: 'd', s: 's' }[BI] || 'g';
+        const b = { g: 'g', a: 'a', d: 'd', s: 's' }[BI] || 'g', F = FIELD || { trees: [] };
         this.add.tileSprite(0, 0, BW, BH, 'ground_' + b).setOrigin(0).setTileScale(.5).setDepth(-10);
-        const bank = this.add.graphics().setDepth(-9);
-        bank.fillStyle(0x2a3a22, .55).fillRect(684, 0, 72, BH);
-        this.water = this.add.tileSprite(690, 0, 60, BH, 'water').setOrigin(0).setTileScale(.5).setDepth(-9);
-        bank.fillStyle(0x9a8558, 1).fillRect(686, 440, 68, 80).fillStyle(0x000000, .12).fillRect(686, 440, 68, 4).fillRect(686, 516, 68, 4);
-        let seed = 7 + BW;
+        let seed = 7 + BW + Math.floor((F.forest || 0) * 97);
         const rnd = () => (seed = seed * 16807 % 2147483647) / 2147483647;
+        if (F.hill) {   // kopec / úpätie hory: svetlejšia vyvýšenina so šikmým tieňom
+            const hg = this.add.graphics().setDepth(-9.5), hx = BW * .62, hy = BH * .5;
+            for (let k = 5; k >= 0; k--) { hg.fillStyle(0xffffff, .05 + (F.mountain ? .02 : 0)).fillEllipse(hx, hy, 340 - k * 40, 240 - k * 28); }
+            hg.fillStyle(0x000000, .14).fillEllipse(hx + 40, hy + 50, 320, 200); hg.fillStyle(0xffffff, .06).fillEllipse(hx - 30, hy - 30, 220, 140);
+            hg.lineStyle(2, 0xffffff, .12).strokeEllipse(hx, hy, 340, 240).strokeEllipse(hx, hy, 220, 150);
+            if (F.mountain) for (let i = 0; i < 10; i++) this.add.image(hx + (rnd() - .5) * 300, hy + (rnd() - .5) * 200, 'rock').setScale(.35 + rnd() * .3).setDepth(hy);
+        }
+        if (F.river) {
+            const bank = this.add.graphics().setDepth(-9);
+            bank.fillStyle(0x2a3a22, .55).fillRect(684, 0, 72, BH);
+            this.water = this.add.tileSprite(690, 0, 60, BH, 'water').setOrigin(0).setTileScale(.5).setDepth(-9);
+            bank.fillStyle(0x9a8558, 1).fillRect(686, 440, 68, 80).fillStyle(0x000000, .12).fillRect(686, 440, 68, 4).fillRect(686, 516, 68, 4);
+        }
         const tree = b === 'a' ? ['deadtree'] : b === 'd' ? [] : ['tree_0', 'tree_1', 'tree_2'];
         const place = (x, y) => {
-            if (x > 660 && x < 780) return;
+            if (F.river && x > 660 && x < 780) return;
             if (SGB && x > 960) return;
             if (!tree.length) { this.add.image(x, y, 'rock').setScale(.5).setDepth(y); return; }
             this.add.image(x, y, tree[Math.floor(rnd() * tree.length)]).setOrigin(.25, .45).setScale(.5 * (.8 + rnd() * .5)).setDepth(y);
         };
-        for (let i = 0; i < 5; i++) { const cx = 200 + rnd() * 1000, cy = 100 + rnd() * 760; for (let j = 0; j < 12; j++) place(cx + rnd() * 90 - 45, cy + rnd() * 70 - 35); }
+        const dens = .6 + (F.forest || 0) * 1.4;
+        for (const t of F.trees || []) { const n = Math.round(t.r * t.r / 420 * dens); const sh = this.add.graphics().setDepth(-9.4); sh.fillStyle(0x0a200c, .12 + (F.forest || 0) * .15).fillEllipse(t.x, t.y, t.r * 2.1, t.r * 1.6); for (let j = 0; j < n; j++) { const a = rnd() * 6.283, d = Math.sqrt(rnd()) * t.r; if (!(SGB && t.x + Math.cos(a) * d > 960)) place(t.x + Math.cos(a) * d, t.y + Math.sin(a) * d * .8); } }
         for (let i = 0; i < 40; i++) { place(rnd() * BW, 30 + rnd() * 40); place(rnd() * BW, BH - 6 - rnd() * 30); }
         for (let i = 0; i < 24; i++) { place(10 + rnd() * 40, rnd() * BH); if (!SGB) place(BW - 10 - rnd() * 40, rnd() * BH); }
-        for (let i = 0; i < 26; i++) { const x = rnd() * BW, y = rnd() * BH; if ((x < 660 || x > 780) && !(SGB && x > 960)) this.add.image(x, y, 'rock').setScale(.25 + rnd() * .2).setDepth(-5); }
+        for (let i = 0; i < 26 + (F.hill ? 14 : 0); i++) { const x = rnd() * BW, y = rnd() * BH; if ((!F.river || x < 660 || x > 780) && !(SGB && x > 960)) this.add.image(x, y, 'rock').setScale(.25 + rnd() * .2).setDepth(-5); }
         if (SGB) {
             this.add.tileSprite(1040, 0, BW - 1040, BH, 'cobble').setOrigin(0).setTileScale(.5).setDepth(-8);
             this.add.tileSprite(1000, 0, 40, BH, 'wall').setOrigin(0).setTileScale(.5).setDepth(-7);
@@ -102,6 +125,7 @@ class BattleScene extends Phaser.Scene {
     }
 
     update(time, delta) {
+        if (!this.ready) { if (mode !== 'battle') this.scene.start('Map'); return; }
         if (mode === 'battle') updBattle(Math.min(2, delta / 16.67));
         if (mode !== 'battle') { this.scene.start('Map'); return; }
 

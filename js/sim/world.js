@@ -32,6 +32,7 @@ function worldTick(dt) {
         G.x += dx / d * v * dt;
         G.y += dy / d * v * dt;
         G.f = Math.atan2(dy, dx);
+        if (typeof travelTick === 'function' && travelTick(dt)) return;   // udalosť na ceste otvorila okno
     }
     else if (G.dest >= 0)
         town(G.dest);
@@ -87,7 +88,7 @@ function worldTick(dt) {
         TW.forEach(t => {
             t.g = Math.min(20 + (t.wl || 0) * 10, t.g + 1 + (t.wl || 0));
             if (t.mine)
-                G.gold += G.king ? 20 : 10;
+                G.gold += Math.round((G.king ? 20 : 10) * (typeof taxMul === 'function' ? taxMul() * fiefShare(t) : 1));
         });
         {
             const a = [0, 1, 2, 3, 4, 5, 7, 8], x = a[Math.floor(Math.random() * 8)], y = a[Math.floor(Math.random() * 8)];
@@ -147,8 +148,18 @@ function worldTick(dt) {
                 }
             }
         if (!tg) {
-            if (e.f === 9 || e.nz || e.home == null || !TW[e.home]) {
-                // banditi, nazgûli a lordi bez domova: blúdia medzi hradmi ako doteraz
+            if (e.f === 9 && VL.length) {
+                // tlupy: potulujú sa medzi dedinami v okolí (do 250 jednotiek), číhajú pri cestách; vargovia sa držia lesov a hôr
+                if (e.vi == null || !VL[e.vi] || Math.hypot(VL[e.vi].x - e.x, VL[e.vi].y - e.y) < 60 * K * .3) {
+                    const near = VL.map((v, i) => i).filter(i => Math.hypot(VL[i].x - e.x, VL[i].y - e.y) < 250 * K);
+                    e.vi = near.length ? near[Math.floor(Math.random() * near.length)] : Math.floor(Math.random() * VL.length);
+                    if (e.wait == null) e.wait = 0;
+                }
+                if (e.wait > 0) { e.wait -= dt; stopHere = true; tg = { x: e.x, y: e.y }; }
+                else { const v = VL[e.vi]; tg = { x: v.x + 30 * K * .3, y: v.y + 20 * K * .3 }; if (Math.hypot(tg.x - e.x, tg.y - e.y) < 15) e.wait = 200 + Math.random() * 400; }
+            }
+            else if (e.f === 9 || e.nz || e.home == null || !TW[e.home]) {
+                // nazgûli a lordi bez domova: blúdia medzi hradmi ako doteraz
                 if (e.ti == null)
                     e.ti = Math.floor(Math.random() * TW.length);
                 let t = TW[e.ti];
@@ -206,7 +217,7 @@ function worldTick(dt) {
                             const def = t.g + 4 + (t.wl || 0) * 8 + E.filter(o => o.f === t.f && !o.dead && Math.hypot(o.x - t.x, o.y - t.y) < 15 * K).reduce((s, o) => s + o.n, 0);
                             if (att > def) {
                                 const oldF = t.f;
-                                captureEvent(t, oldF, e.f, e.nm); mst(e.f).wins++;
+                                captureEvent(t, oldF, e.f, e.nm); mst(e.f).wins++; if (typeof courtEvent === 'function') { courtEvent(e.f, 'won'); courtEvent(oldF, 'lost'); }
                                 if (G.join && G.join.ci === ci && Math.hypot(G.x - t.x, G.y - t.y) < 40 * K) { G.ren += 3; G.gold += 60; e.rl = (e.rl || 0) + 6; lg('Za účasť na ťažení si dostal podiel na koristi (60 zlata) a slávu.'); G.join = null; }
                                 t.lord = 0; e.n = Math.max(3, e.n - t.g * .5); t.f = e.f; t.g = 5; t.mine = 0; t.wl = 0;
                                 E.filter(o => o.home === ci && o.f !== e.f).forEach(o => { o.n = Math.max(2, o.n * .5); o.home = null; });
@@ -275,15 +286,18 @@ const castleIncome = t => lvl(t) * 4 + (G.king ? 20 : 10) + (t.bd && t.bd.m ? 10
 const BUILDINGS = [['m', 'Mlyn (+10 zlata denne)', 200], ['k', 'Kasárne (+1 pešiak denne)', 250], ['v', 'Strážna veža (+8 obrancov)', 180],
     ['s', 'Kováčska dielňa (výbava o 20 % lacnejšia)', 300], ['j', 'Stajňa (kone o 25 % lacnejšie, +1 jazdec za 3 dni)', 320], ['c', 'Chrám (tvoji vojaci sú v bitke pevnejší)', 260], ['t', 'Trhovisko (viac tovaru, +prosperita, +zlato)', 280]];
 function daily2() {
-    TW.forEach(t => { t.pr = Math.min(100, (t.pr ?? 40) + 1 + (t.bd && t.bd.m ? 1 : 0) + (t.bd && t.bd.t ? 1 : 0)); if (t.mine)
-        G.gold += lvl(t) * 4 + (t.bd && t.bd.t ? lvl(t) * 2 : 0); });
+    TW.forEach(t => { t.pr = Math.min(100, (t.pr ?? 40) + 1 + (t.bd && t.bd.m ? 1 : 0) + (t.bd && t.bd.t ? 1 : 0) + (t.mine && typeof taxPr === 'function' ? taxPr() : 0)); if (t.mine)
+        G.gold += Math.round((lvl(t) * 4 + (t.bd && t.bd.t ? lvl(t) * 2 : 0)) * (typeof taxMul === 'function' ? taxMul() * fiefShare(t) : 1)); });
+    if ((G.tax || 'normal') === 'high') E.forEach(e => { if (e.f === G.fac && e.vas && e.loy != null) e.loy = Math.max(0, e.loy - .1); });
     if (G.camp && G.stay) G.hp = Math.min(mh(), G.hp + 25);   // pobyt v hrade: rýchlejšie hojenie
     dailyTrade();
     dailyWeather();
     compDaily();
+    if (typeof prisonersDaily === 'function') prisonersDaily();
+    if (typeof courtDaily === 'function') courtDaily();
     if (mode === 'map' && save('auto')) TS = TS && TS.l > 0 ? TS : { s: 'Hra automaticky uložená (deň ' + G.day + ').', l: 150 };
     if (G.comp && G.comp.length && Math.random() < .5) { const c = compDef(G.comp[Math.floor(Math.random() * G.comp.length)]); if (c) TS = { s: c.n + ': „' + compLine(c) + '“', l: 320 }; }
-    VL.forEach(v => { v.pr = Math.max(0, Math.min(100, (v.pr ?? 40) + (v.st > 0 ? -2 : 1))); if (TW[v.t].mine)
+    VL.forEach(v => { v.pr = Math.max(0, Math.min(100, (v.pr ?? 40) + (v.st > 0 ? -2 : 1) + (TW[v.t].mine && typeof taxPr === 'function' ? taxPr() : 0))); if (TW[v.t].mine)
         G.gold += lvl(v) * 2; });
     if (G.ring === 1) {
         G.cor = Math.min(100, (G.cor || 0) + 2);
@@ -380,7 +394,7 @@ function dailyEcho() {
 }
 function updMap(dt) {
     const idle = Math.hypot(G.tx - G.x, G.ty - G.y) <= 3 && G.dest < 0 && !(G.vd >= 0) && !G.chase && !G.talk && !G.qd;
-    if (idle && !G.camp) {
+    if (idle && !G.camp && !G.captive) {
         PAUSE = 1;
         return;
     }
@@ -392,6 +406,7 @@ function updMap(dt) {
         if (G.day !== d)
             daily2();
         if (LETTERS.length && mode === 'map' && ov.classList.contains('hide')) readLetter();
+        if (G.captive && mode === 'map' && ov.classList.contains('hide') && !(G.capShown === G.day)) { G.capShown = G.day; captiveDay(); }
         const dd = Math.hypot(G.x - DOOM.x, G.y - DOOM.y);
         if (G.ring === 1 && mode === 'map' && dd < 180 && !G.rp) {
             G.rp = 1;

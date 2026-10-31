@@ -21,6 +21,7 @@ function electMarshal(f, why) {
         const txt = (why === 'overthrow' ? 'Lordi ' + FN[f] + ' zvrhli maršala ' + (old ? old.nm : '?') + ' a zvolili ' : 'Lordi ' + FN[f] + ' zvolili za maršala vojska ') + m.nm + '.';
         lg(txt);
         if (f === G.fac || (G.fac === 6 && !hos(f, G.fac) && bloc(f) === heroSide())) TS = { s: txt, l: 320 };
+        if (why === 'overthrow' && typeof courtEvent === 'function') courtEvent(f, 'overthrow');
     }
     return m;
 }
@@ -41,7 +42,7 @@ function onMuster(m, ci) {
     E.forEach(e => {
         if (e === m || e.f !== m.f || e.dead || e.role !== 'army') return;
         per(e);
-        const p = e.tr === 2 ? .4 : e.tr === 3 ? .65 : .85;         // zbabelý váha, ambiciózny nerád slúži inému
+        const p = (e.tr === 2 ? .4 : e.tr === 3 ? .65 : .85) * (lr(e, m) < -3 ? .3 : 1);         // zbabelý váha, ambiciózny nerád slúži inému, lord v spore s maršalom neprichádza
         e.muSkip = Math.random() < p ? null : ci;
     });
     if (m.f === G.fac || (G.fac === 6 && G.side != null && bloc(m.f) === G.side && !hos(m.f, G.fac) && TW.some(x => x.f === 6))) {
@@ -55,6 +56,8 @@ function musterPoint(m, t) { const own = TW.filter(x => x.f === m.f); return own
 function readLetter() {
     const L = LETTERS.shift();
     if (!L) return;
+    if (L.kind === 'ransom') return ransomLetter(L);
+    if (L.kind === 'court') return courtLetter(L);
     const m = E.find(e => e.id === L.mid);
     mode = 'town';
     if (m) PORTRAIT = Portraits.forLord(m);

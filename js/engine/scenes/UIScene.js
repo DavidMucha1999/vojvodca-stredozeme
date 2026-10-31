@@ -200,7 +200,7 @@ class UIScene extends Phaser.Scene {
     }
 
     syncBars() {
-        const vis = el => el.style.display !== 'none' && !!G && !this.dlg && mode !== 'tavern' && mode !== 'castle';
+        const vis = el => el.style.display !== 'none' && !!G && !this.dlg && mode !== 'tavern' && mode !== 'castle' && mode !== 'room';
         if (this.dlg || !vis(tb)) this.menu = null;
         const sig = [vis(tb), vis(od), this.menu, this.big, ...[...tb.children, ...od.children].map(b => b.textContent + (b.style.opacity || ''))].join('|');
         if (sig === this.sig.bars) return;
@@ -411,8 +411,10 @@ class UIScene extends Phaser.Scene {
                     if (col === cols) flush();
                 } else {
                     flush();
-                    const t = this.add.text(16, y, k.textContent, txtStyle(k.style.color ? 12.5 : 11.5, k.style.color ? UI_C.gold : k.style.opacity && +k.style.opacity < 1 ? UI_C.dim : UI_C.ink, { wordWrap: { width: IW - 26 } }));
-                    items.push(t); y += t.height + 3;
+                    const ik = this.iconFor(k), ix = ik ? 40 : 0;   // riadok s ikonkou/portrétom vľavo
+                    if (ik) items.push(this.add.image(16, y, ik).setOrigin(0).setDisplaySize(34, 34));
+                    const t = this.add.text(16 + ix, y, k.textContent, txtStyle(k.style.color ? 12.5 : 11.5, k.style.color ? UI_C.gold : k.style.opacity && +k.style.opacity < 1 ? UI_C.dim : UI_C.ink, { wordWrap: { width: IW - 26 - ix } }));
+                    items.push(t); y += Math.max(t.height, ik ? 34 : 0) + 3;
                 }
             });
             flush();
@@ -480,7 +482,7 @@ class UIScene extends Phaser.Scene {
     /** Tlačidlo okna podľa pôvodného HTML tlačidla k (aj s ikonkou výbavy). Vráti pole objektov s výškou .h. */
     dialogButton(k, x, y, w, allow) {
         const label = k.textContent.trim() || '•', dn = Icons.forDialog(label), icon = this.iconFor(k) || (dn && label !== '•' ? Icons.tex(this, dn) : null);
-        const unit = icon && /^ico_u_/.test(icon), is = unit ? 34 : 24, iw = icon ? is + 6 : 0;   // ikonky vojakov sú väčšie
+        const unit = icon && /^ico_(u|por)_/.test(icon), is = unit ? 34 : 24, iw = icon ? is + 6 : 0;   // ikonky vojakov sú väčšie
         const probe = this.add.text(0, 0, label, txtStyle(12, '#000', { wordWrap: { width: w - 12 - iw, useAdvancedWrap: true } }));
         const bh = Math.max(icon ? is + 4 : 24, probe.height + 8); probe.destroy();
         const swatch = k.style.background && k.textContent.trim() === '' ? k.style.background : null;

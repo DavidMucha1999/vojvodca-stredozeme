@@ -83,20 +83,29 @@ const Art = {
         } else if (n >= 2) scene.anims.create({ key: key + ':wave', frames: fr(0, n - 1), frameRate: 6, repeat: -1 });
     },
 
-    /** Načíta textúry z tools/generate_art.py (terén, hory, vojaci, bojisko). Vráti Promise. */
-    loadTextures(scene) {
+    /** Načíta textúry z tools/generate_art.py (terén, hory, vojaci, bojisko). Vráti Promise.
+     *  group: 'map' (mapa, hrady, dediny, hory – potrebné hneď), 'battle' (bojisko a vojaci – dočítavajú sa na pozadí po úvode)
+     *  alebo nič = všetko. onProgress(hotové, celkom) hlási postup pre načítaciu obrazovku. */
+    loadTextures(scene, group, onProgress) {
         const T = (typeof ASSETS !== 'undefined' && ASSETS.textures) || {};
-        return Promise.all(Object.entries(T).map(([key, url]) => new Promise(ok => {
+        const isBattle = k => /^(unit_|ground_|tree_|deadtree|rock|water|cobble|wall|tower|keep)/.test(k);
+        const keys = Object.keys(T).filter(k => group === 'map' ? !isBattle(k) : group === 'battle' ? isBattle(k) : true);
+        let done = 0;
+        const one = key => new Promise(ok => {
+            if (scene.textures.exists(key) || Art.img[key]) { done++; onProgress && onProgress(done, keys.length); return ok(); }
             const img = new Image();
-            img.onload = () => {
-                if (!scene.textures.exists(key)) scene.textures.addImage(key, img);
-                Art.img[key] = img;
-                ok();
-            };
-            img.onerror = () => { console.warn('Textúra sa nenačítala:', key); ok(); };
-            img.src = url;
-        })));
+            const fin = () => { done++; onProgress && onProgress(done, keys.length); ok(); };
+            img.onload = () => { if (!scene.textures.exists(key)) scene.textures.addImage(key, img); Art.img[key] = img; fin(); };
+            img.onerror = () => { console.warn('Textúra sa nenačítala:', key); fin(); };
+            img.src = T[key];
+        });
+        // po menších dávkach, aby prehliadač medzitým stihol prekresliť priebeh
+        const batches = []; for (let i = 0; i < keys.length; i += 6) batches.push(keys.slice(i, i + 6));
+        const p = batches.reduce((acc, b) => acc.then(() => Promise.all(b.map(one))), Promise.resolve());
+        if (group) Art.loading[group] = p.then(() => { Art.loaded[group] = 1; });
+        return group ? Art.loading[group] : p;
     },
+    loaded: {}, loading: {},
     img: {},
 
     /** Druh kreslenia vojaka v assets/textures/unit_<druh>.png. */
@@ -149,7 +158,7 @@ const Art = {
 
     unitKey(u) {
         if (u.h) return 'hero_' + [G.eq.w, G.eq.a, G.eq.s, G.eq.h, G.eq.m, G.fac, G.king ? 1 : 0, G.ke ?? ''].join('_');
-        if (u.cp) { const c = compDef(u.cp); return c.eq ? 'hero_cp_' + u.cp + '_' + G.fac : 'u_' + c.art + '_0_' + G.fac; }
+        if (u.cp) { const c = compDef(u.cp); return c.eq ? 'hero_cp_' + u.cp + '_' + G.fac + '_' + (u.mnt || 0) : 'u_' + c.art + '_0_' + G.fac; }
         return 'u_' + (u.uk || u.k) + '_' + (u.t ? 1 : 0) + '_' + (u.t ? u.fc : G.fac) + (u.bn ? '_b' : '');
     },
 
@@ -158,7 +167,7 @@ const Art = {
         const key = Art.unitKey(u), kind = Art.unitArt(u), base = Art.img['unit_' + kind];
         // hrdina sa kreslí podľa výbavy: každá zbraň, brnenie, štít, prilba a kôň vyzerá inak
         if ((u.h || (u.cp && compDef(u.cp).eq)) && !scene.textures.exists(key) && typeof Soldiers !== 'undefined') {
-            const sp = Soldiers.heroSpec(u.h ? G.eq : compDef(u.cp).eq);
+            const sp = Soldiers.heroSpec(u.h ? G.eq : { ...compDef(u.cp).eq, m: u.mnt || compDef(u.cp).eq.m || 0 });
             Art.register(scene, key, Art.tinted(Soldiers.sheet(sp, 'base'), Soldiers.sheet(sp, 'team'), FC[G.fac]));
             Art.anims(scene, key);
             return key;
@@ -166,6 +175,12 @@ const Art = {
         if (!scene.textures.exists(key) && base) {
             const color = u.h || !u.t ? FC[G.fac] : FC[u.fc] || '#888888';
             Art.register(scene, key, Art.tinted(base, Art.img['unit_' + kind + '_team'], color));
+            Art.anims(scene, key);
+            return key;
+        }
+        if (!scene.textures.exists(key) && !base && typeof Soldiers !== 'undefined' && Soldiers.UNITS[kind]) {   // druh bez obrázka (ent, ťažké jednotky): nakreslí sa kódom
+            const color = u.h || !u.t ? FC[G.fac] : FC[u.fc] || '#888888';
+            Art.register(scene, key, Art.tinted(Soldiers.sheet(kind, 'base'), Soldiers.sheet(kind, 'team'), color));
             Art.anims(scene, key);
             return key;
         }

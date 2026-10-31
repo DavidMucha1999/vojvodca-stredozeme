@@ -16,6 +16,8 @@ with sync_playwright() as p:
     pg.route('**/fonts.googleapis.com/**', lambda r: r.abort())
     pg.on('console', lambda m: m.type == 'error' and 'ERR_' not in m.text and errs.append('console: ' + m.text))
     pg.goto('file://' + os.path.join(ROOT, 'Vojvodca Stredozeme.html')); pg.wait_for_timeout(4000)
+    try: pg.wait_for_function("typeof game !== 'undefined' && game.scene.getScenes(true).some(s => s.sys.settings.key === 'Intro')", timeout=30000)
+    except Exception: pass
     pg.evaluate("window.__played = 0; { const p0 = SoundFX.play; SoundFX.play = k => { const r = p0(k); if (r) __played++; return r; }; }")
     E = pg.evaluate
     def waitfor(cond, ms=3000):

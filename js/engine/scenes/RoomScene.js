@@ -26,7 +26,8 @@ class RoomScene extends Phaser.Scene {
         this.input.keyboard.on('keydown-ESC', () => { if (ov.classList.contains('hide')) this.leave(); });
         this.input.keyboard.on('keydown-SPACE', () => this.interactNearest());
         this.input.keyboard.on('keydown-E', () => this.interactNearest());
-        this.events.on('shutdown', () => this.input.keyboard.removeAllListeners());
+        this.events.on('shutdown', () => { this.input.keyboard.removeAllListeners(); if (typeof RoomSnd !== 'undefined') RoomSnd.stop(); });
+        if (typeof RoomSnd !== 'undefined' && r.amb) { RoomSnd.door(); RoomSnd.start(r.amb); }   // šum prostredia a dvere
         this.light = this.add.graphics().setDepth(40);
     }
 
@@ -83,6 +84,7 @@ class RoomScene extends Phaser.Scene {
             if (r.block) for (const [bx, by, bw, bh] of r.block) if (pl.x > bx && pl.x < bx + bw && pl.y > by && pl.y < by + bh) { pl.x -= dx * sp; pl.y -= dy * sp; this.plT = null; }
             if (dx) pl.setFlipX(dx < 0);
             this.plStep += dt; pl.setFrame(1 + Math.floor(this.plStep / 5) % 4);
+            if (typeof RoomSnd !== 'undefined' && Math.floor(this.plStep / 10) !== Math.floor((this.plStep - dt) / 10)) RoomSnd.step(r.floorSnd || 'stone');   // krok
         } else pl.setFrame(0);
         pl.setDepth(pl.y); this.plLbl.setPosition(pl.x, pl.y + 8);
         this.people.forEach(p => { const near = Math.hypot(p.x - pl.x, p.y - pl.y) < 80; p.lbl.setColor(near ? '#ffd24a' : p.spot ? '#ffe8b0' : '#f4e8d0'); if (p.lbl.text.endsWith(' ⎵') !== near) p.lbl.setText(near ? p.name + ' ⎵' : p.name); });

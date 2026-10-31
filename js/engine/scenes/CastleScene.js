@@ -114,7 +114,7 @@ class CastleScene extends RoomScene {
         // postavy
         this.people = [];
         this.spawnYard(t, th, HZ);
-        this.setupRoom({ mode: 'castle', floorY: HZ - 10, title: t.n + ' – nádvorie', leave: 'Opustiť hrad', spawn: [W / 2, H - 36], block: [[wx - 28, wy - 14, 56, 26], [sx - 32, sy - 42, 60, 44], [mx - 52, my - 12, 104, 22]] });
+        this.setupRoom({ mode: 'castle', floorY: HZ - 10, title: t.n + ' – nádvorie', amb: th === 'lorien' ? 'elf' : th === 'mordor' || th === 'isengard' || th === 'bandit' ? 'yardEvil' : 'yard', floorSnd: th === 'rohan' || th === 'bandit' ? 'wood' : th === 'lorien' ? 'grass' : th === 'harad' ? 'sand' : 'stone', leave: 'Opustiť hrad', spawn: [W / 2, H - 36], block: [[wx - 28, wy - 14, 56, 26], [sx - 32, sy - 42, 60, 44], [mx - 52, my - 12, 104, 22]] });
         // miesta
         this.spot(gx, HZ - 40, 70, 80, 'Sieň hradu', () => enterCastle(this.ti, 'hall'), HZ + 14);
         this.spot(tx, ty - 22, 36, 44, 'Krčma', () => enterTavern(this.ti), HZ + 14);
@@ -219,7 +219,7 @@ class CastleScene extends RoomScene {
         this.detailHall(g, t, th, C, R, HZ, dx, dy);
         this.people = [];
         this.spawnHall(t, th);
-        this.setupRoom({ mode: 'castle', floorY: HZ + 12, title: t.n + ' – sieň', leave: 'Späť na nádvorie', spawn: [W / 2, H - 36], block: [[dx - 150, dy - 30, 300, 40], [dx - 260, dy + 86, 140, 36], [dx + 120, dy + 86, 140, 36]] });
+        this.setupRoom({ mode: 'castle', floorY: HZ + 12, title: t.n + ' – sieň', amb: th === 'lorien' ? 'elf' : 'hall', floorSnd: th === 'rohan' || th === 'bandit' ? 'wood' : 'stone', leave: 'Späť na nádvorie', spawn: [W / 2, H - 36], block: [[dx - 150, dy - 30, 300, 40], [dx - 260, dy + 86, 140, 36], [dx + 120, dy + 86, 140, 36]] });
     }
     spawnHall(t, th) {
         const f = t.f === 6 ? (heroSide() === 1 ? 2 : 0) : t.f;

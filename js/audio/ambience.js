@@ -40,7 +40,7 @@ function ambTick() {
     if (!ac || !G || mode === 'intro') { if (AMB) for (const k in AMB.src) ambSet(k, 0); return; }
     ambInit();
     if (mu) { for (const k in AMB.src) ambSet(k, 0); return; }
-    const battle = mode === 'battle', inside = mode === 'town' || mode === 'tavern' || mode === 'castle';   // v hrade a v krčme vonkajšie zvuky nepočuť
+    const battle = mode === 'battle', inside = mode === 'town' || mode === 'tavern' || mode === 'castle' || mode === 'room';   // v hrade a v krčme vonkajšie zvuky nepočuť
     const w = inside ? 'clear' : battle ? WX.n : MW.n, night = battle ? WX.night : isNight();
     const se = season();
     ambSet('rain', w === 'rain' ? .1 : w === 'storm' ? .18 : w === 'ash' ? .05 : 0);            // dážď tichý, len ako podkres

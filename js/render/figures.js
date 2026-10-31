@@ -271,6 +271,11 @@ const Figures = (() => {
             9: [{ w: 0, a: 0, s: 0, h: 0, m: 0 }, { cape: '#4a3a2a' }]
         };
         if (e.nz) return [{ w: 13, a: 10, s: 0, h: 8, m: 8 }, { cape: '#000', nazgul: 1 }];
+        if (e.cp && typeof compDef === 'function' && compDef(e.cp)) { const r = compEq(compDef(e.cp)); return [r[0], { ...r[1], flag: e.f }]; }   // spoločník s lénom
+        // tlupy bez pána: orkská tlupa, vargovia (jazdec na vlkovi), dezertéri, lupiči
+        if (e.kind === 'orcs') return [{ w: 9, a: 6, s: 5, h: 5, m: 0 }, { cape: '#2a1a10', orc: 1, flag: null }];
+        if (e.kind === 'wolves') return [{ w: 9, a: 6, s: 0, h: 5, m: 6 }, { cape: '#1a1a1a', orc: 1 }];
+        if (e.kind === 'deserters') return [{ w: 1, a: 1, s: 1, h: 1, m: 0 }, { cape: '#4a4a3a' }];
         let r = T[e.f];
         if (!r) r = (typeof heroSide === 'function' && heroSide() === 1) ? T[2] : T[0];   // vlastní vazali podľa strany hráča
         return [r[0], { ...r[1], king: !!e.kr, flag: e.f, ...(typeof Portraits !== 'undefined' ? lookOpts(Portraits.forLord(e)) : {}) }];

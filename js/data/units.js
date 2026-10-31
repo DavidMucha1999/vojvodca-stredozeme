@@ -18,6 +18,11 @@ const FU = {
     uN1: { n: 'Easterlingský kopijník', f: 7, p: 45, b: 'i', hp: 45, d: 7, sp: 1.2, r: 7, col: '#6a2a4a', hel: '#d0a040', wp: 'sp' },
     uN2: { n: 'Jazdec z Rhûnu', f: 7, p: 85, b: 'c', hp: 55, d: 8, sp: 2, r: 9, col: '#5a1f4a', hel: '#c09030', wp: 'sp' },
     elf: { n: 'Galadhrimský lukostrelec', f: 8, p: 60 },
-    uL2: { n: 'Elfský šermiar', f: 8, p: 80, b: 'i', hp: 50, d: 10, sp: 1.4, r: 7, col: '#5a7a5a', hel: '#e8d870', wp: 'sw' }
+    uL2: { n: 'Elfský šermiar', f: 8, p: 80, b: 'i', hp: 50, d: 10, sp: 1.4, r: 7, col: '#5a7a5a', hel: '#e8d870', wp: 'sw' },
+    // ťažké jednotky z miest: jaskynný troll (Mordor), mûmak (Harad), rytier labute (Gondor), berserker (Isengard)
+    uM3: { n: 'Jaskynný troll', f: 2, p: 240, b: 't', hp: 170, d: 18, sp: .85, r: 11, col: '#4e5446', hel: '#1a1a1a', wp: 'ax', heavy: 1 },
+    uH3: { n: 'Mûmak s vežou', f: 4, p: 420, b: 'x', hp: 320, d: 26, sp: .7, r: 15, col: '#7a7670', hel: '#d0a050', wp: 'sp', heavy: 1 },
+    uG3: { n: 'Rytier Dol Amrothu', f: 0, p: 150, b: 'c', hp: 75, d: 11, sp: 1.9, r: 8, col: '#2a3a6a', hel: '#c8ccd4', wp: 'sp', heavy: 1 },
+    uI3: { n: 'Uruk berserker', f: 3, p: 130, b: 'i', hp: 90, d: 14, sp: 1.3, r: 8, col: '#1a1a1e', hel: '#e8e8e8', wp: 'sw', heavy: 1 }
 };
-const FK = [['uG1', 'uG2'], ['roh', 'uR2'], ['uM1', 'uM2'], ['uI1', 'uI2'], ['uH1', 'uH2'], ['uE1', 'uE2'], [], ['uN1', 'uN2'], ['elf', 'uL2']];
+const FK = [['uG1', 'uG2', 'uG3'], ['roh', 'uR2'], ['uM1', 'uM2', 'uM3'], ['uI1', 'uI2', 'uI3'], ['uH1', 'uH2', 'uH3'], ['uE1', 'uE2'], [], ['uN1', 'uN2'], ['elf', 'uL2']];

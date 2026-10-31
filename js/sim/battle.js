@@ -2,12 +2,13 @@
  * Bitka: tvorba jednotiek, začiatok a koniec bitky, boj, šípy, rozkazy a hradby pri obliehaní.
  */
 function mkBase(t, k, f) {
-    const P = { i: [30, 1.2, 5, 6], c: [45, 1.9, 7, 8], o: [24 + Math.min(20, G.day * 1.5), 1.1, 4, 6], a: [24, 1.1, 5, 6], e: [26, 1.3, 6, 6], r: [60, 2.1, 9, 9], t: [120, .8, 14, 11], w: [18, 2.2, 5, 5], x: [220, .7, 20, 15], v: [50, 1.25, 8, 7], z: [150, 1.5, 13, 10] }[k], hp = P[0];
+    const P = { i: [30, 1.2, 5, 6], c: [45, 1.9, 7, 8], o: [24 + Math.min(20, G.day * 1.5), 1.1, 4, 6], a: [24, 1.1, 5, 6], e: [26, 1.3, 6, 6], r: [60, 2.1, 9, 9], t: [120, .8, 14, 11], w: [18, 2.2, 5, 5], x: [220, .7, 20, 15], v: [50, 1.25, 8, 7], z: [150, 1.5, 13, 10], n: [260, .8, 22, 13] }[k], hp = P[0];
     return { bn: Math.random() < .1, fc: f, k, t, x: t ? BW - 120 - Math.random() * 140 : 100 + Math.random() * 140, y: 140 + Math.random() * (BH - 280), hp, mh: hp, sp: P[1], d: P[2], c: 0, r: P[3], f: t ? Math.PI : 0 };
 }
 function startBattleBase(en, al) {
     LB = en;
     en.al = al;
+    en.n0 = en.n;
     AR = [];
     en.n = Math.max(1, Math.round(en.n));
     PT = [];
@@ -24,24 +25,27 @@ function startBattleBase(en, al) {
         U.push(mk(0, 'e'));
     for (let i = 0; i < Math.min(G.roh, 12); i++)
         U.push(mk(0, 'r'));
+    for (let i = 0; i < Math.min(G.ent || 0, 3); i++)
+        U.push(mk(0, 'n'));
     if (al)
         for (let i = 0; i < Math.min(Math.ceil(al.n), 12); i++)
             U.push(Object.assign(mk(0, 'i'), { ally: 1 }));
     for (let i = 0; i < en.n; i++)
-        U.push(mk(1, en.nz ? 'z' : en.trolls || en.beorn ? 't' : en.spiders ? 'w' : (i % 3 === 1 && FK[en.f] && FK[en.f].length ? FK[en.f][i % 2] : ek(en.f, i)), en.f));   // miesta: trollovia, Beorn (medveď), pavúky
+        U.push(mk(1, en.nz ? 'z' : en.trolls || en.beorn ? 't' : en.spiders ? 'w' : en.kind === 'wolves' ? (i % 3 ? 'w' : 'uI2') : en.kind === 'orcs' ? (i % 7 === 6 ? 't' : i % 4 === 3 ? 'uM1' : 'o') : en.kind === 'deserters' ? (i % 3 === 2 ? 'a' : i % 5 === 4 ? 'c' : 'i') : (i % 3 === 1 && FK[en.f] && FK[en.f].length ? FK[en.f][i % 2] : ek(en.f, i)), en.f));   // miesta: trollovia, Beorn (medveď), pavúky
     if (en.siege)
         U.forEach(u => {
             if (u.t)
                 u.hp = u.mh = u.mh * (1.3 + (en.t.wl || 0) * .15);
         });
     mode = 'battle';
-    setOrd('a');
+    setOrd(G.ord0 || 'a');
     od.style.display = 'flex';
     tb.style.display = 'none';
     WX = battleWeather();       // počasie z mapy, v noci kratší dostrel
     snd('horn');
     roar(1);
     BI = regionAt(G.x, G.y);
+    FIELD = typeof battleTerrain === 'function' ? battleTerrain(G.x, G.y) : FIELD;   // bojisko podľa miesta na mape (les, rieka, kopec)
     if (BI === 's' && WX.n === 'clear')
         WX = { ...WX, n: 'snow', r: Math.round(WX.r * .85) };
 }
@@ -50,7 +54,7 @@ function unitName(u) {
     if (u.h) return G.name;
     if (u.cp) { const c = compDef(u.cp); return c ? c.n : 'Spoločník'; }
     if (u.uk && FU[u.uk]) return FU[u.uk].n;
-    return { i: 'Pešiak', a: 'Lukostrelec', c: 'Jazdec', v: 'Veterán', r: 'Rohirim', e: 'Elf', o: 'Ork', t: 'Troll', w: 'Varg', x: 'Olifant', z: 'Nazgûl' }[u.k] || 'Vojak';
+    return { i: 'Pešiak', a: 'Lukostrelec', c: 'Jazdec', v: 'Veterán', r: 'Rohirim', e: 'Elf', o: 'Ork', t: 'Troll', w: 'Varg', x: 'Olifant', z: 'Nazgûl', n: 'Ent' }[u.k] || 'Vojak';
 }
 /** Výsledná tabuľka bitky: víťaz, straty podľa druhu na oboch stranách, najlepší bojovník. Pridá riadky do otvoreného okna. */
 function battleReport(win) {
@@ -70,6 +74,7 @@ function battleReport(win) {
 const temple = () => TW.some(t => t.mine && t.bd && t.bd.c);
 function hit(b, d, from) {
     const was = b.hp > 0;
+    if (from && typeof onHill === 'function' && onHill(from) && !onHill(b)) d *= 1.15;   // útok z kopca
     b.hp -= d * (b.h ? red() : !b.t && temple() ? .9 : 1);
     if (from) { from.dmg = (from.dmg || 0) + d; if (was && b.hp <= 0) from.kills = (from.kills || 0) + 1; }
     snd(b.hp <= 0 ? 'dy' : b.h ? 'sh' : Math.random() < .5 ? 'sw' : 'hb');
@@ -167,6 +172,7 @@ function endBattle(win) {
             }
             if (L.f === 9 && Math.random() < .3)
                 G.tro.push('Lúpežnícky poklad: ' + L.nm);
+            if (G.bounty && L.id === G.bounty.id) { G.gold += G.bounty.g; G.hon = (G.hon || 0) + 2; G.ren++; lg('Dedinčania ti za porážku tlupy ' + L.nm + ' dali ' + G.bounty.g + ' zlata. Česť +2.'); G.bounty = null; }   // odmena za tlupu z prosby dedinčanov
             if (L.vil)
                 L.vil.pr = Math.max(0, (L.vil.pr ?? 40) - 30);
             if (L.siege)
@@ -226,6 +232,7 @@ function endBattle(win) {
                 G.elf = Math.max(0, G.elf - U.filter(u => !u.t && u.k === 'e' && u.hp <= 0).length);
                 G.roh = Math.max(0, G.roh - U.filter(u => !u.t && u.k === 'r' && u.hp <= 0).length);
                 G.cav = Math.max(0, G.cav - dC);
+                if (G.ent) G.ent = Math.max(0, G.ent - U.filter(u => !u.t && u.k === 'n' && u.hp <= 0).length);
                 G.gold += loot;
                 G.ren++;
                 G.xp += Math.round(LB.n * 5 * (G.twise ? 1.1 : 1));
@@ -262,7 +269,7 @@ function endBattle(win) {
                     L.al.rl = (L.al.rl || 0) + 15;
                 }
                 if (L.nm && !L.siege) {
-                    btn('Zajať veliteľa ' + L.nm, () => { G.pri.push(L.nm); rl(G.fac, L.f, -5); ov.classList.add('hide'); mode = 'map'; upd(); });
+                    btn('Zajať veliteľa ' + L.nm + ' (výkupné)', () => { capturePrisoner(L); ov.classList.add('hide'); mode = 'map'; upd(); }, 0, 'chain');
                     btn('Popraviť', () => { rl(G.fac, L.f, -18); ov.classList.add('hide'); mode = 'map'; });
                     btn('Prepustiť (vzťah +8)', () => { rl(G.fac, L.f, 8); G.ren++; ov.classList.add('hide'); mode = 'map'; upd(); });
                 }
@@ -270,6 +277,15 @@ function endBattle(win) {
                     rl(G.fac, L.f, -10);
                     btn('Pokračovať', () => { ov.classList.add('hide'); mode = 'map'; });
                 }
+            }
+            else if (L.nm && L.f !== 9 && !L.siege && !L.vil && !L.nz && Math.random() < .6 && typeof captureHero === 'function' && captureHero(L)) {
+                G.inf = Math.max(2, Math.floor(G.inf / 2));
+                G.cav = Math.floor(G.cav / 2);
+                G.arc = Math.floor(G.arc / 2);
+                upd();
+                show('Zajatý', L.nm + ' ťa po bitke zajal. Prebral si sa v žalári hradu ' + TW[G.captive.t].n + '. Polovica mužov padla alebo sa rozutekala; zlato ti zatiaľ nechali – budú ho chcieť ako výkupné.');
+                battleReport(false);
+                btn('Pokračovať', () => { ov.classList.add('hide'); mode = 'map'; captiveDay(); });
             }
             else {
                 G.inf = Math.max(3, Math.floor(G.inf / 2));
@@ -329,7 +345,7 @@ function updBattle(dt) {
             u.x = Math.max(10, Math.min(BW - 10, u.x));
             u.y = Math.max(20, Math.min(BH - 10, u.y));
             u.bs = u.bs || u.sp;
-            u.sp = u.bs * ((u.x > 690 && u.x < 750 && (u.y < 440 || u.y > 520)) ? .5 : 1);
+            u.sp = u.bs * (typeof fieldSlow === 'function' ? fieldSlow(u) : 1);
             if (u.h) {
                 let mx = 0, my = 0;
                 if (keys.ArrowLeft || keys.a)

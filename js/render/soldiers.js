@@ -41,6 +41,11 @@ const Soldiers = (() => {
         t: { r: 11, armor: '#4e5446', skin: 'troll', helm: 'none', weapon: 'club', big: 1 },
         w: { r: 5, beast: 'wolf' },
         x: { r: 15, beast: 'oliphant' },
+        n: { r: 13, beast: 'ent' },
+        uM3: { r: 11, armor: '#4e5446', skin: 'troll', helm: 'none', weapon: 'club', big: 1 },
+        uH3: { r: 15, beast: 'oliphant' },
+        uG3: { r: 8, armor: '#2a3a6a', skin: 'human', helm: 'winged', weapon: 'spear', shield: 'kite', mount: 'horse' },
+        uI3: { r: 8, armor: '#1a1a1e', skin: 'uruk', helm: 'none', weapon: 'axe' },
         z: { r: 10, armor: '#08080a', skin: 'none', helm: 'nazgul', weapon: 'sword', mount: 'darkhorse' },
         uG1: { r: 7, armor: '#22222a', skin: 'human', helm: 'winged', weapon: 'spear', shield: 'kite' },
         uG2: { r: 6, armor: '#3a5a32', skin: 'human', helm: 'hood', weapon: 'bow' },
@@ -648,6 +653,18 @@ const Soldiers = (() => {
     function drawBeast(c, sp, kind, frame, layer) {
         const r = sp.r, ph = frame < 4 ? frame / 4 * Math.PI * 2 : 0, atk = frame >= 4 && frame <= 6 ? [.0, .5, .2][frame - 4] : 0;
         if (kind === 'wolf') { drawMount(c, { r: r * 1.3 }, 'wolf', ph, layer); if (layer === 'base' && atk) { ell(c, r * 2.6 + atk * r, 0, r * .35, r * .3, 0, '#1a1614'); } return; }
+        if (kind === 'ent') {   // ent: kmeň zhora, koruna, dve konáre-ruky a svietiace oči
+            const sw = Math.sin(ph) * r * .3;
+            if (layer === 'base') {
+                ell(c, -r * .2, 0, r * 1.1, r * .9, 0, '#4a3a22'); ell(c, r * .5, 0, r * .6, r * .55, 0, '#5a4a2a');
+                c.strokeStyle = '#4a3a22'; c.lineWidth = r * .28; c.lineCap = 'round';
+                [-1, 1].forEach(sd => { c.beginPath(); c.moveTo(r * .3, sd * r * .5); c.quadraticCurveTo(r * 1.1 + atk * r, sd * r * 1.1 + sw * sd, r * 1.9 + atk * r * 1.4, sd * r * .7); c.stroke(); });
+                for (let k = 0; k < 7; k++) { const a = k / 7 * 6.283; ell(c, -r * .2 + Math.cos(a) * r * .7, Math.sin(a) * r * .6, r * .55, r * .45, a, k % 2 ? '#3a6a2a' : '#4a7a34'); }
+                ell(c, -r * .2, 0, r * .5, r * .42, 0, '#5a8a3a');
+                c.fillStyle = '#e8e060'; c.beginPath(); c.arc(r * .75, -r * .22, r * .09, 0, 7); c.arc(r * .75, r * .22, r * .09, 0, 7); c.fill();
+            } else { ell(c, -r * .2, 0, r * .5, r * .42, 0, '#fff'); }
+            return;
+        }
         // olifant
         const step = Math.sin(ph) * r * .25;
         if (layer === 'base') {

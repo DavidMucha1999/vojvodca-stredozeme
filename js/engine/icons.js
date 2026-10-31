@@ -73,6 +73,14 @@ const Icons = (() => {
     draw.gear = c => { c.fillStyle = steel; c.beginPath(); for (let k = 0; k < 16; k++) { const a = k * Math.PI / 8, r = k % 2 ? 6.5 : 9; c.lineTo(12 + Math.cos(a) * r, 12 + Math.sin(a) * r); } c.closePath(); c.fill(); c.fillStyle = '#2a2420'; c.beginPath(); c.arc(12, 12, 3, 0, 7); c.fill(); };
     draw.quest = draw.scroll;
     draw.camp = draw.tent;
+    draw.village = c => { c.fillStyle = '#d8c8a0'; c.fillRect(5, 11, 14, 9); c.fillStyle = '#8a5a30'; path(c, [[3, 12], [12, 4], [21, 12]], true); c.fill(); c.fillStyle = '#4a2a10'; c.fillRect(10, 14, 4, 6); c.fillStyle = '#8ab0d8'; c.fillRect(15, 13, 3, 3); c.fillStyle = steel2; c.fillRect(15, 5, 2.5, 5); };
+    draw.shield = c => { c.fillStyle = '#2a4a7a'; path(c, [[12, 3], [20, 6], [19, 14], [12, 21], [5, 14], [4, 6]], true); c.fill(); c.strokeStyle = gold; c.lineWidth = 1.5; c.stroke(); c.fillStyle = gold; c.fillRect(11, 6, 2, 12); c.fillRect(7, 10, 10, 2); shine(c, 9, 7, 2.5); };
+    draw.talk = c => { c.fillStyle = ink; c.beginPath(); c.ellipse(12, 11, 9, 7, 0, 0, 7); c.fill(); path(c, [[7, 16], [6, 21], [12, 17]], true); c.fill(); c.fillStyle = gold2; for (const x of [8, 12, 16]) { c.beginPath(); c.arc(x, 11, 1.3, 0, 7); c.fill(); } };
+    draw.flag = c => { c.fillStyle = wood; c.fillRect(5, 3, 2, 18); c.fillStyle = red; path(c, [[7, 4], [20, 7], [7, 12]], true); c.fill(); c.fillStyle = gold; c.beginPath(); c.arc(12, 8, 1.6, 0, 7); c.fill(); };
+    draw.lock = c => { c.fillStyle = gold2; c.fillRect(6, 11, 12, 9); c.strokeStyle = steel; c.lineWidth = 2.2; c.beginPath(); c.arc(12, 10, 4, Math.PI, 0); c.stroke(); c.fillStyle = '#4a2a10'; c.fillRect(11, 14, 2, 4); };
+    draw.key = c => { c.strokeStyle = gold; c.lineWidth = 2.4; c.lineCap = 'round'; c.beginPath(); c.arc(8, 9, 4, 0, 7); c.stroke(); c.beginPath(); c.moveTo(11, 11); c.lineTo(20, 20); c.moveTo(17, 17); c.lineTo(15, 19); c.moveTo(19, 19); c.lineTo(17, 21); c.stroke(); };
+    draw.tree = c => { c.fillStyle = wood; c.fillRect(10.5, 14, 3, 7); c.fillStyle = '#3a7a3a'; path(c, [[12, 2], [20, 11], [4, 11]], true); c.fill(); path(c, [[12, 7], [21, 17], [3, 17]], true); c.fill(); };
+    draw.mountain = c => { c.fillStyle = steel2; path(c, [[2, 20], [9, 6], [14, 13], [17, 9], [22, 20]], true); c.fill(); c.fillStyle = ink; path(c, [[9, 6], [11, 10], [7, 10]], true); c.fill(); path(c, [[17, 9], [18.5, 12], [15.5, 12]], true); c.fill(); };
 
     /** Kľúč textúry ikony name (nakreslí ju pri prvom použití). */
     /** Plátno s ikonou name (96 × 96 px). */

@@ -18,6 +18,8 @@ with sync_playwright() as p:
     pg.route('**/fonts.googleapis.com/**', lambda r: r.abort())
     shot = lambda n: pg.screenshot(path=os.path.join(SHOTS, n + '.png'))
     pg.goto('file://' + os.path.join(ROOT, 'Vojvodca Stredozeme.html')); pg.wait_for_timeout(4000)
+    try: pg.wait_for_function("typeof game !== 'undefined' && game.scene.getScenes(true).some(s => s.sys.settings.key === 'Intro')", timeout=30000)
+    except Exception: pass
     E = pg.evaluate
     active = lambda: E("game.scene.getScenes(true).map(s => s.sys.settings.key).join(',')")
     check('Phaser načítaný', E("typeof Phaser !== 'undefined' && Phaser.VERSION"), E("Phaser.VERSION"))

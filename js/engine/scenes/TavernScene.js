@@ -92,7 +92,7 @@ class TavernScene extends RoomScene {
         // postavy
         this.people = [];
         this.spawn(t, th, HZ);
-        this.setupRoom({ mode: 'tavern', floorY: 290, title: (th === 'evil' ? 'Brloh v ' : th === 'elf' ? 'Sieň v ' : 'Krčma v ') + t.n, leave: 'Odísť z krčmy', spawn: [W / 2, H - 40],
+        this.setupRoom({ mode: 'tavern', floorY: 290, amb: th === 'evil' ? 'tavernEvil' : th === 'elf' ? 'elf' : 'tavern', floorSnd: th === 'dwarf' || th === 'evil' || th === 'elf' ? 'stone' : 'wood', title: (th === 'evil' ? 'Brloh v ' : th === 'elf' ? 'Sieň v ' : 'Krčma v ') + t.n, leave: 'Odísť z krčmy', spawn: [W / 2, H - 40],
             block: [[this.barX - 6, HZ + 34, 192, 66]] });
     }
 
