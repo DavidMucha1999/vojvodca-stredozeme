@@ -12,6 +12,7 @@ class IntroScene extends Phaser.Scene {
         if (this.textures.exists('intro')) this.textures.remove('intro');
         this.tex = this.textures.addCanvas('intro', c);
         this.add.image(0, 0, 'intro').setOrigin(0);
+        setTimeout(() => { if (!Art.loaded.battle && !Art.loading.battle) Art.loadTextures(this, 'battle'); }, 400);   // bojisko a vojaci sa dočítajú na pozadí počas úvodu
     }
 
     update() {

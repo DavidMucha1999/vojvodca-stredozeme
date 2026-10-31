@@ -29,11 +29,10 @@ class BootScene extends Phaser.Scene {
         const ends = [.1, .7, .78, .88, 1];
         steps.reduce((acc, [name, fn], i) => acc.then(() => { this.step = name; return fn().then(() => { this.target = ends[i]; }); }), Promise.resolve()).then(() => {
             this.step = 'Brána sa otvára…'; this.target = 1;
-            const go = () => { if (this.prog < .985) return this.time.delayedCall(60, go); this.time.delayedCall(250, () => {
+            const go = () => { if (this.prog < .97 && this.scene.isActive()) return this.time.delayedCall(60, go); this.time.delayedCall(150, () => {
                 ov.classList.remove('hide');
                 this.scene.launch('UI');
                 this.scene.start('Intro');
-                Art.loadTextures(this.scene.get('UI'), 'battle');   // bojisko a vojaci sa dočítajú na pozadí počas úvodu
             }); };
             go();
         });
@@ -58,7 +57,7 @@ class BootScene extends Phaser.Scene {
 
     update(time, delta) {
         this.t += delta / 1000;
-        this.prog += (this.target - this.prog) * Math.min(1, delta / 180);
+        this.prog += (this.target - this.prog) * .3;   // po snímkach, nie podľa času – na pomalom stroji Phaser skracuje delta
         const S = RES, cx = W * S / 2, cy = H * S / 2 - 30 * S, t = this.t;
         // Prsteň: zlatý prstenec s odleskom a ohnivým písmom, ktoré sa posúva po obvode
         const g = this.ring; g.clear();

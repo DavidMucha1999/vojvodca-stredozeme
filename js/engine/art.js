@@ -100,8 +100,8 @@ const Art = {
             img.src = T[key];
         });
         // po menších dávkach, aby prehliadač medzitým stihol prekresliť priebeh
-        const batches = []; for (let i = 0; i < keys.length; i += 6) batches.push(keys.slice(i, i + 6));
-        const p = batches.reduce((acc, b) => acc.then(() => Promise.all(b.map(one))), Promise.resolve());
+        const batches = []; for (let i = 0; i < keys.length; i += group === 'battle' ? 2 : 6) batches.push(keys.slice(i, i + (group === 'battle' ? 2 : 6)));
+        const p = batches.reduce((acc, b) => acc.then(() => Promise.all(b.map(one))).then(() => new Promise(r => setTimeout(r, group === 'battle' ? 30 : 0))), Promise.resolve());   // medzi dávkami sa pustí k slovu vykresľovanie
         if (group) Art.loading[group] = p.then(() => { Art.loaded[group] = 1; });
         return group ? Art.loading[group] : p;
     },
@@ -131,6 +131,18 @@ const Art = {
             c.globalCompositeOperation = 'destination-in'; c.drawImage(team, 0, 0);
             o.drawImage(t, 0, 0);
         }
+        // objem: svetlo zhora zľava a tieň zdola sprava na každej snímke (zbroj prestane byť plochá), jemný odlesk kovu
+        const fw = base.height, n = Math.max(1, Math.round(base.width / fw));
+        o.globalCompositeOperation = 'source-atop';
+        for (let i = 0; i < n; i++) {
+            const x0 = i * fw, gr = o.createLinearGradient(x0 + fw * .25, fw * .2, x0 + fw * .8, fw * .85);
+            gr.addColorStop(0, 'rgba(255,255,255,.2)'); gr.addColorStop(.45, 'rgba(255,255,255,0)'); gr.addColorStop(.6, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,.32)');
+            o.fillStyle = gr; o.fillRect(x0, 0, fw, fw);
+            const rg = o.createRadialGradient(x0 + fw * .42, fw * .4, 2, x0 + fw * .42, fw * .4, fw * .22);
+            rg.addColorStop(0, 'rgba(255,255,255,.14)'); rg.addColorStop(1, 'rgba(255,255,255,0)');
+            o.fillStyle = rg; o.fillRect(x0, 0, fw, fw);
+        }
+        o.globalCompositeOperation = 'source-over';
         return out;
     },
 

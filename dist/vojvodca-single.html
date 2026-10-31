@@ -193,9 +193,14 @@ const FU = {
     uN1: { n: 'Easterlingský kopijník', f: 7, p: 45, b: 'i', hp: 45, d: 7, sp: 1.2, r: 7, col: '#6a2a4a', hel: '#d0a040', wp: 'sp' },
     uN2: { n: 'Jazdec z Rhûnu', f: 7, p: 85, b: 'c', hp: 55, d: 8, sp: 2, r: 9, col: '#5a1f4a', hel: '#c09030', wp: 'sp' },
     elf: { n: 'Galadhrimský lukostrelec', f: 8, p: 60 },
-    uL2: { n: 'Elfský šermiar', f: 8, p: 80, b: 'i', hp: 50, d: 10, sp: 1.4, r: 7, col: '#5a7a5a', hel: '#e8d870', wp: 'sw' }
+    uL2: { n: 'Elfský šermiar', f: 8, p: 80, b: 'i', hp: 50, d: 10, sp: 1.4, r: 7, col: '#5a7a5a', hel: '#e8d870', wp: 'sw' },
+    // ťažké jednotky z miest: jaskynný troll (Mordor), mûmak (Harad), rytier labute (Gondor), berserker (Isengard)
+    uM3: { n: 'Jaskynný troll', f: 2, p: 240, b: 't', hp: 170, d: 18, sp: .85, r: 11, col: '#4e5446', hel: '#1a1a1a', wp: 'ax', heavy: 1 },
+    uH3: { n: 'Mûmak s vežou', f: 4, p: 420, b: 'x', hp: 320, d: 26, sp: .7, r: 15, col: '#7a7670', hel: '#d0a050', wp: 'sp', heavy: 1 },
+    uG3: { n: 'Rytier Dol Amrothu', f: 0, p: 150, b: 'c', hp: 75, d: 11, sp: 1.9, r: 8, col: '#2a3a6a', hel: '#c8ccd4', wp: 'sp', heavy: 1 },
+    uI3: { n: 'Uruk berserker', f: 3, p: 130, b: 'i', hp: 90, d: 14, sp: 1.3, r: 8, col: '#1a1a1e', hel: '#e8e8e8', wp: 'sw', heavy: 1 }
 };
-const FK = [['uG1', 'uG2'], ['roh', 'uR2'], ['uM1', 'uM2'], ['uI1', 'uI2'], ['uH1', 'uH2'], ['uE1', 'uE2'], [], ['uN1', 'uN2'], ['elf', 'uL2']];
+const FK = [['uG1', 'uG2', 'uG3'], ['roh', 'uR2'], ['uM1', 'uM2', 'uM3'], ['uI1', 'uI2', 'uI3'], ['uH1', 'uH2', 'uH3'], ['uE1', 'uE2'], [], ['uN1', 'uN2'], ['elf', 'uL2']];
 
 </script>
 <script>
@@ -676,14 +681,20 @@ function spawnE() {
 }
 function spawnX() {
     const r = Math.random;
-    if (E.filter(e => e.f === 9).length < 10) {
+    // tlupy bez pána: lupiči, orkské tlupy (viac v Mordore a pri Isengarde), vargovia na severe a v horách, dezertéri po vojne
+    const bands = E.filter(e => e.f === 9);
+    for (let b = 0; b < 2 && bands.length + b < 14; b++) {
         let x, y, k = 0;
         do {
             x = 200 + r() * (WW - 400);
             y = 200 + r() * (WH - 400);
             k++;
         } while ((TW.some(t => Math.hypot(t.x - x, t.y - y) < 300) || Math.hypot(G.x - x, G.y - y) < 500) && k < 30);
-        E.push({ id: ++NID, x, y, f: 9, n: 4 + Math.floor(r() * 6 + G.day / 4), vx: 0, vy: 0, w: 0, nm: BN[Math.floor(r() * BN.length)] });
+        const reg = typeof regionAt === 'function' ? regionAt(x, y) : 'g', q = r();
+        const kind = reg === 'a' || reg === 'd' ? (q < .7 ? 'orcs' : 'wolves') : reg === 's' ? (q < .5 ? 'wolves' : 'bandit') : q < .55 ? 'bandit' : q < .75 ? 'orcs' : q < .9 ? 'deserters' : 'wolves';
+        const n = (kind === 'orcs' ? 6 : kind === 'wolves' ? 5 : 4) + Math.floor(r() * 6 + G.day / 4);
+        const nm = kind === 'orcs' ? ['Orkská tlupa', 'Lúpežní orkovia', 'Gundabadskí orkovia', 'Orkovia z hôr'][Math.floor(r() * 4)] : kind === 'wolves' ? ['Vargovia', 'Vlčia svorka', 'Vargovia z Hmlistých hôr'][Math.floor(r() * 3)] : kind === 'deserters' ? ['Dezertéri', 'Zbehovia', 'Žoldnieri bez pána'][Math.floor(r() * 3)] : BN[Math.floor(r() * BN.length)];
+        E.push({ id: ++NID, x, y, f: 9, kind, n, vx: 0, vy: 0, w: 0, nm });
     }
     if (G.day >= 4 && E.filter(e => e.nz).length < 2) {
         const t = TW.find(t => t.f === 2);
@@ -745,6 +756,7 @@ function worldTick(dt) {
         G.x += dx / d * v * dt;
         G.y += dy / d * v * dt;
         G.f = Math.atan2(dy, dx);
+        if (typeof travelTick === 'function' && travelTick(dt)) return;   // udalosť na ceste otvorila okno
     }
     else if (G.dest >= 0)
         town(G.dest);
@@ -800,7 +812,7 @@ function worldTick(dt) {
         TW.forEach(t => {
             t.g = Math.min(20 + (t.wl || 0) * 10, t.g + 1 + (t.wl || 0));
             if (t.mine)
-                G.gold += G.king ? 20 : 10;
+                G.gold += Math.round((G.king ? 20 : 10) * (typeof taxMul === 'function' ? taxMul() * fiefShare(t) : 1));
         });
         {
             const a = [0, 1, 2, 3, 4, 5, 7, 8], x = a[Math.floor(Math.random() * 8)], y = a[Math.floor(Math.random() * 8)];
@@ -860,8 +872,18 @@ function worldTick(dt) {
                 }
             }
         if (!tg) {
-            if (e.f === 9 || e.nz || e.home == null || !TW[e.home]) {
-                // banditi, nazgûli a lordi bez domova: blúdia medzi hradmi ako doteraz
+            if (e.f === 9 && VL.length) {
+                // tlupy: potulujú sa medzi dedinami v okolí (do 250 jednotiek), číhajú pri cestách; vargovia sa držia lesov a hôr
+                if (e.vi == null || !VL[e.vi] || Math.hypot(VL[e.vi].x - e.x, VL[e.vi].y - e.y) < 60 * K * .3) {
+                    const near = VL.map((v, i) => i).filter(i => Math.hypot(VL[i].x - e.x, VL[i].y - e.y) < 250 * K);
+                    e.vi = near.length ? near[Math.floor(Math.random() * near.length)] : Math.floor(Math.random() * VL.length);
+                    if (e.wait == null) e.wait = 0;
+                }
+                if (e.wait > 0) { e.wait -= dt; stopHere = true; tg = { x: e.x, y: e.y }; }
+                else { const v = VL[e.vi]; tg = { x: v.x + 30 * K * .3, y: v.y + 20 * K * .3 }; if (Math.hypot(tg.x - e.x, tg.y - e.y) < 15) e.wait = 200 + Math.random() * 400; }
+            }
+            else if (e.f === 9 || e.nz || e.home == null || !TW[e.home]) {
+                // nazgûli a lordi bez domova: blúdia medzi hradmi ako doteraz
                 if (e.ti == null)
                     e.ti = Math.floor(Math.random() * TW.length);
                 let t = TW[e.ti];
@@ -919,7 +941,7 @@ function worldTick(dt) {
                             const def = t.g + 4 + (t.wl || 0) * 8 + E.filter(o => o.f === t.f && !o.dead && Math.hypot(o.x - t.x, o.y - t.y) < 15 * K).reduce((s, o) => s + o.n, 0);
                             if (att > def) {
                                 const oldF = t.f;
-                                captureEvent(t, oldF, e.f, e.nm); mst(e.f).wins++;
+                                captureEvent(t, oldF, e.f, e.nm); mst(e.f).wins++; if (typeof courtEvent === 'function') { courtEvent(e.f, 'won'); courtEvent(oldF, 'lost'); }
                                 if (G.join && G.join.ci === ci && Math.hypot(G.x - t.x, G.y - t.y) < 40 * K) { G.ren += 3; G.gold += 60; e.rl = (e.rl || 0) + 6; lg('Za účasť na ťažení si dostal podiel na koristi (60 zlata) a slávu.'); G.join = null; }
                                 t.lord = 0; e.n = Math.max(3, e.n - t.g * .5); t.f = e.f; t.g = 5; t.mine = 0; t.wl = 0;
                                 E.filter(o => o.home === ci && o.f !== e.f).forEach(o => { o.n = Math.max(2, o.n * .5); o.home = null; });
@@ -988,15 +1010,18 @@ const castleIncome = t => lvl(t) * 4 + (G.king ? 20 : 10) + (t.bd && t.bd.m ? 10
 const BUILDINGS = [['m', 'Mlyn (+10 zlata denne)', 200], ['k', 'Kasárne (+1 pešiak denne)', 250], ['v', 'Strážna veža (+8 obrancov)', 180],
     ['s', 'Kováčska dielňa (výbava o 20 % lacnejšia)', 300], ['j', 'Stajňa (kone o 25 % lacnejšie, +1 jazdec za 3 dni)', 320], ['c', 'Chrám (tvoji vojaci sú v bitke pevnejší)', 260], ['t', 'Trhovisko (viac tovaru, +prosperita, +zlato)', 280]];
 function daily2() {
-    TW.forEach(t => { t.pr = Math.min(100, (t.pr ?? 40) + 1 + (t.bd && t.bd.m ? 1 : 0) + (t.bd && t.bd.t ? 1 : 0)); if (t.mine)
-        G.gold += lvl(t) * 4 + (t.bd && t.bd.t ? lvl(t) * 2 : 0); });
+    TW.forEach(t => { t.pr = Math.min(100, (t.pr ?? 40) + 1 + (t.bd && t.bd.m ? 1 : 0) + (t.bd && t.bd.t ? 1 : 0) + (t.mine && typeof taxPr === 'function' ? taxPr() : 0)); if (t.mine)
+        G.gold += Math.round((lvl(t) * 4 + (t.bd && t.bd.t ? lvl(t) * 2 : 0)) * (typeof taxMul === 'function' ? taxMul() * fiefShare(t) : 1)); });
+    if ((G.tax || 'normal') === 'high') E.forEach(e => { if (e.f === G.fac && e.vas && e.loy != null) e.loy = Math.max(0, e.loy - .1); });
     if (G.camp && G.stay) G.hp = Math.min(mh(), G.hp + 25);   // pobyt v hrade: rýchlejšie hojenie
     dailyTrade();
     dailyWeather();
     compDaily();
+    if (typeof prisonersDaily === 'function') prisonersDaily();
+    if (typeof courtDaily === 'function') courtDaily();
     if (mode === 'map' && save('auto')) TS = TS && TS.l > 0 ? TS : { s: 'Hra automaticky uložená (deň ' + G.day + ').', l: 150 };
     if (G.comp && G.comp.length && Math.random() < .5) { const c = compDef(G.comp[Math.floor(Math.random() * G.comp.length)]); if (c) TS = { s: c.n + ': „' + compLine(c) + '“', l: 320 }; }
-    VL.forEach(v => { v.pr = Math.max(0, Math.min(100, (v.pr ?? 40) + (v.st > 0 ? -2 : 1))); if (TW[v.t].mine)
+    VL.forEach(v => { v.pr = Math.max(0, Math.min(100, (v.pr ?? 40) + (v.st > 0 ? -2 : 1) + (TW[v.t].mine && typeof taxPr === 'function' ? taxPr() : 0))); if (TW[v.t].mine)
         G.gold += lvl(v) * 2; });
     if (G.ring === 1) {
         G.cor = Math.min(100, (G.cor || 0) + 2);
@@ -1093,7 +1118,7 @@ function dailyEcho() {
 }
 function updMap(dt) {
     const idle = Math.hypot(G.tx - G.x, G.ty - G.y) <= 3 && G.dest < 0 && !(G.vd >= 0) && !G.chase && !G.talk && !G.qd;
-    if (idle && !G.camp) {
+    if (idle && !G.camp && !G.captive) {
         PAUSE = 1;
         return;
     }
@@ -1105,6 +1130,7 @@ function updMap(dt) {
         if (G.day !== d)
             daily2();
         if (LETTERS.length && mode === 'map' && ov.classList.contains('hide')) readLetter();
+        if (G.captive && mode === 'map' && ov.classList.contains('hide') && !(G.capShown === G.day)) { G.capShown = G.day; captiveDay(); }
         const dd = Math.hypot(G.x - DOOM.x, G.y - DOOM.y);
         if (G.ring === 1 && mode === 'map' && dd < 180 && !G.rp) {
             G.rp = 1;
@@ -1153,6 +1179,7 @@ function electMarshal(f, why) {
         const txt = (why === 'overthrow' ? 'Lordi ' + FN[f] + ' zvrhli maršala ' + (old ? old.nm : '?') + ' a zvolili ' : 'Lordi ' + FN[f] + ' zvolili za maršala vojska ') + m.nm + '.';
         lg(txt);
         if (f === G.fac || (G.fac === 6 && !hos(f, G.fac) && bloc(f) === heroSide())) TS = { s: txt, l: 320 };
+        if (why === 'overthrow' && typeof courtEvent === 'function') courtEvent(f, 'overthrow');
     }
     return m;
 }
@@ -1173,7 +1200,7 @@ function onMuster(m, ci) {
     E.forEach(e => {
         if (e === m || e.f !== m.f || e.dead || e.role !== 'army') return;
         per(e);
-        const p = e.tr === 2 ? .4 : e.tr === 3 ? .65 : .85;         // zbabelý váha, ambiciózny nerád slúži inému
+        const p = (e.tr === 2 ? .4 : e.tr === 3 ? .65 : .85) * (lr(e, m) < -3 ? .3 : 1);         // zbabelý váha, ambiciózny nerád slúži inému, lord v spore s maršalom neprichádza
         e.muSkip = Math.random() < p ? null : ci;
     });
     if (m.f === G.fac || (G.fac === 6 && G.side != null && bloc(m.f) === G.side && !hos(m.f, G.fac) && TW.some(x => x.f === 6))) {
@@ -1187,6 +1214,8 @@ function musterPoint(m, t) { const own = TW.filter(x => x.f === m.f); return own
 function readLetter() {
     const L = LETTERS.shift();
     if (!L) return;
+    if (L.kind === 'ransom') return ransomLetter(L);
+    if (L.kind === 'court') return courtLetter(L);
     const m = E.find(e => e.id === L.mid);
     mode = 'town';
     if (m) PORTRAIT = Portraits.forLord(m);
@@ -1198,6 +1227,163 @@ function readLetter() {
 function captureEvent(t, oldF, newF, who) {
     EVENTS.push({ t: t.n, oldF, newF, who, l: 420 });
     lg(FN[newF] + ' (' + who + ') dobyl hrad ' + t.n + ', ktorý patril ' + FN[oldF] + '.');
+}
+
+</script>
+<script>
+/*
+ * Zajatci a výkupné.
+ * G.pri = zajatí velitelia [{ nm, f, n, kr, day, id }] (staré uloženia mali len mená – prevedie ich priMigrate).
+ * Zajatý lord zmizne z mapy; jeho frakcia po pár dňoch pošle list s ponukou výkupného (LETTERS, kind 'ransom'),
+ * zajatca možno aj prepustiť (česť, vzťah) alebo vydať svojmu kráľovi (sláva, priazeň). Zajatci občas utečú.
+ * Hráč môže byť po porážke od lorda sám zajatý (G.captive): sedí v hrade víťaza, každý deň sa môže pokúsiť o útek,
+ * zaplatiť výkupné alebo čakať; po 6 dňoch ho prepustia.
+ */
+const priMigrate = () => { G.pri = (G.pri || []).map(p => typeof p === 'string' ? { nm: p, f: 9, n: 6, day: G.day } : p); };
+const ransomOf = p => 60 + Math.round((p.n || 6) * 7) + (p.kr ? 400 : 0) + (p.f === 9 ? -40 : 0);
+/** Zajatie porazeného veliteľa L (po bitke). */
+function capturePrisoner(L) {
+    priMigrate();
+    G.pri.push({ nm: L.nm, f: L.f, n: Math.round(L.n0 || L.n || 6), kr: !!L.kr, day: G.day, id: L.id, home: L.home });
+    if (L.f !== 9) rl(G.fac, L.f, -5);
+    lg('Zajal si veliteľa ' + L.nm + (L.f !== 9 ? ' (' + FN[L.f] + ')' : '') + '. Výkupné by mohlo byť okolo ' + ransomOf(G.pri[G.pri.length - 1]) + ' zlata.');
+    G.ren += L.kr ? 3 : 1;
+}
+/** Prepustenie zajatca p (index) – späť na mapu k domovskému hradu. */
+function releasePrisoner(i, how) {
+    const p = G.pri.splice(i, 1)[0];
+    if (!p) return;
+    if (p.f !== 9) {
+        const home = TW.find(t => t.f === p.f) || TW[0];
+        E.push({ id: ++NID, x: home.x + 20, y: home.y + 30, f: p.f, n: 4 + Math.floor(Math.random() * 4), vx: 0, vy: 0, w: 0, nm: p.nm, kr: p.kr, home: TW.indexOf(home), role: 'army', rl: how === 'free' ? 12 : 0 });
+    }
+    if (how === 'free') { G.hon = (G.hon || 0) + 3; if (p.f !== 9) rl(G.fac, p.f, 6); lg('Prepustil si ' + p.nm + ' bez výkupného. Česť +3.'); }
+    if (how === 'ransom') lg(p.nm + ' bol vykúpený a vracia sa domov.');
+    if (how === 'escape') lg(p.nm + ' utiekol zo zajatia!');
+}
+/** Denná kontrola: ponuky výkupného listom, úteky, zajatie hráča. */
+function prisonersDaily() {
+    priMigrate();
+    G.pri.forEach((p, i) => {
+        if (p.f !== 9 && G.day - p.day >= 2 && !p.offered && Math.random() < .4) {
+            p.offered = G.day; const g = ransomOf(p);
+            LETTERS.push({ kind: 'ransom', from: FN[p.f], f: p.f, day: G.day, pri: p.nm, gold: g, text: (p.kr ? 'My, dvor ' : 'Lordi ') + FN[p.f] + ', sme sa dozvedeli, že držíš v zajatí ' + (p.kr ? 'nášho panovníka ' : 'nášho lorda ') + p.nm + '. Ponúkame ti za jeho slobodu ' + g + ' zlata. Odpovedz po poslovi.' });
+        }
+    });
+    for (let i = G.pri.length - 1; i >= 0; i--) if (Math.random() < .03 + (G.inf < 5 ? .05 : 0)) releasePrisoner(i, 'escape');
+    if (G.captive) captiveDay();
+}
+/** Odpoveď na list s ponukou výkupného. */
+function ransomLetter(L) {
+    const i = G.pri.findIndex(p => p.nm === L.pri);
+    mode = 'town';
+    show('List od ' + L.from + ': výkupné', '„' + L.text + '“' + (i < 0 ? ' (Zajatec už u teba nie je.)' : ''));
+    btn('Prijať výkupné (' + L.gold + ' zlata)', () => { G.gold += L.gold; if (G.pri[i].f !== 9) rl(G.fac, G.pri[i].f, 3); releasePrisoner(i, 'ransom'); upd(); ov.classList.add('hide'); mode = 'map'; }, i < 0, 'coins');
+    btn('Žiadať dvojnásobok (šanca 40 %)', () => { if (Math.random() < .4) { G.gold += L.gold * 2; releasePrisoner(i, 'ransom'); lg('Zaplatili dvojnásobok.'); } else { rl(G.fac, G.pri[i].f, -4); if (G.pri[i]) G.pri[i].offered = null; lg('Odmietli platiť viac. Zajatec ostáva u teba.'); } upd(); ov.classList.add('hide'); mode = 'map'; }, i < 0, 'scales');
+    btn('Odmietnuť', () => { if (i >= 0) { rl(G.fac, G.pri[i].f, -3); G.pri[i].offered = null; } ov.classList.add('hide'); mode = 'map'; }, 0, 'back');
+}
+/** Okno zajatcov v hrade (karta „Vojsko, zajatci a odpočinok“). */
+function prisonersMenu(back) {
+    priMigrate();
+    mode = 'town';
+    const own = TW.some(t => t.mine);
+    show('Zajatí velitelia', G.pri.length ? 'Držíš ' + G.pri.length + ' zajatých veliteľov. Ich frakcie ti pošlú ponuku výkupného; v hrade ich možno predať do väzenia za nižšiu sumu, vydať panovníkovi alebo prepustiť.' : 'Nikoho nedržíš v zajatí. Veliteľa zajmeš po víťaznej bitke.');
+    G.pri.forEach((p, i) => {
+        rowHead(p.nm + (p.kr ? ' (panovník)' : '') + ' · ' + FN[p.f] + ' · zajatý deň ' + p.day + ' · výkupné ~' + ransomOf(p));
+        btn('Predať do väzenia (' + Math.round(ransomOf(p) * .6) + ')', () => { G.gold += Math.round(ransomOf(p) * .6); G.pri.splice(i, 1); lg(p.nm + ' skončil vo väzení.'); upd(); prisonersMenu(back); }, 0, 'coins');
+        if (G.fac !== 6 && !G.king) btn('Vydať panovníkovi (sláva +2, priazeň)', () => { G.pri.splice(i, 1); G.ren += 2; E.forEach(e => { if (e.f === G.fac && e.kr) e.rl = (e.rl || 0) + 8; }); lg('Vydal si ' + p.nm + ' svojmu panovníkovi.'); upd(); prisonersMenu(back); }, 0, 'crown');
+        btn('Prepustiť (česť +3, vzťah +6)', () => { releasePrisoner(i, 'free'); upd(); prisonersMenu(back); }, 0, 'door');
+    });
+    btn('Späť', back, 0, 'back');
+}
+/* ---------- zajatie hráča ---------- */
+/** Po porážke od lorda: hráč je zajatý v najbližšom hrade víťazovej frakcie. */
+function captureHero(L) {
+    const ts = TW.filter(t => t.f === L.f), t = ts.length ? ts.reduce((b, x) => Math.hypot(x.x - G.x, x.y - G.y) < Math.hypot(b.x - G.x, b.y - G.y) ? x : b) : null;
+    if (!t) return false;
+    G.captive = { t: TW.indexOf(t), f: L.f, by: L.nm, day: G.day, tries: 0 }; G.safe = 1e9;
+    G.x = G.tx = t.x; G.y = G.ty = t.y + 30; G.dest = -1; G.chase = null; G.hp = Math.max(20, Math.floor(mh() * .4));
+    lg(L.nm + ' ťa zajal a odviedol do hradu ' + t.n + '.');
+    return true;
+}
+/** Každý deň v zajatí: okno s voľbami. */
+function captiveDay() {
+    const C = G.captive; if (!C) return;
+    const t = TW[C.t], days = G.day - C.day, ransom = Math.max(50, Math.round(G.gold * .3) + 40);
+    mode = 'town'; G.tx = G.x; G.ty = G.y;
+    if (days >= 6 || t.f !== C.f) { G.captive = null; G.safe = 200; mode = 'map'; msg(t.f !== C.f ? 'Hrad ' + t.n + ' padol a v zmätku ťa stráže pustili.' : 'Po šiestich dňoch ťa ' + C.by + ' prepustil – žalár je drahý a ty si už nikoho nezaujímal.', () => { ov.classList.add('hide'); mode = 'map'; }); return; }
+    show('V zajatí: ' + t.n, 'Sedíš v žalári hradu ' + t.n + ' (' + FN[C.f] + ') už ' + days + '. deň. Zajal ťa ' + C.by + '. Družina čaká pred hradbami; vojaci sa pomaly rozchádzajú.');
+    const esc = .22 + G.s.ob * .05 + (G.trait === 'cunning' ? .15 : 0);
+    btn('Pokúsiť sa o útek (šanca ' + Math.round(esc * 100) + ' %)', () => { C.tries++; if (Math.random() < esc) { G.captive = null; G.safe = 200; G.y += 60; G.ty = G.y; G.ren++; lg('Utiekol si zo žalára v ' + t.n + '!'); msg('V noci si podplatil strážcu – alebo mu len rozbil hlavu – a preplazil sa kanálom von. Sláva +1.', () => { ov.classList.add('hide'); mode = 'map'; }); } else { G.hp = Math.max(10, G.hp - 10); G.inf = Math.max(0, G.inf - 1); dayT = 600; msg('Chytili ťa pri stene. Bitka a tmavšia diera. Zdravie −10, jeden vojak dezertoval.', () => { ov.classList.add('hide'); mode = 'map'; }); } }, 0, 'key');
+    btn('Zaplatiť výkupné (' + ransom + ' zlata)', () => { G.gold -= ransom; G.captive = null; G.safe = 200; G.y += 60; G.ty = G.y; lg('Vykúpil si sa zo zajatia za ' + ransom + ' zlata.'); upd(); msg('Mešec zmizol v rukách kastelána a brána sa otvorila.', () => { ov.classList.add('hide'); mode = 'map'; }); }, G.gold < ransom, 'coins');
+    btn('Čakať (deň plynie)', () => { dayT = 600; G.inf = Math.max(0, G.inf - 1); ov.classList.add('hide'); mode = 'map'; }, 0, 'rest');
+}
+
+</script>
+<script>
+/*
+ * Dvor a vzťahy lordov.
+ * Lordi majú vzťahy medzi sebou (LRL cez lr(a, b): priateľ > 8, spor < −3) a vernosť svojmu pánovi e.loy (0–30):
+ * klesá po stratených hradoch, zvrhnutom maršalovi a pri sporoch s maršalom, rastie po víťazstvách a hostinách.
+ * Lord v spore s maršalom odmieta jeho zvolanie; nespokojný lord (loy < 4), ktorý má hráča rád, ponúkne prestup listom
+ * (LETTERS kind 'court'). Hostina na vlastnom hrade zlepší vzťahy a vernosť, dar urovná spor dvoch lordov.
+ * Okno dvora: court(i) – zoznam lordov frakcie so vzťahmi, spormi a vernosťou.
+ */
+const loyOf = e => { if (e.loy == null) { per(e); e.loy = 12 + (e.tr === 0 ? 8 : e.tr === 3 ? -4 : e.tr === 1 ? -2 : 0) + (e.kr ? 20 : 0); } return e.loy; };
+const friends = e => E.filter(o => o !== e && !o.dead && o.f === e.f && !o.nz && lr(e, o) > 8);
+const foes = e => E.filter(o => o !== e && !o.dead && o.f === e.f && !o.nz && lr(e, o) < -3);
+const setLr = (a, b, v) => { LRL[a.id + '-' + b.id] = v; LRL[b.id + '-' + a.id] = v; };
+/** Denné zmeny vernosti a ponuky prestupu. */
+function courtDaily() {
+    E.forEach(e => {
+        if (e.nz || e.f === 9 || e.dead) return;
+        loyOf(e);
+        const m = MAR[e.f] != null ? E.find(o => o.id === MAR[e.f]) : null;
+        if (m && m !== e && lr(e, m) < -3 && Math.random() < .3) e.loy -= .3;        // slúži maršalovi, ktorého nenávidí
+        if (e.f === G.fac && G.king) e.loy += .1;                                       // vlastný kráľ platí a chváli
+        e.loy = Math.max(0, Math.min(30, e.loy + (Math.random() < .2 ? .2 : 0)));
+        // nespokojný lord cudzej frakcie, ktorý má hráča rád, ponúkne služby (ak hráč velí vlastnej frakcii alebo je kráľ)
+        if (e.f !== G.fac && e.loy < 4 && (e.rl || 0) > 12 && !e.kr && Math.random() < .08 && (G.king || G.fac === 6 && TW.some(t => t.mine)) && !LETTERS.some(L => L.kind === 'court' && L.eid === e.id)) {
+            LETTERS.push({ kind: 'court', eid: e.id, from: e.nm, f: e.f, day: G.day, text: 'Pane, môj kráľ ma ponižuje a moje služby si neváži. Dlho som ťa sledoval. Ak ma prijmeš do svojich služieb, prídem aj so svojimi mužmi.' });
+        }
+    });
+}
+/** Straty a výhry frakcie: vernosť lordov. */
+function courtEvent(f, kind) { E.forEach(e => { if (e.f === f && !e.nz) { loyOf(e); e.loy = Math.max(0, Math.min(30, e.loy + (kind === 'lost' ? -2 : kind === 'won' ? 1.5 : kind === 'overthrow' ? -1 : 0))); } }); }
+/** List s ponukou prestupu. */
+function courtLetter(L) {
+    const e = E.find(o => o.id === L.eid && !o.dead);
+    mode = 'town';
+    if (e) PORTRAIT = Portraits.forLord(e);
+    show('List od lorda ' + L.from, '„' + L.text + '“' + (e ? ' (' + e.nm + ', ' + FN[e.f] + ', ' + Math.ceil(e.n) + ' mužov, vernosť pánovi ' + Math.round(loyOf(e)) + ')' : ' (Lord medzitým padol.)'));
+    btn('Prijať do služieb', () => { if (e) { const o = e.f; e.f = G.fac; e.loy = 20; e.rl = (e.rl || 0) + 10; e.home = TW.findIndex(t => t.mine) >= 0 ? TW.findIndex(t => t.mine) : e.home; rl(G.fac, o, -8); lg(e.nm + ' prešiel do tvojich služieb.'); if (typeof assignRoles === 'function') assignRoles(G.fac); } ov.classList.add('hide'); mode = 'map'; }, !e, 'crown');
+    btn('Odmietnuť', () => { if (e) e.rl = (e.rl || 0) - 5; ov.classList.add('hide'); mode = 'map'; }, 0, 'back');
+}
+/** Okno dvora: lordi frakcie f (alebo hradu i), vzťahy, spory, vernosť; hostina a urovnanie sporov. */
+function court(i, back) {
+    const t = TW[i], f = t.f, mine = t.mine, lords = E.filter(e => e.f === f && !e.dead && !e.nz).sort((a, b) => (b.kr ? 1 : 0) - (a.kr ? 1 : 0) || b.n - a.n);
+    mode = 'town';
+    const m = MAR[f] != null ? E.find(o => o.id === MAR[f]) : null;
+    show('Dvor: ' + FN[f], 'Lordi kráľovstva (' + lords.length + ')' + (m ? ', maršal ' + m.nm : '') + '. Vzťah = k tebe, vernosť = k vlastnému pánovi (0–30; pod 4 lord uvažuje o prestupe). Spory medzi lordmi oslabujú zvolávanie vojska.');
+    lords.slice(0, 12).forEach(e => {
+        per(e); loyOf(e);
+        const fr = friends(e).map(o => o.nm), fo = foes(e).map(o => o.nm);
+        rowHead(e.nm + (e.kr ? ' (panovník)' : e === m ? ' (maršal)' : '') + ' · ' + TR[e.tr][0] + ' · ' + Math.ceil(e.n) + ' mužov · vzťah ' + Math.round(e.rl || 0) + ' · vernosť ' + Math.round(e.loy) + (e.home != null && TW[e.home] ? ' · ' + TW[e.home].n : ''));
+        if (fr.length || fo.length) { const d = document.createElement('div'); d.style.cssText = 'grid-column:1/-1;text-align:left;font-size:.85rem;opacity:.85'; d.textContent = (fr.length ? 'Priatelia: ' + fr.join(', ') + '. ' : '') + (fo.length ? 'Spory: ' + fo.join(', ') + '.' : ''); document.getElementById('bt').appendChild(d); }
+        btn('Dar 40 zlata (vzťah +6)', () => { G.gold -= 40; e.rl = (e.rl || 0) + 6; upd(); court(i, back); }, G.gold < 40, 'coins');
+        if (fo.length && (e.rl || 0) >= 10) btn('Urovnať spor s ' + fo[0] + ' (60 zlata)', () => { const o = foes(e)[0]; G.gold -= 60; setLr(e, o, 5); e.rl += 3; o.rl = (o.rl || 0) + 3; G.ren++; lg('Urovnal si spor medzi ' + e.nm + ' a ' + o.nm + '.'); upd(); court(i, back); }, G.gold < 60, 'honor');
+    });
+    if (mine) { const n = E.filter(e => e.f === G.fac && !e.dead && !e.nz && Math.hypot(e.x - t.x, e.y - t.y) < 500 * K).length, cost = 100 + n * 20; btn('Usporiadať hostinu (' + cost + ' zlata, ' + n + ' lordov v okolí)', () => { G.gold -= cost; feast(t); court(i, back); }, G.gold < cost || !n, 'mug'); }
+    btn('Späť', back || (() => tsub(i, 'd')), 0, 'back');
+}
+/** Hostina: lordi v okolí prídu, vzťahy a vernosť stúpnu, spory sa občas urovnajú. */
+function feast(t) {
+    const guests = E.filter(e => e.f === G.fac && !e.dead && !e.nz && Math.hypot(e.x - t.x, e.y - t.y) < 500 * K);
+    guests.forEach(e => { e.rl = (e.rl || 0) + 5; loyOf(e); e.loy = Math.min(30, e.loy + 3); });
+    for (let k = 0; k < guests.length; k++) for (let j = k + 1; j < guests.length; j++) if (lr(guests[k], guests[j]) < -3 && Math.random() < .5) { setLr(guests[k], guests[j], 2); lg('Pri hostine sa zmierili ' + guests[k].nm + ' a ' + guests[j].nm + '.'); }
+    G.ren += 2; G.hon = (G.hon || 0) + 1;
+    lg('Hostina v ' + t.n + ': prišlo ' + guests.length + ' lordov. Sláva +2.');
+    TS = { s: 'Hostina v ' + t.n + ' – ' + guests.length + ' lordov pripíja na tvoje zdravie.', l: 300 };
 }
 
 </script>
@@ -1333,6 +1519,126 @@ function battleWeather() {
 </script>
 <script>
 /*
+ * Udalosti počas cesty po mape: kupecká karavána, pútnici, zranený pocestný, nočný prepad, stratený vojak,
+ * bard, dedinčania prosiaci o pomoc, trpasličí kupec, nález… Udalosť príde raz za 1,5–3 dni pochodu (G.evt odpočítava
+ * herný čas iba počas pohybu) a otvorí okno s voľbami. Voľby menia zlato, vojsko, česť (G.hon), strach (G.fear), slávu.
+ * Zoznam TRAVEL: { id, w (váha), cond(), run() }. run() ukáže okno cez show/btn.
+ */
+const TRAVEL = [];
+const trEnd = () => { ov.classList.add('hide'); mode = 'map'; };
+const trMsg = (t, fn) => msg(t, fn || trEnd);
+const trAdd = (id, w, cond, run) => TRAVEL.push({ id, w, cond, run });
+const trNight = () => typeof isNight === 'function' && isNight();
+const trReg = () => typeof regionAt === 'function' ? regionAt(G.x, G.y) : 'g';
+const trEvil = () => heroSide() === 1;
+
+/* --- dobro aj zlo --- */
+trAdd('caravan', 3, () => true, () => {
+    const g = GOODS[Math.floor(Math.random() * GOODS.length)], n = 4 + Math.floor(Math.random() * 5), price = Math.max(4, Math.round(g.p * .6)) * n;
+    show('Kupecká karavána', 'Na ceste stretávaš karavánu kupcov z ' + (trReg() === 'a' ? 'Rhûnu' : trReg() === 'd' ? 'Haradu' : 'Dolu') + '. Vozy sú plné a kupec ponúka ' + n + '× ' + g.n + ' (' + g.ico + ') za ' + price + ' zlata – pod cenou, lebo sa ponáhľa.');
+    btn('Kúpiť (' + price + ' zlata)', () => { G.gold -= price; G.cargo = G.cargo || {}; G.cargo[g.k] = (G.cargo[g.k] || 0) + n; upd(); trMsg('Tovar je naložený vo voze.'); }, G.gold < price || cargoCount() + n > 40, 'scales');
+    btn('Prepadnúť karavánu', () => { trEnd(); startBattle({ n: 4 + Math.floor(Math.random() * 4), f: 9, nm: 'Stráž karavány', loot: 1 }); G.hon = (G.hon || 0) - 4; G.fear = (G.fear || 0) + 2; }, 0, 'attack');
+    btn('Popriať šťastnú cestu', trEnd, 0, 'door');
+});
+trAdd('wounded', 3, () => true, () => {
+    show('Zranený pocestný', 'Pri ceste leží muž s ranou na nohe. Vraví, že ho prepadli ' + (trEvil() ? 'gondorskí hraničiari' : 'orkovia') + ' a vzali mu všetko okrem života.');
+    btn('Ošetriť ho a dať mu jedlo (česť +2)', () => { G.hon = (G.hon || 0) + 2; const r = Math.random(); trMsg(r < .4 ? 'Muž sa po dvoch dňoch postaví a chce ti slúžiť. Pešiaci +1.' : 'Vďačne ti stisne ruku. „Ak budeš niekedy v núdzi, spomeň si na mňa.“ Sláva +1.'); if (r < .4) G.inf++; else G.ren++; upd(); }, 0, 'heart');
+    btn('Obrať ho o zvyšok (zlato +15, česť −3)', () => { G.gold += 15; G.hon = (G.hon || 0) - 3; G.fear = (G.fear || 0) + 1; upd(); trMsg('Muž ťa prekľaje. Tvoji vojaci sa po sebe pozrú.'); }, 0, 'coins');
+    btn('Ísť ďalej', trEnd, 0, 'door');
+});
+trAdd('lost', 2, () => ar() < 60, () => {
+    const k = trEvil() ? 'ork' : 'vojak';
+    show('Stratený ' + k, 'Z lesa vyjde ' + (trEvil() ? 'ork so zlomeným kopijou a hlasno šomre o veliteľovi, ktorý ho nechal za sebou' : 'vojak v roztrhanom plášti; jeho oddiel padol a on blúdi už tretí deň') + '. Chce sa pridať k tvojej družine.');
+    btn('Prijať ho (pešiak +1)', () => { G.inf++; upd(); trMsg(trEvil() ? '„Budem bojovať za toho, kto mi dá mäso.“' : '„Ďakujem, pane. Už som myslel, že tu zahyniem.“'); }, 0, { u: 'i' });
+    btn('Poslať ho preč', trEnd, 0, 'door');
+});
+trAdd('bard', 2, () => G.gold >= 20, () => {
+    show('Potulný pevec', 'Pri ohni sedí pevec s lutnou. Za pár mincí vraj zloží pieseň o tvojich činoch, ktorá sa roznesie po krčmách.');
+    btn('Zaplatiť 20 zlata (sláva +1)', () => { G.gold -= 20; G.ren++; upd(); trMsg('„…a ' + G.name + ' tasil meč a tma sa rozostúpila!“ Pieseň nie je zlá.'); }, G.gold < 20, 'coins');
+    btn('Zaplatiť 60 zlata (sláva +3)', () => { G.gold -= 60; G.ren += 3; upd(); trMsg('Pevec sa rozžiari a sľubuje baladu na dvanásť slôh.'); }, G.gold < 60, 'coins');
+    btn('Vypočuť si pieseň zadarmo', () => trMsg('Pevec spieva o Berenovi a Lúthien. Vojaci počúvajú v tichu a ráno kráčajú ľahšie.'), 0, 'mug');
+});
+trAdd('shrine', 1, () => true, () => {
+    const found = Math.random() < .5;
+    show(trEvil() ? 'Starý oltár' : 'Zabudnutý pamätník', trEvil() ? 'V skalách stojí čierny oltár so starými obeťami. Niečo pod ním zaujímavo cinká.' : 'Medzi stromami stojí kamenný stĺp s elfským písmom a kôpkou kameňov pri päte.');
+    btn('Prehľadať', () => { if (found) { const g = 20 + Math.floor(Math.random() * 60); G.gold += g; upd(); trMsg('Pod kameňmi nájdeš mešec. +' + g + ' zlata.'); } else trMsg('Nič okrem kostí a hliny.'); }, 0, 'chest');
+    btn(trEvil() ? 'Priniesť obetu (strach +2)' : 'Uctiť si pamiatku (česť +1)', () => { if (trEvil()) G.fear = (G.fear || 0) + 2; else G.hon = (G.hon || 0) + 1; upd(); trMsg(trEvil() ? 'Orkovia v družine zamrmlú čosi v Čiernej reči a pozerajú na teba s rešpektom.' : 'Ticho. Vietor v korunách. Pokračuješ s ľahším srdcom.'); }, 0, trEvil() ? 'skull' : 'honor');
+    btn('Ísť ďalej', trEnd, 0, 'door');
+});
+trAdd('ambush', 3, () => trNight(), () => {
+    const bands = E.filter(e => e.f === 9), b = bands.length ? bands[Math.floor(Math.random() * bands.length)] : null;
+    show('Nočný prepad', 'V tme za táborom zapraská konár. Než stihneš zakričať, zo tmy sa valia ' + (trReg() === 'a' || trReg() === 'd' ? 'orkovia' : 'lupiči') + ' s fakľami!');
+    btn('Do zbrane!', () => { trEnd(); startBattle({ n: 5 + Math.floor(Math.random() * 5 + G.day / 6), f: 9, nm: 'Nočná tlupa', kind: trReg() === 'a' || trReg() === 'd' ? 'orcs' : 'bandit' }); }, 0, 'attack');
+    btn('Zaplatiť výpalné (' + Math.min(G.gold, 40) + ' zlata)', () => { G.gold -= Math.min(G.gold, 40); G.hon = (G.hon || 0) - 1; upd(); trMsg('Lupiči si vezmú mešec a zmiznú v tme. Vojaci si šomrú pod nos.'); }, 0, 'coins');
+});
+trAdd('plea', 3, () => E.some(e => e.f === 9 && Math.hypot(e.x - G.x, e.y - G.y) < 400 * K), () => {
+    const b = E.filter(e => e.f === 9).sort((p, q) => Math.hypot(p.x - G.x, p.y - G.y) - Math.hypot(q.x - G.x, q.y - G.y))[0];
+    show('Prosba dedinčanov', 'Pribehne k tebe starec s vnučkou: „Pane, ' + b.nm + ' nám vypaľuje polia a kradne dobytok! Ty máš meč a vojakov. Pomôž nám a dáme ti, čo máme.“');
+    btn('Vyraziť na nich (cieľ nastavený)', () => { G.chase = b; G.bounty = { id: b.id, nm: b.nm, g: 40 + Math.floor(b.n * 5) }; trEnd(); }, 0, 'attack');
+    btn('Odmietnuť', () => { G.hon = (G.hon || 0) - 1; trEnd(); }, 0, 'door');
+});
+trAdd('dwarf', 1, () => !trEvil() || trReg() === 's', () => {
+    const SHw = SH.find(x => x.k === 'w'), own = G.own && G.own.w || [0], cand = SHw.it.map((it, i) => i).filter(i => !own.includes(i) && i <= G.eq.w + 3 && SHw.it[i].p && SHw.it[i].p < 400);
+    const i = cand.length ? cand[Math.floor(Math.random() * cand.length)] : -1, it2 = i >= 0 ? SHw.it[i] : null, price = it2 ? Math.round(it2.p * .7) : 0;
+    show('Trpasličí kupec', 'Na poníkovi s dvoma ťažkými vakmi sedí trpaslík z Ereboru. ' + (it2 ? 'Ponúka ti ' + it2.n + ' za ' + price + ' zlata – „o tretinu lacnejšie než u kováča, lebo sa mi nechce ťahať to domov“.' : 'Všetko už predal, ale rád sa s tebou podelí o pivo.'));
+    if (it2) btn('Kúpiť ' + it2.n + ' (' + price + ')', () => { G.gold -= price; G.own.w.push(i); G.own.w.sort((a, b) => a - b); upd(); trMsg('Trpaslík zamrmle „Baruk Khazâd“ a odkluše ďalej.'); }, G.gold < price, { k: 'w', i });
+    btn('Vypiť s ním pivo', () => { G.hp = Math.min(mh(), G.hp + 15); upd(); trMsg('Pivo z Ereboru je husté ako kaša. Zdravie +15.'); }, 0, 'mug');
+    btn('Ísť ďalej', trEnd, 0, 'door');
+});
+trAdd('storm', 1, () => MW.n === 'storm' || MW.n === 'snow', () => {
+    show(MW.n === 'snow' ? 'Snehová víchrica' : 'Búrka na ceste', MW.n === 'snow' ? 'Sneh zasype cestu a mráz štípe. Dvaja vojaci omrzli a jeden kôň sa zranil na ľade.' : 'Prudký lejak strhne tábor, blesk rozštiepi strom vedľa vozov.');
+    btn('Prečkať (strata dňa, zdravie družiny)', () => { dayT = 600; G.inf = Math.max(0, G.inf - 1); if (G.cav > 0 && Math.random() < .5) G.cav--; upd(); trMsg('Ráno je ticho. Zrátaš straty a ideš ďalej.'); }, 0, 'rest');
+    btn('Prebiť sa (zdravie −10)', () => { G.hp = Math.max(10, G.hp - 10); upd(); trMsg('Premočený a zmrznutý, ale na ceste.'); }, 0, 'sword');
+});
+/* --- iba dobro / iba zlo --- */
+trAdd('elfscout', 2, () => !trEvil() && (trReg() === 'g' || trReg() === 's'), () => {
+    const en = E.filter(e => hos(e.f, G.fac) && e.f !== 9).sort((a, b) => Math.hypot(a.x - G.x, a.y - G.y) - Math.hypot(b.x - G.x, b.y - G.y))[0];
+    show('Elfský zved', 'Z konárov zoskočí elf v sivom plášti. „Tieň sa hýbe. ' + (en ? en.nm + ' z ' + FN[en.f] + ' tiahne s ' + Math.ceil(en.n) + ' mužmi ' + (en.x < G.x ? 'na západ od teba' : 'na východ od teba') + '.' : 'Ale dnes je kraj tichý.') + '“');
+    btn('Poďakovať (sláva +1)', () => { G.ren++; upd(); trMsg('Elf sa ukloní a zmizne, ako keby nikdy nebol.'); }, 0, 'leaf');
+    btn('Požiadať o lembas (zdravie družiny)', () => { G.hp = mh(); if (G.chp) Object.keys(G.chp).forEach(k => G.chp[k] = Math.min(1, G.chp[k] + .3)); upd(); trMsg('Jeden chlebík stačí na celý deň pochodu. Zdravie plné.'); }, 0, 'heart');
+});
+trAdd('orcpatrol', 2, () => trEvil(), () => {
+    show('Orkská hliadka', 'Hliadka orkov z Mordoru ťa zastaví: „Kto ide? Ukáž znak!“ Keď uvidia tvoju zástavu, uvoľnia sa. Kapitán ponúka výmenu: dvoch svojich najhorších za sud piva.');
+    btn('Vymeniť (pešiaci +2, zlato −10)', () => { G.gold -= 10; G.inf += 2; upd(); trMsg('„Sú slabí, ale hryzú.“ Orkovia sa zaradia na koniec tvojej kolóny.'); }, G.gold < 10, { u: 'i' });
+    btn('Zastrašiť ich (strach +1)', () => { G.fear = (G.fear || 0) + 1; upd(); trMsg('Kapitán zbledne, ak ork môže zblednúť, a hliadka ustúpi z cesty.'); }, 0, 'skull');
+});
+trAdd('refugees', 2, () => !trEvil(), () => {
+    show('Utečenci', 'Po ceste sa vlečie zástup ľudí s vozíkmi. Ich dedinu vypálili. Prosia o jedlo a ochranu do najbližšieho hradu.');
+    btn('Dať im zásoby (zlato −20, česť +2)', () => { G.gold -= 20; G.hon = (G.hon || 0) + 2; G.ren++; upd(); trMsg('Ženy ti bozkávajú ruky. Príbeh o tvojej dobrote sa roznesie.'); }, G.gold < 20, 'heart');
+    btn('Naverbovať mladých (pešiaci +2)', () => { G.inf += 2; upd(); trMsg('Dvaja mladíci vezmú kopije. Starší sa pozerajú so strachom aj nádejou.'); }, 0, { u: 'i' });
+    btn('Ísť ďalej', trEnd, 0, 'door');
+});
+trAdd('slaves', 2, () => trEvil(), () => {
+    show('Zajatí dedinčania', 'Tvoji orkovia privlečú troch zviazaných sedliakov, ktorých chytili na poli.');
+    btn('Predať ich (zlato +30, strach +1)', () => { G.gold += 30; G.fear = (G.fear || 0) + 1; G.hon = (G.hon || 0) - 2; upd(); trMsg('Mešec zacinká. Sedliaci odchádzajú v reťaziach na východ.'); }, 0, 'coins');
+    btn('Prepustiť ich (česť +1)', () => { G.hon = (G.hon || 0) + 1; upd(); trMsg('Orkovia vrčia, ale poslúchnu.'); }, 0, 'door');
+});
+trAdd('horse', 1, () => G.eq.m === 0 && (G.own.m || []).length < 2 && !trEvil(), () => {
+    show('Zatúlaný kôň', 'Na lúke sa pasie osedlaný kôň bez jazdca. Na sedle je znak Rohanu.');
+    btn('Chytiť ho (kôň do stajne)', () => { if (!G.own.m.includes(1)) G.own.m.push(1); G.own.m.sort((a, b) => a - b); upd(); trMsg('Kôň sa dá chytiť po chvíli. Máš nového koňa – nasadni v inventári.'); }, 0, 'horse');
+    btn('Nechať ho', trEnd, 0, 'door');
+});
+
+/** Odpočítavanie počas pochodu; vráti true, ak sa otvorilo okno udalosti. */
+function travelTick(dt) {
+    if (mode !== 'map') return false;
+    if (G.evt == null) G.evt = 500 + Math.random() * 600;
+    G.evt -= dt;
+    if (G.evt > 0) return false;
+    G.evt = 900 + Math.random() * 900;
+    const list = TRAVEL.filter(t => { try { return t.cond(); } catch (e) { return false; } });
+    if (!list.length) return false;
+    let w = list.reduce((s, t) => s + t.w, 0), r = Math.random() * w, pick = list[0];
+    for (const t of list) { r -= t.w; if (r <= 0) { pick = t; break; } }
+    mode = 'town'; G.tx = G.x; G.ty = G.y; G.dest = -1; G.vd = -1; G.pd = -1;
+    pick.run();
+    lg('Udalosť na ceste: ' + (ov.querySelector('h1') || {}).textContent);
+    return true;
+}
+
+</script>
+<script>
+/*
  * Vedľajšie úlohy od pánov (dáta v js/data/quests.js).
  * G.qu = zoznam aktívnych úloh: { id, lord (meno pána), lf (frakcia pána), t (hrad pána), step, cnt, day }.
  * G.qdone = počet splnených úloh podľa id (tá istá úloha sa dá splniť znova až po 20 dňoch, G.qlast).
@@ -1444,15 +1750,19 @@ const compLine = c => c.lines[Math.floor(Math.random() * c.lines.length)];
 /** Jednotky spoločníkov do bitky (volá startBattle). */
 function compUnits() {
     return myComps().filter(c => (G.chp && G.chp[c.id] != null ? G.chp[c.id] : 1) > .25 && !(G.cwound && G.cwound[c.id] > G.day)).map(c => ({
-        cp: c.id, t: 0, x: 120 + Math.random() * 40, y: BH / 2 - 60 + Math.random() * 120, hp: c.hp * (G.chp[c.id] || 1), mh: c.hp, sp: c.sp, d: c.d, c: 0, r: c.r, k: c.archer ? 'a' : 'i', uk: c.art && FU[c.art] ? c.art : undefined, f: 0, fc: G.fac, nm: c.n, bn: 0
+        cp: c.id, t: 0, x: 120 + Math.random() * 40, y: BH / 2 - 60 + Math.random() * 120, hp: c.hp * compBonus(c) * (G.chp[c.id] || 1), mh: c.hp * compBonus(c), sp: c.sp * ((G.cmount || {})[c.id] ? 1.3 : 1), d: c.d * compBonus(c), c: 0, r: c.r, k: c.archer ? 'a' : 'i', uk: c.art && FU[c.art] ? c.art : undefined, f: 0, fc: G.fac, nm: c.n, bn: 0, mnt: (G.cmount || {})[c.id] || 0
     }));
 }
 /** Po bitke: zdravie spoločníkov, zranenie pri páde. */
 function compAfterBattle() {
     if (!U) return;
     G.chp = G.chp || {}; G.cwound = G.cwound || {};
+    G.cxp = G.cxp || {}; G.ckills = G.ckills || {};
     for (const u of U) if (u.cp) {
         const c = compDef(u.cp);
+        const lv0 = compLv(c);
+        G.cxp[u.cp] = (G.cxp[u.cp] || 0) + (u.kills || 0) * 4 + Math.round((u.dmg || 0) / 20) + 3; G.ckills[u.cp] = (G.ckills[u.cp] || 0) + (u.kills || 0);
+        if (compLv(c) > lv0) lg(c.n + ' dosiahol úroveň ' + compLv(c) + '.');
         if (u.hp <= 0) { G.chp[u.cp] = .3; G.cwound[u.cp] = G.day + 3; lg(c.n + ' bol v bitke ranený a tri dni sa bude zotavovať.'); }
         else G.chp[u.cp] = Math.max(.3, u.hp / u.mh);
     }
@@ -1475,15 +1785,62 @@ function compBattleShout() {
 </script>
 <script>
 /*
+ * Bojisko podľa miesta na mape: hustota lesa (dlaždice T.forest v okolí), blízkosť rieky Anduiny (bezierová krivka
+ * ako v MapScene), kopce (hory T.mountains) a kraj (regionAt). FIELD nastaví startBattle; BattleScene podľa neho kreslí
+ * stromy, rieku s brodom, kopec a skaly; simulácia spomaľuje v lese a vo vode a dáva výhodu z kopca.
+ */
+let FIELD = { forest: 0, river: false, hill: null, trees: [], reg: 'g' };
+/** Body rieky (v jednotkách sveta) – rovnaká krivka ako na mape. */
+const riverPoints = (() => { let pts = null; return () => {
+    if (pts) return pts;
+    const R = [[640, 0], [600, 300], [820, 420], [780, 640], [760, 800], [900, 880], [860, 1200]].map(([x, y]) => [x * K, y * K]);
+    const bz = (p0, p1, p2, p3, t) => { const u = 1 - t; return [u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0], u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * p3[1]]; };
+    pts = [];
+    for (let i = 0; i <= 80; i++) pts.push(bz(R[0], R[1], R[2], R[3], i / 80));
+    for (let i = 0; i <= 80; i++) pts.push(bz(R[3], R[4], R[5], R[6], i / 80));
+    return pts;
+}; })();
+function battleTerrain(x, y) {
+    const T = typeof MAPDATA !== 'undefined' && MAPDATA.terrain, reg = typeof regionAt === 'function' ? regionAt(x, y) : 'g';
+    let forest = 0, hill = null, river = false;
+    if (T) {
+        const ci = Math.floor(x / WW * T.cols), cj = Math.floor(y / WH * T.rows);
+        let n = 0, f = 0;
+        for (let j = cj - 2; j <= cj + 2; j++) for (let i = ci - 2; i <= ci + 2; i++) { if (i < 0 || j < 0 || i >= T.cols || j >= T.rows) continue; n++; if (T.forest[j * T.cols + i] >= 33) f++; }
+        forest = n ? f / n : 0;
+        for (const [mx, my, size] of T.mountains || []) { const d = Math.hypot(mx * K - x, my * K - y); if (d < size * K * .9) { hill = { kind: size > 55 ? 'mountain' : 'hill' }; break; } }
+    }
+    const rd = Math.min(...riverPoints().map(([px, py]) => Math.hypot(px - x, py - y)));
+    river = rd < 45 * K;
+    // stromy: zhluky podľa hustoty lesa (0 až 1), deterministicky podľa polohy
+    let seed = Math.floor(x / 7 + y / 11) + 13; const rnd = () => (seed = seed * 16807 % 2147483647) / 2147483647;
+    const trees = [], groves = Math.round(2 + forest * 14);
+    for (let i = 0; i < groves; i++) { const cx = 120 + rnd() * (BW - 240), cy = 60 + rnd() * (BH - 120), r = 40 + rnd() * 50 + forest * 40; if (river && cx > 660 && cx < 780) continue; trees.push({ x: cx, y: cy, r }); }
+    return { forest, river, hill, trees, reg, mountain: hill && hill.kind === 'mountain' };
+}
+/** Spomalenie jednotky podľa terénu (les, voda) a bonus z kopca. */
+function fieldSlow(u) {
+    let s = 1;
+    if (FIELD.river && u.x > 690 && u.x < 750 && (u.y < 440 || u.y > 520)) s *= .5;
+    if (FIELD.trees.length) for (const t of FIELD.trees) if (Math.hypot(t.x - u.x, t.y - u.y) < t.r) { s *= .72; break; }
+    if (FIELD.reg === 's' || FIELD.reg === 'd') s *= .92;   // sneh a piesok
+    return s;
+}
+const onHill = u => FIELD.hill && Math.hypot(u.x - BW * .62, u.y - BH * .5) < 170;
+
+</script>
+<script>
+/*
  * Bitka: tvorba jednotiek, začiatok a koniec bitky, boj, šípy, rozkazy a hradby pri obliehaní.
  */
 function mkBase(t, k, f) {
-    const P = { i: [30, 1.2, 5, 6], c: [45, 1.9, 7, 8], o: [24 + Math.min(20, G.day * 1.5), 1.1, 4, 6], a: [24, 1.1, 5, 6], e: [26, 1.3, 6, 6], r: [60, 2.1, 9, 9], t: [120, .8, 14, 11], w: [18, 2.2, 5, 5], x: [220, .7, 20, 15], v: [50, 1.25, 8, 7], z: [150, 1.5, 13, 10] }[k], hp = P[0];
+    const P = { i: [30, 1.2, 5, 6], c: [45, 1.9, 7, 8], o: [24 + Math.min(20, G.day * 1.5), 1.1, 4, 6], a: [24, 1.1, 5, 6], e: [26, 1.3, 6, 6], r: [60, 2.1, 9, 9], t: [120, .8, 14, 11], w: [18, 2.2, 5, 5], x: [220, .7, 20, 15], v: [50, 1.25, 8, 7], z: [150, 1.5, 13, 10], n: [260, .8, 22, 13] }[k], hp = P[0];
     return { bn: Math.random() < .1, fc: f, k, t, x: t ? BW - 120 - Math.random() * 140 : 100 + Math.random() * 140, y: 140 + Math.random() * (BH - 280), hp, mh: hp, sp: P[1], d: P[2], c: 0, r: P[3], f: t ? Math.PI : 0 };
 }
 function startBattleBase(en, al) {
     LB = en;
     en.al = al;
+    en.n0 = en.n;
     AR = [];
     en.n = Math.max(1, Math.round(en.n));
     PT = [];
@@ -1500,24 +1857,27 @@ function startBattleBase(en, al) {
         U.push(mk(0, 'e'));
     for (let i = 0; i < Math.min(G.roh, 12); i++)
         U.push(mk(0, 'r'));
+    for (let i = 0; i < Math.min(G.ent || 0, 3); i++)
+        U.push(mk(0, 'n'));
     if (al)
         for (let i = 0; i < Math.min(Math.ceil(al.n), 12); i++)
             U.push(Object.assign(mk(0, 'i'), { ally: 1 }));
     for (let i = 0; i < en.n; i++)
-        U.push(mk(1, en.nz ? 'z' : en.trolls || en.beorn ? 't' : en.spiders ? 'w' : (i % 3 === 1 && FK[en.f] && FK[en.f].length ? FK[en.f][i % 2] : ek(en.f, i)), en.f));   // miesta: trollovia, Beorn (medveď), pavúky
+        U.push(mk(1, en.nz ? 'z' : en.trolls || en.beorn ? 't' : en.spiders ? 'w' : en.kind === 'wolves' ? (i % 3 ? 'w' : 'uI2') : en.kind === 'orcs' ? (i % 7 === 6 ? 't' : i % 4 === 3 ? 'uM1' : 'o') : en.kind === 'deserters' ? (i % 3 === 2 ? 'a' : i % 5 === 4 ? 'c' : 'i') : (i % 3 === 1 && FK[en.f] && FK[en.f].length ? FK[en.f][i % 2] : ek(en.f, i)), en.f));   // miesta: trollovia, Beorn (medveď), pavúky
     if (en.siege)
         U.forEach(u => {
             if (u.t)
                 u.hp = u.mh = u.mh * (1.3 + (en.t.wl || 0) * .15);
         });
     mode = 'battle';
-    setOrd('a');
+    setOrd(G.ord0 || 'a');
     od.style.display = 'flex';
     tb.style.display = 'none';
     WX = battleWeather();       // počasie z mapy, v noci kratší dostrel
     snd('horn');
     roar(1);
     BI = regionAt(G.x, G.y);
+    FIELD = typeof battleTerrain === 'function' ? battleTerrain(G.x, G.y) : FIELD;   // bojisko podľa miesta na mape (les, rieka, kopec)
     if (BI === 's' && WX.n === 'clear')
         WX = { ...WX, n: 'snow', r: Math.round(WX.r * .85) };
 }
@@ -1526,7 +1886,7 @@ function unitName(u) {
     if (u.h) return G.name;
     if (u.cp) { const c = compDef(u.cp); return c ? c.n : 'Spoločník'; }
     if (u.uk && FU[u.uk]) return FU[u.uk].n;
-    return { i: 'Pešiak', a: 'Lukostrelec', c: 'Jazdec', v: 'Veterán', r: 'Rohirim', e: 'Elf', o: 'Ork', t: 'Troll', w: 'Varg', x: 'Olifant', z: 'Nazgûl' }[u.k] || 'Vojak';
+    return { i: 'Pešiak', a: 'Lukostrelec', c: 'Jazdec', v: 'Veterán', r: 'Rohirim', e: 'Elf', o: 'Ork', t: 'Troll', w: 'Varg', x: 'Olifant', z: 'Nazgûl', n: 'Ent' }[u.k] || 'Vojak';
 }
 /** Výsledná tabuľka bitky: víťaz, straty podľa druhu na oboch stranách, najlepší bojovník. Pridá riadky do otvoreného okna. */
 function battleReport(win) {
@@ -1546,6 +1906,7 @@ function battleReport(win) {
 const temple = () => TW.some(t => t.mine && t.bd && t.bd.c);
 function hit(b, d, from) {
     const was = b.hp > 0;
+    if (from && typeof onHill === 'function' && onHill(from) && !onHill(b)) d *= 1.15;   // útok z kopca
     b.hp -= d * (b.h ? red() : !b.t && temple() ? .9 : 1);
     if (from) { from.dmg = (from.dmg || 0) + d; if (was && b.hp <= 0) from.kills = (from.kills || 0) + 1; }
     snd(b.hp <= 0 ? 'dy' : b.h ? 'sh' : Math.random() < .5 ? 'sw' : 'hb');
@@ -1643,6 +2004,7 @@ function endBattle(win) {
             }
             if (L.f === 9 && Math.random() < .3)
                 G.tro.push('Lúpežnícky poklad: ' + L.nm);
+            if (G.bounty && L.id === G.bounty.id) { G.gold += G.bounty.g; G.hon = (G.hon || 0) + 2; G.ren++; lg('Dedinčania ti za porážku tlupy ' + L.nm + ' dali ' + G.bounty.g + ' zlata. Česť +2.'); G.bounty = null; }   // odmena za tlupu z prosby dedinčanov
             if (L.vil)
                 L.vil.pr = Math.max(0, (L.vil.pr ?? 40) - 30);
             if (L.siege)
@@ -1702,6 +2064,7 @@ function endBattle(win) {
                 G.elf = Math.max(0, G.elf - U.filter(u => !u.t && u.k === 'e' && u.hp <= 0).length);
                 G.roh = Math.max(0, G.roh - U.filter(u => !u.t && u.k === 'r' && u.hp <= 0).length);
                 G.cav = Math.max(0, G.cav - dC);
+                if (G.ent) G.ent = Math.max(0, G.ent - U.filter(u => !u.t && u.k === 'n' && u.hp <= 0).length);
                 G.gold += loot;
                 G.ren++;
                 G.xp += Math.round(LB.n * 5 * (G.twise ? 1.1 : 1));
@@ -1738,7 +2101,7 @@ function endBattle(win) {
                     L.al.rl = (L.al.rl || 0) + 15;
                 }
                 if (L.nm && !L.siege) {
-                    btn('Zajať veliteľa ' + L.nm, () => { G.pri.push(L.nm); rl(G.fac, L.f, -5); ov.classList.add('hide'); mode = 'map'; upd(); });
+                    btn('Zajať veliteľa ' + L.nm + ' (výkupné)', () => { capturePrisoner(L); ov.classList.add('hide'); mode = 'map'; upd(); }, 0, 'chain');
                     btn('Popraviť', () => { rl(G.fac, L.f, -18); ov.classList.add('hide'); mode = 'map'; });
                     btn('Prepustiť (vzťah +8)', () => { rl(G.fac, L.f, 8); G.ren++; ov.classList.add('hide'); mode = 'map'; upd(); });
                 }
@@ -1746,6 +2109,15 @@ function endBattle(win) {
                     rl(G.fac, L.f, -10);
                     btn('Pokračovať', () => { ov.classList.add('hide'); mode = 'map'; });
                 }
+            }
+            else if (L.nm && L.f !== 9 && !L.siege && !L.vil && !L.nz && Math.random() < .6 && typeof captureHero === 'function' && captureHero(L)) {
+                G.inf = Math.max(2, Math.floor(G.inf / 2));
+                G.cav = Math.floor(G.cav / 2);
+                G.arc = Math.floor(G.arc / 2);
+                upd();
+                show('Zajatý', L.nm + ' ťa po bitke zajal. Prebral si sa v žalári hradu ' + TW[G.captive.t].n + '. Polovica mužov padla alebo sa rozutekala; zlato ti zatiaľ nechali – budú ho chcieť ako výkupné.');
+                battleReport(false);
+                btn('Pokračovať', () => { ov.classList.add('hide'); mode = 'map'; captiveDay(); });
             }
             else {
                 G.inf = Math.max(3, Math.floor(G.inf / 2));
@@ -1805,7 +2177,7 @@ function updBattle(dt) {
             u.x = Math.max(10, Math.min(BW - 10, u.x));
             u.y = Math.max(20, Math.min(BH - 10, u.y));
             u.bs = u.bs || u.sp;
-            u.sp = u.bs * ((u.x > 690 && u.x < 750 && (u.y < 440 || u.y > 520)) ? .5 : 1);
+            u.sp = u.bs * (typeof fieldSlow === 'function' ? fieldSlow(u) : 1);
             if (u.h) {
                 let mx = 0, my = 0;
                 if (keys.ArrowLeft || keys.a)
@@ -2069,18 +2441,23 @@ function ach() { if (!G)
  * Uložené pozície: 'vs1' = pozícia 1 (pôvodná), 'vs2', 'vs3' = ďalšie ručné, 'vsauto' = automatická (na konci každého dňa).
  * slot = 1, 2, 3 alebo 'auto'.
  */
-const SLOTS = [['1', 'Pozícia 1'], ['2', 'Pozícia 2'], ['3', 'Pozícia 3'], ['auto', 'Automatická (koniec dňa)']];
+const SLOTS = [['1', 'Pozícia 1'], ['2', 'Pozícia 2'], ['3', 'Pozícia 3'], ['4', 'Pozícia 4'], ['5', 'Pozícia 5'], ['6', 'Pozícia 6'], ['auto', 'Automatická (koniec dňa)']];
 const slotKey = slot => slot === 'auto' ? 'vsauto' : 'vs' + (slot || 1);
 /** Popis uloženej pozície alebo null, ak je prázdna. */
-function slotInfo(slot) {
+function slotInfo(slot) { const d = slotData(slot); return d ? d.text : null; }
+/** Náhľad uloženej pozície: text, vzhľad hrdinu (portrét), deň, frakcia… alebo null. */
+function slotData(slot) {
     try {
         const s = JSON.parse(localStorage.getItem(slotKey(slot)));
-        return s && s.G ? s.G.name + ', deň ' + s.G.day + ', ' + (s.G.kn || FN[s.G.fac]) + (s.when ? ', ' + s.when : '') : null;
+        if (!s || !s.G) return null;
+        const g = s.G, castles = (s.T || []).filter(t => t.mine).length;
+        const place = g.day != null && s.T ? (() => { let b = null, bd = 1e9; (MAPDATA.castles || []).forEach((c, i) => { const d = Math.hypot(c[1] * (s.K || K) - g.x, c[2] * (s.K || K) - g.y); if (d < bd) { bd = d; b = c[0]; } }); return b; })() : null;
+        return { g, look: g.look, text: g.name + ' · deň ' + g.day + ' · ' + (g.kn || FN[g.fac]) + ' · úroveň ' + (g.lv || 1) + (castles ? ' · hradov: ' + castles : '') + (place ? ' · pri ' + place : '') + (s.when ? ' · ' + s.when : '') };
     } catch (x) { return null; }
 }
 function save(slot) {
     try {
-        localStorage.setItem(slotKey(slot), JSON.stringify({ G: { ...G, chase: null, talk: null }, T: TW.map(t => ({ f: t.f, g: t.g, mine: t.mine, wl: t.wl || 0, pr: t.pr, bd: t.bd, lord: t.lord, inv: t.inv })), E: E.map(e => ({ id: e.id, x: e.x, y: e.y, f: e.f, n: e.n, nm: e.nm, kr: e.kr, nz: e.nz, rl: e.rl || 0, home: e.home, role: e.role, vx: 0, vy: 0, w: 0 })), WR, REL, AL, CP, VL, MW, K, when: new Date().toLocaleString('sk-SK', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) }));
+        localStorage.setItem(slotKey(slot), JSON.stringify({ G: { ...G, chase: null, talk: null }, T: TW.map(t => ({ f: t.f, g: t.g, mine: t.mine, wl: t.wl || 0, pr: t.pr, bd: t.bd, lord: t.lord, inv: t.inv })), E: E.map(e => ({ id: e.id, x: e.x, y: e.y, f: e.f, n: e.n, nm: e.nm, kr: e.kr, nz: e.nz, rl: e.rl || 0, home: e.home, role: e.role, cp: e.cp, vas: e.vas, loy: e.loy, kind: e.kind, vx: 0, vy: 0, w: 0 })), WR, REL, AL, CP, VL, MW, K, when: new Date().toLocaleString('sk-SK', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) }));
         return 1;
     }
     catch (x) {
@@ -2152,6 +2529,7 @@ function load(slot) {
             if (!G.own)   // staré uloženie: výbava sa kupovala postupne, takže hrdina vlastní všetko až po súčasnú vec
                 G.own = Object.fromEntries(Object.keys(G.eq).map(k => [k, Array.from({ length: G.eq[k] + 1 }, (_, i) => i)]));
             E = s.E;
+            if (typeof priMigrate === 'function') priMigrate();
             QS = bloc(G.fac) ? QE : QG;
             WR = s.WR.length < 10 ? mkWR() : s.WR;
             REL = s.REL.length < 10 ? mkREL() : s.REL;
@@ -3688,6 +4066,11 @@ const Soldiers = (() => {
         t: { r: 11, armor: '#4e5446', skin: 'troll', helm: 'none', weapon: 'club', big: 1 },
         w: { r: 5, beast: 'wolf' },
         x: { r: 15, beast: 'oliphant' },
+        n: { r: 13, beast: 'ent' },
+        uM3: { r: 11, armor: '#4e5446', skin: 'troll', helm: 'none', weapon: 'club', big: 1 },
+        uH3: { r: 15, beast: 'oliphant' },
+        uG3: { r: 8, armor: '#2a3a6a', skin: 'human', helm: 'winged', weapon: 'spear', shield: 'kite', mount: 'horse' },
+        uI3: { r: 8, armor: '#1a1a1e', skin: 'uruk', helm: 'none', weapon: 'axe' },
         z: { r: 10, armor: '#08080a', skin: 'none', helm: 'nazgul', weapon: 'sword', mount: 'darkhorse' },
         uG1: { r: 7, armor: '#22222a', skin: 'human', helm: 'winged', weapon: 'spear', shield: 'kite' },
         uG2: { r: 6, armor: '#3a5a32', skin: 'human', helm: 'hood', weapon: 'bow' },
@@ -4295,6 +4678,18 @@ const Soldiers = (() => {
     function drawBeast(c, sp, kind, frame, layer) {
         const r = sp.r, ph = frame < 4 ? frame / 4 * Math.PI * 2 : 0, atk = frame >= 4 && frame <= 6 ? [.0, .5, .2][frame - 4] : 0;
         if (kind === 'wolf') { drawMount(c, { r: r * 1.3 }, 'wolf', ph, layer); if (layer === 'base' && atk) { ell(c, r * 2.6 + atk * r, 0, r * .35, r * .3, 0, '#1a1614'); } return; }
+        if (kind === 'ent') {   // ent: kmeň zhora, koruna, dve konáre-ruky a svietiace oči
+            const sw = Math.sin(ph) * r * .3;
+            if (layer === 'base') {
+                ell(c, -r * .2, 0, r * 1.1, r * .9, 0, '#4a3a22'); ell(c, r * .5, 0, r * .6, r * .55, 0, '#5a4a2a');
+                c.strokeStyle = '#4a3a22'; c.lineWidth = r * .28; c.lineCap = 'round';
+                [-1, 1].forEach(sd => { c.beginPath(); c.moveTo(r * .3, sd * r * .5); c.quadraticCurveTo(r * 1.1 + atk * r, sd * r * 1.1 + sw * sd, r * 1.9 + atk * r * 1.4, sd * r * .7); c.stroke(); });
+                for (let k = 0; k < 7; k++) { const a = k / 7 * 6.283; ell(c, -r * .2 + Math.cos(a) * r * .7, Math.sin(a) * r * .6, r * .55, r * .45, a, k % 2 ? '#3a6a2a' : '#4a7a34'); }
+                ell(c, -r * .2, 0, r * .5, r * .42, 0, '#5a8a3a');
+                c.fillStyle = '#e8e060'; c.beginPath(); c.arc(r * .75, -r * .22, r * .09, 0, 7); c.arc(r * .75, r * .22, r * .09, 0, 7); c.fill();
+            } else { ell(c, -r * .2, 0, r * .5, r * .42, 0, '#fff'); }
+            return;
+        }
         // olifant
         const step = Math.sin(ph) * r * .25;
         if (layer === 'base') {
@@ -4950,6 +5345,11 @@ const Figures = (() => {
             9: [{ w: 0, a: 0, s: 0, h: 0, m: 0 }, { cape: '#4a3a2a' }]
         };
         if (e.nz) return [{ w: 13, a: 10, s: 0, h: 8, m: 8 }, { cape: '#000', nazgul: 1 }];
+        if (e.cp && typeof compDef === 'function' && compDef(e.cp)) { const r = compEq(compDef(e.cp)); return [r[0], { ...r[1], flag: e.f }]; }   // spoločník s lénom
+        // tlupy bez pána: orkská tlupa, vargovia (jazdec na vlkovi), dezertéri, lupiči
+        if (e.kind === 'orcs') return [{ w: 9, a: 6, s: 5, h: 5, m: 0 }, { cape: '#2a1a10', orc: 1, flag: null }];
+        if (e.kind === 'wolves') return [{ w: 9, a: 6, s: 0, h: 5, m: 6 }, { cape: '#1a1a1a', orc: 1 }];
+        if (e.kind === 'deserters') return [{ w: 1, a: 1, s: 1, h: 1, m: 0 }, { cape: '#4a4a3a' }];
         let r = T[e.f];
         if (!r) r = (typeof heroSide === 'function' && heroSide() === 1) ? T[2] : T[0];   // vlastní vazali podľa strany hráča
         return [r[0], { ...r[1], king: !!e.kr, flag: e.f, ...(typeof Portraits !== 'undefined' ? lookOpts(Portraits.forLord(e)) : {}) }];
@@ -5110,7 +5510,7 @@ function sndBase(k) {
     }
 }
 function pb(t) {
-    const z = mode === 'tavern' ? (heroSide() === 1 ? 'tv' : 't') : mode === 'battle' ? 'b' : G.x < 500 * K ? 's' : G.x > 1267 * K ? 'd' : 'e', P = { t: [[55, 59, 62], [53, 57, 60], [50, 53, 57], [55, 59, 62]], tv: [[45, 48, 52], [44, 48, 51], [45, 48, 52], [43, 46, 50]], e: [[50, 53, 57], [46, 50, 53], [53, 57, 60], [48, 52, 55]], d: [[50, 53, 57], [51, 55, 58], [50, 53, 57], [49, 52, 57]], s: [[53, 57, 60], [48, 52, 55], [50, 53, 57], [46, 50, 53]], b: [[50, 53, 57], [50, 53, 57], [46, 50, 53], [45, 49, 52]] }[z], c = P[bar % 4], L = 2.4;
+    const z = mode === 'tavern' || (mode === 'room' && typeof ROOM !== 'undefined' && ROOM && ROOM.inn) ? (heroSide() === 1 ? 'tv' : 't') : mode === 'battle' ? 'b' : G.x < 500 * K ? 's' : G.x > 1267 * K ? 'd' : 'e', P = { t: [[55, 59, 62], [53, 57, 60], [50, 53, 57], [55, 59, 62]], tv: [[45, 48, 52], [44, 48, 51], [45, 48, 52], [43, 46, 50]], e: [[50, 53, 57], [46, 50, 53], [53, 57, 60], [48, 52, 55]], d: [[50, 53, 57], [51, 55, 58], [50, 53, 57], [49, 52, 57]], s: [[53, 57, 60], [48, 52, 55], [50, 53, 57], [46, 50, 53]], b: [[50, 53, 57], [50, 53, 57], [46, 50, 53], [45, 49, 52]] }[z], c = P[bar % 4], L = 2.4;
     bar++;
     if (z === 't' || z === 'tv') return pbTavern(t, c, z === 'tv', L);
     c.forEach(m => { osc(mf(m), t, L + .6, 'sawtooth', .03, MB, .6, -7, 1100); osc(mf(m), t, L + .6, 'sawtooth', .03, MB, .6, 7, 1100); });
@@ -5206,6 +5606,84 @@ function snd(k) {
         }
     }
 }
+
+</script>
+<script>
+/*
+ * Zvuky miestností (krčma, nádvorie, sieň, dedina, pamätihodnosti): kroky podľa podlahy a šum prostredia.
+ * Všetko je syntéza cez Web Audio (osc/noi z js/audio/sound.js), bez súborov. RoomSnd.start(kind) spustí šum,
+ * RoomSnd.stop() ho vypne; RoomSnd.step(floor) zahrá krok ('wood', 'stone', 'grass', 'sand'); RoomSnd.door() vŕzganie dverí.
+ * Hudba mapy sa nemení.
+ */
+const RoomSnd = (() => {
+    let timer = null, kind = null, AB = null, loop = null, lastStep = 0;
+    const ok = () => typeof ac !== 'undefined' && ac && !mu;
+    const abus = () => { bus(); if (!AB) { AB = ac.createGain(); AB.gain.value = .5; AB.connect(ac.destination); AB.connect(RV); } return AB; };
+    /** Šumový podklad (vietor, hukot ohňa, hovor hostí) ako slučka s filtrom. */
+    function drone(fq, q, v, ty = 'bandpass') {
+        const n = ac.sampleRate * 2 | 0, b = ac.createBuffer(1, n, ac.sampleRate), a = b.getChannelData(0);
+        let p = 0; for (let i = 0; i < n; i++) { p = p * .96 + (Math.random() * 2 - 1) * .04; a[i] = p * 6; }   // hnedý šum
+        const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+        s.buffer = b; s.loop = true; f.type = ty; f.frequency.value = fq; f.Q.value = q; g.gain.value = v;
+        s.connect(f); f.connect(g); g.connect(abus()); s.start();
+        return { s, g, f };
+    }
+    /** Jednotlivé zvuky prostredia, náhodne v čase. */
+    const ONE = {
+        clink() { const t = ac.currentTime, b = 1800 + Math.random() * 900; [1, 1.5, 2.4].forEach((p, i) => osc(b * p, t, .25 / (i + 1) + .08, 'sine', .035 / (i + 1), AB, .002)); },
+        laugh() { const t = ac.currentTime; for (let k = 0; k < 3; k++) { const o = osc(180 + Math.random() * 80, t + k * .13, .11, 'sawtooth', .025, AB, .02, 0, 900); o.frequency.exponentialRampToValueAtTime(120, t + k * .13 + .1); } },
+        murmur() { const t = ac.currentTime; for (let k = 0; k < 4; k++) { osc(110 + Math.random() * 90, t + k * .17, .16, 'sawtooth', .012, AB, .03, 0, 600); } },
+        hammer() { const t = ac.currentTime; [0, .55, 1.1].forEach(h => { const b = 2600 + Math.random() * 400; osc(b, t + h, .3, 'sine', .07, AB, .001); osc(b * 1.9, t + h, .15, 'sine', .03, AB, .001); noi(t + h, .05, .25, 'highpass', 3000, AB); }); },
+        bird() { const t = ac.currentTime; for (let k = 0; k < 3 + Math.random() * 3; k++) { const o = osc(2600 + Math.random() * 900, t + k * .09, .07, 'sine', .03, AB, .005); o.frequency.exponentialRampToValueAtTime(3600, t + k * .09 + .06); } },
+        crow() { const t = ac.currentTime; for (let k = 0; k < 2; k++) { const o = osc(520, t + k * .3, .2, 'sawtooth', .03, AB, .02, 0, 1500); o.frequency.exponentialRampToValueAtTime(380, t + k * .3 + .18); } },
+        dog() { const t = ac.currentTime; [0, .22].forEach(h => { const o = osc(420, t + h, .14, 'sawtooth', .035, AB, .01, 0, 1200); o.frequency.exponentialRampToValueAtTime(300, t + h + .12); }); },
+        hen() { const t = ac.currentTime; for (let k = 0; k < 4; k++) { const o = osc(900 + Math.random() * 200, t + k * .11, .08, 'square', .012, AB, .005, 0, 2000); o.frequency.exponentialRampToValueAtTime(700, t + k * .11 + .07); } },
+        crackle() { const t = ac.currentTime; for (let k = 0; k < 3; k++) noi(t + Math.random() * .4, .03, .12, 'highpass', 2500 + Math.random() * 2000, AB); },
+        creak() { const t = ac.currentTime; const o = osc(140 + Math.random() * 60, t, .35, 'sawtooth', .02, AB, .1, 0, 700); o.frequency.linearRampToValueAtTime(90, t + .3); },
+        bell() { const t = ac.currentTime, b = 660; [1, 2.01, 2.74, 4.1].forEach((p, i) => osc(b * p, t, 1.6 / (i + 1), 'sine', .05 / (i + 1), AB, .003)); },
+        drip() { const t = ac.currentTime; const o = osc(1800, t, .12, 'sine', .04, AB, .002); o.frequency.exponentialRampToValueAtTime(900, t + .1); },
+        wind() { const t = ac.currentTime; const f = noi(t, 1.8, .06, 'bandpass', 500 + Math.random() * 300, AB, .8); f.frequency.linearRampToValueAtTime(300, t + 1.6); },
+        horse() { const t = ac.currentTime; for (let k = 0; k < 3; k++) { const o = osc(320 - k * 40, t + k * .15, .14, 'sawtooth', .02, AB, .02, 0, 1200); o.frequency.exponentialRampToValueAtTime(200, t + k * .15 + .12); } }
+    };
+    /** Prostredia: podklad + zoznam náhodných zvukov [názov, pravdepodobnosť za sekundu]. */
+    const AMB = {
+        tavern: { d: [[300, .7, .18], [1200, 1.2, .05]], e: [['murmur', .5], ['clink', .25], ['laugh', .08], ['crackle', .3], ['creak', .04]] },
+        tavernEvil: { d: [[120, .8, .22], [900, 2, .04]], e: [['murmur', .35], ['clink', .12], ['crackle', .4], ['creak', .08], ['drip', .1]] },
+        yard: { d: [[400, .6, .12]], e: [['hammer', .12], ['bird', .2], ['horse', .05], ['wind', .12], ['murmur', .15]] },
+        yardEvil: { d: [[180, .8, .18]], e: [['hammer', .15], ['crow', .12], ['wind', .15], ['drip', .06], ['murmur', .1]] },
+        hall: { d: [[160, 1, .12]], e: [['crackle', .5], ['creak', .05], ['murmur', .08], ['drip', .03]] },
+        village: { d: [[500, .5, .1]], e: [['bird', .3], ['hen', .18], ['dog', .07], ['wind', .1], ['hammer', .04]] },
+        villageEvil: { d: [[220, .7, .15]], e: [['crow', .2], ['dog', .1], ['wind', .15], ['murmur', .08]] },
+        elf: { d: [[700, .4, .08], [2200, 3, .03]], e: [['bird', .35], ['wind', .1], ['bell', .04], ['drip', .08]] },
+        cave: { d: [[90, 1, .2]], e: [['drip', .4], ['wind', .1], ['creak', .03]] }
+    };
+    function start(k) {
+        if (!ok()) { kind = k; return; }
+        if (kind === k && loop) return;
+        stop(); kind = k;
+        const A = AMB[k] || AMB.yard;
+        abus();
+        loop = A.d.map(([fq, q, v]) => drone(fq, q, v));
+        timer = setInterval(() => { if (!ok()) return; for (const [n, p] of A.e) if (Math.random() < p * .5) ONE[n](); }, 500);
+    }
+    function stop() {
+        if (timer) clearInterval(timer); timer = null;
+        if (loop) loop.forEach(o => { try { o.g.gain.linearRampToValueAtTime(0, ac.currentTime + .4); o.s.stop(ac.currentTime + .5); } catch (e) { } });
+        loop = null; kind = null;
+    }
+    /** Krok podľa podlahy; nie častejšie než každých 220 ms. */
+    function step(floor) {
+        if (!ok()) return;
+        const t = ac.currentTime; if (t - lastStep < .22) return; lastStep = t;
+        abus();
+        if (floor === 'wood') { noi(t, .07, .3, 'lowpass', 300, AB); const o = osc(90 + Math.random() * 20, t, .09, 'sine', .25, AB, .002); o.frequency.exponentialRampToValueAtTime(50, t + .08); if (Math.random() < .25) ONE.creak(); }
+        else if (floor === 'grass' || floor === 'sand') { noi(t, .09, .22, 'bandpass', floor === 'sand' ? 1600 : 900, AB, 1.2); }
+        else { noi(t, .05, .35, 'highpass', 1800, AB); const o = osc(240, t, .06, 'sine', .12, AB, .001); o.frequency.exponentialRampToValueAtTime(120, t + .05); }
+    }
+    /** Dvere: vŕzganie a buchnutie. */
+    function door() { if (!ok()) return; abus(); ONE.creak(); const t = ac.currentTime + .35; noi(t, .12, .4, 'lowpass', 250, AB); const o = osc(70, t, .14, 'sine', .3, AB, .002); o.frequency.exponentialRampToValueAtTime(40, t + .12); }
+    return { start, stop, step, door, current: () => kind };
+})();
 
 </script>
 <script>
@@ -5329,10 +5807,12 @@ function dipF(i, f) {
 }
 function vill(i) {
     const v = VL[i], f = TW[v.t].f;
+    if (typeof ROOM !== 'undefined' && ROOM && ROOM.room === 'village' && ROOM.vi === i && !ROOM.menu) return roomReturn();   // „Späť“ z okna otvoreného v dedine
     mode = 'town';
     G.dest = -1;
     if (!v.good) v.good = villageGood(v, i);
     show(v.n + ' (' + FN[f] + ')', v.st > 0 ? 'Dedina je vypálená, obnoví sa o ' + v.st + ' dní.' : 'Dedina patrí k hradu ' + TW[v.t].n + '. Vyrába: ' + goodOf(v.good).n + ' (' + goodOf(v.good).ico + '), prosperita úroveň ' + lvl(v) + '.');
+    if (!hos(f, G.fac) && typeof roomSceneOk === 'function' && roomSceneOk('Village')) btn('Vstúpiť do dediny (prejsť sa po návsi)', () => enterVillage(i), 0, 'village');
     if (v.st <= 0 && !hos(f, G.fac))
         btn('Trh (kúpiť a predať tovar)', () => market(v, () => vill(i)), 0, 'scales');
     if (v.st <= 0 && hos(f, G.fac))
@@ -5391,7 +5871,7 @@ function tsub(i, c) {
         btn('Povýšiť pešiaka na veterána (20 zlata, 15 skúseností)', () => { G.gold -= 20; G.txp -= 15; G.inf--; G.vet++; re(); }, G.gold < 20 || G.txp < 15 || G.inf < 1, { u: 'v' });
         btn('Naverbovať zajatcov (8 zlata/ks)', () => { const n = Math.min(G.cap, Math.floor(G.gold / 8)); G.gold -= n * 8; G.inf += n; G.cap -= n; re(); }, !G.cap || G.gold < 8, 'chain');
         btn('Predať zajatcov (' + (G.tcun ? 15 : 12) + ' zlata/ks)', () => { G.gold += G.cap * (G.tcun ? 15 : 12); G.cap = 0; re(); }, !G.cap, 'coins');
-        btn('Výkupné za zajatých veliteľov (' + G.pri.length * 80 + ')', () => { G.gold += G.pri.length * 80; G.pri = []; re(); }, !G.pri.length, 'coins');
+        btn('Zajatí velitelia (' + G.pri.length + '): výkupné, prepustenie', () => prisonersMenu(() => tsub(i, c)), 0, 'chain');
     }
     if (c === 'h') {
         const w = t.wl || 0, cw = 150 * (w + 1), bd = t.bd || (t.bd = {});
@@ -5422,6 +5902,8 @@ function tsub(i, c) {
     }
     if (c === 'd') {
         btn('Diplomacia s frakciami', () => dip(i), 0, 'honor');
+        btn('Dvor: lordi, vzťahy a spory' + (t.mine ? ', hostina' : ''), () => court(i), 0, 'court');
+        if (typeof kingdom === 'function' && (G.king || TW.some(x => x.mine))) btn('Kráľovstvo: léna, vazali, správa', () => kingdom(i), 0, 'crown');
         if (G.fac === 6 && t.f !== 6)
             btn('Vstúpiť do služieb: ' + FN[t.f], () => {
                 G.fac = t.f;
@@ -5497,6 +5979,7 @@ function lord(e) {
         PORTRAIT = Portraits.forLord(e);
         show(e.nm + ' (' + FN[e.f] + ')', 'Vzťah: ' + e.rl + '. Vojakov: ' + Math.ceil(e.n) + '. Tvoja sláva: ' + G.ren + '.');
         btn('Porozprávať sa', () => talk(e));
+        if (typeof friends === 'function') btn('Spýtať sa na iných lordov', () => { const fr = friends(e).map(o => o.nm), fo = foes(e).map(o => o.nm); PORTRAIT = Portraits.forLord(e); msg('„' + (fr.length ? 'S ' + fr.join(' a ') + ' sme bojovali bok po boku; na tých sa dá spoľahnúť. ' : '') + (fo.length ? fo.join(' a ') + ' – tých nech mi nikto nespomína. ' : '') + (!fr.length && !fo.length ? 'Držím sa stranou dvorných hádok.' : '') + (loyOf(e) < 6 ? ' A môj pán? Radšej mlčať. Nie som s ním spokojný.' : '') + '“', () => lord(e)); }, 0, 'talk');
         btn('Darovať 50 zlata (+8 vzťah)', () => { G.gold -= 50; e.rl += 8; upd(); lord(e); }, G.gold < 50);
         if (e.f !== G.fac && !e.kr)
             btn('Presvedčiť k prestúpeniu (100 zlata)', () => {
@@ -5593,11 +6076,18 @@ function questLog() {
 }
 
 /** Výber pozície na uloženie. */
+/** Tlačidlo pozície s portrétom hrdinu z uloženia. */
+function slotBtn(k, n, fn, off) {
+    const d = slotData(k), b = btn(n + ': ' + (d ? d.text : 'prázdna'), fn, off);
+    if (d && d.look && typeof Portraits !== 'undefined') { try { const c = Portraits.canvas(d.look, 34); c.className = 'ico'; b.dataset.icon = 'ico_por_' + k + '_' + (d.g.day || 0) + '_' + (d.g.name || ''); b.prepend(c); } catch (e) { } }
+    else if (!d && typeof Icons !== 'undefined') { const c = Icons.canvas('chest'); c.className = 'ico'; b.dataset.icon = 'ico_ui_chest'; b.prepend(c); }
+    return b;
+}
 function saveMenu(back) {
     mode = 'town';
-    show('Uložiť hru', 'Vyber pozíciu. Hra sa okrem toho sama ukladá na konci každého dňa do automatickej pozície.');
-    SLOTS.filter(([k]) => k !== 'auto').forEach(([k, n]) => { const info = slotInfo(k); btn(n + ': ' + (info || 'prázdna'), () => msg(save(k) ? 'Hra uložená do pozície ' + k + '.' : 'Ukladanie nie je v tomto prostredí dostupné.', back)); });
-    btn('Späť', back);
+    show('Uložiť hru', 'Vyber pozíciu (6 ručných). Hra sa okrem toho sama ukladá na konci každého dňa do automatickej pozície.');
+    SLOTS.filter(([k]) => k !== 'auto').forEach(([k, n]) => slotBtn(k, n, () => { const had = !!slotData(k); msg(save(k) ? 'Hra uložená do pozície ' + k + (had ? ' (pôvodná pozícia prepísaná).' : '.') : 'Ukladanie nie je v tomto prostredí dostupné.', back); }));
+    btn('Späť', back, 0, 'back');
 }
 /** Výber pozície na načítanie (z úvodu). */
 function loadMenu() {
@@ -5605,8 +6095,8 @@ function loadMenu() {
     if (!any) return load(1);
     show('Načítať hru', 'Vyber uloženú pozíciu.');
     ov.classList.add('intro');
-    SLOTS.forEach(([k, n]) => { const info = slotInfo(k); btn(n + ': ' + (info || 'prázdna'), () => load(k), !info); });
-    btn('Späť', () => location.reload());
+    SLOTS.forEach(([k, n]) => slotBtn(k, n, () => load(k), !slotData(k)));
+    btn('Späť', () => location.reload(), 0, 'back');
 }
 
 </script>
@@ -5719,20 +6209,56 @@ function tavern(i) {
     });
     btn('Späť', () => town(i));
 }
-/** Okno Družina (z mapy): spoločníci, ich stav, rozhovor a prepustenie. */
-function party(back) {
+/** Úroveň spoločníka podľa skúseností (G.cxp): každých 40 skúseností +1, najviac 10. Bonus +6 % zdravia a útoku za úroveň. */
+const compLv = c => Math.min(10, 1 + Math.floor(((G.cxp || {})[c.id] || 0) / 40));
+const compBonus = c => 1 + (compLv(c) - 1) * .06;
+/** Okno Družina (z mapy): záložky Spoločníci, Vojsko a Rozkazy. */
+function party(back, tab) {
     const fromMap = !back;
     if (fromMap) { if (mode !== 'map' && mode !== 'town') return; back = () => { ov.classList.add('hide'); mode = 'map'; }; }
     mode = 'town';
-    const C = myComps();
-    show('Družina', C.length ? 'Tvoji spoločníci (' + C.length + '/4). V bitke bojujú po tvojom boku; ranený spoločník sa pár dní zotavuje.' : 'Zatiaľ cestuješ sám. Spoločníkov nájdeš v krčmách hradov: hrdinovia dobra v Bree, Lothlóriene, Erebore, Minas Tirith, Edorase, Osgiliathe a Hobitove; služobníci Tieňa v Isengarde, Minas Morgul, Edorase, Barad-dûre, Umbare a pri Morannone.');
-    C.forEach(c => {
-        const hp = Math.round((G.chp && G.chp[c.id] != null ? G.chp[c.id] : 1) * 100), w = G.cwound && G.cwound[c.id] > G.day;
-        rowHead(c.n + ', ' + c.t + ' · zdravie ' + hp + ' %' + (w ? ' · ranený, zotaví sa o ' + (G.cwound[c.id] - G.day) + ' d.' : ''));
-        btn('Porozprávať sa s ' + c.n, () => compTalk(c, fromMap ? null : back));
-        btn('Prepustiť ' + c.n, () => { compLeave(c); msg('„' + c.leave + '“', () => party(fromMap ? null : back)); });
-    });
-    btn(fromMap ? 'Zavrieť' : 'Späť', back);
+    tab = tab || 'c';
+    const C = myComps(), re = t => party(fromMap ? null : back, t);
+    const tabs = () => { [['c', 'Spoločníci', 'hero'], ['a', 'Vojsko', 'recruit'], ['o', 'Rozkazy', 'sword']].forEach(([k, n, ic]) => { const b = btn(n, () => re(k), 0, ic); if (k === tab) b.style.outline = '3px solid #fff'; }); };
+    if (tab === 'c') {
+        show('Správa družiny – spoločníci', C.length ? 'Tvoji spoločníci (' + C.length + '/4). V bitke bojujú po tvojom boku, zbierajú skúsenosti (každých 40 = nová úroveň, +6 % zdravia a útoku) a ranený sa pár dní zotavuje.' : 'Zatiaľ cestuješ sám. Spoločníkov nájdeš v krčmách hradov: hrdinovia dobra v Bree, Lothlóriene, Erebore, Minas Tirith, Edorase, Osgiliathe a Hobitove; služobníci Tieňa v Isengarde, Minas Morgul, Edorase, Barad-dûre, Umbare a pri Morannone.');
+        tabs();
+        C.forEach(c => {
+            const hp = Math.round((G.chp && G.chp[c.id] != null ? G.chp[c.id] : 1) * 100), w = G.cwound && G.cwound[c.id] > G.day, lv = compLv(c), xp = (G.cxp || {})[c.id] || 0, k = (G.ckills || {})[c.id] || 0;
+            const d = document.createElement('div'); d.style.cssText = 'grid-column:1/-1;text-align:left;font-size:.9rem;color:var(--gold);margin-top:.3rem';
+            d.textContent = c.n + ' · ' + c.t + ' · úroveň ' + lv + ' (' + (xp % 40) + '/40) · zdravie ' + hp + ' %' + (w ? ' · ranený, zotaví sa o ' + (G.cwound[c.id] - G.day) + ' d.' : '') + ' · zabití: ' + k;
+            try { const pc = Portraits.canvas(c.look, 34); pc.className = 'ico'; d.dataset.icon = 'ico_por_c_' + c.id; d.prepend(pc); } catch (e) { }
+            document.getElementById('bt').appendChild(d);
+            const d2 = document.createElement('div'); d2.style.cssText = 'grid-column:1/-1;text-align:left;font-size:.85rem;opacity:.85';
+            const m = (G.cmount || {})[c.id];
+            d2.textContent = 'Sila: zdravie ' + Math.round(c.hp * compBonus(c)) + ', útok ' + Math.round(c.d * compBonus(c)) + ', rýchlosť ' + c.sp.toFixed(1) + (c.archer ? ', lukostrelec' : ', bojovník zblízka') + (m ? ', na koni (' + SH.find(x => x.k === 'm').it[m].n + ')' : '') + '.';
+            document.getElementById('bt').appendChild(d2);
+            btn('Rozhovor', () => compTalk(c, fromMap ? null : back), 0, 'talk');
+            const horses = (G.own && G.own.m || []).filter(i => i > 0 && i !== G.eq.m && !Object.entries(G.cmount || {}).some(([id, v]) => id !== c.id && v === i));
+            if (!c.archer && c.id !== 'gimli') {
+                if (m) btn('Zosadnúť z koňa', () => { delete G.cmount[c.id]; re('c'); }, 0, 'horse');
+                else if (horses.length) btn('Dať koňa: ' + SH.find(x => x.k === 'm').it[horses[0]].n + ' (+30 % rýchlosti)', () => { (G.cmount = G.cmount || {})[c.id] = horses[0]; re('c'); }, 0, { k: 'm', i: horses[0] });
+            }
+            btn('Prepustiť', () => { compLeave(c); msg('„' + c.leave + '“', () => re('c')); }, 0, 'door');
+        });
+    }
+    if (tab === 'a') {
+        const up = Math.floor((G.inf + G.cav * 2) / 3);
+        show('Správa družiny – vojsko', 'Vojsko spolu: ' + ar() + ' mužov, sila ' + Math.round(pw()) + '. Denný žold: ' + up + ' zlata (pešiaci a jazdci). Zajatci: ' + G.cap + ', skúsenosti na povýšenie: ' + G.txp + '.');
+        tabs();
+        const list = [['inf', 'Pešiaci', 'i'], ['arc', 'Lukostrelci', 'a'], ['cav', 'Jazdci', 'c'], ['vet', 'Veteráni', 'v'], ['elf', 'Elfovia', 'e'], ['roh', 'Rohirimi', 'r']];
+        Object.keys(FU).filter(k => k[0] === 'u' && G[k]).forEach(k => list.push([k, FU[k].n, k]));
+        if (G.ent) list.push(['ent', 'Enti (pastieri stromov)', 'n']);
+        list.filter(([k]) => G[k] > 0).forEach(([k, n, u]) => { const b = btn(n + ': ' + G[k] + (k === 'inf' ? ' (žold 1/3 denne)' : k === 'cav' ? ' (žold 2/3 denne)' : ''), null, 1, { u }); b.style.opacity = 1; });
+        if (G.inf > 3) btn('Prepustiť 5 pešiakov (menší žold)', () => { G.inf = Math.max(1, G.inf - 5); upd(); re('a'); }, 0, 'door');
+        if (G.cap) btn('Prepustiť zajatcov (česť +1)', () => { G.cap = 0; G.hon = (G.hon || 0) + 1; upd(); re('a'); }, 0, 'chain');
+    }
+    if (tab === 'o') {
+        show('Správa družiny – rozkazy', 'Východzí rozkaz, s ktorým vojsko vstupuje do bitky (v bitke sa dá kedykoľvek zmeniť klávesmi 1–4).');
+        tabs();
+        [['a', 'Útok – všetci vpred', 'attack'], ['h', 'Držať líniu – lukostrelci strieľajú, pešiaci čakajú', 'shield'], ['f', 'Nasledovať hrdinu – šík okolo teba', 'hero'], ['r', 'Ústup', 'back']].forEach(([k, n, ic]) => { const b = btn(n, () => { G.ord0 = k; re('o'); }, 0, ic); if ((G.ord0 || 'a') === k) b.style.outline = '3px solid #fff'; });
+    }
+    btn(fromMap ? 'Zavrieť' : 'Späť', back, 0, 'back');
 }
 function compTalk(c, back, line) {
     mode = 'town';
@@ -5852,6 +6378,8 @@ function roomReturn() {
     if (!ROOM) return;
     ov.classList.add('hide');
     if (ROOM.room === 'tavern') { mode = 'tavern'; return; }
+    if (ROOM.room === 'village') { mode = 'room'; if (roomSceneOk('Village') && !game.scene.isActive('Village')) enterVillage(ROOM.vi); return; }
+    if (ROOM.room === 'place') { mode = 'room'; if (roomSceneOk('Place') && !game.scene.isActive('Place')) enterPlace(ROOM.pi); return; }
     mode = 'castle';
     const sc = roomsOk() && game.scene.getScene('Castle');
     if (sc && !sc.scene.isActive()) enterCastle(ROOM.i, ROOM.room);
@@ -5921,6 +6449,7 @@ function castleSteward(i) {
     show('Správca hradu ' + t.n, '„' + (mine ? 'Vitaj doma, pane. Hrad má prosperitu ' + Math.round(t.pr ?? 40) + ' %, denný príjem ' + castleIncome(t) + ' zlata' + (built.length ? ', postavené: ' + built.join(', ') : '') + '.' : 'Vitaj v sieni ' + t.n + '. ' + (t.lord ? 'Léno drží ' + t.lord + '. ' : '') + 'Pán ' + (sc.lord ? 'je práve doma.' : 'je na výprave; v jeho mene hovorím ja.')) + '“');
     if (mine) btn('Správa hradu (stavby, hradby, léna)', () => tsub(i, 'h'), 0, 'castle');
     btn('Dvor a diplomacia', () => tsub(i, 'd'), 0, 'court');
+    if (mine && typeof kingdom === 'function') btn('Kráľovstvo: léna, vazali, dane', () => kingdom(i), 0, 'crown');
     questsAt(t).forEach(q => { const d = qDef(q), s = qStep(q); if (s.k === 'r') btn('Úloha: uzavrieť „' + d.n + '“', () => { questComplete(q); msg('„' + qText(q, d.done) + '“', roomReturn); }, 0, 'quest'); else btn('Úloha: odovzdať ' + s.n + '× ' + goodOf(s.a).n, () => { if (questDeliver(q)) msg(q.step >= d.steps.length ? '„' + qText(q, d.done) + '“' : 'Tovar odovzdaný.', roomReturn); }, ((G.cargo || {})[s.a] || 0) < s.n, 'quest'); });
     if (G.ring === 1 && t.n === 'Barad-dûr' && bloc(G.fac) === 1) btn('Odovzdať Prsteň Sauronovi', () => { G.ring = 2; G.gold += 1000; G.ren += 10; lg('Odovzdal si Jeden prsteň Sauronovi.'); ach(); upd(); roomReturn(); }, 0, 'ring');
     btn('Zostať v hrade (čas plynie, hojíš sa)', () => stayInCastle(i), 0, 'rest');
@@ -5940,26 +6469,233 @@ function stayInCastle(i) {
 </script>
 <script>
 /*
+ * Vnútro dediny (scéna Village v js/engine/scenes/VillageScene.js) a pamätihodnosti (scéna Place): vstup, odchod a rozhovory.
+ * ROOM = { room: 'village', vi } alebo { room: 'place', pi }; okná otvorené z nich sa po „Späť“ vracajú do scény (roomReturn → mode 'room').
+ */
+const roomSceneOk = k => typeof game !== 'undefined' && game.scene && game.scene.getScene(k);
+/** Vstup do dediny i (VL). */
+function enterVillage(i) {
+    if (!roomSceneOk('Village')) return vill(i);
+    ov.classList.add('hide');
+    mode = 'room'; G.dest = -1; G.vd = -1;
+    ROOM = { room: 'village', vi: i, i: VL[i].t };
+    if (game.scene.isActive('Map')) game.scene.sleep('Map');
+    ['Castle', 'Tavern', 'Place'].forEach(k => { if (game.scene.isActive(k)) game.scene.stop(k); });
+    const sc = game.scene.getScene('Village');
+    if (sc.scene.isActive()) sc.scene.restart({ v: i }); else game.scene.start('Village', { v: i });
+}
+/** Vstup na pamätihodnosť i (PLACES). */
+function enterPlace(i) {
+    if (!roomSceneOk('Place')) return place(i);
+    ov.classList.add('hide');
+    mode = 'room'; G.dest = -1; G.pd = -1;
+    ROOM = { room: 'place', pi: i };
+    if (game.scene.isActive('Map')) game.scene.sleep('Map');
+    ['Castle', 'Tavern', 'Village'].forEach(k => { if (game.scene.isActive(k)) game.scene.stop(k); });
+    const sc = game.scene.getScene('Place');
+    if (sc.scene.isActive()) sc.scene.restart({ p: i }); else game.scene.start('Place', { p: i });
+}
+/** Odchod zo scény dediny alebo pamätihodnosti na mapu. */
+function leaveRoomScene() {
+    ROOM = null;
+    ov.classList.add('hide');
+    mode = 'map';
+    ['Village', 'Place'].forEach(k => { if (roomSceneOk(k) && game.scene.isActive(k)) game.scene.stop(k); });
+    if (roomSceneOk('Map') && game.scene.isSleeping('Map')) game.scene.wake('Map');
+}
+const vBack = () => { ov.classList.add('hide'); mode = 'room'; };
+const vLook = { elder: { race: 'human', skin: 1, hair: 'bald', hcol: '#c8c0b0', beard: 'full', eyes: '#4a5a6a', age: .9 }, overseer: { race: 'orc', hair: 'bald', beard: 'none', angry: 1, scar: 1 }, woman: { race: 'human', sex: 'f', skin: 0, hair: 'long', hcol: '#6a4a2a', beard: 'none', eyes: '#5a7a5a' }, broken: { race: 'human', skin: 2, hair: 'short', hcol: '#3a2a1a', beard: 'stubble', eyes: '#4a4a4a', age: .5, scar: 1 }, merchant: { race: 'human', skin: 1, hair: 'short', hcol: '#4a3020', beard: 'full', eyes: '#4a5a6a', age: .4 } };
+
+/** Starosta (dobro) / orkský dozorca (zlo). */
+function villageElder(i, line) {
+    const v = VL[i], t = TW[v.t], evil = bloc(t.f) === 1 && t.f !== 6 || (t.f === 6 && heroSide() === 1), own = t.mine || t.f === G.fac;
+    mode = 'room'; PORTRAIT = evil ? vLook.overseer : vLook.elder;
+    const hello = v.st > 0 ? (evil ? 'Vypálili to. Všetko. Teraz tu nie je čo vymáhať.' : 'Všetko zhorelo, pane. Chalupy, sýpka, aj staré lipy. Postavíme to znova, ale potrvá to.') : evil ? 'Čo chceš? Dane sú vybraté, otroci pracujú, mäso je na ceste do ' + t.n + '. Ak hľadáš prácu, choď do hradu.' : own ? 'Vitaj, pane. Dedina ' + v.n + ' ti patrí a prosperuje, ako vidíš – alebo neprosperuje, podľa toho, ako nás chránite.' : 'Vitaj v ' + v.n + ', cudzinec. Patríme pod ' + t.n + '. Čo ťa k nám privádza?';
+    show((evil ? 'Dozorca' : 'Starosta') + ' dediny ' + v.n, '„' + (line || hello) + '“');
+    const bands = E.filter(e => e.f === 9 && Math.hypot(e.x - v.x, e.y - v.y) < 350 * K).sort((a, b) => Math.hypot(a.x - v.x, a.y - v.y) - Math.hypot(b.x - v.x, b.y - v.y));
+    btn('Čo nové v kraji?', () => villageElder(i, rumor(t)), 0, 'book');
+    if (bands.length && !G.bounty) btn('Trápi vás niekto? (úloha: ' + bands[0].nm + ')', () => { const b = bands[0]; G.bounty = { id: b.id, nm: b.nm, g: 40 + Math.floor(b.n * 5) }; G.chase = b; villageElder(i, 'Áno! ' + b.nm + ' nám kradne dobytok a páli polia. Ak ich zaženieš, dáme ti ' + G.bounty.g + ' zlata – všetko, čo máme. Cieľ je označený na mape.'); }, 0, 'attack');
+    if (!evil && !own && v.st <= 0) btn('Ponúknuť ochranu (30 zlata, prosperita a česť)', () => { G.gold -= 30; v.pr = Math.min(100, (v.pr ?? 40) + 8); G.hon = (G.hon || 0) + 1; G.ren++; upd(); villageElder(i, 'Nech ťa Valar ochraňujú, pane. Deti budú spať pokojnejšie.'); }, G.gold < 30, 'shield');
+    if (own && v.st <= 0) btn('Vybrať mimoriadne dane (+' + lvl(v) * 6 + ' zlata, prosperita −5)', () => { G.gold += lvl(v) * 6; v.pr = Math.max(0, (v.pr ?? 40) - 5); upd(); villageElder(i, 'Ako prikážeš. Ale sýpky sú po tomto plytšie.'); }, 0, 'coins');
+    if (evil && v.st <= 0) btn('Vymáhať poplatok (+' + (10 + lvl(v) * 4) + ' zlata, strach +1)', () => { G.gold += 10 + lvl(v) * 4; G.fear = (G.fear || 0) + 1; G.hon = (G.hon || 0) - 1; v.pr = Math.max(0, (v.pr ?? 40) - 4); upd(); villageElder(i, 'Hrr. Tu máš. Nabudúce nech ťa pošle sám Lugbúrz, inak nedám nič.'); }, 0, 'skull');
+    if (v.st > 0 && G.gold >= 50) btn('Pomôcť s obnovou (50 zlata, dedina sa obnoví skôr)', () => { G.gold -= 50; v.st = Math.max(0, v.st - 3); G.hon = (G.hon || 0) + 2; upd(); villageElder(i, 'Kúpime drevo a tesárov. O pár dní tu zas bude stáť strecha. Nezabudneme ti to.'); }, 0, 'heart');
+    btn('Späť', vBack, 0, 'back');
+}
+function villageMarket(i) { const v = VL[i]; mode = 'town'; market(v, () => { ov.classList.add('hide'); mode = 'room'; }); }
+function villageRecruit(i) {
+    const v = VL[i], t = TW[v.t], evil = heroSide() === 1, rich = lvl(v) >= 3;
+    mode = 'room'; PORTRAIT = evil ? vLook.broken : vLook.merchant;
+    show(evil ? 'Zverbovaní sedliaci' : 'Dobrovoľníci z ' + v.n, evil ? 'Pri klietke stojí rad vychudnutých mužov. Dozorca vraví, že za pár mincí ich môžeš odviesť do vojska; bojovať budú zo strachu.' : 'Pri voze so senom sa zišli mladíci s kosami a vidlami. Chcú vidieť svet a priniesť domov pár mincí.' + (rich ? ' Bohatá dedina má aj niekoľko lovcov s lukmi.' : ''));
+    btn('Najať 3 pešiakov (25 zlata)', () => { G.gold -= 25; G.inf += 3; upd(); villageRecruit(i); }, G.gold < 25 || v.st > 0, { u: 'i' });
+    if (rich && !evil) btn('Najať 2 lukostrelcov (40 zlata)', () => { G.gold -= 40; G.arc += 2; upd(); villageRecruit(i); }, G.gold < 40, { u: 'a' });
+    if (evil) btn('Odviesť 5 sedliakov násilím (strach +2, česť −3, prosperita −10)', () => { G.inf += 5; G.fear = (G.fear || 0) + 2; G.hon = (G.hon || 0) - 3; v.pr = Math.max(0, (v.pr ?? 40) - 10); upd(); villageRecruit(i); }, v.st > 0, 'chain');
+    btn('Späť', vBack, 0, 'back');
+}
+function villageWell(i) {
+    const v = VL[i]; mode = 'room';
+    const used = (G.vwell || {})[v.n] === G.day;
+    show('Studňa', used ? 'Dnes si už pil. Voda je studená a dobrá, ale zázraky nerobí dvakrát denne.' : 'Studená voda z hlbokej studne. Vojaci si naplnia mechy a kone sa napijú.');
+    btn('Napiť sa (zdravie +10, družina +)', () => { (G.vwell = G.vwell || {})[v.n] = G.day; G.hp = Math.min(mh(), G.hp + 10); if (G.chp) Object.keys(G.chp).forEach(k => G.chp[k] = Math.min(1, G.chp[k] + .1)); upd(); vBack(); }, used, 'heart');
+    btn('Späť', vBack, 0, 'back');
+}
+function villageChapel(i) {
+    const v = VL[i], t = TW[v.t], evil = bloc(t.f) === 1 && t.f !== 6 || (t.f === 6 && heroSide() === 1), used = (G.vpray || {})[v.n] === G.day;
+    mode = 'room';
+    show(evil ? 'Oltár Tieňa' : 'Kaplnka', evil ? 'Čierny kameň s lebkami a zaschnutou krvou. Orkovia sem nosia obete pre Oko.' : 'Malá drevená svätyňa s hviezdou Elbereth nad dverami. Vonia tu vosk a sušené kvety.');
+    if (evil) btn('Priniesť obetu (strach +2, zdravie −5)', () => { (G.vpray = G.vpray || {})[v.n] = G.day; G.fear = (G.fear || 0) + 2; G.hp = Math.max(10, G.hp - 5); upd(); vBack(); }, used, 'skull');
+    else btn('Pomodliť sa (česť +1, zdravie +5)', () => { (G.vpray = G.vpray || {})[v.n] = G.day; G.hon = (G.hon || 0) + 1; G.hp = Math.min(mh(), G.hp + 5); upd(); vBack(); }, used, 'honor');
+    if (!evil) btn('Darovať chudobným (10 zlata, sláva +1)', () => { G.gold -= 10; G.ren++; upd(); vBack(); }, G.gold < 10, 'coins');
+    btn('Späť', vBack, 0, 'back');
+}
+function villageInn(i) {
+    const v = VL[i], t = TW[v.t], evil = heroSide() === 1;
+    mode = 'room'; PORTRAIT = vLook.merchant;
+    show(evil ? 'Brloh v ' + v.n : 'Krčmička v ' + v.n, evil ? 'Nízka chatrč, kde sa orkovia a zbehovia opíjajú kvaseným mliekom. Za sudom sedí jednooký hostinský.' : 'Nízka izba s jedným stolom a ohniskom. Hostinský nalieva domáce pivo a praská chlieb.');
+    btn('Prenocovať (5 zlata, plné zdravie, deň plynie)', () => { G.gold -= 5; G.hp = mh(); dayT = 600; upd(); msg('Ráno ťa zobudí kohút' + (evil ? ' – teda, orkovia ho už zjedli, zobudí ťa dozorca.' : ' a vôňa čerstvého chleba.'), vBack); }, G.gold < 5, 'rest');
+    btn('Vypočuť si klebety (3 zlata)', () => { G.gold -= 3; upd(); msg('„' + rumor(t) + '“', () => villageInn(i)); }, G.gold < 3, 'book');
+    btn('Dať rundu dedine (15 zlata, sláva +1)', () => { G.gold -= 15; G.ren++; upd(); msg('Celá krčmička pripíja na tvoje zdravie.', () => villageInn(i)); }, G.gold < 15, 'mug');
+    btn('Späť', vBack, 0, 'back');
+}
+function villageTalk(i, kind) {
+    const v = VL[i], t = TW[v.t];
+    mode = 'room'; PORTRAIT = kind ? vLook.broken : vLook.woman;
+    const good = kind === 0, lines = good ? ['Pán ' + (t.lord || 'hradu ' + t.n) + ' vyberá dane raz za mesiac. Horšie sú tie tlupy z lesa.', 'Chlapi hovoria, že na východe sa zbiera vojsko. Ja hovorím, nech sa zbiera ďaleko odtiaľto.', 'Obilie sa tento rok urodilo. Keby ste chceli kúpiť, kupec má plný voz.', 'V noci počuť vlkov. Nie také obyčajné – väčšie.', 'Môj muž odišiel k vojsku pána ' + t.n + '. Píše, že je tam zima a málo chleba.'] : ['Nehovor s nimi nahlas. Dozorca počuje všetko.', 'Brali nám mäso, potom dobytok, potom synov. Zostali sme len my starí.', 'Raz príde niekto zo západu. Hovorí sa to potichu, pri ohni.', 'Ak máš kúsok chleba, pane… nie pre mňa. Pre deti.'];
+    show(good ? 'Dedinčanka' : 'Zlomený sedliak', '„' + lines[Math.floor(Math.random() * lines.length)] + '“');
+    if (!good && G.gold >= 5) btn('Dať mu 5 zlata (česť +1)', () => { G.gold -= 5; G.hon = (G.hon || 0) + 1; upd(); vBack(); }, 0, 'heart');
+    btn('Späť', vBack, 0, 'back');
+}
+
+</script>
+<script>
+/*
+ * Vlastné kráľovstvo: prehľad (meno, erb, strana, hrady, dediny, príjem), vyhlásenie nezávislosti od pána,
+ * léna pre vazalov aj spoločníkov (spoločník sa stane lordom na mape a drží hrad), žold a maršal vazalov,
+ * dane (G.tax: 'low' | 'normal' | 'high' – príjem, prosperita a priazeň vazalov), zmena mena a erbu.
+ * Korunovácia ostáva v okne Dvor a diplomacia (kingDlg v js/ui/town.js).
+ */
+const taxMul = () => ({ low: .7, normal: 1, high: 1.35 })[G.tax || 'normal'];
+const taxPr = () => ({ low: 1, normal: 0, high: -1 })[G.tax || 'normal'];
+const fiefShare = t => t.lord ? .7 : 1;   // držiteľ léna si necháva 30 % príjmu
+function kingdom(i, tab) {
+    const back = () => tsub(i, 'd'), re = t => kingdom(i, t);
+    tab = tab || 'o';
+    mode = 'town';
+    const own = TW.filter(t => t.mine), vill = VL.filter(v => TW[v.t].mine), vas = E.filter(e => e.f === G.fac && !e.dead && !e.nz && !e.kr && (G.fac === 6 || G.king || e.vas));
+    const income = own.reduce((s, t) => s + Math.round(castleIncome(t) * taxMul() * fiefShare(t)), 0) + vill.reduce((s, v) => s + (v.st > 0 ? 0 : 4 + lvl(v) * 2), 0);
+    const tabs = () => [['o', 'Prehľad', 'crown'], ['f', 'Léna', 'castle'], ['v', 'Vazali', 'group'], ['p', 'Správa', 'scales']].forEach(([k, n, ic]) => { const b = btn(n, () => re(k), 0, ic); if (k === tab) b.style.outline = '3px solid #fff'; });
+    if (tab === 'o') {
+        show(G.kn ? 'Kráľovstvo ' + G.kn : G.fac === 6 ? 'Vlastná družina' : 'Tvoje panstvo – ' + FN[G.fac], (G.king ? 'Si kráľ. ' : G.fac === 6 ? 'Si nezávislý vojvodca. ' : 'Slúžiš kráľovstvu ' + FN[G.fac] + '. ') + 'Hrady: ' + own.length + ', dediny: ' + vill.length + ', vazali: ' + vas.length + '. Denný príjem z panstva: ' + income + ' zlata (dane: ' + ({ low: 'nízke', normal: 'bežné', high: 'vysoké' })[G.tax || 'normal'] + '). Sláva ' + G.ren + ', česť ' + (G.hon || 0) + ', strach ' + (G.fear || 0) + '.' + (G.side != null ? ' Strana: ' + sideName(G.side) + '.' : ''));
+        tabs();
+        if (G.fac !== 6 && own.length) btn('Vyhlásiť nezávislosť (vojna s ' + FN[G.fac] + ')', () => { const o = G.fac; G.fac = 6; TW.forEach(x => { if (x.mine) x.f = 6; }); WR[6][o] = WR[o][6] = true; AL[6][o] = AL[o][6] = false; REL[6][o] = REL[o][6] = -70; E.forEach(e => { if (e.f === o) e.rl = (e.rl || 0) - 15; }); vas.forEach(e => { if (e.vas) e.f = 6; }); G.ren += 3; lg('Vyhlásil si nezávislosť od ' + FN[o] + '. Kráľovstvo ti vyhlásilo vojnu.'); upd(); msg('Tvoji poslovia odniesli list kráľovi: od dnešného dňa si pánom vlastnej zeme. ' + FN[o] + ' ti vyhlásil vojnu a jeho lordi ťa považujú za zradcu. Vazali, ktorým si udelil léno, idú s tebou.', () => re('o')); }, 0, 'flag');
+        if (G.fac === 6 && !G.king) btn('Korunovať sa za kráľa (sláva 14, 3 hrady)', () => { G.king = 1; lg(G.name + ' bol korunovaný za kráľa.'); upd(); kingDlg(); }, !(G.ren >= 14 && own.length >= 3), 'crown');
+        if (G.king) btn('Zmeniť meno kráľovstva, erb a farbu', () => kingDlg(), 0, 'flag');
+    }
+    if (tab === 'f') {
+        show('Léna', 'Hrad môžeš udeliť vazalovi (lord sa stane jeho strážcom) alebo spoločníkovi z družiny – ten odíde z družiny, usadí sa na hrade ako jeho pán a bráni ho. Držiteľ léna si necháva 30 % príjmu hradu, ale je ti verný.');
+        tabs();
+        own.forEach(t => {
+            const ti = TW.indexOf(t);
+            rowHead(t.n + ' · prosperita ' + Math.round(t.pr ?? 40) + ' % · posádka ' + t.g + ' · príjem ' + Math.round(castleIncome(t) * taxMul() * fiefShare(t)) + (t.lord ? ' · léno drží ' + t.lord : ' · bez pána'));
+            if (!t.lord) {
+                E.filter(e => e.f === G.fac && !e.kr && !e.dead && !e.nz && !TW.some(x => x.lord === e.nm)).sort((a, b) => Math.hypot(a.x - t.x, a.y - t.y) - Math.hypot(b.x - t.x, b.y - t.y)).slice(0, 2).forEach(e => btn('Udeliť ' + e.nm, () => { t.lord = e.nm; e.rl = (e.rl || 0) + 30; e.vas = 1; e.home = ti; e.role = 'guard'; loyOf(e); e.loy = 30; lg(e.nm + ' dostal léno ' + t.n + '.'); re('f'); }, 0, 'hero'));
+                myComps().forEach(c => btn('Udeliť spoločníkovi ' + c.n, () => { grantToCompanion(c, ti); re('f'); }, 0, 'group'));
+            } else {
+                const cid = Object.keys(G.cfief || {}).find(k => G.cfief[k] === ti);
+                if (cid) btn('Odvolať ' + t.lord + ' späť do družiny', () => { recallCompanion(cid); re('f'); }, (G.comp || []).length >= 4, 'back');
+                else btn('Odobrať léno ' + t.lord + ' (vzťah −25)', () => { const e = E.find(x => x.nm === t.lord); if (e) { e.rl = (e.rl || 0) - 25; e.vas = 0; loyOf(e); e.loy -= 8; } lg('Odobral si léno ' + t.n + '.'); t.lord = 0; re('f'); }, 0, 'back');
+            }
+        });
+        if (!own.length) { const d = document.createElement('div'); d.style.cssText = 'grid-column:1/-1;text-align:left;font-size:.9rem'; d.textContent = 'Nemáš žiadny hrad. Dobyj nejaký obliehaním alebo ho dostaň ako léno od panovníka.'; document.getElementById('bt').appendChild(d); }
+    }
+    if (tab === 'v') {
+        show('Vazali', vas.length ? 'Lordi v tvojich službách: vzťah k tebe, vernosť (0–30) a vojsko. Žold zvyšuje vernosť; maršal vedie ťaženia.' : 'Zatiaľ nemáš vazalov. Lordov získaš udelením léna, presvedčením (rokovanie na mape) alebo keď nespokojný lord ponúkne služby listom.');
+        tabs();
+        const m = MAR[G.fac] != null ? E.find(o => o.id === MAR[G.fac]) : null;
+        vas.forEach(e => {
+            per(e); loyOf(e);
+            const fief = TW.find(t => t.lord === e.nm);
+            rowHead(e.nm + (e === m ? ' (maršal)' : '') + ' · ' + TR[e.tr][0] + ' · ' + Math.ceil(e.n) + ' mužov · vzťah ' + Math.round(e.rl || 0) + ' · vernosť ' + Math.round(e.loy) + (fief ? ' · léno ' + fief.n : ''));
+            if (e !== m) btn('Vymenovať za maršala', () => { MAR[G.fac] = e.id; e.role = 'army'; mst(G.fac).since = G.day; mst(G.fac).day = G.day; lg(e.nm + ' je novým maršalom tvojho vojska.'); re('v'); }, 0, 'flag');
+        });
+        if (vas.length) btn('Vyplatiť žold všetkým (' + vas.length * 40 + ' zlata, vernosť +3, vzťah +4)', () => { G.gold -= vas.length * 40; vas.forEach(e => { e.loy = Math.min(30, loyOf(e) + 3); e.rl = (e.rl || 0) + 4; }); upd(); re('v'); }, G.gold < vas.length * 40, 'coins');
+    }
+    if (tab === 'p') {
+        show('Správa kráľovstva', 'Dane: nízke = menej zlata, prosperita dedín rastie, vazali spokojní; vysoké = o 35 % viac zlata, prosperita klesá, vazali šomrú (vernosť −0,1 denne).');
+        tabs();
+        [['low', 'Nízke dane'], ['normal', 'Bežné dane'], ['high', 'Vysoké dane']].forEach(([k, n]) => { const b = btn(n, () => { G.tax = k; re('p'); }, 0, 'coins'); if ((G.tax || 'normal') === k) b.style.outline = '3px solid #fff'; });
+        if (own.length) btn('Posilniť všetky posádky (+5 obrancov na hrad, ' + own.length * 40 + ' zlata)', () => { G.gold -= own.length * 40; own.forEach(t => t.g += 5); upd(); re('p'); }, G.gold < own.length * 40, 'shield');
+        if (vill.length) btn('Obnoviť vypálené dediny (' + vill.filter(v => v.st > 0).length + ', 30 zlata/dedinu)', () => { const b = vill.filter(v => v.st > 0); G.gold -= b.length * 30; b.forEach(v => v.st = 0); upd(); re('p'); }, !vill.some(v => v.st > 0) || G.gold < vill.filter(v => v.st > 0).length * 30, 'village');
+    }
+    btn('Späť', back, 0, 'back');
+}
+/** Spoločník dostane léno: odíde z družiny a stane sa lordom (strážcom) hradu ti. */
+function grantToCompanion(c, ti) {
+    const t = TW[ti];
+    G.comp = (G.comp || []).filter(id => id !== c.id);
+    (G.cfief = G.cfief || {})[c.id] = ti;
+    t.lord = c.n;
+    E.push({ id: ++NID, x: t.x, y: t.y + 25, f: G.fac, n: 8 + compLv(c) * 2, vx: 0, vy: 0, w: 0, nm: c.n, home: ti, role: 'guard', rl: 60, vas: 1, loy: 30, cp: c.id });
+    lg(c.n + ' prijal léno ' + t.n + ' a bude ho brániť.');
+}
+/** Spoločník s lénom sa vráti do družiny. */
+function recallCompanion(cid) {
+    const ti = G.cfief[cid], t = TW[ti], c = compDef(cid);
+    delete G.cfief[cid];
+    if (t && t.lord === c.n) t.lord = 0;
+    E = E.filter(e => !(e.cp === cid));
+    G.comp = G.comp || []; G.comp.push(cid); (G.chp = G.chp || {})[cid] = 1;
+    lg(c.n + ' sa vrátil do družiny.');
+}
+
+</script>
+<script>
+/*
  * Udalosti na zaujímavých miestach mapy (PLACES). place(i) otvorí okno s možnosťami; návštevy majú odstup cd dní (G.pv).
  */
-function place(i) {
+function place(i, inScene) {
     const P = PLACES[i], last = (G.pv || (G.pv = {}))[P.id], ready = last == null || G.day - last >= P.cd;
-    mode = 'town'; G.dest = -1;
-    const back = () => { ov.classList.add('hide'); mode = 'map'; }, done = () => { G.pv[P.id] = G.day; };
+    const inRoomNow = typeof ROOM !== 'undefined' && ROOM && ROOM.room === 'place' && ROOM.pi === i;
+    if (inScene == null && typeof roomSceneOk === 'function' && roomSceneOk('Place') && !inRoomNow) return enterPlace(i);   // vlastná scéna miesta
+    if (inScene == null && inRoomNow) return roomReturn();
+    const inS = inScene != null;
+    mode = inS ? 'room' : 'town'; G.dest = -1;
+    const back = inS ? () => { ov.classList.add('hide'); mode = 'room'; } : () => { ov.classList.add('hide'); mode = 'map'; }, done = () => { G.pv[P.id] = G.day; };
     show(P.n, P.d + (ready ? '' : ' (Nedávno si tu bol; vráť sa neskôr.)'));
-    const act = (label, fn, icon) => btn(label, () => { done(); fn(); }, !ready, icon);
+    const acts = [];
+    const act = (label, fn, icon) => { acts.push(label); if (typeof inScene === 'number' && inScene !== acts.length - 1) return; btn(label, () => { done(); fn(); }, !ready, icon); };
     if (P.id === 'amonsul') act('Vystúpiť na vrchol a rozhliadnuť sa', () => { const en = E.filter(e => hos(e.f, G.fac)).sort((a, b) => Math.hypot(a.x - G.x, a.y - G.y) - Math.hypot(b.x - G.x, b.y - G.y)).slice(0, 4); if (!G.pv.amonsul1) { G.pv.amonsul1 = 1; G.ren++; } msg('Z vrcholu vidíš: ' + (en.map(e => e.nm + ' (' + FN[e.f] + ', ' + Math.ceil(e.n) + ' mužov, ' + (e.x < G.x ? 'západ' : 'východ') + ')').join('; ') || 'nikoho') + '. ' + (isNight() ? 'V tme pod kopcom sa mihajú čierne tiene – lepšie neostať.' : 'Sláva +1 za výstup.'), back); }, 'map');
     if (P.id === 'argonath') act('Prejsť popod Kráľov', () => { G.ren += 2; G.hon = (G.hon || 0) + 1; msg('Kamenní králi hľadia na sever. Cítiš, že si súčasťou starého príbehu. Sláva +2, česť +1.', back); }, 'star');
     if (P.id === 'trolls') act('Prehľadať jaskyne (boj s trollmi)', () => { back(); startBattle({ n: 3, f: 9, nm: 'Trollovia', trolls: 1 }); }, 'attack');
     if (P.id === 'bombadil') act('Zaklopať u Toma Bombadila', () => { G.hp = mh(); G.hon = (G.hon || 0) + 1; if (G.chp) Object.keys(G.chp).forEach(k => G.chp[k] = 1); msg('„Hej dol! Veselý dol!“ Tom vás nakŕmi, Zlatienka naleje vodu zo studne a ráno sú všetci zdraví a odpočinutí. Zdravie všetkých plné, česť +1.', back); }, 'heart');
     if (P.id === 'marshes') { act('Prebrodiť močiare (skratka)', () => { const lost = Math.random() < .5 ? 1 : 0; G.inf = Math.max(0, G.inf - lost); G.fear = (G.fear || 0) + 1; msg(lost ? 'Jeden z mužov sa zahľadel do vody a zmizol v bahne. Ostatných prejde mráz. Strach +1.' : 'Bludičky vás lákali, ale držali ste sa cesty. Strach +1.', back); }, 'skull'); act('Hľadať v bahne (nebezpečné)', () => { const r = Math.random(); if (r < .3) { G.gold += 80; msg('V bahne nájdeš hrdzavú truhličku so zlatom dávneho vojska. +80 zlata.', back); } else { G.hp = Math.max(10, G.hp - 15); msg('Niečo studené ťa chytí za členok. Vytrhneš sa, ale stálo ťa to kus zdravia (−15).', back); } }, 'coins'); }
     if (P.id === 'spiders') act('Vyčistiť húštiny (boj s pavúkmi)', () => { back(); startBattle({ n: 8, f: 9, nm: 'Pavúky', spiders: 1 }); }, 'attack');
-    if (P.id === 'fangorn') act(heroSide() === 1 ? 'Rúbať stromy' : 'Zavolať na pastierov stromov', () => { if (heroSide() === 1) { G.inf = Math.max(0, G.inf - 2); msg('Stromy sa pohli. Dvaja orkovia zmizli v konároch a ostatní utekajú. Pešiaci −2.', back); } else { G.hp = mh(); G.ren++; msg('Zo šera vystúpi Stromobrad. „Hm, hrúm. Neunáhlime sa.“ Po dlhom rozhovore vás pustí ďalej oddýchnutých. Zdravie plné, sláva +1.', back); } }, 'leaf');
+    if (P.id === 'fangorn') act(heroSide() === 1 ? 'Rúbať stromy' : 'Zavolať na pastierov stromov', () => { if (heroSide() === 1) { G.inf = Math.max(0, G.inf - 2); msg('Stromy sa pohli. Dvaja orkovia zmizli v konároch a ostatní utekajú. Pešiaci −2.', back); } else { G.hp = mh(); G.ren++; const ent = G.ren >= 5 && (G.ent || 0) < 3 && Math.random() < .6; if (ent) G.ent = (G.ent || 0) + 1; msg('Zo šera vystúpi Stromobrad. „Hm, hrúm. Neunáhlime sa.“ Po dlhom rozhovore vás pustí ďalej oddýchnutých. Zdravie plné, sláva +1.' + (ent ? ' Jeden z mladších entov sa rozhodol ísť s tebou – v bitke bude trhať orkov ako konáre (enti v družine: ' + G.ent + ').' : ''), back); } }, 'leaf');
     if (P.id === 'deadpaths') act('Vstúpiť do tmy', () => { if (heroSide() === 0 && G.ren >= 8) { G.fear = (G.fear || 0) + 5; G.ren += 3; msg('Mŕtvi ti odpovedajú. Tiene pôjdu za tebou do jednej bitky – nepriatelia sa ťa budú báť. Strach +5, sláva +3.', back); } else { G.hp = Math.max(10, G.hp - 20); msg('Tma ťa vyvrhne von. Nie si ten, na koho čakajú. Zdravie −20.', back); } }, 'skull');
     if (P.id === 'carrock') act('Zaklopať u Beorna', () => { if (heroSide() === 0) { G.hp = mh(); G.inf += 3; msg('Beorn zavrčí, ale pustí vás dnu. Med, smotana a ráno traja statní chlapi z jeho dvora idú s vami. Pešiaci +3, zdravie plné.', back); } else { back(); startBattle({ n: 1, f: 9, nm: 'Beorn', beorn: 1 }); } }, 'rest');
     if (P.id === 'isenfords') act('Prebrodiť rieku', () => { if (Math.random() < .5) { back(); startBattle({ n: 8, f: 3, nm: 'Hliadka Isengardu' }); } else msg('Brod je tichý. Len v tráve ležia staré prilby Rohanu.', back); }, 'map');
     if (P.id === 'minasithil') act('Pokloniť sa padlým', () => { G.hon = (G.hon || 0) + 2; msg('Vietor od rieky hýbe trávou nad hrobmi. Česť +2.', back); }, 'honor');
-    btn('Odísť', back, 0, 'door');
+    btn(inS ? 'Späť' : 'Odísť', back, 0, inS ? 'back' : 'door');
+}
+/** Voľba a (poradie v zozname) z okna miesta, otvorená zo scény pamätihodnosti. */
+function placeAct(i, a) { place(i, a); }
+/** Rozhovor s postavou na pamätihodnosti. */
+function placeTalk(i, who) {
+    const P = PLACES[i]; mode = 'room';
+    const back = () => { ov.classList.add('hide'); mode = 'room'; };
+    const T = {
+        tom: ['Tom Bombadil', { race: 'human', skin: 1, hair: 'curly', hcol: '#6a4a2a', beard: 'full', eyes: '#4a8ad0', smile: 1 }, ['Hej dol! Veselý dol! Zvoní zvonček, dolinka! Vitaj, vitaj, pútnik, u Toma je vždy stôl prestretý.', 'Prsteň? Ukáž… Hm, taká vecička. Tomovi nič nerobí. Ale tebe, tebe by mohla. Daj si pozor na Mohylové vrchy.', 'Zlatienka spieva o daždi a ty mi vyzeráš, že by si potreboval pieseň aj spánok.']],
+        beorn: ['Beorn', { race: 'human', skin: 1, hair: 'long', hcol: '#1a1a1a', beard: 'full', eyes: '#3a2a1a', age: .5 }, ['Hrmm. Cudzinci. Nemám rád cudzincov, ale mám rád med. Vezmi si, kým som v dobrej nálade.', 'Orkov z Hmlistých hôr poznám po pachu. Ak ich zaháňaš, si môj hosť. Ak ich privádzaš, choď.', 'V noci neopúšťaj dom. V noci chodím ja. A nie po dvoch.']],
+        ranger: ['Hraničiar Severu', { race: 'human', skin: 1, hair: 'long', hcol: '#2a1a10', beard: 'stubble', eyes: '#6a7a7a', age: .5 }, ['Vetrov. Tu stála Amon Sûl, kým ju Angmar nezrovnal so zemou. Z vrcholu vidno na všetky strany – aj to, čo by si radšej nevidel.', 'Ak tu ostaneš cez noc, drž oheň pri sebe. Prichádzajú sem čierne tiene a tie sa ohňa boja.', 'Dúnadani strážia tieto cesty, aj keď nám za to nikto nepoďakuje.']],
+        rider: ['Rohanský zved', { race: 'human', skin: 0, hair: 'long', hcol: '#e8d0a0', beard: 'stubble', eyes: '#4a8ad0' }, ['Brody na Isene. Tu padol Théodred, syn kráľa. Isengard sem posiela hliadky každý týždeň.', 'Ak uvidíš bielu ruku na štíte, nečakaj, kým zaútočia prví.', 'Kone cítia Uruk-hai skôr než my. Keď frkajú, je čas tasiť.']],
+        guard: ['Strážca Pelennoru', { race: 'human', skin: 1, hair: 'short', hcol: '#3a2a1a', beard: 'none', eyes: '#4a6a8a' }, ['Tu sa rozhodovalo o Západe. Na tomto poli padol kráľ Théoden a tu zomrel Čierny kapitán.', 'Strom uschol v deň bitky. Nikto sa ho neodváži vyrúbať.', 'Pod trávou ešte ležia prilby. Keď prší, vychádzajú na povrch.']],
+        ferry: ['Prievozník', { race: 'human', skin: 1, hair: 'bald', beard: 'full', hcol: '#c8c0b0', eyes: '#4a5a6a', age: .9 }, ['Králi Isildur a Anárion. Hľadia na sever už tri tisícročia a ešte sa neunavili.', 'Za Argonathom je Nen Hithoel a vodopády Rauros. Kto sa po nich pustí na lodi, už sa nevráti.', 'Prevoz stojí dve mince. Pre dedičov kráľov zadarmo – ale tých tu veľa nechodí.']],
+        hobbit: ['Smiešok Brandylen', { race: 'hobbit', skin: 0, hair: 'curly', hcol: '#8a5a30', beard: 'none', eyes: '#5a7a5a', smile: 1 }, ['Pšt! Stromobrad hovorí pomaly, ale počúva rýchlo. Nehovor nič unáhlené.', 'Enti sa radia už tri dni. Zatiaľ sa dohodli, že sa budeme volať „hobiti“ a že nie sme orkovia.', 'Ent-nápoj! Ochutnaj. Vraj po ňom človek rastie. U mňa to funguje.']]
+    }[who];
+    if (!T) return back();
+    PORTRAIT = T[1];
+    show(T[0], '„' + T[2][Math.floor(Math.random() * T[2].length)] + '“');
+    btn('Povedz niečo', () => placeTalk(i, who), 0, 'talk');
+    btn('Späť', back, 0, 'back');
 }
 
 </script>
@@ -6585,20 +7321,29 @@ const Art = {
         } else if (n >= 2) scene.anims.create({ key: key + ':wave', frames: fr(0, n - 1), frameRate: 6, repeat: -1 });
     },
 
-    /** Načíta textúry z tools/generate_art.py (terén, hory, vojaci, bojisko). Vráti Promise. */
-    loadTextures(scene) {
+    /** Načíta textúry z tools/generate_art.py (terén, hory, vojaci, bojisko). Vráti Promise.
+     *  group: 'map' (mapa, hrady, dediny, hory – potrebné hneď), 'battle' (bojisko a vojaci – dočítavajú sa na pozadí po úvode)
+     *  alebo nič = všetko. onProgress(hotové, celkom) hlási postup pre načítaciu obrazovku. */
+    loadTextures(scene, group, onProgress) {
         const T = (typeof ASSETS !== 'undefined' && ASSETS.textures) || {};
-        return Promise.all(Object.entries(T).map(([key, url]) => new Promise(ok => {
+        const isBattle = k => /^(unit_|ground_|tree_|deadtree|rock|water|cobble|wall|tower|keep)/.test(k);
+        const keys = Object.keys(T).filter(k => group === 'map' ? !isBattle(k) : group === 'battle' ? isBattle(k) : true);
+        let done = 0;
+        const one = key => new Promise(ok => {
+            if (scene.textures.exists(key) || Art.img[key]) { done++; onProgress && onProgress(done, keys.length); return ok(); }
             const img = new Image();
-            img.onload = () => {
-                if (!scene.textures.exists(key)) scene.textures.addImage(key, img);
-                Art.img[key] = img;
-                ok();
-            };
-            img.onerror = () => { console.warn('Textúra sa nenačítala:', key); ok(); };
-            img.src = url;
-        })));
+            const fin = () => { done++; onProgress && onProgress(done, keys.length); ok(); };
+            img.onload = () => { if (!scene.textures.exists(key)) scene.textures.addImage(key, img); Art.img[key] = img; fin(); };
+            img.onerror = () => { console.warn('Textúra sa nenačítala:', key); fin(); };
+            img.src = T[key];
+        });
+        // po menších dávkach, aby prehliadač medzitým stihol prekresliť priebeh
+        const batches = []; for (let i = 0; i < keys.length; i += 6) batches.push(keys.slice(i, i + 6));
+        const p = batches.reduce((acc, b) => acc.then(() => Promise.all(b.map(one))), Promise.resolve());
+        if (group) Art.loading[group] = p.then(() => { Art.loaded[group] = 1; });
+        return group ? Art.loading[group] : p;
     },
+    loaded: {}, loading: {},
     img: {},
 
     /** Druh kreslenia vojaka v assets/textures/unit_<druh>.png. */
@@ -6651,7 +7396,7 @@ const Art = {
 
     unitKey(u) {
         if (u.h) return 'hero_' + [G.eq.w, G.eq.a, G.eq.s, G.eq.h, G.eq.m, G.fac, G.king ? 1 : 0, G.ke ?? ''].join('_');
-        if (u.cp) { const c = compDef(u.cp); return c.eq ? 'hero_cp_' + u.cp + '_' + G.fac : 'u_' + c.art + '_0_' + G.fac; }
+        if (u.cp) { const c = compDef(u.cp); return c.eq ? 'hero_cp_' + u.cp + '_' + G.fac + '_' + (u.mnt || 0) : 'u_' + c.art + '_0_' + G.fac; }
         return 'u_' + (u.uk || u.k) + '_' + (u.t ? 1 : 0) + '_' + (u.t ? u.fc : G.fac) + (u.bn ? '_b' : '');
     },
 
@@ -6660,7 +7405,7 @@ const Art = {
         const key = Art.unitKey(u), kind = Art.unitArt(u), base = Art.img['unit_' + kind];
         // hrdina sa kreslí podľa výbavy: každá zbraň, brnenie, štít, prilba a kôň vyzerá inak
         if ((u.h || (u.cp && compDef(u.cp).eq)) && !scene.textures.exists(key) && typeof Soldiers !== 'undefined') {
-            const sp = Soldiers.heroSpec(u.h ? G.eq : compDef(u.cp).eq);
+            const sp = Soldiers.heroSpec(u.h ? G.eq : { ...compDef(u.cp).eq, m: u.mnt || compDef(u.cp).eq.m || 0 });
             Art.register(scene, key, Art.tinted(Soldiers.sheet(sp, 'base'), Soldiers.sheet(sp, 'team'), FC[G.fac]));
             Art.anims(scene, key);
             return key;
@@ -6668,6 +7413,12 @@ const Art = {
         if (!scene.textures.exists(key) && base) {
             const color = u.h || !u.t ? FC[G.fac] : FC[u.fc] || '#888888';
             Art.register(scene, key, Art.tinted(base, Art.img['unit_' + kind + '_team'], color));
+            Art.anims(scene, key);
+            return key;
+        }
+        if (!scene.textures.exists(key) && !base && typeof Soldiers !== 'undefined' && Soldiers.UNITS[kind]) {   // druh bez obrázka (ent, ťažké jednotky): nakreslí sa kódom
+            const color = u.h || !u.t ? FC[G.fac] : FC[u.fc] || '#888888';
+            Art.register(scene, key, Art.tinted(Soldiers.sheet(kind, 'base'), Soldiers.sheet(kind, 'team'), color));
             Art.anims(scene, key);
             return key;
         }
@@ -6853,6 +7604,14 @@ const Icons = (() => {
     draw.gear = c => { c.fillStyle = steel; c.beginPath(); for (let k = 0; k < 16; k++) { const a = k * Math.PI / 8, r = k % 2 ? 6.5 : 9; c.lineTo(12 + Math.cos(a) * r, 12 + Math.sin(a) * r); } c.closePath(); c.fill(); c.fillStyle = '#2a2420'; c.beginPath(); c.arc(12, 12, 3, 0, 7); c.fill(); };
     draw.quest = draw.scroll;
     draw.camp = draw.tent;
+    draw.village = c => { c.fillStyle = '#d8c8a0'; c.fillRect(5, 11, 14, 9); c.fillStyle = '#8a5a30'; path(c, [[3, 12], [12, 4], [21, 12]], true); c.fill(); c.fillStyle = '#4a2a10'; c.fillRect(10, 14, 4, 6); c.fillStyle = '#8ab0d8'; c.fillRect(15, 13, 3, 3); c.fillStyle = steel2; c.fillRect(15, 5, 2.5, 5); };
+    draw.shield = c => { c.fillStyle = '#2a4a7a'; path(c, [[12, 3], [20, 6], [19, 14], [12, 21], [5, 14], [4, 6]], true); c.fill(); c.strokeStyle = gold; c.lineWidth = 1.5; c.stroke(); c.fillStyle = gold; c.fillRect(11, 6, 2, 12); c.fillRect(7, 10, 10, 2); shine(c, 9, 7, 2.5); };
+    draw.talk = c => { c.fillStyle = ink; c.beginPath(); c.ellipse(12, 11, 9, 7, 0, 0, 7); c.fill(); path(c, [[7, 16], [6, 21], [12, 17]], true); c.fill(); c.fillStyle = gold2; for (const x of [8, 12, 16]) { c.beginPath(); c.arc(x, 11, 1.3, 0, 7); c.fill(); } };
+    draw.flag = c => { c.fillStyle = wood; c.fillRect(5, 3, 2, 18); c.fillStyle = red; path(c, [[7, 4], [20, 7], [7, 12]], true); c.fill(); c.fillStyle = gold; c.beginPath(); c.arc(12, 8, 1.6, 0, 7); c.fill(); };
+    draw.lock = c => { c.fillStyle = gold2; c.fillRect(6, 11, 12, 9); c.strokeStyle = steel; c.lineWidth = 2.2; c.beginPath(); c.arc(12, 10, 4, Math.PI, 0); c.stroke(); c.fillStyle = '#4a2a10'; c.fillRect(11, 14, 2, 4); };
+    draw.key = c => { c.strokeStyle = gold; c.lineWidth = 2.4; c.lineCap = 'round'; c.beginPath(); c.arc(8, 9, 4, 0, 7); c.stroke(); c.beginPath(); c.moveTo(11, 11); c.lineTo(20, 20); c.moveTo(17, 17); c.lineTo(15, 19); c.moveTo(19, 19); c.lineTo(17, 21); c.stroke(); };
+    draw.tree = c => { c.fillStyle = wood; c.fillRect(10.5, 14, 3, 7); c.fillStyle = '#3a7a3a'; path(c, [[12, 2], [20, 11], [4, 11]], true); c.fill(); path(c, [[12, 7], [21, 17], [3, 17]], true); c.fill(); };
+    draw.mountain = c => { c.fillStyle = steel2; path(c, [[2, 20], [9, 6], [14, 13], [17, 9], [22, 20]], true); c.fill(); c.fillStyle = ink; path(c, [[9, 6], [11, 10], [7, 10]], true); c.fill(); path(c, [[17, 9], [18.5, 12], [15.5, 12]], true); c.fill(); };
 
     /** Kľúč textúry ikony name (nakreslí ju pri prvom použití). */
     /** Plátno s ikonou name (96 × 96 px). */
@@ -6949,6 +7708,8 @@ const Tex = (() => {
         sand(c, R, col) { c.fillStyle = col; c.fillRect(0, 0, T, T); for (let k = 0; k < 40; k++) { c.fillStyle = 'rgba(' + (R() < .5 ? '255,240,200' : '80,50,20') + ',' + (.04 + R() * .06).toFixed(3) + ')'; c.beginPath(); c.ellipse(R() * T, R() * T, 14 + R() * 30, 4 + R() * 8, R() * .6, 0, 7); c.fill(); } noise(c, R, 900, .07); },
         grass(c, R, col) { c.fillStyle = col; c.fillRect(0, 0, T, T); for (let k = 0; k < 30; k++) { c.fillStyle = 'rgba(90,60,30,' + (.1 + R() * .15).toFixed(3) + ')'; c.beginPath(); c.ellipse(R() * T, R() * T, 10 + R() * 26, 5 + R() * 9, R() * 3, 0, 7); c.fill(); } for (let k = 0; k < 500; k++) { c.strokeStyle = 'rgba(' + (R() < .5 ? '150,200,90' : '40,80,30') + ',.45)'; c.lineWidth = 1; const x = R() * T, y = R() * T; c.beginPath(); c.moveTo(x, y); c.lineTo(x + R() * 3 - 1.5, y - 3 - R() * 4); c.stroke(); } },
         dark(c, R, col) { DRAW.bricks(c, R, col); for (let k = 0; k < 24; k++) { c.strokeStyle = 'rgba(255,90,30,' + (.08 + R() * .12).toFixed(3) + ')'; c.lineWidth = 1; c.beginPath(); const x = R() * T, y = R() * T; c.moveTo(x, y); c.lineTo(x + R() * 10 - 5, y + 8 + R() * 10); c.stroke(); } },
+        snow(c, R, col) { c.fillStyle = col; c.fillRect(0, 0, T, T); for (let k = 0; k < 26; k++) { c.fillStyle = 'rgba(150,170,210,' + (.08 + R() * .12).toFixed(3) + ')'; c.beginPath(); c.ellipse(R() * T, R() * T, 12 + R() * 30, 5 + R() * 10, R() * 3, 0, 7); c.fill(); } for (let k = 0; k < 10; k++) { c.fillStyle = 'rgba(90,110,150,.18)'; c.beginPath(); c.ellipse(R() * T, R() * T, 4, 6, R() * 3, 0, 7); c.fill(); } noise(c, R, 500, .05); },
+        mud(c, R, col) { c.fillStyle = col; c.fillRect(0, 0, T, T); for (let k = 0; k < 30; k++) { c.fillStyle = 'rgba(0,0,0,' + (.08 + R() * .15).toFixed(3) + ')'; c.beginPath(); c.ellipse(R() * T, R() * T, 10 + R() * 26, 4 + R() * 8, R() * 3, 0, 7); c.fill(); } for (let k = 0; k < 6; k++) { const x = R() * T, y = R() * T; c.fillStyle = 'rgba(60,80,110,.35)'; c.beginPath(); c.ellipse(x, y, 14 + R() * 14, 5 + R() * 5, R() * .4, 0, 7); c.fill(); c.fillStyle = 'rgba(200,220,240,.25)'; c.beginPath(); c.ellipse(x - 4, y - 2, 6, 2, 0, 0, 7); c.fill(); } noise(c, R, 500, .07); },
         bark(c, R, col) { DRAW.planks(c, R, col, true); c.strokeStyle = 'rgba(220,230,200,.35)'; c.lineWidth = 1.2; for (let k = 0; k < 6; k++) { const x = 20 + k * 42; c.beginPath(); c.moveTo(x, T); c.bezierCurveTo(x - 14, T * .66, x + 14, T * .33, x, 0); c.stroke(); for (let m = 0; m < 4; m++) { const y = 30 + m * 60; c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + 10, y - 8, x + 16, y - 16); c.stroke(); } } }
     };
 
@@ -7112,7 +7873,7 @@ function ambTick() {
     if (!ac || !G || mode === 'intro') { if (AMB) for (const k in AMB.src) ambSet(k, 0); return; }
     ambInit();
     if (mu) { for (const k in AMB.src) ambSet(k, 0); return; }
-    const battle = mode === 'battle', inside = mode === 'town' || mode === 'tavern' || mode === 'castle';   // v hrade a v krčme vonkajšie zvuky nepočuť
+    const battle = mode === 'battle', inside = mode === 'town' || mode === 'tavern' || mode === 'castle' || mode === 'room';   // v hrade a v krčme vonkajšie zvuky nepočuť
     const w = inside ? 'clear' : battle ? WX.n : MW.n, night = battle ? WX.night : isNight();
     const se = season();
     ambSet('rain', w === 'rain' ? .1 : w === 'storm' ? .18 : w === 'ash' ? .05 : 0);            // dážď tichý, len ako podkres
@@ -7133,30 +7894,93 @@ function ambTick() {
 </script>
 <script>
 /*
- * ENGINE: štartovacia scéna.
- * Pripraví svet (mapu, bojisko), načíta textúry, vlastné obrázky a zvuky z js/engine/assets.js,
- * počká na písma a spustí úvod spolu so scénou rozhrania.
+ * ENGINE: štartovacia scéna s načítacou obrazovkou v duchu Pána prsteňov.
+ * Pripraví svet (mapu, bojisko), načíta textúry mapy s priebehom (Prsteň, zlatá lišta, citáty), zvuky a písma,
+ * spustí úvod a textúry bojiska a vojakov dočíta na pozadí (Art.loadTextures(scene, 'battle')).
  */
 class BootScene extends Phaser.Scene {
     constructor() { super('Boot'); }
 
     create() {
-        ov.classList.add('intro');
+        ov.classList.add('intro'); ov.classList.add('hide');   // úvodný formulár sa ukáže až po načítaní
         tb.style.display = 'none';
         hud.style.visibility = 'hidden';
         tb.id = 'tb'; od.id = 'od';
         cv.width = W * RES; cv.height = H * RES;          // pomocné plátno pre kreslenie vo vysokom rozlíšení
-        buildMap();
-        SoundFX.init(this);
-        const txt = this.add.text(W * RES / 2, H * RES / 2, 'Načítavam Stredozem…', { fontFamily: 'Georgia, serif', fontSize: 18 * RES + 'px', color: '#d9a441' }).setOrigin(.5);
-        const fonts = document.fonts && document.fonts.load
-            ? Promise.race([Promise.all([document.fonts.load('15px "IM Fell English"'), document.fonts.load('26px "Uncial Antiqua"')]), new Promise(r => setTimeout(r, 2500))])
-            : Promise.resolve();
-        Promise.all([Art.loadTextures(this), Art.loadOverrides(this), fonts]).then(() => {
-            txt.destroy();
-            this.scene.launch('UI');
-            this.scene.start('Intro');
+        this.buildScreen();
+        this.prog = 0; this.target = 0; this.step = 'Kreslím mapu Stredozeme…';
+        const QUOTES = ['„Jeden prsteň vládne všetkým, jeden im všetkým káže…“', '„Aj ten najmenší človek môže zmeniť beh budúcnosti.“', '„Nie je všetko zlato, čo sa blyští, a nie každý, kto blúdi, je stratený.“', '„Stačí sa rozhodnúť, čo urobíme s časom, ktorý nám je daný.“', '„Mnohí, čo žijú, si zaslúžia smrť. A niektorí, čo zomreli, by si zaslúžili život.“', '„Dokonca aj tma musí pominúť. Príde nový deň.“', '„Cesta ide ďalej a ďalej, od dverí, kde sa začala.“'];
+        this.quote.setText(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
+        this.time.addEvent({ delay: 4200, loop: true, callback: () => { this.quote.setText(QUOTES[Math.floor(Math.random() * QUOTES.length)]); } });
+        const steps = [
+            ['Kreslím mapu Stredozeme…', () => new Promise(r => setTimeout(() => { buildMap(); r(); }, 30))],
+            ['Staviam hrady a dediny…', () => Art.loadTextures(this, 'map', (d, n) => { this.target = .1 + .6 * d / n; })],
+            ['Ladím rohy a bubny…', () => new Promise(r => { SoundFX.init(this); setTimeout(r, 50); })],
+            ['Maľujem erby a zástavy…', () => Art.loadOverrides(this)],
+            ['Čakám na pisárov (písma)…', () => document.fonts && document.fonts.load
+                ? Promise.race([Promise.all([document.fonts.load('15px "IM Fell English"'), document.fonts.load('26px "Uncial Antiqua"')]), new Promise(r => setTimeout(r, 2500))])
+                : Promise.resolve()]
+        ];
+        const ends = [.1, .7, .78, .88, 1];
+        steps.reduce((acc, [name, fn], i) => acc.then(() => { this.step = name; return fn().then(() => { this.target = ends[i]; }); }), Promise.resolve()).then(() => {
+            this.step = 'Brána sa otvára…'; this.target = 1;
+            const go = () => { if (this.prog < .985) return this.time.delayedCall(60, go); this.time.delayedCall(250, () => {
+                ov.classList.remove('hide');
+                this.scene.launch('UI');
+                this.scene.start('Intro');
+                Art.loadTextures(this.scene.get('UI'), 'battle');   // bojisko a vojaci sa dočítajú na pozadí počas úvodu
+            }); };
+            go();
         });
+    }
+
+    /** Obrazovka: tmavé pozadie, veľký Prsteň s ohnivým nápisom, názov, lišta a text kroku. */
+    buildScreen() {
+        const S = RES, cx = W * S / 2, cy = H * S / 2 - 30 * S;
+        this.cameras.main.setBackgroundColor('#0b0806');
+        const bg = this.add.graphics();
+        for (let k = 0; k < 8; k++) bg.fillStyle(0x3a2410, .06).fillCircle(cx, cy, (220 - k * 24) * S);   // teplá žiara za prsteňom
+        for (let k = 0; k < 140; k++) { const a = Math.random() * 6.283, r = (60 + Math.random() * 330) * S; bg.fillStyle(0xffd080, Math.random() * .35).fillCircle(cx + Math.cos(a) * r, cy + Math.sin(a) * r * .6, Math.random() * 1.6 * S); }   // iskry
+        this.ring = this.add.graphics();
+        this.title = this.add.text(cx, cy - 150 * S, 'Vojvodca Stredozeme', { fontFamily: '"Uncial Antiqua", Georgia, serif', fontSize: 30 * S + 'px', color: '#e8c060', stroke: '#2a1a08', strokeThickness: 4 * S }).setOrigin(.5);
+        this.sub = this.add.text(cx, cy - 122 * S, 'Vojna o Stredozem v duchu Pána prsteňov', { fontFamily: '"IM Fell English", Georgia, serif', fontSize: 12 * S + 'px', color: '#b8a070' }).setOrigin(.5);
+        this.quote = this.add.text(cx, cy + 118 * S, '', { fontFamily: '"IM Fell English", Georgia, serif', fontSize: 12 * S + 'px', color: '#c8b890', fontStyle: 'italic', align: 'center', wordWrap: { width: 520 * S } }).setOrigin(.5);
+        this.bar = this.add.graphics();
+        this.stepTxt = this.add.text(cx, cy + 170 * S, '', { fontFamily: '"IM Fell English", Georgia, serif', fontSize: 11 * S + 'px', color: '#d9a441' }).setOrigin(.5);
+        this.add.text(cx, H * S - 14 * S, 'Autor a vývojár hry: Dávid Mucha', { fontFamily: 'Georgia, serif', fontSize: 10 * S + 'px', color: '#8a7a5a' }).setOrigin(.5);
+        this.t = 0;
+    }
+
+    update(time, delta) {
+        this.t += delta / 1000;
+        this.prog += (this.target - this.prog) * Math.min(1, delta / 180);
+        const S = RES, cx = W * S / 2, cy = H * S / 2 - 30 * S, t = this.t;
+        // Prsteň: zlatý prstenec s odleskom a ohnivým písmom, ktoré sa posúva po obvode
+        const g = this.ring; g.clear();
+        const R0 = 78 * S, th = 15 * S;
+        g.lineStyle(th + 4 * S, 0x2a1a08, 1).strokeEllipse(cx, cy, R0 * 2, R0 * 1.3);
+        g.lineStyle(th, 0xd9a441, 1).strokeEllipse(cx, cy, R0 * 2, R0 * 1.3);
+        g.lineStyle(th * .45, 0xffe6a0, .8).strokeEllipse(cx - 3 * S, cy - 3 * S, R0 * 2 - 6 * S, R0 * 1.3 - 6 * S);
+        g.lineStyle(th * .3, 0x8a5a10, .7).strokeEllipse(cx + 3 * S, cy + 4 * S, R0 * 2 - 4 * S, R0 * 1.3 - 4 * S);
+        for (let k = 0; k < 34; k++) {   // „tengwar“: ohnivé znaky
+            const a = t * .5 + k * 6.283 / 34, px = cx + Math.cos(a) * R0, py = cy + Math.sin(a) * R0 * .65, front = Math.sin(a) > -.2;
+            if (!front) continue;
+            const h = (3 + ((k * 7) % 4)) * S, w = 1.6 * S, al = .55 + .45 * Math.sin(t * 3 + k);
+            g.fillStyle(0xff7a20, al).fillRect(px - w / 2, py - h / 2, w, h);
+            if (k % 3 === 0) g.fillStyle(0xffb040, al).fillCircle(px + 2 * S, py - h / 2, .9 * S);
+            if (k % 4 === 1) g.fillStyle(0xff9030, al).fillRect(px - 2.5 * S, py + h / 2, 5 * S, .8 * S);
+        }
+        g.fillStyle(0xff8a30, .08 + .04 * Math.sin(t * 2)).fillEllipse(cx, cy, R0 * 2.6, R0 * 1.9);
+        // lišta
+        const b = this.bar; b.clear();
+        const bw = 420 * S, bh = 10 * S, bx = cx - bw / 2, by = cy + 148 * S;
+        b.fillStyle(0x1a1208, 1).fillRoundedRect(bx - 2 * S, by - 2 * S, bw + 4 * S, bh + 4 * S, 5 * S);
+        b.lineStyle(1.5 * S, 0x6a4a18, 1).strokeRoundedRect(bx - 2 * S, by - 2 * S, bw + 4 * S, bh + 4 * S, 5 * S);
+        const pw2 = Math.max(8 * S, bw * this.prog);
+        b.fillStyle(0xd9a441, 1).fillRoundedRect(bx, by, pw2, bh, 4 * S);
+        b.fillStyle(0xffe6a0, .55).fillRoundedRect(bx, by, pw2, bh * .4, 3 * S);
+        b.fillStyle(0xff9a30, .5 + .3 * Math.sin(t * 6)).fillCircle(bx + pw2, by + bh / 2, 5 * S);
+        this.stepTxt.setText(this.step + '  ' + Math.round(this.prog * 100) + ' %');
     }
 }
 
@@ -7598,6 +8422,18 @@ class BattleScene extends Phaser.Scene {
     constructor() { super('Battle'); }
 
     create() {
+        this.ready = false;
+        if (!Art.loaded.battle && Art.loading.battle) {   // textúry bojiska sa ešte dočítavajú na pozadí
+            this.cameras.main.setBackgroundColor('#0b0806');
+            const t = this.add.text(W * RES / 2, H * RES / 2, 'Vojská sa zoraďujú…', { fontFamily: '"IM Fell English", Georgia, serif', fontSize: 16 * RES + 'px', color: '#d9a441' }).setOrigin(.5).setScrollFactor(0);
+            Art.loading.battle.then(() => { if (this.scene.isActive('Battle')) { t.destroy(); this.build(); } });
+            return;
+        }
+        this.build();
+    }
+
+    build() {
+        this.ready = true;
         if (this.textures.exists('ground_g')) this.buildField();
         else {
             const c = document.createElement('canvas');
@@ -7655,27 +8491,38 @@ class BattleScene extends Phaser.Scene {
         this.units.set(u, o);
     }
 
-    /** Bojisko z textúr: zem podľa krajiny, rieka s brodom, stromy, skaly a pri obliehaní hrad. */
+    /** Bojisko z textúr podľa miesta na mape (FIELD): zem podľa krajiny, rieka s brodom len pri Anduine, lesné zhluky podľa hustoty lesa,
+     *  kopec s výhodou pre obrancu pri horách, skaly; pri obliehaní hrad. */
     buildField() {
-        const b = { g: 'g', a: 'a', d: 'd', s: 's' }[BI] || 'g';
+        const b = { g: 'g', a: 'a', d: 'd', s: 's' }[BI] || 'g', F = FIELD || { trees: [] };
         this.add.tileSprite(0, 0, BW, BH, 'ground_' + b).setOrigin(0).setTileScale(.5).setDepth(-10);
-        const bank = this.add.graphics().setDepth(-9);
-        bank.fillStyle(0x2a3a22, .55).fillRect(684, 0, 72, BH);
-        this.water = this.add.tileSprite(690, 0, 60, BH, 'water').setOrigin(0).setTileScale(.5).setDepth(-9);
-        bank.fillStyle(0x9a8558, 1).fillRect(686, 440, 68, 80).fillStyle(0x000000, .12).fillRect(686, 440, 68, 4).fillRect(686, 516, 68, 4);
-        let seed = 7 + BW;
+        let seed = 7 + BW + Math.floor((F.forest || 0) * 97);
         const rnd = () => (seed = seed * 16807 % 2147483647) / 2147483647;
+        if (F.hill) {   // kopec / úpätie hory: svetlejšia vyvýšenina so šikmým tieňom
+            const hg = this.add.graphics().setDepth(-9.5), hx = BW * .62, hy = BH * .5;
+            for (let k = 5; k >= 0; k--) { hg.fillStyle(0xffffff, .05 + (F.mountain ? .02 : 0)).fillEllipse(hx, hy, 340 - k * 40, 240 - k * 28); }
+            hg.fillStyle(0x000000, .14).fillEllipse(hx + 40, hy + 50, 320, 200); hg.fillStyle(0xffffff, .06).fillEllipse(hx - 30, hy - 30, 220, 140);
+            hg.lineStyle(2, 0xffffff, .12).strokeEllipse(hx, hy, 340, 240).strokeEllipse(hx, hy, 220, 150);
+            if (F.mountain) for (let i = 0; i < 10; i++) this.add.image(hx + (rnd() - .5) * 300, hy + (rnd() - .5) * 200, 'rock').setScale(.35 + rnd() * .3).setDepth(hy);
+        }
+        if (F.river) {
+            const bank = this.add.graphics().setDepth(-9);
+            bank.fillStyle(0x2a3a22, .55).fillRect(684, 0, 72, BH);
+            this.water = this.add.tileSprite(690, 0, 60, BH, 'water').setOrigin(0).setTileScale(.5).setDepth(-9);
+            bank.fillStyle(0x9a8558, 1).fillRect(686, 440, 68, 80).fillStyle(0x000000, .12).fillRect(686, 440, 68, 4).fillRect(686, 516, 68, 4);
+        }
         const tree = b === 'a' ? ['deadtree'] : b === 'd' ? [] : ['tree_0', 'tree_1', 'tree_2'];
         const place = (x, y) => {
-            if (x > 660 && x < 780) return;
+            if (F.river && x > 660 && x < 780) return;
             if (SGB && x > 960) return;
             if (!tree.length) { this.add.image(x, y, 'rock').setScale(.5).setDepth(y); return; }
             this.add.image(x, y, tree[Math.floor(rnd() * tree.length)]).setOrigin(.25, .45).setScale(.5 * (.8 + rnd() * .5)).setDepth(y);
         };
-        for (let i = 0; i < 5; i++) { const cx = 200 + rnd() * 1000, cy = 100 + rnd() * 760; for (let j = 0; j < 12; j++) place(cx + rnd() * 90 - 45, cy + rnd() * 70 - 35); }
+        const dens = .6 + (F.forest || 0) * 1.4;
+        for (const t of F.trees || []) { const n = Math.round(t.r * t.r / 420 * dens); const sh = this.add.graphics().setDepth(-9.4); sh.fillStyle(0x0a200c, .12 + (F.forest || 0) * .15).fillEllipse(t.x, t.y, t.r * 2.1, t.r * 1.6); for (let j = 0; j < n; j++) { const a = rnd() * 6.283, d = Math.sqrt(rnd()) * t.r; if (!(SGB && t.x + Math.cos(a) * d > 960)) place(t.x + Math.cos(a) * d, t.y + Math.sin(a) * d * .8); } }
         for (let i = 0; i < 40; i++) { place(rnd() * BW, 30 + rnd() * 40); place(rnd() * BW, BH - 6 - rnd() * 30); }
         for (let i = 0; i < 24; i++) { place(10 + rnd() * 40, rnd() * BH); if (!SGB) place(BW - 10 - rnd() * 40, rnd() * BH); }
-        for (let i = 0; i < 26; i++) { const x = rnd() * BW, y = rnd() * BH; if ((x < 660 || x > 780) && !(SGB && x > 960)) this.add.image(x, y, 'rock').setScale(.25 + rnd() * .2).setDepth(-5); }
+        for (let i = 0; i < 26 + (F.hill ? 14 : 0); i++) { const x = rnd() * BW, y = rnd() * BH; if ((!F.river || x < 660 || x > 780) && !(SGB && x > 960)) this.add.image(x, y, 'rock').setScale(.25 + rnd() * .2).setDepth(-5); }
         if (SGB) {
             this.add.tileSprite(1040, 0, BW - 1040, BH, 'cobble').setOrigin(0).setTileScale(.5).setDepth(-8);
             this.add.tileSprite(1000, 0, 40, BH, 'wall').setOrigin(0).setTileScale(.5).setDepth(-7);
@@ -7689,6 +8536,7 @@ class BattleScene extends Phaser.Scene {
     }
 
     update(time, delta) {
+        if (!this.ready) { if (mode !== 'battle') this.scene.start('Map'); return; }
         if (mode === 'battle') updBattle(Math.min(2, delta / 16.67));
         if (mode !== 'battle') { this.scene.start('Map'); return; }
 
@@ -7831,7 +8679,8 @@ class RoomScene extends Phaser.Scene {
         this.input.keyboard.on('keydown-ESC', () => { if (ov.classList.contains('hide')) this.leave(); });
         this.input.keyboard.on('keydown-SPACE', () => this.interactNearest());
         this.input.keyboard.on('keydown-E', () => this.interactNearest());
-        this.events.on('shutdown', () => this.input.keyboard.removeAllListeners());
+        this.events.on('shutdown', () => { this.input.keyboard.removeAllListeners(); if (typeof RoomSnd !== 'undefined') RoomSnd.stop(); });
+        if (typeof RoomSnd !== 'undefined' && r.amb) { RoomSnd.door(); RoomSnd.start(r.amb); }   // šum prostredia a dvere
         this.light = this.add.graphics().setDepth(40);
     }
 
@@ -7888,6 +8737,7 @@ class RoomScene extends Phaser.Scene {
             if (r.block) for (const [bx, by, bw, bh] of r.block) if (pl.x > bx && pl.x < bx + bw && pl.y > by && pl.y < by + bh) { pl.x -= dx * sp; pl.y -= dy * sp; this.plT = null; }
             if (dx) pl.setFlipX(dx < 0);
             this.plStep += dt; pl.setFrame(1 + Math.floor(this.plStep / 5) % 4);
+            if (typeof RoomSnd !== 'undefined' && Math.floor(this.plStep / 10) !== Math.floor((this.plStep - dt) / 10)) RoomSnd.step(r.floorSnd || 'stone');   // krok
         } else pl.setFrame(0);
         pl.setDepth(pl.y); this.plLbl.setPosition(pl.x, pl.y + 8);
         this.people.forEach(p => { const near = Math.hypot(p.x - pl.x, p.y - pl.y) < 80; p.lbl.setColor(near ? '#ffd24a' : p.spot ? '#ffe8b0' : '#f4e8d0'); if (p.lbl.text.endsWith(' ⎵') !== near) p.lbl.setText(near ? p.name + ' ⎵' : p.name); });
@@ -8008,7 +8858,7 @@ class TavernScene extends RoomScene {
         // postavy
         this.people = [];
         this.spawn(t, th, HZ);
-        this.setupRoom({ mode: 'tavern', floorY: 290, title: (th === 'evil' ? 'Brloh v ' : th === 'elf' ? 'Sieň v ' : 'Krčma v ') + t.n, leave: 'Odísť z krčmy', spawn: [W / 2, H - 40],
+        this.setupRoom({ mode: 'tavern', floorY: 290, amb: th === 'evil' ? 'tavernEvil' : th === 'elf' ? 'elf' : 'tavern', floorSnd: th === 'dwarf' || th === 'evil' || th === 'elf' ? 'stone' : 'wood', title: (th === 'evil' ? 'Brloh v ' : th === 'elf' ? 'Sieň v ' : 'Krčma v ') + t.n, leave: 'Odísť z krčmy', spawn: [W / 2, H - 40],
             block: [[this.barX - 6, HZ + 34, 192, 66]] });
     }
 
@@ -8205,7 +9055,7 @@ class CastleScene extends RoomScene {
         // postavy
         this.people = [];
         this.spawnYard(t, th, HZ);
-        this.setupRoom({ mode: 'castle', floorY: HZ - 10, title: t.n + ' – nádvorie', leave: 'Opustiť hrad', spawn: [W / 2, H - 36], block: [[wx - 28, wy - 14, 56, 26], [sx - 32, sy - 42, 60, 44], [mx - 52, my - 12, 104, 22]] });
+        this.setupRoom({ mode: 'castle', floorY: HZ - 10, title: t.n + ' – nádvorie', amb: th === 'lorien' ? 'elf' : th === 'mordor' || th === 'isengard' || th === 'bandit' ? 'yardEvil' : 'yard', floorSnd: th === 'rohan' || th === 'bandit' ? 'wood' : th === 'lorien' ? 'grass' : th === 'harad' ? 'sand' : 'stone', leave: 'Opustiť hrad', spawn: [W / 2, H - 36], block: [[wx - 28, wy - 14, 56, 26], [sx - 32, sy - 42, 60, 44], [mx - 52, my - 12, 104, 22]] });
         // miesta
         this.spot(gx, HZ - 40, 70, 80, 'Sieň hradu', () => enterCastle(this.ti, 'hall'), HZ + 14);
         this.spot(tx, ty - 22, 36, 44, 'Krčma', () => enterTavern(this.ti), HZ + 14);
@@ -8310,7 +9160,7 @@ class CastleScene extends RoomScene {
         this.detailHall(g, t, th, C, R, HZ, dx, dy);
         this.people = [];
         this.spawnHall(t, th);
-        this.setupRoom({ mode: 'castle', floorY: HZ + 12, title: t.n + ' – sieň', leave: 'Späť na nádvorie', spawn: [W / 2, H - 36], block: [[dx - 150, dy - 30, 300, 40], [dx - 260, dy + 86, 140, 36], [dx + 120, dy + 86, 140, 36]] });
+        this.setupRoom({ mode: 'castle', floorY: HZ + 12, title: t.n + ' – sieň', amb: th === 'lorien' ? 'elf' : 'hall', floorSnd: th === 'rohan' || th === 'bandit' ? 'wood' : 'stone', leave: 'Späť na nádvorie', spawn: [W / 2, H - 36], block: [[dx - 150, dy - 30, 300, 40], [dx - 260, dy + 86, 140, 36], [dx + 120, dy + 86, 140, 36]] });
     }
     spawnHall(t, th) {
         const f = t.f === 6 ? (heroSide() === 1 ? 2 : 0) : t.f;
@@ -8355,6 +9205,293 @@ class CastleScene extends RoomScene {
         }
         if (this.roomKind === 'hall') this.glows.forEach((l, i) => l.setAlpha(.42 + Math.sin(t / 2 + i) * .06));
         else { this.glows.forEach((l, i) => l.setAlpha(i === 0 && this.forge ? .4 + Math.sin(t / 2) * .08 : (.25 + Math.sin(t / 2.3 + i) * .06) * Math.min(1, nn * 1.6 + .15))); }
+        this.people.forEach(p => { if (!p.spot) p.spr.y = p.y + Math.sin(t / 9 + p.t0) * .8; });
+        this.movePlayer(dt);
+    }
+}
+
+</script>
+<script>
+/*
+ * ENGINE: vnútro dediny – náves, po ktorej chodí hráč (základ RoomScene). init({ v }): v = číslo dediny vo VL. mode = 'room'.
+ * Vzhľad podľa kraja (regionAt: zelené kraje = slamené chalupy a polia, sever = zruby so snehom, Mordor = čierne chatrče
+ * s kolmi, juh = hlinené domy s plachtami) a podľa strany pána dediny (zlo: orkský dozorca, lebky, klietka).
+ * Postavy: starosta/náčelník (klebety, ochrana, prosba o pomoc), kupec (trh), dobrovoľníci; miesta: studňa, kaplnka/oltár, krčmička.
+ * Rozhovory v js/ui/village.js. Vypálená dedina: ruiny a dym, len starosta.
+ */
+class VillageScene extends RoomScene {
+    constructor() { super('Village'); }
+    init(d) { this.vi = d.v; }
+
+    theme() {
+        const v = VL[this.vi], f = TW[v.t].f, evil = bloc(f) === 1 && f !== 6 || (f === 6 && heroSide() === 1);
+        const reg = typeof regionAt === 'function' ? regionAt(v.x, v.y) : 'g';
+        return { reg, evil, burned: v.st > 0, kind: reg === 'a' ? 'ash' : reg === 'd' ? 'desert' : reg === 's' ? 'north' : 'green' };
+    }
+
+    create() {
+        this.cameras.main.setZoom(RES).setOrigin(0, 0);
+        const v = VL[this.vi], t = TW[v.t], T = this.theme(), seed = this.vi * 7 + 3, R = n => { const x = Math.sin((seed + n) * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
+        this.T = T; this.R = R; this.v = v;
+        const HZ = 230; this.HZ = HZ;
+        const hx6 = c => '#' + c.toString(16).padStart(6, '0');
+        const P = { green: { ground: 0x5a7a3a, hill: 0x4a6a34, hill2: 0x3a5a2c, wall: 0xc8b890, roof: 0xa08848, roof2: 0x806a38, beam: 0x5a3a1a, groundKind: 'grass' },
+            north: { ground: 0xe6ecf4, hill: 0xbcc8d8, hill2: 0x8a9ab0, wall: 0x6a4a2a, roof: 0xe8eef8, roof2: 0xc8d0dc, beam: 0x3a2a1a, groundKind: 'snow' },
+            ash: { ground: 0x3a3230, hill: 0x2a2424, hill2: 0x1a1616, wall: 0x2a2224, roof: 0x1a1416, roof2: 0x100c0e, beam: 0x3a1a14, groundKind: 'mud' },
+            desert: { ground: 0xc8b080, hill: 0xb89a60, hill2: 0x9a7e48, wall: 0xd8b888, roof: 0xb89a68, roof2: 0x9a7e50, beam: 0x6a4a2a, groundKind: 'sand' } }[T.kind];
+        this.P = P;
+        this.sky = this.add.graphics().setDepth(0); this.skyRect = [0, 0, W, 120];
+        const g = this.add.graphics().setDepth(1);
+        // kopce / hory na obzore
+        g.fillStyle(P.hill2, 1); for (let k = 0; k < 6; k++) g.fillEllipse(k * 150 - 20, 128 + R(k) * 10, 260, 70 + R(k + 9) * 30);
+        g.fillStyle(P.hill, 1); for (let k = 0; k < 7; k++) g.fillEllipse(k * 130 + 10, 150 + R(k + 20) * 8, 220, 50 + R(k + 30) * 20);
+        if (T.kind === 'ash') { g.fillStyle(0xff4a10, .25); for (let k = 0; k < 4; k++) g.fillEllipse(140 + k * 160, 118, 60, 10); }   // žiara Hory osudu
+        // zem
+        this.add.tileSprite(0, HZ - 60, W, H - HZ + 60, Tex.pattern(this, P.groundKind, hx6(P.ground), seed)).setOrigin(0).setDepth(-1).setTileScale(.35);
+        g.fillStyle(P.hill, 1).fillRect(0, HZ - 64, W, 8);
+        // polia / záhony za dedinou
+        if (T.kind === 'green' || T.kind === 'desert') for (let k = 0; k < 14; k++) { g.fillStyle(T.kind === 'green' ? (k % 2 ? 0xc8a040 : 0x7a9a3a) : 0x9a8a40, .8).fillRect(20 + k * 50, HZ - 56, 40, 4); g.fillStyle(0x000000, .15).fillRect(20 + k * 50, HZ - 52, 40, 1.5); }
+        // cesta cez náves
+        g.fillStyle(T.kind === 'north' ? 0xc8ccd4 : T.kind === 'ash' ? 0x2a2626 : 0x9a8a5a, .8); g.fillEllipse(W / 2, H - 40, W * 1.3, 90); g.fillRect(W / 2 - 40, HZ - 20, 80, H - HZ);
+        // domy
+        const houses = T.kind === 'ash' ? [[90, HZ + 10, 1], [W - 110, HZ + 16, 1], [W / 2 + 150, HZ - 10, .8]] : [[90, HZ + 10, 1], [W - 110, HZ + 16, 1.05], [W / 2 - 160, HZ - 14, .85], [W / 2 + 170, HZ - 12, .85]];
+        houses.forEach(([hx, hy, sc], i) => this.house(g, hx, hy, sc, P, T, R, i));
+        // studňa v strede, kaplnka/oltár, klietka pri zle
+        const wx = W / 2 + 70, wy = HZ + 110;
+        g.fillStyle(0x000000, .2).fillEllipse(wx, wy + 8, 56, 16);
+        g.fillStyle(T.kind === 'ash' ? 0x2a2224 : 0x8a8a84, 1).fillEllipse(wx, wy, 44, 18); g.fillStyle(0x15100c, 1).fillEllipse(wx, wy - 2, 30, 11);
+        g.fillStyle(P.beam, 1).fillRect(wx - 20, wy - 40, 4, 40).fillRect(wx + 16, wy - 40, 4, 40); g.fillStyle(P.roof2, 1).fillTriangle(wx - 28, wy - 38, wx + 28, wy - 38, wx, wy - 56); g.fillStyle(0x3a2a1a, 1).fillRect(wx - 2, wy - 36, 4, 20); g.fillStyle(0x8a8a90, 1).fillRect(wx - 5, wy - 20, 10, 8);
+        this.well = [wx, wy];
+        const cx = 300, cy = HZ + 40;
+        if (T.evil) { // oltár s lebkami a klietka
+            g.fillStyle(0x2a2224, 1).fillRect(cx - 18, cy - 20, 36, 22); g.fillStyle(0x1a1416, 1).fillRect(cx - 22, cy - 24, 44, 6); g.fillStyle(0xe8e4d8, 1); for (let k = 0; k < 3; k++) g.fillCircle(cx - 10 + k * 10, cy - 28, 4); g.fillStyle(0x1a1210, 1); for (let k = 0; k < 3; k++) g.fillRect(cx - 12 + k * 10, cy - 29, 1.5, 1.5).fillRect(cx - 8 + k * 10, cy - 29, 1.5, 1.5);
+            g.lineStyle(2, 0x3a3a40, 1); const kx = W - 240, ky = HZ + 20; g.strokeRect(kx - 14, ky - 40, 28, 40); for (let k = 1; k < 4; k++) g.lineBetween(kx - 14 + k * 7, ky - 40, kx - 14 + k * 7, ky); g.fillStyle(0xe2bf96, 1).fillCircle(kx, ky - 26, 4); g.fillStyle(0x8a6a4a, 1).fillRect(kx - 4, ky - 22, 8, 14);
+            this.altar = [cx, cy];
+        } else { // kaplnka / svätyňa
+            g.fillStyle(P.wall, 1).fillRect(cx - 20, cy - 44, 40, 44); g.fillStyle(P.roof, 1).fillTriangle(cx - 26, cy - 44, cx + 26, cy - 44, cx, cy - 70); g.fillStyle(0x15100c, 1).fillRoundedRect(cx - 7, cy - 24, 14, 24, { tl: 7, tr: 7, bl: 0, br: 0 });
+            g.fillStyle(T.kind === 'green' ? 0xe8e8e8 : 0xd9a441, 1).fillRect(cx - 1.5, cy - 82, 3, 14).fillRect(cx - 5, cy - 78, 10, 2.5);
+            if (T.reg === 's' || T.reg === 'g') { g.fillStyle(0xf0f0f0, .9).fillRect(cx - 40, cy - 6, 6, 10); g.fillStyle(0x4a7a4a, .9).fillCircle(cx - 37, cy - 10, 5); }   // hrob s kvetom
+            this.chapel = [cx, cy];
+        }
+        // ploty, zvieratá, vozy
+        g.fillStyle(P.beam, 1); for (let k = 0; k < 8; k++) g.fillRect(20 + k * 14, HZ + 150, 3, 16); g.fillRect(20, HZ + 154, 112, 2.5).fillRect(20, HZ + 161, 112, 2.5);
+        if (!T.evil) { for (let k = 0; k < 3; k++) { const ax = 36 + k * 30, ay = HZ + 176; g.fillStyle(T.kind === 'desert' ? 0xd8c8a0 : 0xf0f0f0, 1).fillEllipse(ax, ay, 16, 10); g.fillStyle(0x2a2a2a, 1).fillCircle(ax + 8, ay - 3, 3); } }   // ovce / kozy
+        else { g.fillStyle(0x3a3030, 1).fillEllipse(60, HZ + 176, 22, 12); g.fillStyle(0x6a3a2a, 1).fillCircle(72, HZ + 171, 4); }   // varg na reťazi
+        const cx2 = W - 60, cy2 = HZ + 160; g.fillStyle(P.beam, 1).fillRect(cx2 - 24, cy2 - 14, 48, 12); g.fillStyle(0x3a2a1a, 1).fillCircle(cx2 - 14, cy2 + 2, 7).fillCircle(cx2 + 14, cy2 + 2, 7); g.fillStyle(0xc8a040, 1).fillRect(cx2 - 20, cy2 - 22, 40, 8);   // voz so senom
+        if (T.burned) { g.fillStyle(0x000000, .35).fillRect(0, HZ - 60, W, H); this.smoke = houses.map(h => [h[0], h[1] - 50]); }
+        // nočné okná a fakle
+        this.windows = houses.map(([hx, hy, sc]) => [hx + 14 * sc, hy - 26 * sc]);
+        this.torches = T.evil ? [[cx - 30, cy - 30], [cx + 30, cy - 30]] : [];
+        this.fx = this.add.graphics().setDepth(2);
+        this.people = [];
+        this.spawn(v, t, T, HZ);
+        const name = v.n + (T.burned ? ' – spálenisko' : T.evil ? ' – osada' : ' – náves');
+        this.setupRoom({ mode: 'room', floorY: HZ - 10, title: name, leave: 'Odísť z dediny', spawn: [W / 2, H - 40], amb: T.evil ? 'villageEvil' : T.kind === 'green' || T.kind === 'desert' ? 'village' : 'yard', floorSnd: T.kind === 'north' ? 'grass' : T.kind === 'desert' ? 'sand' : T.kind === 'ash' ? 'stone' : 'grass', block: [[wx - 26, wy - 12, 52, 22]] });
+        this.spot(wx, wy - 20, 56, 40, 'Studňa', () => villageWell(this.vi), wy + 16);
+        if (this.chapel) this.spot(cx, cy - 30, 50, 60, 'Kaplnka', () => villageChapel(this.vi), cy + 16);
+        if (this.altar) this.spot(cx, cy - 14, 50, 40, 'Oltár', () => villageChapel(this.vi), cy + 16);
+        if (!T.burned) this.spot(houses[1][0] - 10, houses[1][1] - 30, 70, 60, T.evil ? 'Brloh' : 'Krčmička', () => villageInn(this.vi), houses[1][1] + 16);
+    }
+
+    /** Dom podľa kraja: zelený kraj slamená chalupa, sever zrub, Mordor čierna chatrč, juh hlinený dom. */
+    house(g, hx, hy, sc, P, T, R, i) {
+        const w = 90 * sc, h = 54 * sc;
+        g.fillStyle(0x000000, .2).fillEllipse(hx + w / 2, hy + 4, w * 1.1, 12);
+        if (T.burned) { g.fillStyle(0x1a1412, 1).fillRect(hx, hy - h * .5, w, h * .5); g.fillStyle(0x2a2220, 1).fillRect(hx + 8, hy - h * .8, 10, h * .8).fillRect(hx + w - 20, hy - h * .7, 10, h * .7); g.fillStyle(0x3a3230, 1).fillTriangle(hx - 6, hy - h * .5, hx + w * .4, hy - h * .5, hx + w * .2, hy - h * .9); return; }
+        if (T.kind === 'green') {
+            g.fillStyle(P.wall, 1).fillRect(hx, hy - h, w, h); g.lineStyle(2.5, P.beam, 1); g.strokeRect(hx, hy - h, w, h); g.lineBetween(hx + w / 2, hy - h, hx + w / 2, hy); g.lineBetween(hx, hy - h / 2, hx + w, hy - h / 2); g.lineBetween(hx, hy - h, hx + w / 2, hy - h / 2); g.lineBetween(hx + w, hy - h, hx + w / 2, hy - h / 2);
+            g.fillStyle(P.roof, 1).fillTriangle(hx - 10, hy - h + 4, hx + w + 10, hy - h + 4, hx + w / 2, hy - h - 30 * sc); g.fillStyle(P.roof2, 1); for (let k = 0; k < 5; k++) g.fillRect(hx - 6 + k * (w + 12) / 5, hy - h + 2 - k * 0, (w + 12) / 5 - 3, 3);
+            g.fillStyle(0x8a8a90, 1).fillRect(hx + w * .7, hy - h - 20 * sc, 8, 20 * sc);   // komín
+        } else if (T.kind === 'north') {
+            g.fillStyle(P.wall, 1).fillRect(hx, hy - h, w, h); g.fillStyle(0x000000, .25); for (let y = hy - h + 6; y < hy; y += 8) g.fillRect(hx, y, w, 1.5);
+            g.fillStyle(P.roof, 1).fillTriangle(hx - 12, hy - h + 2, hx + w + 12, hy - h + 2, hx + w / 2, hy - h - 34 * sc); g.fillStyle(P.roof2, 1).fillTriangle(hx - 12, hy - h + 2, hx + w + 12, hy - h + 2, hx + w / 2, hy - h - 6);
+            g.fillStyle(0x6a6a70, 1).fillRect(hx + w * .65, hy - h - 22 * sc, 9, 22 * sc);
+        } else if (T.kind === 'ash') {
+            g.fillStyle(P.wall, 1).fillRect(hx, hy - h * .8, w, h * .8); g.fillStyle(P.roof, 1).fillTriangle(hx - 8, hy - h * .8, hx + w + 8, hy - h * .8, hx + w / 2, hy - h - 10 * sc);
+            g.fillStyle(0x3a3a40, 1); for (let k = 0; k < 4; k++) g.fillRect(hx + 10 + k * 22, hy - h - 6, 3, 14);   // koly
+            g.fillStyle(0xe8e4d8, 1).fillCircle(hx + 12, hy - h - 8, 4); g.fillStyle(0x1a1210, 1).fillRect(hx + 10, hy - h - 9, 1.5, 1.5).fillRect(hx + 13, hy - h - 9, 1.5, 1.5);
+        } else {
+            g.fillStyle(P.wall, 1).fillRoundedRect(hx, hy - h, w, h, 4); g.fillStyle(P.roof2, 1).fillRect(hx - 4, hy - h - 4, w + 8, 8);
+            g.fillStyle([0xa02a1a, 0x2a4a7a, 0xd9a441][i % 3], .9).fillRect(hx - 8, hy - h * .55, w * .5, 5); g.fillStyle(0x5a3a1a, 1).fillRect(hx - 8, hy - h * .55, 3, h * .55).fillRect(hx + w * .5 - 11, hy - h * .55, 3, h * .55);   // plachta nad vchodom
+        }
+        g.fillStyle(0x15100c, 1).fillRoundedRect(hx + 10 * sc, hy - 26 * sc, 16 * sc, 26 * sc, { tl: 6, tr: 6, bl: 0, br: 0 });
+        g.fillStyle(0x2a3a4a, 1).fillRect(hx + w - 28 * sc, hy - 36 * sc, 16 * sc, 14 * sc); g.lineStyle(1.5, P.beam, 1).strokeRect(hx + w - 28 * sc, hy - 36 * sc, 16 * sc, 14 * sc);
+        this.windows = this.windows || []; this.windows.push([hx + w - 20 * sc, hy - 29 * sc]);
+    }
+
+    spawn(v, t, T, HZ) {
+        const f = t.f, evil = T.evil;
+        const elderEq = evil ? [{ w: 9, a: 6, s: 0, h: 5, m: 0 }, { orc: 1, cape: '#2a1010' }] : [{ w: null, a: 0, s: 0, h: null, m: 0 }, { cape: '#4a3a2a', beard: '#c8c0b0', hcol: '#c8c0b0' }];
+        this.person(W / 2 - 60, HZ + 70, elderEq, evil ? 'Orkský dozorca' : 'Starosta', () => villageElder(this.vi), .9);
+        if (!T.burned) {
+            this.person(W / 2 + 190, HZ + 150, [{ w: null, a: T.kind === 'desert' ? 8 : 0, s: 0, h: null, m: 0 }, { cape: '#3a5a2a', apron: 1 }], 'Kupec', () => villageMarket(this.vi), .9);
+            this.person(170, HZ + 120, [{ w: 0, a: 0, s: 0, h: null, m: 0 }, { cape: '#5a4a3a' }], evil ? 'Zverbovaní sedliaci' : 'Dobrovoľníci', () => villageRecruit(this.vi), .9);
+            if (!evil) this.person(W / 2 + 40, HZ + 40, [{ w: null, a: 0, s: 0, h: null, m: 0 }, { cape: '#8a3a4a', hstyle: 'long', hcol: '#6a4a2a' }], 'Dedinčanka', () => villageTalk(this.vi, 0), .85);
+            else this.person(W / 2 + 40, HZ + 40, [{ w: null, a: 0, s: 0, h: null, m: 0 }, { cape: '#3a3a3a' }], 'Zlomený sedliak', () => villageTalk(this.vi, 1), .85);
+        }
+    }
+
+    leave() { if (mode !== 'room') return; leaveRoomScene(); }
+
+    update(time, delta) {
+        const dt = Math.min(3, (delta || 16.7) / 16.67);
+        if (mode !== 'room') { if (mode !== 'town') { if (mode === 'battle' || mode === 'map') ROOM = null; this.closeRoom(); } return; }
+        const t = tm, nn = nightness(), s = this.sky, f = this.fx;
+        s.clear(); f.clear();
+        this.drawSky(s, ...this.skyRect);
+        if (this.smoke) for (const [sx, sy] of this.smoke) for (let k = 0; k < 4; k++) { const a = (t * .4 + k * 20) % 80; f.fillStyle(0x4a403a, .3 - a / 320).fillCircle(sx + Math.sin(a * .1 + k) * 8, sy - a * .8, 6 + a * .14); }
+        for (const [tx, ty] of this.torches) { const ph = t / 2.5 + tx; f.fillStyle(0xff8a30, .95).fillTriangle(tx - 3, ty, tx + 3, ty, tx + Math.sin(ph) * 1.5, ty - 9); }
+        if (nn > .3) { f.fillStyle(0xffd080, .5 * nn); for (const [wx, wy] of this.windows || []) f.fillRect(wx - 6, wy - 6, 12, 10); }
+        const L = this.light; L.clear();
+        L.fillStyle(0x080e28, nn * .5).fillRect(0, 0, W, H);
+        if (!this.glows) { this.glows = (this.windows || []).map(([wx, wy]) => Tex.light(this, wx, wy, 60, 0xffd080, 0)); for (const [tx, ty] of this.torches) this.glows.push(Tex.light(this, tx, ty, 90, 0xffb060, 0)); }
+        this.glows.forEach((l, i) => l.setAlpha((.25 + Math.sin(t / 2.3 + i) * .06) * Math.min(1, nn * 1.6)));
+        this.people.forEach(p => { if (!p.spot) p.spr.y = p.y + Math.sin(t / 9 + p.t0) * .8; });
+        this.movePlayer(dt);
+    }
+}
+
+</script>
+<script>
+/*
+ * ENGINE: pamätihodnosti s vlastnou scénou (PLACES v js/data/places.js). init({ p }): p = číslo miesta. mode = 'room'.
+ * Každý druh (kind) má vlastnú kulisu: zrúcanina Amon Sûl, Argonath nad Anduinou, dom Toma Bombadila, Mŕtve močiare,
+ * pavúčie húštiny, Fangorn, brána Ciest mŕtvych, Beornov dvor, Brody na Isene, trollie jaskyne, Pelennor.
+ * Postavy a miesta spúšťajú voľby z js/ui/places.js (placeAct) – hráč k nim dôjde alebo stlačí medzerník.
+ */
+class PlaceScene extends RoomScene {
+    constructor() { super('Place'); }
+    init(d) { this.pi = d.p; }
+
+    create() {
+        this.cameras.main.setZoom(RES).setOrigin(0, 0);
+        const P = PLACES[this.pi], k = P.kind, seed = this.pi * 13 + 7, R = n => { const x = Math.sin((seed + n) * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
+        this.P = P; this.R = R;
+        const HZ = 240; this.HZ = HZ;
+        const hx6 = c => '#' + c.toString(16).padStart(6, '0');
+        const g = this.add.graphics().setDepth(1);
+        this.sky = this.add.graphics().setDepth(0); this.skyRect = [0, 0, W, 150];
+        this.fx = this.add.graphics().setDepth(2);
+        this.torches = []; this.windows = []; this.fires = [];
+        const ground = { tower: ['grass', 0x4a5a3a], statues: ['grass', 0x5a7a4a], cave: ['cobbles', 0x5a5a56], house: ['grass', 0x5a8a3a], swamp: ['mud', 0x3a3a2a], web: ['mud', 0x2a2a24], ents: ['grass', 0x3a5a2a], door: ['flags', 0x3a3a40], homestead: ['grass', 0x5a7a3a], ford: ['sand', 0x9a8a60], tree: ['grass', 0x6a7a3a] }[k] || ['grass', 0x5a7a3a];
+        this.add.tileSprite(0, HZ - 50, W, H - HZ + 50, Tex.pattern(this, ground[0], hx6(ground[1]), seed)).setOrigin(0).setDepth(-1).setTileScale(.35);
+        const hill = (col, n, y0, h) => { g.fillStyle(col, 1); for (let i = 0; i < n; i++) g.fillEllipse(i * (W / (n - 1)), y0 + R(i + 40) * 10, W / n * 2.2, h + R(i + 50) * 20); };
+        let title = P.n, spots = [];
+        if (k === 'tower') {
+            hill(0x3a4a5a, 6, 150, 60); hill(0x4a5a4a, 7, 180, 50);
+            const tx = W / 2, ty = HZ - 30;   // zrúcanina veže na kopci
+            g.fillStyle(0x4a5a3a, 1).fillEllipse(tx, ty + 20, 420, 90);
+            g.fillStyle(0x6a6a66, 1); for (let a = 0; a < 7; a++) { const ang = a / 7 * 6.283, px = tx + Math.cos(ang) * 70, py = ty - 10 + Math.sin(ang) * 22, h = 20 + R(a) * 60; if (Math.sin(ang) > -.3) g.fillRect(px - 8, py - h, 16, h); }
+            g.fillStyle(0x7a7a74, 1).fillRect(tx - 30, ty - 120, 60, 110); g.fillStyle(0x5a5a56, 1).fillRect(tx - 34, ty - 124, 68, 8).fillRect(tx + 10, ty - 150, 20, 30); g.fillStyle(0x000000, .35).fillRect(tx - 8, ty - 60, 16, 24);
+            g.fillStyle(0x15100c, 1).fillRoundedRect(tx - 10, ty - 36, 20, 26, { tl: 10, tr: 10, bl: 0, br: 0 });
+            this.fires.push([tx + 90, HZ + 90]);
+            spots.push([tx, ty - 60, 70, 110, 'Vrchol veže', 0, ty + 14]);
+        } else if (k === 'statues') {
+            hill(0x3a4a6a, 5, 140, 70);
+            g.fillStyle(0x2c5b73, 1).fillRect(0, HZ - 40, W, 60); g.fillStyle(0x4a86a0, .8).fillRect(0, HZ - 30, W, 40); this.water = [0, HZ - 40, W, 60];
+            for (const sx of [120, W - 120]) { const flip = sx > W / 2 ? -1 : 1;   // dvaja kamenní králi
+                g.fillStyle(0x7a8a8a, 1).fillRect(sx - 40, HZ - 60, 80, 24); g.fillRect(sx - 22, HZ - 200, 44, 140); g.fillStyle(0x8a9a9a, 1).fillCircle(sx, HZ - 212, 18); g.fillRect(sx - 26, HZ - 232, 52, 14);
+                g.fillStyle(0x7a8a8a, 1).fillRect(sx + flip * 22, HZ - 190, flip * 30, 14).fillRect(sx + flip * 40, HZ - 230, flip * 12, 54);   // vztýčená ruka
+                g.fillStyle(0x6a7a7a, 1).fillRect(sx - 22, HZ - 120, 44, 6).fillRect(sx - 22, HZ - 90, 44, 6); }
+            spots.push([W / 2, HZ - 20, 120, 40, 'Prejsť popod Kráľov', 0, HZ + 30]);
+        } else if (k === 'cave') {
+            hill(0x4a4a46, 5, 130, 90); hill(0x5a5a56, 6, 170, 60);
+            g.fillStyle(0x3a3a36, 1).fillEllipse(W / 2, HZ - 30, 300, 180); g.fillStyle(0x0c0a08, 1).fillEllipse(W / 2, HZ - 10, 120, 110); g.fillStyle(0x000000, 1).fillRect(W / 2 - 60, HZ - 10, 120, 40);
+            for (const [bx, by] of [[140, HZ + 60], [W - 160, HZ + 90], [220, HZ + 150]]) { g.fillStyle(0xe8e4d8, 1).fillRect(bx, by, 14, 4).fillRect(bx + 20, by - 6, 4, 14); g.fillCircle(bx + 30, by + 8, 5); }   // kosti
+            for (const [sx, sy] of [[90, HZ - 20], [W - 90, HZ - 10], [W - 200, HZ - 40]]) { g.fillStyle(0x6a6a66, 1).fillEllipse(sx, sy, 60, 80); g.fillStyle(0x3a3a36, 1).fillEllipse(sx + 8, sy - 10, 14, 10).fillEllipse(sx - 14, sy - 12, 12, 9); }   // skamenení trollovia
+            this.fires.push([W / 2 + 160, HZ + 120]);
+            spots.push([W / 2, HZ - 30, 120, 100, 'Jaskyne', 0, HZ + 40]);
+        } else if (k === 'house') {
+            hill(0x4a7a3a, 6, 160, 60);
+            for (let i = 0; i < 9; i++) { const wx = 40 + i * 85, wh = 60 + R(i) * 40; g.fillStyle(0x4a3a2a, 1).fillRect(wx - 5, HZ - 20 - wh, 10, wh); g.fillStyle(0x6a9a4a, .9); for (let b = 0; b < 6; b++) { g.lineStyle(2, 0x7aa050, .9); g.lineBetween(wx, HZ - 20 - wh + 6, wx - 20 + b * 8, HZ - 10); } }   // vŕby
+            const hx = W / 2 + 40, hy = HZ - 10; g.fillStyle(0xe8d070, 1).fillRect(hx - 60, hy - 60, 120, 60); g.fillStyle(0x7a9a3a, 1).fillTriangle(hx - 70, hy - 60, hx + 70, hy - 60, hx, hy - 100); g.fillStyle(0x4a7a3a, 1).fillRect(hx - 70, hy - 62, 140, 5);
+            g.fillStyle(0x3a6ad0, 1).fillRoundedRect(hx - 10, hy - 32, 20, 32, { tl: 10, tr: 10, bl: 0, br: 0 }); g.fillStyle(0xfff0a0, 1).fillRect(hx - 44, hy - 44, 16, 14).fillRect(hx + 28, hy - 44, 16, 14); this.windows.push([hx - 36, hy - 37], [hx + 36, hy - 37]);
+            for (let i = 0; i < 12; i++) { g.fillStyle([0xe84a4a, 0xf0d040, 0x4a8ae8, 0xf0f0f0][i % 4], 1).fillCircle(hx - 90 + i * 16, hy + 20 + (i % 3) * 8, 4); }   // kvety
+            g.fillStyle(0x2c5b73, 1).fillRect(0, H - 50, W, 50); g.fillStyle(0x4a86a0, .8).fillRect(0, H - 44, W, 44); this.water = [0, H - 50, W, 50];
+            spots.push([hx, hy - 30, 120, 60, 'Dom Toma Bombadila', 0, hy + 16]);
+        } else if (k === 'swamp') {
+            hill(0x2a3a2a, 6, 150, 40);
+            g.fillStyle(0x1a2a24, 1); for (let i = 0; i < 9; i++) g.fillEllipse(60 + i * 80 + R(i) * 30, HZ + 20 + R(i + 9) * 150, 90 + R(i + 20) * 60, 30 + R(i + 30) * 20);
+            g.fillStyle(0x3a4a3a, .6); for (let i = 0; i < 6; i++) g.fillEllipse(100 + i * 110, HZ + 60 + R(i + 40) * 120, 20, 6);   // tváre pod hladinou (náznak)
+            g.fillStyle(0x4a4a3a, 1); for (let i = 0; i < 14; i++) g.fillRect(20 + i * 50 + R(i) * 20, HZ - 30 + R(i + 5) * 40, 3, 30);   // trstina a suché kmene
+            this.wisps = Array.from({ length: 6 }, (_, i) => [80 + i * 110, HZ + 40 + R(i + 60) * 140]);
+            spots.push([W / 2, HZ + 60, 160, 60, 'Brod cez močiar', 0, HZ + 100], [W - 140, HZ + 150, 100, 50, 'Hľadať v bahne', 1, HZ + 185]);
+        } else if (k === 'web') {
+            g.fillStyle(0x0a0c0a, 1).fillRect(0, 0, W, HZ); for (let i = 0; i < 10; i++) { g.fillStyle(0x1a1c16, 1).fillRect(i * 76 + 10, 0, 22 + R(i) * 14, HZ); }
+            g.lineStyle(1.2, 0xd8d8d0, .55); for (let i = 0; i < 14; i++) { const wx = 30 + i * 52, wy = 30 + R(i) * 140; for (let a = 0; a < 6; a++) g.lineBetween(wx, wy, wx + Math.cos(a) * 40, wy + Math.sin(a) * 40); for (let r = 8; r < 40; r += 8) g.strokeCircle(wx, wy, r); }
+            for (let i = 0; i < 4; i++) { g.fillStyle(0xd0d0c8, .9).fillEllipse(120 + i * 160, 90 + R(i + 7) * 60, 26, 44); }   // zámotky
+            spots.push([W / 2, HZ - 60, 160, 100, 'Húštiny', 0, HZ + 20]);
+        } else if (k === 'ents') {
+            g.fillStyle(0x1a2a18, 1).fillRect(0, 0, W, HZ); for (let i = 0; i < 8; i++) { const tx = 40 + i * 92, tw = 30 + R(i) * 30; g.fillStyle(0x3a2e1a, 1).fillRect(tx - tw / 2, 20, tw, HZ - 20); g.fillStyle(0x2a4a24, 1).fillEllipse(tx, 40 + R(i + 3) * 30, tw * 3, 70); }
+            const ex = W / 2 + 120, ey = HZ + 20;   // Stromobrad
+            g.fillStyle(0x5a4a2a, 1).fillRect(ex - 22, ey - 160, 44, 160); g.fillRect(ex - 60, ey - 130, 40, 12).fillRect(ex + 20, ey - 120, 46, 12); g.fillStyle(0x3a6a2a, 1).fillEllipse(ex, ey - 170, 90, 50); g.fillStyle(0xe8e060, 1).fillCircle(ex - 8, ey - 120, 3).fillCircle(ex + 8, ey - 120, 3);
+            this.ent = [ex, ey];
+            spots.push([ex, ey - 80, 90, 160, 'Stromobrad', 0, ey + 24]);
+        } else if (k === 'door') {
+            hill(0x2a2a30, 5, 120, 110);
+            g.fillStyle(0x1a1a20, 1).fillRect(W / 2 - 120, 0, 240, HZ); g.fillStyle(0x0a0a0e, 1).fillRoundedRect(W / 2 - 50, HZ - 130, 100, 130, { tl: 50, tr: 50, bl: 0, br: 0 });
+            g.fillStyle(0x3a3a44, 1); for (let i = 0; i < 6; i++) g.fillRect(W / 2 - 90 + i * 32, HZ - 150, 8, 20);
+            g.fillStyle(0xe8e4d8, .8); for (let i = 0; i < 8; i++) g.fillCircle(80 + i * 80 + R(i) * 30, HZ + 60 + R(i + 9) * 120, 4);
+            this.mist = 1;
+            spots.push([W / 2, HZ - 60, 110, 120, 'Brána mŕtvych', 0, HZ + 30]);
+        } else if (k === 'homestead') {
+            hill(0x4a6a3a, 6, 160, 60);
+            const hx = W / 2 - 40, hy = HZ; g.fillStyle(0x6a4a2a, 1).fillRect(hx - 110, hy - 80, 220, 80); g.fillStyle(0x000000, .25); for (let y = hy - 74; y < hy; y += 9) g.fillRect(hx - 110, y, 220, 1.5); g.fillStyle(0x8a6a3a, 1).fillTriangle(hx - 124, hy - 80, hx + 124, hy - 80, hx, hy - 140);
+            g.fillStyle(0x15100c, 1).fillRect(hx - 18, hy - 50, 36, 50); g.fillStyle(0xffe8a0, 1).fillRect(hx - 80, hy - 60, 20, 16).fillRect(hx + 60, hy - 60, 20, 16); this.windows.push([hx - 70, hy - 52], [hx + 70, hy - 52]);
+            for (let i = 0; i < 5; i++) { const bx = W - 60, by = HZ + 40 + i * 30; g.fillStyle(0xd8c070, 1).fillRect(bx - 16, by, 32, 24); g.fillStyle(0xb09040, 1).fillRect(bx - 18, by - 4, 36, 6); }   // úle
+            g.fillStyle(0xf0f0f0, 1); for (let i = 0; i < 5; i++) g.fillEllipse(80 + i * 40, HZ + 150 + (i % 2) * 20, 16, 10);   // ovce
+            this.bees = 1;
+            spots.push([hx, hy - 40, 160, 80, 'Beornov dom', 0, hy + 16]);
+        } else if (k === 'ford') {
+            hill(0x4a5a4a, 6, 160, 50);
+            g.fillStyle(0x2c5b73, 1).fillRect(0, HZ - 20, W, 110); g.fillStyle(0x4a86a0, .8).fillRect(0, HZ - 10, W, 90); this.water = [0, HZ - 20, W, 110];
+            g.fillStyle(0x9a8a60, 1); for (let i = 0; i < 9; i++) g.fillEllipse(W / 2 - 160 + i * 40, HZ + 10 + R(i) * 60, 36, 16);   // brod – plytčina
+            g.fillStyle(0x5a5a56, 1); for (let i = 0; i < 6; i++) { const px = 60 + R(i + 3) * (W - 120), py = HZ + 100 + R(i + 9) * 60; g.fillRect(px, py, 10, 4); g.fillStyle(0x8a8a90, 1).fillEllipse(px + 20, py, 10, 6); g.fillStyle(0x5a5a56, 1); }   // staré prilby a kopije
+            spots.push([W / 2, HZ + 30, 200, 60, 'Brod', 0, HZ + 120]);
+        } else if (k === 'tree') {
+            hill(0xcfd3d8, 7, 140, 50); g.fillStyle(0x8a9098, 1).fillRect(W / 2 - 300, 110, 600, 40); for (let i = 0; i < 12; i++) g.fillRect(W / 2 - 300 + i * 52, 100, 24, 12);   // hradby Minas Tirith v diaľke
+            const tx = W / 2, ty = HZ + 10; g.fillStyle(0x4a4a44, 1).fillRect(tx - 10, ty - 110, 20, 110); g.lineStyle(6, 0x4a4a44, 1); for (const [dx, dy] of [[-50, -150], [40, -160], [-20, -175], [60, -120]]) g.lineBetween(tx, ty - 90, tx + dx, ty + dy);
+            g.fillStyle(0x5a5a56, 1); for (let i = 0; i < 10; i++) g.fillRect(60 + R(i) * (W - 120), HZ + 40 + R(i + 9) * 150, 14, 3);   // zlomené kopije
+            spots.push([tx, ty - 60, 80, 120, 'Mŕtvy strom', 0, ty + 20]);
+        }
+        this.people = [];
+        this.npc(k, HZ);
+        const spotsD = spots;
+        this.setupRoom({ mode: 'room', floorY: HZ - 10, title, leave: 'Odísť', spawn: [W / 2 - 100, H - 40], amb: k === 'cave' || k === 'door' ? 'cave' : k === 'web' || k === 'swamp' ? 'cave' : k === 'ents' || k === 'house' ? 'elf' : 'yard', floorSnd: k === 'cave' || k === 'door' ? 'stone' : k === 'ford' ? 'sand' : 'grass' });
+        spotsD.forEach(([x, y, w, h, n, a, sy]) => this.spot(x, y, w, h, n, () => placeAct(this.pi, a), sy));
+    }
+
+    /** Postavy miest: Tom Bombadil, Beorn, strážca prístavu… */
+    npc(k, HZ) {
+        if (k === 'house') this.person(W / 2 - 40, HZ + 60, [{ w: null, a: 0, s: 0, h: null, m: 0 }, { cape: '#3a6ad0', hcol: '#6a4a2a', beard: '#6a4a2a', hat: 1 }], 'Tom Bombadil', () => placeTalk(this.pi, 'tom'), .9);
+        if (k === 'homestead') this.person(W / 2 + 60, HZ + 50, [{ w: 5, a: 0, s: 0, h: null, m: 0 }, { cape: '#2a2a2a', hcol: '#1a1a1a', beard: '#1a1a1a' }], 'Beorn', () => placeTalk(this.pi, 'beorn'), 1.15);
+        if (k === 'tower') this.person(W / 2 - 150, HZ + 70, [{ w: 3, a: 0, s: 0, h: null, m: 0 }, { cape: '#3a4a3a', hcol: '#2a1a10' }], 'Hraničiar', () => placeTalk(this.pi, 'ranger'), .9);
+        if (k === 'ford') this.person(120, HZ + 140, [{ w: 2, a: 1, s: 1, h: 1, m: 0 }, { cape: '#3a6a2a' }], 'Rohanský zved', () => placeTalk(this.pi, 'rider'), .9);
+        if (k === 'tree') this.person(W / 2 + 120, HZ + 90, [{ w: 1, a: 2, s: 2, h: 4, m: 0 }, { cape: '#2a3a6a' }], 'Strážca Pelennoru', () => placeTalk(this.pi, 'guard'), .9);
+        if (k === 'statues') this.person(W - 200, HZ + 120, [{ w: null, a: 0, s: 0, h: null, m: 0 }, { cape: '#4a3a2a', beard: '#c8c0b0', hcol: '#c8c0b0' }], 'Prievozník', () => placeTalk(this.pi, 'ferry'), .9);
+        if (k === 'ents') this.person(this.ent[0] - 60, this.ent[1] + 40, [{ w: null, a: 0, s: 0, h: null, m: 0 }, { cape: '#4a6a3a', hcol: '#8a6a3a' }], 'Hobit Smiešok', () => placeTalk(this.pi, 'hobbit'), .8);
+    }
+
+    leave() { if (mode !== 'room') return; leaveRoomScene(); }
+
+    update(time, delta) {
+        const dt = Math.min(3, (delta || 16.7) / 16.67);
+        if (mode !== 'room') { if (mode !== 'town') { if (mode === 'battle' || mode === 'map') ROOM = null; this.closeRoom(); } return; }
+        const t = tm, nn = nightness(), s = this.sky, f = this.fx, k = this.P.kind;
+        s.clear(); f.clear();
+        if (k !== 'web' && k !== 'ents') this.drawSky(s, ...this.skyRect);
+        if (this.water) { const [x, y, w, h] = this.water; f.fillStyle(0xffffff, .18); for (let i = 0; i < 12; i++) f.fillRect(x + (i * 67 + t * 1.5) % w, y + 8 + (i * 29) % (h - 10), 18, 1.5); }
+        for (const [fx, fy] of this.fires) { for (let i = 0; i < 5; i++) { const ph = t / 3 + i * 1.9, h = 10 + Math.sin(ph) * 4; f.fillStyle(0xff7a20, .9).fillTriangle(fx - 8 + i * 4 - 3, fy, fx - 8 + i * 4 + 3, fy, fx - 8 + i * 4 + Math.sin(ph) * 2, fy - h); } f.fillStyle(0x3a2a1a, 1).fillRect(fx - 12, fy - 1, 24, 3); }
+        if (this.wisps) for (const [wx, wy] of this.wisps) { const a = .3 + .3 * Math.sin(t / 7 + wx); f.fillStyle(0x9ad0ff, a).fillCircle(wx + Math.sin(t / 20 + wy) * 6, wy + Math.cos(t / 17 + wx) * 4, 3); f.fillStyle(0x9ad0ff, a * .3).fillCircle(wx + Math.sin(t / 20 + wy) * 6, wy + Math.cos(t / 17 + wx) * 4, 9); }
+        if (this.mist) { f.fillStyle(0xbec8d2, .18 + .06 * Math.sin(t / 30)); for (let i = 0; i < 5; i++) f.fillEllipse((i * 190 + t * .4) % (W + 200) - 100, this.HZ + 20 + i * 30, 260, 40); }
+        if (this.bees) { f.fillStyle(0xf0c030, 1); for (let i = 0; i < 8; i++) f.fillRect(W - 60 + Math.sin(t / 9 + i) * 40, this.HZ + 20 + Math.cos(t / 7 + i * 2) * 30 + i * 6, 2, 2); }
+        if (this.ent) { const [ex, ey] = this.ent; f.fillStyle(0xe8e060, .6 + .4 * Math.sin(t / 15)).fillCircle(ex - 8, ey - 120, 3).fillCircle(ex + 8, ey - 120, 3); }
+        if (nn > .3) { f.fillStyle(0xffd080, .5 * nn); for (const [wx, wy] of this.windows) f.fillRect(wx - 8, wy - 6, 16, 12); }
+        const L = this.light; L.clear();
+        const base = k === 'web' ? .35 : k === 'door' ? .3 : k === 'cave' ? .15 : 0;
+        L.fillStyle(0x080e28, Math.min(.75, base + nn * .5)).fillRect(0, 0, W, H);
+        if (!this.glows) { this.glows = this.fires.map(([x, y]) => Tex.light(this, x, y, 150, 0xff9a40, .4)); this.windows.forEach(([x, y]) => this.glows.push(Tex.light(this, x, y, 70, 0xffd080, 0))); }
+        this.glows.forEach((l, i) => l.setAlpha(i < this.fires.length ? .35 + Math.sin(t / 2 + i) * .08 : (.3 + Math.sin(t / 2.3 + i) * .05) * Math.min(1, nn * 1.6)));
         this.people.forEach(p => { if (!p.spot) p.spr.y = p.y + Math.sin(t / 9 + p.t0) * .8; });
         this.movePlayer(dt);
     }
@@ -8564,7 +9701,7 @@ class UIScene extends Phaser.Scene {
     }
 
     syncBars() {
-        const vis = el => el.style.display !== 'none' && !!G && !this.dlg && mode !== 'tavern' && mode !== 'castle';
+        const vis = el => el.style.display !== 'none' && !!G && !this.dlg && mode !== 'tavern' && mode !== 'castle' && mode !== 'room';
         if (this.dlg || !vis(tb)) this.menu = null;
         const sig = [vis(tb), vis(od), this.menu, this.big, ...[...tb.children, ...od.children].map(b => b.textContent + (b.style.opacity || ''))].join('|');
         if (sig === this.sig.bars) return;
@@ -8775,8 +9912,10 @@ class UIScene extends Phaser.Scene {
                     if (col === cols) flush();
                 } else {
                     flush();
-                    const t = this.add.text(16, y, k.textContent, txtStyle(k.style.color ? 12.5 : 11.5, k.style.color ? UI_C.gold : k.style.opacity && +k.style.opacity < 1 ? UI_C.dim : UI_C.ink, { wordWrap: { width: IW - 26 } }));
-                    items.push(t); y += t.height + 3;
+                    const ik = this.iconFor(k), ix = ik ? 40 : 0;   // riadok s ikonkou/portrétom vľavo
+                    if (ik) items.push(this.add.image(16, y, ik).setOrigin(0).setDisplaySize(34, 34));
+                    const t = this.add.text(16 + ix, y, k.textContent, txtStyle(k.style.color ? 12.5 : 11.5, k.style.color ? UI_C.gold : k.style.opacity && +k.style.opacity < 1 ? UI_C.dim : UI_C.ink, { wordWrap: { width: IW - 26 - ix } }));
+                    items.push(t); y += Math.max(t.height, ik ? 34 : 0) + 3;
                 }
             });
             flush();
@@ -8844,7 +9983,7 @@ class UIScene extends Phaser.Scene {
     /** Tlačidlo okna podľa pôvodného HTML tlačidla k (aj s ikonkou výbavy). Vráti pole objektov s výškou .h. */
     dialogButton(k, x, y, w, allow) {
         const label = k.textContent.trim() || '•', dn = Icons.forDialog(label), icon = this.iconFor(k) || (dn && label !== '•' ? Icons.tex(this, dn) : null);
-        const unit = icon && /^ico_u_/.test(icon), is = unit ? 34 : 24, iw = icon ? is + 6 : 0;   // ikonky vojakov sú väčšie
+        const unit = icon && /^ico_(u|por)_/.test(icon), is = unit ? 34 : 24, iw = icon ? is + 6 : 0;   // ikonky vojakov sú väčšie
         const probe = this.add.text(0, 0, label, txtStyle(12, '#000', { wordWrap: { width: w - 12 - iw, useAdvancedWrap: true } }));
         const bh = Math.max(icon ? is + 4 : 24, probe.height + 8); probe.destroy();
         const swatch = k.style.background && k.textContent.trim() === '' ? k.style.background : null;
@@ -8959,7 +10098,7 @@ const game = new Phaser.Game({
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     render: { antialias: true, roundPixels: false },
     input: { mouse: { preventDefaultWheel: true } },
-    scene: [BootScene, IntroScene, MapScene, BattleScene, TavernScene, CastleScene, UIScene]
+    scene: [BootScene, IntroScene, MapScene, BattleScene, TavernScene, CastleScene, VillageScene, PlaceScene, UIScene]
 });
 
 </script>

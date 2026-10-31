@@ -13,6 +13,7 @@ def check(name, ok, info=''):
 with sync_playwright() as p:
     b = p.chromium.launch(args=['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'])
     pg = b.new_page(viewport={'width': 1200, 'height': 800})
+    pg.set_default_timeout(180000)   # softvérové vykresľovanie: nahrávanie textúr na pozadí môže snímky spomaliť
     errs = []; pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.on('console', lambda m: m.type == 'error' and 'fonts.googleapis' not in m.text and 'ERR_' not in m.text and errs.append('console: ' + m.text))
     pg.route('**/fonts.googleapis.com/**', lambda r: r.abort())

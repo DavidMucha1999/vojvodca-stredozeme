@@ -77,9 +77,15 @@ class UIScene extends Phaser.Scene {
             if (se === 3) g.fillStyle(0xdce6ff, .14).fillRect(0, 0, W, H);
             this.drawWeather(g, MW.n, 1);
             // noc: modré stmavenie, v hlbokej noci hviezdy
-            const nn = nightness();
-            g.fillStyle(0x080e28, .18 * (.5 - .5 * Math.cos(dayT / 600 * 6.283)) + nn * .22).fillRect(0, 0, W, H);
-            if (nn > .3 && MW.n === 'clear') { g.fillStyle(0xffffff, (nn - .3) * .9); for (let k = 0; k < 40; k++) g.fillRect((k * 173 + 31) % W, (k * 97 + 11) % (H * .6), 1.2, 1.2); }
+            const nn = nightness(), raw = .5 - .5 * Math.cos(dayT / 600 * 6.283), ph = dayT / 600;
+            // súmrak a úsvit: teplé oranžové svetlo zhora (súmrak) alebo ružové (úsvit), potom modrá noc
+            const warm = Math.exp(-Math.pow((raw - .42) / .13, 2));
+            if (warm > .02) { const dusk = ph < .5; for (let k = 0; k < 6; k++) g.fillStyle(dusk ? 0xff8a30 : 0xff9a70, warm * .07 * (1 - k / 6)).fillRect(0, k * H / 6, W, H / 6); g.fillStyle(dusk ? 0xffb060 : 0xffc0a0, warm * .05).fillRect(0, 0, W, H); }
+            if (raw > .25 && raw < .42) g.fillStyle(0xffe0a0, (raw - .25) * .3).fillRect(0, 0, W, H);   // zlatá hodina
+            g.fillStyle(0x080e28, .18 * raw + nn * .22).fillRect(0, 0, W, H);
+            if (nn > .3 && MW.n === 'clear') { g.fillStyle(0xffffff, (nn - .3) * .9); for (let k = 0; k < 40; k++) g.fillRect((k * 173 + 31) % W, (k * 97 + 11) % (H * .6), 1.2, 1.2);
+                const mx = W - 90 - (ph - .5) * 200, my = 60 + Math.abs(ph - .5) * 80;   // mesiac putuje po oblohe
+                g.fillStyle(0xfff4d0, Math.min(.95, (nn - .3) * 1.4)).fillCircle(mx, my, 11); g.fillStyle(0x080e28, Math.min(.9, (nn - .3) * 1.4) * .8).fillCircle(mx + 5, my - 3, 9); g.fillStyle(0xfff4d0, (nn - .3) * .12).fillCircle(mx, my, 26); }
         }
         this.gateTxt.setVisible(false);
         if (scene === 'battle' && U && U[0]) {
@@ -383,6 +389,7 @@ class UIScene extends Phaser.Scene {
         const PW = 440, IW = PW - 32, root = this.add.container(0, 0).setDepth(40);
         const shade = this.add.rectangle(0, 0, W, H, 0x0c0907, .35).setOrigin(0).setInteractive();
         const h1 = ov.querySelector('h1'), title = h1 ? h1.textContent : '';
+        const letter = /^List /.test(title), LC = letter ? { gold: '#6a2a10', ink: '#2e2014', dim: '#6a5a48' } : UI_C;   // list = pergamen s tmavým atramentom
         const bt = ov.querySelector('#bt'), kids = bt ? [...bt.children] : [];
         const nBtn = kids.filter(k => k.tagName === 'BUTTON').length, cols = nBtn > 8 || /^Trh:/.test(title) ? 3 : 2, bw = (IW - (cols - 1) * 6) / cols;
         this.dlgButtons = [];
@@ -394,10 +401,10 @@ class UIScene extends Phaser.Scene {
             const por = ov.querySelector('canvas.por'), pk = por && por.dataset.key;
             let px0 = 16, pw0 = IW, py0 = y, pimg = null;
             if (por && pk) { if (!this.textures.exists(pk)) this.textures.addCanvas(pk, por); pimg = this.add.image(16, y, pk).setOrigin(0).setDisplaySize(78, 78); items.push(pimg); px0 = 16 + 86; pw0 = IW - 86; }
-            if (title) { const t = this.add.text(pimg ? px0 : PW / 2, y, title, txtStyle(19, UI_C.gold, { fontFamily: TITLE_FONT, align: pimg ? 'left' : 'center', wordWrap: { width: pw0 } })).setOrigin(pimg ? 0 : .5, 0); items.push(t); y += t.height + 5; }
+            if (title) { const t = this.add.text(pimg ? px0 : PW / 2, y, title, txtStyle(19, LC.gold, { fontFamily: TITLE_FONT, align: pimg ? 'left' : 'center', wordWrap: { width: pw0 } })).setOrigin(pimg ? 0 : .5, 0); items.push(t); y += t.height + 5; }
             ov.querySelectorAll(':scope > p').forEach(p => {
                 if (!p.textContent.trim()) return;
-                const t = this.add.text(pimg ? px0 : PW / 2, y, p.textContent, txtStyle(12, p.style.color ? UI_C.gold : UI_C.ink, { align: pimg ? 'left' : 'center', lineSpacing: 2, wordWrap: { width: pw0 } })).setOrigin(pimg ? 0 : .5, 0);
+                const t = this.add.text(pimg ? px0 : PW / 2, y, p.textContent, txtStyle(letter ? 12.5 : 12, p.style.color ? LC.gold : LC.ink, { fontStyle: letter ? 'italic' : 'normal', align: pimg ? 'left' : 'center', lineSpacing: 2, wordWrap: { width: pw0 } })).setOrigin(pimg ? 0 : .5, 0);
                 items.push(t); y += t.height + 6;
             });
             if (pimg) { y = Math.max(y, py0 + 84); px0 = 16; }
@@ -413,7 +420,7 @@ class UIScene extends Phaser.Scene {
                     flush();
                     const ik = this.iconFor(k), ix = ik ? 40 : 0;   // riadok s ikonkou/portrétom vľavo
                     if (ik) items.push(this.add.image(16, y, ik).setOrigin(0).setDisplaySize(34, 34));
-                    const t = this.add.text(16 + ix, y, k.textContent, txtStyle(k.style.color ? 12.5 : 11.5, k.style.color ? UI_C.gold : k.style.opacity && +k.style.opacity < 1 ? UI_C.dim : UI_C.ink, { wordWrap: { width: IW - 26 - ix } }));
+                    const t = this.add.text(16 + ix, y, k.textContent, txtStyle(k.style.color ? 12.5 : 11.5, k.style.color ? LC.gold : k.style.opacity && +k.style.opacity < 1 ? LC.dim : LC.ink, { wordWrap: { width: IW - 26 - ix } }));
                     items.push(t); y += Math.max(t.height, ik ? 34 : 0) + 3;
                 }
             });
@@ -432,11 +439,13 @@ class UIScene extends Phaser.Scene {
         const footH = foot.length ? 34 : 0, viewH = Math.min(L.CH, maxH - footH), CH = L.CH;
         const PH = viewH + 34 + footH, px = (W - PW) / 2, py = Math.max(44, (H - PH) / 2);
         const panel = this.add.graphics();
-        this.drawFrame(panel, px, py, PW, PH);
+        this.drawFrame(panel, px, py, PW, PH, letter);
+        if (letter) this.drawSeal(panel, px + PW - 34, py + 30, title);
         const content = this.add.container(0, 0);
         content.add(L.items);
         content.setPosition(px, py + 20 - scroll);
         root.add([shade, panel, content]);
+        if (this.pendingSeal) { root.add(this.pendingSeal); this.pendingSeal = null; }
         const maskG = this.make.graphics({ add: false });
         maskG.fillStyle(0xffffff).fillRect(px, py + 14, PW, viewH + 12);
         const d = this.dlg = { root, content, mask: maskG, px, py, PW, PH, CH, maxH: viewH, scroll: 0, title, vy0: py + 14, vy1: py + 26 + viewH };
@@ -463,7 +472,23 @@ class UIScene extends Phaser.Scene {
     }
 
     /** Rám okna s ornamentom podľa strany: dobro elfské úponky a zlato, zlo ostré hroty a červeň. */
-    drawFrame(panel, px, py, PW, PH) {
+    drawFrame(panel, px, py, PW, PH, letter) {
+        if (letter) {   // pergamen: roztrhané okraje, zažltnuté rohy, stopy po zložení
+            let sd = Math.round(px + py);
+            const rnd = () => (sd = sd * 16807 % 2147483647) / 2147483647;
+            const pts = [];
+            for (let x = px; x < px + PW; x += 10) pts.push([x, py + (rnd() - .5) * 5]);
+            for (let y = py; y < py + PH; y += 10) pts.push([px + PW + (rnd() - .5) * 5, y]);
+            for (let x = px + PW; x > px; x -= 10) pts.push([x, py + PH + (rnd() - .5) * 5]);
+            for (let y = py + PH; y > py; y -= 10) pts.push([px + (rnd() - .5) * 5, y]);
+            panel.fillStyle(0x2a1a0c, .5).fillPoints(pts.map(([x, y]) => ({ x: x + 4, y: y + 5 })), true);   // tieň
+            panel.fillStyle(0xe6d5a8, 1).fillPoints(pts.map(([x, y]) => ({ x, y })), true);
+            panel.fillStyle(0xc8b080, .35); for (let k = 0; k < 40; k++) panel.fillEllipse(px + rnd() * PW, py + rnd() * PH, 10 + rnd() * 40, 4 + rnd() * 12);   // škvrny
+            panel.fillStyle(0x8a6a3a, .18); panel.fillRect(px, py, PW, 6); panel.fillRect(px, py + PH - 6, PW, 6); panel.fillRect(px, py, 6, PH); panel.fillRect(px + PW - 6, py, 6, PH);   // tmavšie okraje
+            panel.lineStyle(1, 0x8a6a3a, .25).lineBetween(px + 8, py + PH / 3, px + PW - 8, py + PH / 3 + 2).lineBetween(px + 8, py + PH * 2 / 3, px + PW - 8, py + PH * 2 / 3 - 1);   // prehyby
+            panel.lineStyle(1.2, 0x6a4a2a, .6).strokePoints(pts.map(([x, y]) => ({ x, y })), true);
+            return;
+        }
         const evil = G && heroSide() === 1, line = evil ? 0x9a2a1a : UI_C.line, line2 = evil ? 0x5a1a12 : 0x8a6a2a;
         panel.fillStyle(evil ? 0x14100f : UI_C.panel, .97).fillRoundedRect(px, py, PW, PH, 6);
         panel.lineStyle(2, line, 1).strokeRoundedRect(px, py, PW, PH, 6);
@@ -477,6 +502,20 @@ class UIScene extends Phaser.Scene {
         const mx = px + PW / 2;
         if (evil) { panel.fillStyle(line, 1).fillTriangle(mx - 6, py + 1, mx, py + 9, mx + 6, py + 1); }
         else { panel.lineStyle(1.2, line, .8); panel.beginPath(); panel.moveTo(mx - 22, py + 1); panel.lineTo(mx - 8, py + 6); panel.lineTo(mx, py + 2); panel.lineTo(mx + 8, py + 6); panel.lineTo(mx + 22, py + 1); panel.strokePath(); }
+    }
+
+    /** Vosková pečať listu: červený vosk s erbom frakcie odosielateľa (podľa mena v nadpise), stuha. */
+    drawSeal(panel, x, y, title) {
+        let f = -1;
+        const m = /od (?:maršala |lorda )?([^:,]+)/.exec(title);
+        if (m) { const nm = m[1].trim(); const fi = FN.indexOf(nm); if (fi >= 0) f = fi; else { const e = E.find(o => o.nm === nm); if (e) f = e.f; } }
+        if (f < 0) f = G ? G.fac : 0;
+        panel.fillStyle(0x6a2a1a, 1).fillRect(x - 4, y - 26, 8, 30); panel.fillStyle(0x8a3a24, 1).fillRect(x - 3, y - 26, 3, 30);   // stuha
+        panel.fillStyle(0x3a0a06, .6).fillCircle(x + 2, y + 3, 15);
+        panel.fillStyle(0xa02018, 1).fillCircle(x, y, 15); panel.fillStyle(0xc03028, 1).fillCircle(x - 2, y - 2, 12); panel.fillStyle(0x8a1810, 1).fillCircle(x, y, 9);
+        const key = 'seal_' + f;
+        if (!this.textures.exists(key)) { const out = document.createElement('canvas'); out.width = out.height = 64; try { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, 64, 64); ctx.translate(32, 32); ctx.scale(1.3, 1.3); if (typeof embBase === 'function') embBase(0, 0, 14, f); ctx.restore(); out.getContext('2d').drawImage(cv, 0, 0, 64, 64, 0, 0, 64, 64); } catch (e) { } this.textures.addCanvas(key, out); }
+        const im = this.add.image(x, y, key).setDisplaySize(22, 22).setAlpha(.85).setTint(0xffb0a0); this.sealImgs = this.sealImgs || []; this.sealImgs.push(im); if (this.dlg) this.dlg.root.add(im); else this.pendingSeal = im;
     }
 
     /** Tlačidlo okna podľa pôvodného HTML tlačidla k (aj s ikonkou výbavy). Vráti pole objektov s výškou .h. */

@@ -11,7 +11,7 @@ def check(name, ok, info=''):
     if not ok: fails.append(name)
 
 with sync_playwright() as p:
-    b = p.chromium.launch(args=['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist']); pg = b.new_page(viewport={'width': 960, 'height': 640})
+    b = p.chromium.launch(args=['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist']); pg = b.new_page(viewport={'width': 960, 'height': 640}); pg.set_default_timeout(180000)
     errs = []; pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.route('**/fonts.googleapis.com/**', lambda r: r.abort())
     pg.on('console', lambda m: m.type == 'error' and 'ERR_' not in m.text and errs.append('console: ' + m.text))

@@ -80,6 +80,10 @@ function hit(b, d, from) {
     snd(b.hp <= 0 ? 'dy' : b.h ? 'sh' : Math.random() < .5 ? 'sw' : 'hb');
     for (let i = 0; i < 4; i++)
         PT.push({ x: b.x, y: b.y, vx: Math.random() * 3 - 1.5, vy: Math.random() * 3 - 1.5, l: 18, c: b.t ? '#8a2a1a' : '#d9a441' });
+    for (let i = 0; i < 3; i++)   // iskry kovu: letia hore a padajú
+        PT.push({ x: b.x, y: b.y - 4, vx: Math.random() * 4 - 2, vy: -2 - Math.random() * 2.5, g: .18, l: 14 + Math.random() * 8, c: '#fff0b0', sp: 1 });
+    if (b.hp <= 0) for (let i = 0; i < 6; i++) PT.push({ x: b.x, y: b.y, vx: Math.random() * 2 - 1, vy: -.4 - Math.random() * .8, l: 30, c: '#5a1a12', g: .02, bl: 1 });   // krv pri páde
+    if (from && (from.k === 't' || from.k === 'x' || from.k === 'n' || from.k === 'z')) SHAKE = Math.max(SHAKE, from.k === 'x' ? 3 : 2);   // ťažký úder otrasie kamerou
 }
 function mk(t, k, f) {
     if (k === 'roh')
@@ -93,7 +97,7 @@ function mk(t, k, f) {
     Object.assign(u, { uk: k, hp: F.hp, mh: F.hp, d: F.d, sp: F.sp, r: F.r, fc: F.f });
     return u;
 }
-let SGB = null, BG0 = null, CBG = null, PAUSE = 0, KD = 0;
+let SGB = null, BG0 = null, CBG = null, PAUSE = 0, KD = 0, SHAKE = 0;
 function startBattle(en, al) {
     L_startBattle1: {
         if (en.ar) {
@@ -323,8 +327,10 @@ function updBattle(dt) {
         for (const p of PT) {
             p.x += p.vx * dt;
             p.y += p.vy * dt;
+            if (p.g) p.vy += p.g * dt;
             p.l -= dt;
         }
+        if (SHAKE > 0) SHAKE -= dt * .3;
         PT = PT.filter(p => p.l > 0);
         for (const a of AR) {
             a.x += a.vx * dt;

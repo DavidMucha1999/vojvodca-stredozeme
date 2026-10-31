@@ -80,6 +80,39 @@ class MapScene extends Phaser.Scene {
         return out;
     }
 
+    /** Reliéf krajiny: výškové pole zo šumu, hôr a lesov, tieňované svetlom zo severozápadu (svetlé hrebene, tmavšie údolia),
+     *  tmavšia vlhká zem pri rieke. Jedna textúra 720 × 480 položená pod stromy – mapa prestane byť plochá. */
+    buildRelief(T) {
+        if (this.textures.exists('relief')) return this.add.image(0, 0, 'relief').setOrigin(0).setScale(WW / 720).setDepth(-9.3).setAlpha(.85);
+        const Wc = 720, Hc = 480, cv = document.createElement('canvas'); cv.width = Wc; cv.height = Hc;
+        const c = cv.getContext('2d'), img = c.createImageData(Wc, Hc), d = img.data;
+        const hash = (x, y) => { const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return n - Math.floor(n); };
+        const noise = (x, y) => { const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy); return (hash(ix, iy) * (1 - u) + hash(ix + 1, iy) * u) * (1 - v) + (hash(ix, iy + 1) * (1 - u) + hash(ix + 1, iy + 1) * u) * v; };
+        const M = T.mountains.map(([mx, my, sz]) => [mx / 1800 * Wc, my / 1200 * Hc, sz / 1800 * Wc]);
+        const rp = typeof riverPoints === 'function' ? riverPoints().map(([x, y]) => [x / WW * Wc, y / WH * Hc]) : [];
+        const H = new Float32Array((Wc + 1) * (Hc + 1));
+        for (let y = 0; y <= Hc; y++) for (let x = 0; x <= Wc; x++) {
+            let h = noise(x / 38, y / 38) * .6 + noise(x / 13, y / 13) * .3 + noise(x / 5, y / 5) * .1;
+            for (const [mx, my, r] of M) { const dd = Math.hypot(x - mx, y - my); if (dd < r * 1.6) h += (1 - dd / (r * 1.6)) * 1.2; }
+            const fi = Math.floor(x / Wc * T.cols), fj = Math.floor(y / Hc * T.rows);
+            if (T.forest[fj * T.cols + fi] >= 33) h += .08;
+            H[y * (Wc + 1) + x] = h;
+        }
+        for (let y = 0; y < Hc; y++) for (let x = 0; x < Wc; x++) {
+            const h = H[y * (Wc + 1) + x], dx = H[y * (Wc + 1) + x + 1] - h, dy = H[(y + 1) * (Wc + 1) + x] - h;
+            const sh = (-dx - dy) * 38;   // svetlo zo severozápadu
+            let a = Math.min(.45, Math.abs(sh)) * (sh > 0 ? .55 : 1), col = sh > 0 ? 255 : 0;
+            let wet = 0; if (rp.length && (x % 2 === 0) && (y % 2 === 0)) { let bd = 1e9; for (let i = 0; i < rp.length; i += 3) { const q = rp[i], dd = (q[0] - x) * (q[0] - x) + (q[1] - y) * (q[1] - y); if (dd < bd) bd = dd; } wet = bd < 100 ? .18 * (1 - bd / 100) : 0; }
+            const i = (y * Wc + x) * 4;
+            d[i] = col; d[i + 1] = col; d[i + 2] = col; d[i + 3] = Math.round(a * 255 * .55);
+            if (wet) { d[i] = 20; d[i + 1] = 30; d[i + 2] = 20; d[i + 3] = Math.max(d[i + 3], Math.round(wet * 255)); }
+        }
+        c.putImageData(img, 0, 0);
+        c.filter = 'blur(1px)'; c.drawImage(cv, 0, 0); c.filter = 'none';
+        this.textures.addCanvas('relief', cv);
+        return this.add.image(0, 0, 'relief').setOrigin(0).setScale(WW / 720).setDepth(-9.3).setAlpha(.85);
+    }
+
     /** Les ako jednotlivé stromy: hustý vnútri, pri okraji redší a s náhodne vysunutými stromami, aby hranica nebola kockatá. */
     buildForest(T) {
         const ts = WW / T.cols, rnd = n => { const x = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
@@ -113,7 +146,17 @@ class MapScene extends Phaser.Scene {
         }
         const kept = trees.filter(([x, y]) => !this.clearZone(x, y));
         kept.sort((a, b) => a[1] - b[1]);
-        for (const [x, y, sc, key] of kept) layer.add(this.add.image(x, y, 'map_trees', KEYS.indexOf(key)).setOrigin(.5, .89).setScale(sc));
+        // stromy podľa kraja: mallorny so zlatými korunami okolo Lothlórienu, modrasté borovice na severe, popolavé kmene v Mordore
+        const lor = TW.find(t => t.n === 'Lothlórien');
+        for (const [x, y, sc, key] of kept) {
+            const im = this.add.image(x, y, 'map_trees', KEYS.indexOf(key)).setOrigin(.5, .89).setScale(sc);
+            const reg = regionAt(x, y);
+            if (lor && Math.hypot(x - lor.x, y - lor.y) < 150 * K) im.setTint(0xffc830).setScale(sc * 1.3);
+            else if (reg === 's') { im.setTint(0xa8c8d0); if (key !== 'deadtree') im.setFrame(KEYS.indexOf('tree_2')); }
+            else if (reg === 'a') im.setTint(0x7a6a62);
+            else if (reg === 'd') im.setTint(0xc8c070);
+            layer.add(im);
+        }
         return [layer];
     }
 
@@ -175,6 +218,7 @@ class MapScene extends Phaser.Scene {
         if (this.textures.exists('forestwash')) this.textures.remove('forestwash');
         this.textures.addCanvas('forestwash', fc2);
         out.push(this.add.image(-WW / T.cols * .5, -WH / T.rows * .5, 'forestwash').setOrigin(0).setScale(WW / T.cols).setAlpha(.9).setDepth(-8.7));
+        out.push(this.buildRelief(T));
         // lesy: namiesto štvorcových dlaždíc jednotlivé stromy s rozhádzanými okrajmi (prirodzená hranica lesa)
         out.push(...this.buildForest(T));
         out.push(...this.buildPlaces());
@@ -311,12 +355,18 @@ class MapScene extends Phaser.Scene {
             o.txt.setPosition(e.x, e.y + 19).setText(e.nm + ' ' + Math.ceil(e.n))
                 .setColor(hos(e.f, G.fac) ? '#ff8a70' : (AL[G.fac][e.f] || e.f === G.fac) ? '#9fe08a' : '#ecdfc6');
             o.crown.setVisible(!!e.kr).setPosition(e.x + 17, e.y - 46);
+            // kolóna: za veliteľom veľkého vojska kráčajú ďalšie postavičky (1 za každých 10 mužov, najviac 3)
+            const nf = Math.min(3, Math.floor(e.n / 10));
+            if (!o.fol) o.fol = [];
+            while (o.fol.length < nf) { const im = Art.image(this, e.x, e.y, o.spr.texture.key, 0, true).setScale(o.spr.scaleX * .85).setAlpha(.9); this.mmCam.ignore([im]); o.fol.push(im); }
+            while (o.fol.length > nf) o.fol.pop().destroy();
+            if (o.fol.length) { const dir = Math.atan2(e.vy || 0, e.vx || 1), flip = e.vx < 0; o.fol.forEach((im, k) => { if (im.texture.key !== o.spr.texture.key) im.setTexture(o.spr.texture.key, 0).setScale(o.spr.scaleX * .85); const dd = (k + 1) * 26; im.setPosition(e.x - Math.cos(dir) * dd + ((k % 2) ? 6 : -6), e.y - Math.sin(dir) * dd * .5 + (k % 2 ? 4 : -3)).setDepth(e.y - .1 * (k + 1)).setFlipX(flip); if (!im.anims.isPlaying) im.play({ key: o.spr.texture.key + ':wave', startFrame: (e.id + k) % 4 }); }); }
             const isM = typeof MAR !== 'undefined' && MAR[e.f] === e.id;
             o.flag.setVisible(isM).setPosition(e.x + 22, e.y - 92);
             if (isM && o.flag.texture.key !== 'banner_' + e.f) o.flag.setTexture(Art.banner(this, e.f));
         }
         for (const [id, o] of this.armies)
-            if (!seen.has(id)) { o.spr.destroy(); o.txt.destroy(); o.crown.destroy(); o.flag.destroy(); this.armies.delete(id); }
+            if (!seen.has(id)) { o.spr.destroy(); o.txt.destroy(); o.crown.destroy(); o.flag.destroy(); (o.fol || []).forEach(im => im.destroy()); this.armies.delete(id); }
     }
 
     syncHero() {
@@ -379,8 +429,13 @@ class MapScene extends Phaser.Scene {
         }
         // Hora osudu: dym a pulz žiary
         if (this.doom) { for (let k = 0; k < 5; k++) { const s = (tm * .3 + k * 30) % 150; g.fillStyle(0x2a1a18, .35 - s / 500).fillCircle(this.doom.x + Math.sin(s * .05 + k) * 20 - 10, this.doom.y - this.doom.displayHeight * .9 - s * 1.2, 14 + s * .25); } }
+        // život v dedinách: dym z komínov cez deň, svietiace okná v noci (len pri kamere)
+        { const nn = nightness(), cx = cam.x + W / Z / 2, cy = cam.y + H / Z / 2, rr = Math.max(W, H) / Z;
+          for (let i = 0; i < VL.length; i++) { const v = VL[i]; if (v.st > 0 || Math.abs(v.x - cx) > rr || Math.abs(v.y - cy) > rr) continue;
+            if (nn > .35) { g.fillStyle(0xffd080, .5 + .3 * Math.sin(tm / 7 + i)); for (let k = 0; k < 1 + lvl(v) / 2; k++) g.fillRect(v.x - 10 + ((k * 13 + i * 5) % 24), v.y - 6 + ((k * 7) % 8), 2.5, 2); g.fillStyle(0xffc060, .08).fillCircle(v.x, v.y, 26); }
+            else if (lvl(v) >= 2) { for (let k = 0; k < 3; k++) { const sm = (tm * .35 + k * 20 + i * 7) % 60; g.fillStyle(0xd8d0c8, .22 - sm / 300).fillCircle(v.x + 6 + Math.sin(sm * .12 + k + i) * 4, v.y - 12 - sm * .55, 2.2 + sm * .08); } } } }
         // prach pod armádami na pochode
-        for (const e of E) if ((e.vx || e.vy) && Math.hypot(e.x - G.x, e.y - G.y) < 900) for (let k = 1; k < 3; k++) g.fillStyle(0xc8b48c, .14 - k * .04).fillCircle(e.x - e.vx * k * 9, e.y - e.vy * k * 9 + 8, 4 - k * .5);
+        for (const e of E) if ((e.vx || e.vy) && Math.hypot(e.x - G.x, e.y - G.y) < 900) for (let k = 1; k < 3 + Math.min(3, e.n / 10); k++) g.fillStyle(regionAt(e.x, e.y) === 's' ? 0xffffff : 0xc8b48c, .16 - k * .03).fillCircle(e.x - e.vx * k * 9 + Math.sin(tm / 3 + k) * 2, e.y - e.vy * k * 9 + 8, 4 + k * .4);
         if (G.camp) {
             g.fillStyle(0xc8a870, 1).fillTriangle(G.x - 30, G.y + 6, G.x - 18, G.y - 12, G.x - 6, G.y + 6);
             g.fillStyle(0xff9a3a, 1).fillCircle(G.x + 26, G.y + 4, 3 + Math.random() * 1.5);
