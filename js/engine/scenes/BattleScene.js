@@ -12,10 +12,10 @@ class BattleScene extends Phaser.Scene {
 
     create() {
         this.ready = false;
-        if (!Art.loaded.battle && Art.loading.battle) {   // textúry bojiska sa ešte dočítavajú na pozadí
+        if (!Art.loaded.battle) {   // textúry bojiska sa ešte dočítavajú na pozadí (alebo sa ešte nezačali)
             this.cameras.main.setBackgroundColor('#0b0806');
             const t = this.add.text(W * RES / 2, H * RES / 2, 'Vojská sa zoraďujú…', { fontFamily: '"IM Fell English", Georgia, serif', fontSize: 16 * RES + 'px', color: '#d9a441' }).setOrigin(.5).setScrollFactor(0);
-            Art.loading.battle.then(() => { if (this.scene.isActive('Battle')) { t.destroy(); this.build(); } });
+            (Art.loading.battle || Art.loadTextures(this, 'battle')).then(() => { if (this.scene.isActive('Battle')) { t.destroy(); this.build(); } });
             return;
         }
         this.build();
@@ -23,17 +23,7 @@ class BattleScene extends Phaser.Scene {
 
     build() {
         this.ready = true;
-        if (this.textures.exists('ground_g')) this.buildField();
-        else {
-            const c = document.createElement('canvas');
-            c.width = BW; c.height = BH;
-            c.getContext('2d').drawImage(BG, 0, 0);
-            if (this.textures.exists('battlebg')) this.textures.remove('battlebg');
-            this.textures.addCanvas('battlebg', c);
-            const bg = this.add.image(0, 0, 'battlebg').setOrigin(0).setDepth(-10);
-            const tint = { a: 0x9a7a70, d: 0xf0d8a0, s: 0xe8eef8 }[BI];
-            if (tint) bg.setTint(tint);
-        }
+        this.buildField();
 
         this.marks = this.add.graphics().setDepth(-6);   // trvalé stopy boja: krv, zapichnuté šípy, padlé zbrane
         this.markN = 0;

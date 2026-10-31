@@ -15,6 +15,20 @@ function btn(label, fn, off, icon) {
     return b;
 }
 let LOG = [], TS = null, BI = 'g', RN = null, PORTRAIT = null;
+/** Textový riadok v okne (cez celú šírku). o.gold = zlatý nadpis riadka, o.dim = tlmený, o.color = vlastná farba, o.icon = plátno ikony/portrétu + kľúč. */
+function row(text, o = {}) {
+    const d = document.createElement('div');
+    d.style.cssText = 'grid-column:1/-1;text-align:left;font-size:' + (o.gold ? '.95rem;color:var(--gold);margin-top:.3rem' : o.dim ? '.85rem;opacity:.85' : '.9rem') + (o.color ? ';color:' + o.color : '');
+    if (o.gold) d.dataset.kind = 'gold'; else if (o.dim) d.dataset.kind = 'dim'; else if (o.color) d.dataset.kind = 'gold';
+    d.textContent = text;
+    if (o.icon && o.icon.canvas) { o.icon.canvas.className = 'ico'; d.dataset.icon = o.icon.key; if (d.prepend) d.prepend(o.icon.canvas); }
+    document.getElementById('bt').appendChild(d);
+    return d;
+}
+/** Zlatý nadpis riadka (napr. meno postavy alebo hradu v zozname). */
+const rowHead = text => row(text, { gold: 1 });
+/** Označí tlačidlo ako zvolené (biely rám). */
+const select = b => { b.dataset.sel = '1'; b.style.outline = '3px solid #fff'; return b; };
 /** Okno s nadpisom h a textom body. Ak je pred volaním nastavený PORTRAIT (popis tváre), okno dostane portrét (plátno .por). */
 function show(h, body) {
     ov.classList.remove('encv');

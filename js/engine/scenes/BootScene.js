@@ -18,7 +18,7 @@ class BootScene extends Phaser.Scene {
         this.quote.setText(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
         this.time.addEvent({ delay: 4200, loop: true, callback: () => { this.quote.setText(QUOTES[Math.floor(Math.random() * QUOTES.length)]); } });
         const steps = [
-            ['Kreslím mapu Stredozeme…', () => new Promise(r => setTimeout(() => { buildMap(); r(); }, 30))],
+            ['Kreslím mapu Stredozeme…', () => new Promise(r => setTimeout(r, 30))],
             ['Staviam hrady a dediny…', () => Art.loadTextures(this, 'map', (d, n) => { this.target = .1 + .6 * d / n; })],
             ['Ladím rohy a bubny…', () => new Promise(r => { SoundFX.init(this); setTimeout(r, 50); })],
             ['Maľujem erby a zástavy…', () => Art.loadOverrides(this)],

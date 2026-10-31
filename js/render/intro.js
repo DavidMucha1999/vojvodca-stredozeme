@@ -147,5 +147,16 @@ function introScene() {
         ctx.fillStyle = 'rgba(255,140,40,' + (.7 - s / 700) + ')';
         ctx.fillRect((k * 97 + Math.sin(s / 30 + k) * 20) % W, H - s, 2, 2);
     }
-    ctx.drawImage(VG, 0, 0);
+    ctx.drawImage(introVignette(), 0, 0);
+}
+
+/** Vinetácia úvodnej scény (tmavé okraje), kreslí sa raz. */
+let VG0 = null;
+function introVignette() {
+    if (VG0) return VG0;
+    const v = document.createElement('canvas'); v.width = W; v.height = H;
+    const e = v.getContext('2d'), r = e.createRadialGradient(W / 2, H / 2, H * .35, W / 2, H / 2, W * .62);
+    r.addColorStop(0, 'rgba(0,0,0,0)'); r.addColorStop(1, 'rgba(0,0,0,.5)');
+    e.fillStyle = r; e.fillRect(0, 0, W, H);
+    return VG0 = v;
 }

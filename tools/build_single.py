@@ -1,6 +1,6 @@
 """
 Zostaví celú hru do jedného HTML súboru (dist/).
-Použitie: python tools/build_single.py ["Vojvodca Stredozeme.html"|index.html]
+Použitie: python tools/build_single.py ["Vojvodca Stredozeme.html"]
 Výsledok sa dá otvoriť priamo, poslať alebo zverejniť ako jeden súbor.
 """
 import os, re, sys

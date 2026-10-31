@@ -1,19 +1,8 @@
 /*
  * Krčma ako miestnosť (scéna Tavern v js/engine/scenes/TavernScene.js) a jej rozhovory.
- * enterTavern(i) vstúpi do krčmy hradu i; bez Phaseru (index.html, testy) sa použije staré okno tavern().
+ * enterTavern(i) (js/ui/rooms.js) vstúpi do krčmy hradu i; bez Phaseru (testy) sa použije staré okno tavern().
  * Rozhovory sa otvárajú ako bežné okná (show/btn), mode ostáva 'tavern', zatvorenie okna vráti do miestnosti.
  */
-function enterTavern(i) {
-    if (typeof game === 'undefined' || !game.scene || !game.scene.getScene('Tavern')) return tavern(i);
-    ov.classList.add('hide');
-    mode = 'tavern';
-    G.dest = -1;
-    ROOM = { i, room: 'tavern', from: ROOM && ROOM.i === i ? ROOM.room : null };
-    if (game.scene.isActive('Castle')) game.scene.stop('Castle');
-    const sc = game.scene.getScene('Tavern');
-    if (game.scene.isActive('Map')) game.scene.sleep('Map');          // mapa pod krčmou spí (čas stojí)
-    if (sc.scene.isActive()) sc.scene.restart({ i }); else game.scene.start('Tavern', { i });
-}
 /** Zavrie okno a vráti hráča do miestnosti krčmy. */
 function tavBack() { ov.classList.add('hide'); mode = 'tavern'; }
 /** Obnoví postavy v miestnosti (po pripojení spoločníka). */

@@ -15,7 +15,7 @@ const riverPoints = (() => { let pts = null; return () => {
     return pts;
 }; })();
 function battleTerrain(x, y) {
-    const T = typeof MAPDATA !== 'undefined' && MAPDATA.terrain, reg = typeof regionAt === 'function' ? regionAt(x, y) : 'g';
+    const T = typeof MAPDATA !== 'undefined' && MAPDATA.terrain, reg = regionAt(x, y);
     let forest = 0, hill = null, river = false;
     if (T) {
         const ci = Math.floor(x / WW * T.cols), cj = Math.floor(y / WH * T.rows);

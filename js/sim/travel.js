@@ -8,8 +8,8 @@ const TRAVEL = [];
 const trEnd = () => { ov.classList.add('hide'); mode = 'map'; };
 const trMsg = (t, fn) => msg(t, fn || trEnd);
 const trAdd = (id, w, cond, run) => TRAVEL.push({ id, w, cond, run });
-const trNight = () => typeof isNight === 'function' && isNight();
-const trReg = () => typeof regionAt === 'function' ? regionAt(G.x, G.y) : 'g';
+const trNight = () => isNight();
+const trReg = () => regionAt(G.x, G.y);
 const trEvil = () => heroSide() === 1;
 
 /* --- dobro aj zlo --- */
@@ -67,7 +67,7 @@ trAdd('dwarf', 1, () => !trEvil() || trReg() === 's', () => {
 });
 trAdd('storm', 1, () => MW.n === 'storm' || MW.n === 'snow', () => {
     show(MW.n === 'snow' ? 'Snehová víchrica' : 'Búrka na ceste', MW.n === 'snow' ? 'Sneh zasype cestu a mráz štípe. Dvaja vojaci omrzli a jeden kôň sa zranil na ľade.' : 'Prudký lejak strhne tábor, blesk rozštiepi strom vedľa vozov.');
-    btn('Prečkať (strata dňa, zdravie družiny)', () => { dayT = 600; G.inf = Math.max(0, G.inf - 1); if (G.cav > 0 && Math.random() < .5) G.cav--; upd(); trMsg('Ráno je ticho. Zrátaš straty a ideš ďalej.'); }, 0, 'rest');
+    btn('Prečkať (strata dňa, zdravie družiny)', () => { endDay(); G.inf = Math.max(0, G.inf - 1); if (G.cav > 0 && Math.random() < .5) G.cav--; upd(); trMsg('Ráno je ticho. Zrátaš straty a ideš ďalej.'); }, 0, 'rest');
     btn('Prebiť sa (zdravie −10)', () => { G.hp = Math.max(10, G.hp - 10); upd(); trMsg('Premočený a zmrznutý, ale na ceste.'); }, 0, 'sword');
 });
 /* --- iba dobro / iba zlo --- */

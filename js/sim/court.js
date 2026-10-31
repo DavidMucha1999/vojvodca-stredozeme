@@ -33,7 +33,7 @@ function courtLetter(L) {
     mode = 'town';
     if (e) PORTRAIT = Portraits.forLord(e);
     show('List od lorda ' + L.from, '„' + L.text + '“' + (e ? ' (' + e.nm + ', ' + FN[e.f] + ', ' + Math.ceil(e.n) + ' mužov, vernosť pánovi ' + Math.round(loyOf(e)) + ')' : ' (Lord medzitým padol.)'));
-    btn('Prijať do služieb', () => { if (e) { const o = e.f; e.f = G.fac; e.loy = 20; e.rl = (e.rl || 0) + 10; e.home = TW.findIndex(t => t.mine) >= 0 ? TW.findIndex(t => t.mine) : e.home; rl(G.fac, o, -8); lg(e.nm + ' prešiel do tvojich služieb.'); if (typeof assignRoles === 'function') assignRoles(G.fac); } ov.classList.add('hide'); mode = 'map'; }, !e, 'crown');
+    btn('Prijať do služieb', () => { if (e) { const o = e.f; e.f = G.fac; e.loy = 20; e.rl = (e.rl || 0) + 10; e.home = TW.findIndex(t => t.mine) >= 0 ? TW.findIndex(t => t.mine) : e.home; rl(G.fac, o, -8); lg(e.nm + ' prešiel do tvojich služieb.'); assignRoles(G.fac); } ov.classList.add('hide'); mode = 'map'; }, !e, 'crown');
     btn('Odmietnuť', () => { if (e) e.rl = (e.rl || 0) - 5; ov.classList.add('hide'); mode = 'map'; }, 0, 'back');
 }
 /** Okno dvora: lordi frakcie f (alebo hradu i), vzťahy, spory, vernosť; hostina a urovnanie sporov. */
@@ -46,7 +46,7 @@ function court(i, back) {
         per(e); loyOf(e);
         const fr = friends(e).map(o => o.nm), fo = foes(e).map(o => o.nm);
         rowHead(e.nm + (e.kr ? ' (panovník)' : e === m ? ' (maršal)' : '') + ' · ' + TR[e.tr][0] + ' · ' + Math.ceil(e.n) + ' mužov · vzťah ' + Math.round(e.rl || 0) + ' · vernosť ' + Math.round(e.loy) + (e.home != null && TW[e.home] ? ' · ' + TW[e.home].n : ''));
-        if (fr.length || fo.length) { const d = document.createElement('div'); d.style.cssText = 'grid-column:1/-1;text-align:left;font-size:.85rem;opacity:.85'; d.textContent = (fr.length ? 'Priatelia: ' + fr.join(', ') + '. ' : '') + (fo.length ? 'Spory: ' + fo.join(', ') + '.' : ''); document.getElementById('bt').appendChild(d); }
+        if (fr.length || fo.length) row((fr.length ? 'Priatelia: ' + fr.join(', ') + '. ' : '') + (fo.length ? 'Spory: ' + fo.join(', ') + '.' : ''), { dim: 1 });
         btn('Dar 40 zlata (vzťah +6)', () => { G.gold -= 40; e.rl = (e.rl || 0) + 6; upd(); court(i, back); }, G.gold < 40, 'coins');
         if (fo.length && (e.rl || 0) >= 10) btn('Urovnať spor s ' + fo[0] + ' (60 zlata)', () => { const o = foes(e)[0]; G.gold -= 60; setLr(e, o, 5); e.rl += 3; o.rl = (o.rl || 0) + 3; G.ren++; lg('Urovnal si spor medzi ' + e.nm + ' a ' + o.nm + '.'); upd(); court(i, back); }, G.gold < 60, 'honor');
     });

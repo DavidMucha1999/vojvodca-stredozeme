@@ -6,7 +6,9 @@
  */
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const ROOT = path.join(__dirname, '..');
-const scripts = [...fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').matchAll(/<script src="([^"]+)"><\/script>/g)].map(m => m[1]);
+// skripty hry z hlavného súboru; Phaser, jeho scény a zbalené obrázky sa bez prehliadača nenačítavajú (ikony áno – kreslia sa na plátno)
+const scripts = [...fs.readFileSync(path.join(ROOT, 'Vojvodca Stredozeme.html'), 'utf8').matchAll(/<script src="([^"]+)"><\/script>/g)].map(m => m[1])
+    .filter(s => !/^(https?:|vendor\/)/.test(s) && (!/^js\/engine\//.test(s) || /icons\.js$/.test(s)));
 
 const noop = () => { };
 const grad = { addColorStop: noop };
@@ -148,7 +150,7 @@ try {
     run(closeMenus + '; mode = "map"; G.safe = 0;');
     run('var cl = E.find(e => e.f === 0 && !e.kr) || E.find(e => e.f !== 9 && !e.nz && !e.kr); cl.n0 = 12; cl.f = 0; var pr0 = G.pri.length; capturePrisoner(cl); var ro = ransomOf(G.pri[G.pri.length - 1]);');
     check('Zajatie veliteľa a výkupné', run('G.pri.length === pr0 + 1 && typeof G.pri[G.pri.length - 1] === "object" && ro > 60'), 'výkupné ' + run('ro'));
-    run('G.pri[G.pri.length - 1].day = G.day - 5; LETTERS.length = 0; for (let i = 0; i < 40 && !LETTERS.length; i++) prisonersDaily();');
+    run('G.pri = G.pri.filter(p => p.f !== 9); G.pri.forEach(p => { p.day = G.day - 5; p.offered = null; }); LETTERS.length = 0; for (let i = 0; i < 60 && !LETTERS.length && G.pri.length; i++) { prisonersDaily(); G.pri.forEach(p => { p.offered = null; }); }');
     check('List s ponukou výkupného', run('LETTERS.some(L => L.kind === "ransom") || !G.pri.length'));
     run('if (LETTERS.length) { readLetter(); var ab = document.getElementById("bt").children.find(b => /Prijať výkupné/.test(b.textContent)); var g0 = G.gold; if (ab && !ab.disabled) ab.onclick(); }');
     check('Prijatie výkupného pridá zlato', run('typeof g0 === "undefined" || G.gold > g0 || !G.pri.length'));

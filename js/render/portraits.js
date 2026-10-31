@@ -175,7 +175,7 @@ const Portraits = (() => {
     function hero() {
         const L = { race: 'human', sex: 'm', skin: 0, hair: 'short', hcol: '#4a3020', beard: 'stubble', eyes: '#4a6a8a', ...(G && G.look || {}) };
         if (G && G.king) L.crown = 1;
-        L.cloth = G && typeof heroSide === 'function' && heroSide() === 1 ? '#2a1414' : '#6a2a2a';
+        L.cloth = G && heroSide() === 1 ? '#2a1414' : '#6a2a2a';
         return L;
     }
     return { draw, canvas, forLord, hero, SKIN, hashOf };

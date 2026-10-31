@@ -7,11 +7,10 @@
 let MW = { n: 'clear', l: 0 };
 const SEASONS = ['jar', 'leto', 'jeseň', 'zima'];
 const season = () => Math.floor(G.day / 10) % 4;
-/** Je noc? (podľa dennej doby dayT 0–600: noc je okolo polovice dňa, keď je mapa najtmavšia) */
-const isNight = () => (.5 - .5 * Math.cos(dayT / 600 * 6.283)) > .72;
-const nightness = () => Math.max(0, ((.5 - .5 * Math.cos(dayT / 600 * 6.283)) - .55) / .45);
+/** Je noc? (podľa dennej doby dayT 0–DAY_LEN: noc je okolo polovice dňa, keď je mapa najtmavšia) */
+const isNight = () => (.5 - .5 * Math.cos(dayT / DAY_LEN * 6.283)) > .72;
+const nightness = () => Math.max(0, ((.5 - .5 * Math.cos(dayT / DAY_LEN * 6.283)) - .55) / .45);
 /** Kraj podľa polohy hrdinu: s = sever (sneh), a = Mordor (popol), d = juh (púšť), g = ostatné. */
-const regionAt = (x, y) => y > 967 * K && x > 1133 * K ? 'd' : x > 1433 * K ? 'a' : y < 233 * K ? 's' : 'g';
 
 const WNAME = { clear: 'jasno', rain: 'dážď', storm: 'búrka', fog: 'hmla', snow: 'sneženie', ash: 'popolový dážď' };
 /** Vyberie nové počasie podľa ročného obdobia a kraja. */

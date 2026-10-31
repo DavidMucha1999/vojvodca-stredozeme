@@ -13,12 +13,6 @@ const owns = (k, i) => G.own[k].includes(i);
 function wear(k, i) { G.eq[k] = i; upd(); }
 
 /** Nadpis skupiny v okne (napr. Zbrane). */
-function rowHead(text) {
-    const d = document.createElement('div');
-    d.style.cssText = 'grid-column:1/-1;text-align:left;font-size:.95rem;color:var(--gold);margin-top:.3rem';
-    d.textContent = text;
-    document.getElementById('bt').appendChild(d);
-}
 
 /** Kováč v hrade i. Bez k ukáže prehľad, s k (w, a, s, h, m) ponuku jedného druhu výbavy. */
 function smithy(i, k) {
@@ -38,7 +32,7 @@ function smithy(i, k) {
         if (!x.p || !x.z !== !evil) return;           // základné veci sa nepredávajú a výbava druhej strany tu nie je
         if (owns(k, j)) {
             const b = btn(x.n + (G.eq[k] === j ? ' · nosíš' : ' · máš, obliecť'), () => { wear(k, j); back(); }, 0, { k, i: j });
-            if (G.eq[k] === j) b.style.outline = '3px solid #fff';
+            if (G.eq[k] === j) select(b);
         } else
             btn(x.n + ' · ' + cost(k, x) + ' zl. · ' + eqShort(k, x) + (x.r ? ', dosah' : ''), () => { G.gold -= cost(k, x); G.own[k].push(j); wear(k, j); back(); }, G.gold < cost(k, x), { k, i: j });
     });
@@ -60,7 +54,7 @@ function invShow(back, close) {
         [...G.own[s.k]].sort((a, b) => a - b).forEach(j => {
             const x = s.it[j], on = G.eq[s.k] === j;
             const b = btn(x.n + ' · ' + eqShort(s.k, x), () => { wear(s.k, j); invShow(back, close); }, 0, { k: s.k, i: j });
-            if (on) b.style.outline = '3px solid #fff';
+            if (on) select(b);
         });
     });
     btn(close, back);

@@ -15,22 +15,18 @@ class MapScene extends Phaser.Scene {
     create() {
         this.armies = new Map();
         this.hover = null;
-        const tiled = typeof MAPDATA !== 'undefined' && MAPDATA.terrain && this.textures.exists('terrain');
-        const worldObjs = tiled ? this.buildTerrain() : Art.worldTiles(this).map(t => this.add.image(t.x, t.y, t.key).setOrigin(0).setScale(t.s).setDepth(-10));
-
-        const newArt = this.textures.exists('map_castle_0');
-        this.newArt = newArt;
+        const worldObjs = this.buildTerrain();
         this.vill = VL.map(v => ({
             v, key: '',
-            spr: newArt ? this.add.image(v.x, v.y, 'map_village_g1').setOrigin(.5, .8).setScale(.36).setDepth(v.y - 1) : Art.image(this, v.x, v.y, Art.village(this, 0)).setDepth(v.y - 1),
+            spr: this.add.image(v.x, v.y, 'map_village_g1').setOrigin(.5, .8).setScale(.36).setDepth(v.y - 1),
             txt: this.add.text(v.x, v.y + 14, v.n, txtStyle(12, '#d8ccb4', { backgroundColor: 'rgba(18,14,12,.6)', padding: { x: 4, y: 1 } })).setOrigin(.5, 0).setDepth(9000)
         }));
 
         this.towns = TW.map(t => ({
             t, f: -1,
-            spr: newArt ? this.add.sprite(t.x, t.y, 'map_castle_' + t.f).setOrigin(.5, .82).setScale(.32).setDepth(t.y) : Art.image(this, t.x, t.y, Art.castle(this, t.f), 0, true).setDepth(t.y),
+            spr: this.add.sprite(t.x, t.y, 'map_castle_' + t.f).setOrigin(.5, .82).setScale(.32).setDepth(t.y),
             txt: this.add.text(t.x, t.y + 18, '', txtStyle(15, '#ecdfc6', { backgroundColor: 'rgba(18,14,12,.82)', padding: { x: 7, y: 2 } })).setOrigin(.5, 0).setDepth(9001),
-            stars: this.add.text(t.x - 24, t.y - (newArt ? 60 : 46), '', { fontFamily: 'sans-serif', fontSize: '11px', color: '#ffd24a', fontStyle: 'bold', resolution: RES }).setOrigin(.5).setDepth(9001)
+            stars: this.add.text(t.x - 24, t.y - 60, '', { fontFamily: 'sans-serif', fontSize: '11px', color: '#ffd24a', fontStyle: 'bold', resolution: RES }).setOrigin(.5).setDepth(9001)
         }));
 
         this.hero = Art.image(this, G.x, G.y, Art.heroFigure(this), 0, true); this.hero.setScale(this.hero.scaleX * 1.2);
@@ -40,7 +36,7 @@ class MapScene extends Phaser.Scene {
 
         this.cameras.main.setBounds(0, 0, WW, WH).setBackgroundColor('#1e2a16');
         this.mmCam = { ignore() { } };                       // minimapu kreslí UIScene z textúry 'minimap'
-        if (tiled) this.minimapTexture();
+        this.minimapTexture();
         this.mmCam.ignore([this.fx, this.heroTxt, this.heroCrown, this.hero, ...this.vill.flatMap(o => [o.spr, o.txt]), ...this.towns.flatMap(o => [o.spr, o.txt, o.stars])]);
 
         this.input.on('pointerdown', p => this.click(p));
@@ -89,7 +85,7 @@ class MapScene extends Phaser.Scene {
         const hash = (x, y) => { const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return n - Math.floor(n); };
         const noise = (x, y) => { const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy); return (hash(ix, iy) * (1 - u) + hash(ix + 1, iy) * u) * (1 - v) + (hash(ix, iy + 1) * (1 - u) + hash(ix + 1, iy + 1) * u) * v; };
         const M = T.mountains.map(([mx, my, sz]) => [mx / 1800 * Wc, my / 1200 * Hc, sz / 1800 * Wc]);
-        const rp = typeof riverPoints === 'function' ? riverPoints().map(([x, y]) => [x / WW * Wc, y / WH * Hc]) : [];
+        const rp = riverPoints().map(([x, y]) => [x / WW * Wc, y / WH * Hc]);
         const H = new Float32Array((Wc + 1) * (Hc + 1));
         for (let y = 0; y <= Hc; y++) for (let x = 0; x <= Wc; x++) {
             let h = noise(x / 38, y / 38) * .6 + noise(x / 13, y / 13) * .3 + noise(x / 5, y / 5) * .1;
@@ -313,20 +309,18 @@ class MapScene extends Phaser.Scene {
     syncTowns() {
         for (const o of this.towns) {
             const t = o.t, L = lvl(t);
-            if (o.f !== t.f) { o.f = t.f; if (this.newArt) o.spr.setTexture('map_castle_' + t.f); else { const k = Art.castle(this, t.f); o.spr.setTexture(k, 0).play({ key: k + ':wave', startFrame: TW.indexOf(t) % 4 }); } }
-            o.spr.setScale((this.newArt ? .32 : (Art.scale[o.spr.texture.key] || 1 / RES)) * (.85 + L * .08));
+            if (o.f !== t.f) { o.f = t.f; o.spr.setTexture('map_castle_' + t.f); }
+            o.spr.setScale(.32 * (.85 + L * .08));
             o.txt.setText(t.n + '  ⚔' + t.g);
             o.stars.setText('★'.repeat(L));
         }
         for (const o of this.vill) {
-            const f = TW[o.v.t].f, b = o.v.st > 0, L = lvl(o.v), key = f + (b ? 'b' : '') + (this.newArt ? L : '');
+            const f = TW[o.v.t].f, b = o.v.st > 0, L = lvl(o.v), key = f + (b ? 'b' : '') + L;
             if (o.key !== key) {
                 o.key = key;
-                if (this.newArt) {   // dediny zla majú tmavé mordorské chatrče, dediny dobra kraj podľa polohy
-                    const evil = bloc(f) === 1 && f !== 4, reg = evil ? 'a' : regionAt(o.v.x, o.v.y);
-                    o.spr.setTexture(b ? 'map_village_burn' : 'map_village_' + reg + L).setScale(.36).setTint(evil && !b ? 0xb8a8a0 : 0xffffff);
-                }
-                else { const k = Art.village(this, f, b); o.spr.setTexture(k).setScale(Art.scale[k] || 1 / RES); }
+                // dediny zla majú tmavé mordorské chatrče, dediny dobra kraj podľa polohy
+                const evil = bloc(f) === 1 && f !== 4, reg = evil ? 'a' : regionAt(o.v.x, o.v.y);
+                o.spr.setTexture(b ? 'map_village_burn' : 'map_village_' + reg + L).setScale(.36).setTint(evil && !b ? 0xb8a8a0 : 0xffffff);
                 o.txt.setColor(b ? '#c08070' : FC[f]);
             }
         }
@@ -393,7 +387,7 @@ class MapScene extends Phaser.Scene {
         }
         // zraz vojska vlastnej frakcie: pulzujúci zlatý kruh a zástava pri hrade zrazu
         if (!this.musterTxt) { this.musterTxt = this.add.text(0, 0, 'Zraz vojska', { fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold', color: '#ffd24a', backgroundColor: 'rgba(18,14,12,.8)', padding: { x: 5, y: 1 }, resolution: RES }).setOrigin(.5, 1).setDepth(9003).setVisible(false); this.mmCam.ignore(this.musterTxt); }
-        const mm = typeof marshal === 'function' && G.fac !== 9 ? marshal(G.fac) : null;
+        const mm = G.fac !== 9 ? marshal(G.fac) : null;
         if (mm && mm.mu && TW[mm.mu.t] && !mm.dead) {
             const mp = musterPoint(mm, TW[mm.mu.t]), r = 70 + Math.sin(tm / 8) * 10;
             g.lineStyle(4, 0xffd24a, .8).strokeCircle(mp.x, mp.y + 10, r); g.lineStyle(2, 0xffd24a, .35).strokeCircle(mp.x, mp.y + 10, r + 14);

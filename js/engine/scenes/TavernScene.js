@@ -130,7 +130,7 @@ class TavernScene extends RoomScene {
 
     leave() {
         if (mode !== 'tavern') return;
-        if (typeof ROOM !== 'undefined' && ROOM && ROOM.from === 'yard') { this.scene.stop(); enterCastle(this.ti, 'yard'); return; }   // späť na nádvorie
+        if (ROOM && ROOM.from === 'yard') { this.scene.stop(); enterCastle(this.ti, 'yard'); return; }   // späť na nádvorie
         ROOM = null;
         mode = 'town';
         this.closeRoom();

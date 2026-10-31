@@ -11,7 +11,7 @@ class VillageScene extends RoomScene {
 
     theme() {
         const v = VL[this.vi], f = TW[v.t].f, evil = bloc(f) === 1 && f !== 6 || (f === 6 && heroSide() === 1);
-        const reg = typeof regionAt === 'function' ? regionAt(v.x, v.y) : 'g';
+        const reg = regionAt(v.x, v.y);
         return { reg, evil, burned: v.st > 0, kind: reg === 'a' ? 'ash' : reg === 'd' ? 'desert' : reg === 's' ? 'north' : 'green' };
     }
 

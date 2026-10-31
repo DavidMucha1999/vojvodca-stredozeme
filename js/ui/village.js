@@ -1,38 +1,7 @@
 /*
  * Vnútro dediny (scéna Village v js/engine/scenes/VillageScene.js) a pamätihodnosti (scéna Place): vstup, odchod a rozhovory.
- * ROOM = { room: 'village', vi } alebo { room: 'place', pi }; okná otvorené z nich sa po „Späť“ vracajú do scény (roomReturn → mode 'room').
+ * Vstup a odchod rieši js/ui/rooms.js (enterVillage, enterPlace, leaveRoom); okná sa po „Späť“ vracajú do scény (roomReturn → mode 'room').
  */
-const roomSceneOk = k => typeof game !== 'undefined' && game.scene && game.scene.getScene(k);
-/** Vstup do dediny i (VL). */
-function enterVillage(i) {
-    if (!roomSceneOk('Village')) return vill(i);
-    ov.classList.add('hide');
-    mode = 'room'; G.dest = -1; G.vd = -1;
-    ROOM = { room: 'village', vi: i, i: VL[i].t };
-    if (game.scene.isActive('Map')) game.scene.sleep('Map');
-    ['Castle', 'Tavern', 'Place'].forEach(k => { if (game.scene.isActive(k)) game.scene.stop(k); });
-    const sc = game.scene.getScene('Village');
-    if (sc.scene.isActive()) sc.scene.restart({ v: i }); else game.scene.start('Village', { v: i });
-}
-/** Vstup na pamätihodnosť i (PLACES). */
-function enterPlace(i) {
-    if (!roomSceneOk('Place')) return place(i);
-    ov.classList.add('hide');
-    mode = 'room'; G.dest = -1; G.pd = -1;
-    ROOM = { room: 'place', pi: i };
-    if (game.scene.isActive('Map')) game.scene.sleep('Map');
-    ['Castle', 'Tavern', 'Village'].forEach(k => { if (game.scene.isActive(k)) game.scene.stop(k); });
-    const sc = game.scene.getScene('Place');
-    if (sc.scene.isActive()) sc.scene.restart({ p: i }); else game.scene.start('Place', { p: i });
-}
-/** Odchod zo scény dediny alebo pamätihodnosti na mapu. */
-function leaveRoomScene() {
-    ROOM = null;
-    ov.classList.add('hide');
-    mode = 'map';
-    ['Village', 'Place'].forEach(k => { if (roomSceneOk(k) && game.scene.isActive(k)) game.scene.stop(k); });
-    if (roomSceneOk('Map') && game.scene.isSleeping('Map')) game.scene.wake('Map');
-}
 const vBack = () => { ov.classList.add('hide'); mode = 'room'; };
 const vLook = { elder: { race: 'human', skin: 1, hair: 'bald', hcol: '#c8c0b0', beard: 'full', eyes: '#4a5a6a', age: .9 }, overseer: { race: 'orc', hair: 'bald', beard: 'none', angry: 1, scar: 1 }, woman: { race: 'human', sex: 'f', skin: 0, hair: 'long', hcol: '#6a4a2a', beard: 'none', eyes: '#5a7a5a' }, broken: { race: 'human', skin: 2, hair: 'short', hcol: '#3a2a1a', beard: 'stubble', eyes: '#4a4a4a', age: .5, scar: 1 }, merchant: { race: 'human', skin: 1, hair: 'short', hcol: '#4a3020', beard: 'full', eyes: '#4a5a6a', age: .4 } };
 
@@ -81,7 +50,7 @@ function villageInn(i) {
     const v = VL[i], t = TW[v.t], evil = heroSide() === 1;
     mode = 'room'; PORTRAIT = vLook.merchant;
     show(evil ? 'Brloh v ' + v.n : 'Krčmička v ' + v.n, evil ? 'Nízka chatrč, kde sa orkovia a zbehovia opíjajú kvaseným mliekom. Za sudom sedí jednooký hostinský.' : 'Nízka izba s jedným stolom a ohniskom. Hostinský nalieva domáce pivo a praská chlieb.');
-    btn('Prenocovať (5 zlata, plné zdravie, deň plynie)', () => { G.gold -= 5; G.hp = mh(); dayT = 600; upd(); msg('Ráno ťa zobudí kohút' + (evil ? ' – teda, orkovia ho už zjedli, zobudí ťa dozorca.' : ' a vôňa čerstvého chleba.'), vBack); }, G.gold < 5, 'rest');
+    btn('Prenocovať (5 zlata, plné zdravie, deň plynie)', () => { G.gold -= 5; G.hp = mh(); endDay(); upd(); msg('Ráno ťa zobudí kohút' + (evil ? ' – teda, orkovia ho už zjedli, zobudí ťa dozorca.' : ' a vôňa čerstvého chleba.'), vBack); }, G.gold < 5, 'rest');
     btn('Vypočuť si klebety (3 zlata)', () => { G.gold -= 3; upd(); msg('„' + rumor(t) + '“', () => villageInn(i)); }, G.gold < 3, 'book');
     btn('Dať rundu dedine (15 zlata, sláva +1)', () => { G.gold -= 15; G.ren++; upd(); msg('Celá krčmička pripíja na tvoje zdravie.', () => villageInn(i)); }, G.gold < 15, 'mug');
     btn('Späť', vBack, 0, 'back');

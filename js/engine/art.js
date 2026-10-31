@@ -32,8 +32,7 @@ const Art = {
         const [fw, fh, ox, oy] = artSize(key), pw = fw * RES, ph = fh * RES;
         const out = document.createElement('canvas');
         out.width = pw * frames.length; out.height = ph;
-        const o = out.getContext('2d'), label0 = label, tm0 = tm;
-        label = () => { };
+        const o = out.getContext('2d'), tm0 = tm;
         frames.forEach((fn, i) => {
             ctx.save();
             ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -44,7 +43,7 @@ const Art = {
             ctx.restore();
             o.drawImage(cv, 0, 0, pw, ph, i * pw, 0, pw, ph);
         });
-        label = label0; tm = tm0;
+        tm = tm0;
         return out;
     },
 
@@ -196,46 +195,12 @@ const Art = {
             Art.anims(scene, key);
             return key;
         }
-        return Art.ensure(scene, key, () => {
-            const base = { ...u, x: 0, y: 0, f: 0, c: 0, hp: u.mh || 1, mh: u.mh || 1, px: undefined };
-            const r = u.r, mounted = Art.isMounted(u), archer = Art.isArcher(u), strike = u.h ? 15 : 40;
-            const legs = p => {
-                ctx.fillStyle = 'rgba(30,22,16,.9)';
-                if (mounted) for (const [lx, ly, ph] of [[1.15, -.55, 0], [1.15, .55, Math.PI], [-1.1, -.55, Math.PI], [-1.1, .55, 0]]) {
-                    ctx.beginPath(); ctx.ellipse(r * lx + Math.sin(p + ph) * r * .35, r * ly, r * .22, r * .16, 0, 0, 7); ctx.fill();
-                }
-                else for (const [ly, ph] of [[-.42, 0], [.42, Math.PI]]) {
-                    ctx.beginPath(); ctx.ellipse(Math.sin(p + ph) * r * .85, r * ly, r * .4, r * .24, 0, 0, 7); ctx.fill();
-                }
-            };
-            const body = (c, extra) => () => { const v = { ...base, c }; extra && extra(); drawU(v); };
-            const frames = [body(0, () => legs(0))];
-            for (let k = 0; k < 4; k++) frames.push(() => { const p = k * Math.PI / 2; legs(p); ctx.translate(Math.sin(p) * .8, 0); ctx.rotate(Math.sin(p) * .07); drawU({ ...base }); });
-            if (archer) {
-                frames.push(body(0, () => { legs(0); ctx.translate(-1, 0); }), body(strike, () => legs(0)), body(0, () => { legs(0); ctx.translate(-2.5, 0); }));
-            } else {
-                frames.push(body(0, () => { legs(0); ctx.translate(-2, 0); ctx.rotate(-.35); }), body(strike, () => legs(.6)), body(0, () => { legs(0); ctx.translate(1.5, 0); ctx.rotate(.12); }));
-            }
-            for (let k = 0; k < 4; k++) frames.push(() => {
-                ctx.fillStyle = 'rgba(110,18,18,.38)';
-                ctx.beginPath(); ctx.ellipse(r * .3, 0, r * (1 + k * .35), r * (.7 + k * .22), 0, 0, 7); ctx.fill();
-                ctx.save();
-                ctx.rotate(.4 * (k + 1)); ctx.scale(1, 1 - .12 * (k + 1)); ctx.globalAlpha = 1 - .07 * k;
-                drawU({ ...base });
-                ctx.restore();
-                ctx.globalCompositeOperation = 'source-atop';
-                ctx.fillStyle = 'rgba(0,0,0,' + (.12 * (k + 1)) + ')';
-                ctx.fillRect(-60, -60, 120, 120);
-                ctx.globalCompositeOperation = 'source-over';
-            });
-            return frames;
-        });
-    },
-
-    /** Jazdec so zástavou na mape: 4 snímky viatia zástavy. */
-    rider(scene, f, hero) {
-        const key = (hero ? 'herorider_' + [f, G.kn || '', G.ke ?? '', G.eq.m].join('_') : 'rider_' + f);
-        return Art.ensure(scene, key, () => [0, 1, 2, 3].map(k => () => { tm = k * 14.1; rider(0, 0, 0, f, hero ? '#5a6b55' : '#2c2a26'); }));
+        if (scene.textures.exists(key)) { Art.anims(scene, key); return key; }
+        // druh bez obrázka aj bez popisu: nakreslí sa ako pešiak vo farbe frakcie
+        const color2 = u.h || !u.t ? FC[G.fac] : FC[u.fc] || '#888888';
+        Art.register(scene, key, Art.tinted(Soldiers.sheet('i', 'base'), Soldiers.sheet('i', 'team'), color2));
+        Art.anims(scene, key);
+        return key;
     },
 
     /** Postavička na mape podľa výbavy (hrdina: eq = G.eq; lord: Figures.lordEq(e)). */
@@ -249,46 +214,13 @@ const Art = {
         return Art.ensure(scene, key, () => [0, 1, 2, 3, 4].map(k => () => { tm = 0; ctx.scale(3, 3); Figures.draw(ctx, eq, o, k); }));   // 0 = stojí, 1–4 = cyklus chôdze
     },
     heroFigure(scene) {
-        const evil = typeof heroSide === 'function' && heroSide() === 1;
+        const evil = heroSide() === 1;
         return Art.figure(scene, G.eq, { flag: G.fac, king: !!G.king, cape: evil ? '#2a1414' : '#6a2a2a', ...Figures.lookOpts(Portraits.hero()) });
-    },
-
-    castle(scene, f) {
-        return Art.ensure(scene, 'castle_' + f, () => [0, 1, 2, 3].map(k => () => { tm = k * 14.1; drawCastle({ n: '', x: 0, y: 0, f, g: 0 }); }));
-    },
-
-    village(scene, f, burned) {
-        return Art.ensure(scene, 'village_' + f + (burned ? '_b' : ''), () => [() => {
-            for (const [dx, dy] of [[-10, 0], [4, -5], [8, 4]]) {
-                ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(dx + 1, dy + 3, 6, 2, 0, 0, 7); ctx.fill();
-                ctx.fillStyle = burned ? '#2a2420' : VW[f] || '#a08060'; ctx.fillRect(dx - 4, dy - 3, 8, 6);
-                ctx.fillStyle = burned ? '#1a1410' : VR[f] || '#7a3a22';
-                ctx.beginPath(); ctx.moveTo(dx - 5, dy - 3); ctx.lineTo(dx, dy - 8); ctx.lineTo(dx + 5, dy - 3); ctx.fill();
-                if (!burned) { ctx.fillStyle = '#ffd27a'; ctx.fillRect(dx - 1, dy - 1, 2, 2); }
-            }
-        }]);
     },
 
     banner(scene, f) { return Art.ensure(scene, 'banner_' + f, () => [() => { tm = 0; bnr(0, 0, f, 20, 26); }]); },
     crown(scene) { return Art.ensure(scene, 'crown', () => [() => crown(0, 0)]); },
     spark(scene) { return Art.ensure(scene, 'spark', () => [() => { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, 3, 0, 7); ctx.fill(); }]); },
-
-    /** Mapa sveta rozdelená na dlaždice (bezpečné pre limity textúr). */
-    worldTiles(scene) {
-        const T = 1800, S = WW / MAP.width, out = [];
-        for (let ty = 0; ty < MAP.height; ty += T)
-            for (let tx = 0; tx < MAP.width; tx += T) {
-                const key = 'world_' + tx + '_' + ty;
-                if (!scene.textures.exists(key)) {
-                    const c = document.createElement('canvas');
-                    c.width = Math.min(T, MAP.width - tx); c.height = Math.min(T, MAP.height - ty);
-                    c.getContext('2d').drawImage(MAP, tx, ty, c.width, c.height, 0, 0, c.width, c.height);
-                    scene.textures.addCanvas(key, c);
-                }
-                out.push({ key, x: tx * S, y: ty * S, s: S });
-            }
-        return out;
-    },
 
     /** Pridá obrázok so správnou mierkou a stredom podľa kľúča. */
     image(scene, x, y, key, frame = 0, sprite = false) {

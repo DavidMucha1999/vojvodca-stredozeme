@@ -9,7 +9,7 @@ function tavern(i) {
     show('Krčma v ' + t.n, list.length ? 'Pri ohni sedí niekto, kto vyzerá, že hľadá prácu alebo spoločnosť.' : 'V krčme je dnes len obyčajný ľud. Hrdinovia sa tu objavujú podľa toho, kam ťa cesty zavedú a aká je tvoja sláva.');
     list.forEach(c => {
         rowHead(c.n + ', ' + c.t);
-        const d = document.createElement('div'); d.style.cssText = 'grid-column:1/-1;text-align:left;font-size:.9rem'; d.textContent = '„' + c.join + '“'; document.getElementById('bt').appendChild(d);
+        row('„' + c.join + '“');
         const ok = G.ren >= c.ren && G.gold >= c.p && (G.comp || []).length < 4;
         btn('Pripojiť ' + c.n + ' (' + c.p + ' zlata' + (G.ren < c.ren ? ', treba slávu ' + c.ren : '') + ((G.comp || []).length >= 4 ? ', družina je plná' : '') + ')', () => { G.gold -= c.p; compJoin(c); msg(c.n + ' sa pridáva k tvojej družine. V bitke bude bojovať po tvojom boku.', () => town(i)); }, !ok);
     });
@@ -25,20 +25,16 @@ function party(back, tab) {
     mode = 'town';
     tab = tab || 'c';
     const C = myComps(), re = t => party(fromMap ? null : back, t);
-    const tabs = () => { [['c', 'Spoločníci', 'hero'], ['a', 'Vojsko', 'recruit'], ['o', 'Rozkazy', 'sword']].forEach(([k, n, ic]) => { const b = btn(n, () => re(k), 0, ic); if (k === tab) b.style.outline = '3px solid #fff'; }); };
+    const tabs = () => { [['c', 'Spoločníci', 'hero'], ['a', 'Vojsko', 'recruit'], ['o', 'Rozkazy', 'sword']].forEach(([k, n, ic]) => { const b = btn(n, () => re(k), 0, ic); if (k === tab) select(b); }); };
     if (tab === 'c') {
         show('Správa družiny – spoločníci', C.length ? 'Tvoji spoločníci (' + C.length + '/4). V bitke bojujú po tvojom boku, zbierajú skúsenosti (každých 40 = nová úroveň, +6 % zdravia a útoku) a ranený sa pár dní zotavuje.' : 'Zatiaľ cestuješ sám. Spoločníkov nájdeš v krčmách hradov: hrdinovia dobra v Bree, Lothlóriene, Erebore, Minas Tirith, Edorase, Osgiliathe a Hobitove; služobníci Tieňa v Isengarde, Minas Morgul, Edorase, Barad-dûre, Umbare a pri Morannone.');
         tabs();
         C.forEach(c => {
             const hp = Math.round((G.chp && G.chp[c.id] != null ? G.chp[c.id] : 1) * 100), w = G.cwound && G.cwound[c.id] > G.day, lv = compLv(c), xp = (G.cxp || {})[c.id] || 0, k = (G.ckills || {})[c.id] || 0;
-            const d = document.createElement('div'); d.style.cssText = 'grid-column:1/-1;text-align:left;font-size:.9rem;color:var(--gold);margin-top:.3rem';
-            d.textContent = c.n + ' · ' + c.t + ' · úroveň ' + lv + ' (' + (xp % 40) + '/40) · zdravie ' + hp + ' %' + (w ? ' · ranený, zotaví sa o ' + (G.cwound[c.id] - G.day) + ' d.' : '') + ' · zabití: ' + k;
-            try { const pc = Portraits.canvas(c.look, 34); pc.className = 'ico'; d.dataset.icon = 'ico_por_c_' + c.id; d.prepend(pc); } catch (e) { }
-            document.getElementById('bt').appendChild(d);
-            const d2 = document.createElement('div'); d2.style.cssText = 'grid-column:1/-1;text-align:left;font-size:.85rem;opacity:.85';
+            let pic = null; try { pic = { canvas: Portraits.canvas(c.look, 34), key: 'ico_por_c_' + c.id }; } catch (e) { }
+            row(c.n + ' · ' + c.t + ' · úroveň ' + lv + ' (' + (xp % 40) + '/40) · zdravie ' + hp + ' %' + (w ? ' · ranený, zotaví sa o ' + (G.cwound[c.id] - G.day) + ' d.' : '') + ' · zabití: ' + k, { gold: 1, icon: pic });
             const m = (G.cmount || {})[c.id];
-            d2.textContent = 'Sila: zdravie ' + Math.round(c.hp * compBonus(c)) + ', útok ' + Math.round(c.d * compBonus(c)) + ', rýchlosť ' + c.sp.toFixed(1) + (c.archer ? ', lukostrelec' : ', bojovník zblízka') + (m ? ', na koni (' + SH.find(x => x.k === 'm').it[m].n + ')' : '') + '.';
-            document.getElementById('bt').appendChild(d2);
+            row('Sila: zdravie ' + Math.round(c.hp * compBonus(c)) + ', útok ' + Math.round(c.d * compBonus(c)) + ', rýchlosť ' + c.sp.toFixed(1) + (c.archer ? ', lukostrelec' : ', bojovník zblízka') + (m ? ', na koni (' + SH.find(x => x.k === 'm').it[m].n + ')' : '') + '.', { dim: 1 });
             btn('Rozhovor', () => compTalk(c, fromMap ? null : back), 0, 'talk');
             const horses = (G.own && G.own.m || []).filter(i => i > 0 && i !== G.eq.m && !Object.entries(G.cmount || {}).some(([id, v]) => id !== c.id && v === i));
             if (!c.archer && c.id !== 'gimli') {
@@ -62,7 +58,7 @@ function party(back, tab) {
     if (tab === 'o') {
         show('Správa družiny – rozkazy', 'Východzí rozkaz, s ktorým vojsko vstupuje do bitky (v bitke sa dá kedykoľvek zmeniť klávesmi 1–4).');
         tabs();
-        [['a', 'Útok – všetci vpred', 'attack'], ['h', 'Držať líniu – lukostrelci strieľajú, pešiaci čakajú', 'shield'], ['f', 'Nasledovať hrdinu – šík okolo teba', 'hero'], ['r', 'Ústup', 'back']].forEach(([k, n, ic]) => { const b = btn(n, () => { G.ord0 = k; re('o'); }, 0, ic); if ((G.ord0 || 'a') === k) b.style.outline = '3px solid #fff'; });
+        [['a', 'Útok – všetci vpred', 'attack'], ['h', 'Držať líniu – lukostrelci strieľajú, pešiaci čakajú', 'shield'], ['f', 'Nasledovať hrdinu – šík okolo teba', 'hero'], ['r', 'Ústup', 'back']].forEach(([k, n, ic]) => { const b = btn(n, () => { G.ord0 = k; re('o'); }, 0, ic); if ((G.ord0 || 'a') === k) select(b); });
     }
     btn(fromMap ? 'Zavrieť' : 'Späť', back, 0, 'back');
 }

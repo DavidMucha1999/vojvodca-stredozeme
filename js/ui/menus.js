@@ -7,7 +7,7 @@ function ovw() {
     mode = 'town';
     show('Prehľad sveta', 'Rozhoduješ za: ' + FN[G.fac] + '. Hrady: ' + TW.filter(t => t.f === G.fac).length + '.');
     const bt = document.getElementById('bt');
-    [0, 1, 2, 3, 4, 5, 7, 8].forEach(f => { const d = document.createElement('div'); d.style.cssText = 'grid-column:1/-1;text-align:left;font-size:.9rem'; d.textContent = FN[f] + ': hrady ' + TW.filter(t => t.f === f).length + ', vzťah ' + (f === G.fac ? '-' : REL[G.fac][f]) + ', ' + (f === G.fac ? 'tvoja frakcia' : WR[G.fac][f] ? 'vojna' : AL[G.fac][f] ? 'spojenec' : 'mier') + '. Velitelia: ' + (E.filter(e => e.f === f).map(e => e.nm + ' ' + Math.ceil(e.n)).join(', ') || '-'); bt.appendChild(d); });
+    [0, 1, 2, 3, 4, 5, 7, 8].forEach(f => { row(FN[f] + ': hrady ' + TW.filter(t => t.f === f).length + ', vzťah ' + (f === G.fac ? '-' : REL[G.fac][f]) + ', ' + (f === G.fac ? 'tvoja frakcia' : WR[G.fac][f] ? 'vojna' : AL[G.fac][f] ? 'spojenec' : 'mier') + '. Velitelia: ' + (E.filter(e => e.f === f).map(e => e.nm + ' ' + Math.ceil(e.n)).join(', ') || '-')); });
     btn('Minimapa: hrady ' + (MF.t ? 'zap' : 'vyp'), () => { MF.t = !MF.t; mode = 'map'; ovw(); });
     btn('Minimapa: velitelia ' + (MF.e ? 'zap' : 'vyp'), () => { MF.e = !MF.e; mode = 'map'; ovw(); });
     btn('Zavrieť', () => { ov.classList.add('hide'); mode = 'map'; });
@@ -29,7 +29,7 @@ function dnk() {
         return;
     mode = 'town';
     show('Denník udalostí', LOG.length ? 'Najnovšie udalosti sú hore.' : 'Zatiaľ sa nič nestalo.');
-    LOG.slice(0, 25).forEach(s => { const d = document.createElement('div'); d.style.cssText = 'grid-column:1/-1;text-align:left;font-size:.9rem'; d.textContent = s; document.getElementById('bt').appendChild(d); });
+    LOG.slice(0, 25).forEach(s => { row(s); });
     btn('Zavrieť', () => { ov.classList.add('hide'); mode = 'map'; });
 }
 function sts() {
@@ -38,7 +38,7 @@ function sts() {
     mode = 'town';
     const s = G.st || {};
     show('Štatistiky', G.name + ', ' + rank() + '. Deň ' + G.day + '.');
-    [['Bitky', s.b], ['Víťazstvá', s.w], ['Prehry', s.l], ['Porazení nepriatelia', s.k], ['Padlí vlastní vojaci', s.d], ['Dobyté hrady', s.c], ['Vyrabované dediny', s.r], ['Vlastné hrady', TW.filter(t => t.mine).length], ['Sláva', G.ren], ['Zlato', G.gold]].forEach(([n, v]) => { const d = document.createElement('div'); d.style.cssText = 'text-align:left;font-size:.95rem'; d.textContent = n + ': ' + (v || 0); document.getElementById('bt').appendChild(d); });
+    [['Bitky', s.b], ['Víťazstvá', s.w], ['Prehry', s.l], ['Porazení nepriatelia', s.k], ['Padlí vlastní vojaci', s.d], ['Dobyté hrady', s.c], ['Vyrabované dediny', s.r], ['Vlastné hrady', TW.filter(t => t.mine).length], ['Sláva', G.ren], ['Zlato', G.gold]].forEach(([n, v]) => { row(n + ': ' + (v || 0)); });
     btn('Zavrieť', () => { ov.classList.add('hide'); mode = 'map'; });
 }
 function tro() {
@@ -48,7 +48,7 @@ function tro() {
     const T = G.tro || [], D = G.dl || [];
     show('Trofeje a porazení velitelia', 'Trofeje: ' + T.length + ' (každá +1 útok). Porazení velitelia: ' + D.length + '.');
     const bt = document.getElementById('bt');
-    [...T.map(s => '🏆 ' + s), ...D.slice(0, 20).map(s => '⚔ ' + s)].forEach(s => { const d = document.createElement('div'); d.style.cssText = 'grid-column:1/-1;text-align:left;font-size:.9rem'; d.textContent = s; bt.appendChild(d); });
+    [...T.map(s => '🏆 ' + s), ...D.slice(0, 20).map(s => '⚔ ' + s)].forEach(s => { row(s); });
     btn('Zavrieť', () => { ov.classList.add('hide'); mode = 'map'; });
 }
 function achs() {
@@ -58,7 +58,7 @@ function achs() {
     G.ach = G.ach || {};
     show('Úspechy', 'Získané: ' + Object.keys(G.ach).length + '/' + ACH.length + '.');
     const bt = document.getElementById('bt');
-    ACH.forEach(([id, n]) => { const d = document.createElement('div'); d.style.cssText = 'grid-column:1/-1;text-align:left;font-size:.95rem;opacity:' + (G.ach[id] ? 1 : .5); d.textContent = (G.ach[id] ? '✔ ' : '✘ ') + n; bt.appendChild(d); });
+    ACH.forEach(([id, n]) => { row((G.ach[id] ? '✔ ' : '✘ ') + n, { dim: !G.ach[id] }); });
     btn('Zavrieť', () => { ov.classList.add('hide'); mode = 'map'; });
 }
 function fsc() { try {
@@ -109,7 +109,7 @@ function ency(c) {
         const B = [['Domobranec', 'i', 6, 15, 'Pechota'], ['Lukostrelec', 'a', 6, 30, 'Strelec'], ['Jazdec', 'c', 6, 45, 'Jazda'], ['Veterán', 'v', 6, 0, 'Pechota'], ['Troll', 't', 2, 0, 'Netvor'], ['Vlk', 'w', 3, 0, 'Netvor'], ['Olifant', 'x', 4, 0, 'Netvor'], ['Nazgûl', 'z', 2, 0, 'Prízrak']];
         const P = { i: [30, 5, 1.2], a: [24, 5, 1.1], c: [45, 7, 1.9], v: [50, 8, 1.25], t: [120, 14, .8], w: [18, 5, 2.2], x: [220, 20, .7], z: [150, 13, 1.5] };
         const card = (n, k, f, p, ty, hp, d, sp, en) => {
-            const img = snap(84, 84, () => { const g = ctx.createRadialGradient(42, 42, 4, 42, 42, 60); g.addColorStop(0, '#3a5a2e'); g.addColorStop(1, '#16220f'); ctx.fillStyle = g; ctx.fillRect(0, 0, 84, 84); const u = mk(en ? 1 : 0, k, f); Object.assign(u, { x: 0, y: 0, f: -.6, c: 0, bn: false }); u.hp = u.mh; ctx.translate(36, 48); const sc = Math.min(3, 22 / u.r); ctx.scale(sc, sc); drawU(u); });
+            const img = snap(84, 84, () => { const g = ctx.createRadialGradient(42, 42, 4, 42, 42, 60); g.addColorStop(0, '#3a5a2e'); g.addColorStop(1, '#16220f'); ctx.fillStyle = g; ctx.fillRect(0, 0, 84, 84); const u = mk(en ? 1 : 0, k, f); Object.assign(u, { x: 0, y: 0, f: -.6, c: 0, bn: false }); u.hp = u.mh; const key = Art.unitArt(u), sp2 = Soldiers.UNITS[key] || Soldiers.UNITS.i; ctx.translate(42, 48); ctx.rotate(-.6); const sc = Math.min(3, 22 / u.r) * .55; ctx.scale(sc, sc); Soldiers.drawUnit(ctx, sp2, 0, 'base'); });
             return '<div class="card" style="--fc:' + FC[f] + '"><img src="' + img + '" width="72" height="72" alt=""><div class="cb"><div class="nm">' + eesc(n) + '</div>' + epill(eesc(FN[f]), FC[f], 1) + epill(ty, '#9fb8a0') + (p ? epill('Cena ' + p, '#d9a441') : '') + '<div class="st"><span>Zdravie ' + hp + '</span>' + ebar(hp, 220, '#6fbf5a') + '<span>Útok ' + d + '</span>' + ebar(d, 20, '#e0662b') + '<span>Rýchlosť ' + sp + '</span>' + ebar(sp, 2.3, '#8fb0c9') + '</div></div></div>';
         };
         h += '<div class="sec">Základné jednotky a netvory</div><div class="egrid">' + B.map(([n, k, f, p, ty]) => card(n, k, f, p, ty, ...P[k], f !== 6)).join('') + '</div><div class="sec" style="margin-top:.6rem">Elitné jednotky frakcií</div><div class="egrid">';
@@ -119,7 +119,7 @@ function ency(c) {
     if (c === 'h') {
         h += '<div class="chips"><button data-ef="-1" style="--fc:#d9a441" class="' + (EF < 0 ? 'on' : '') + '">Všetky</button>' + F.filter(f => TW.some(t => t.f === f)).map(f => '<button data-ef="' + f + '" style="--fc:' + FC[f] + '" class="' + (EF === f ? 'on' : '') + '">' + eesc(FN[f]) + '</button>').join('') + '</div><div class="egrid">';
         TW.filter(t => EF < 0 || t.f === EF).forEach(t => {
-            const img = snap(110, 84, () => { const g = ctx.createLinearGradient(0, 0, 0, 84); g.addColorStop(0, '#3a4a5a'); g.addColorStop(1, '#2a3a20'); ctx.fillStyle = g; ctx.fillRect(0, 0, 110, 84); ctx.translate(52, 64); ctx.scale(1.15, 1.15); drawCastle({ n: '', x: 0, y: 0, f: t.f, g: 0 }); });
+            const img = snap(110, 84, () => { const g = ctx.createLinearGradient(0, 0, 0, 84); g.addColorStop(0, '#3a4a5a'); g.addColorStop(1, '#2a3a20'); ctx.fillStyle = g; ctx.fillRect(0, 0, 110, 84); const im = Art.img['map_castle_' + t.f]; if (im) ctx.drawImage(im, 55 - im.width * .3 / 2, 80 - im.height * .3, im.width * .3, im.height * .3); });
             const L = lvl(t), bd = t.bd || {}, vs = VL.filter(v => v.t === TW.indexOf(t));
             h += '<div class="card" style="--fc:' + FC[t.f] + '"><img src="' + img + '" width="96" height="73" alt=""><div class="cb"><div class="nm">' + eesc(t.n) + ' <span style="color:#ffd24a;font-size:.8rem">' + '★'.repeat(L) + '</span></div>' + epill(eesc(FN[t.f]), FC[t.f], 1) + (t.mine ? epill('Tvoj hrad', '#d9a441') : '') + (t.lord ? epill('Léno: ' + eesc(t.lord), '#9fb8a0') : '') +
                 (bd.m ? epill('Mlyn', '#8a7a6a') : '') + (bd.k ? epill('Kasárne', '#8a7a6a') : '') + (bd.v ? epill('Strážna veža', '#8a7a6a') : '') + '<div class="st"><span>Posádka ' + t.g + '</span>' + ebar(t.g, 50, FC[t.f]) + '<span>Prosperita ' + Math.round(t.pr ?? 40) + ' %</span>' + ebar(t.pr ?? 40, 100, '#d9a441') + '<span>Hradby ' + (t.wl || 0) + '/3</span>' + ebar(t.wl || 0, 3, '#9a9aa6') + '</div><div class="desc">Dediny: ' + eesc(vs.map(v => v.n + (v.st > 0 ? ' (vypálená)' : '')).join(', ')) + '</div></div></div>';

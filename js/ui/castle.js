@@ -1,43 +1,7 @@
 /*
  * Nádvorie a sieň hradu (scéna Castle v js/engine/scenes/CastleScene.js) a rozhovory na nich.
- * ROOM = { i, room, from } hovorí, v ktorej miestnosti hráč je ('yard', 'hall', 'tavern'); okná otvorené z miestnosti
- * sa po „Späť“ (town(i)) vracajú do nej (roomReturn). Bez Phaseru (index.html, testy) sa nádvorie nepoužíva.
+ * Vstup a odchod rieši js/ui/rooms.js (enterCastle, leaveCastle, roomReturn).
  */
-let ROOM = null;
-const roomsOk = () => typeof game !== 'undefined' && game.scene && game.scene.getScene('Castle');
-
-/** Vstup na nádvorie ('yard') alebo do siene ('hall') hradu i. */
-function enterCastle(i, room = 'yard') {
-    if (!roomsOk()) return town(i);
-    ov.classList.add('hide');
-    mode = 'castle';
-    G.dest = -1;
-    ROOM = { i, room, from: ROOM && ROOM.i === i ? ROOM.room : null };
-    if (game.scene.isActive('Map')) game.scene.sleep('Map');
-    if (game.scene.isActive('Tavern')) game.scene.stop('Tavern');
-    const sc = game.scene.getScene('Castle');
-    if (sc.scene.isActive()) sc.scene.restart({ i, room }); else game.scene.start('Castle', { i, room });
-}
-/** Odchod z hradu na mapu. */
-function leaveCastle() {
-    ROOM = null;
-    ov.classList.add('hide');
-    mode = 'map';
-    if (roomsOk()) { if (game.scene.isActive('Castle')) game.scene.stop('Castle'); if (game.scene.isSleeping('Map')) game.scene.wake('Map'); }
-}
-/** Zavrie okno a vráti hráča do miestnosti, v ktorej bol. */
-function roomReturn() {
-    if (!ROOM) return;
-    ov.classList.add('hide');
-    if (ROOM.room === 'tavern') { mode = 'tavern'; return; }
-    if (ROOM.room === 'village') { mode = 'room'; if (roomSceneOk('Village') && !game.scene.isActive('Village')) enterVillage(ROOM.vi); return; }
-    if (ROOM.room === 'place') { mode = 'room'; if (roomSceneOk('Place') && !game.scene.isActive('Place')) enterPlace(ROOM.pi); return; }
-    mode = 'castle';
-    const sc = roomsOk() && game.scene.getScene('Castle');
-    if (sc && !sc.scene.isActive()) enterCastle(ROOM.i, ROOM.room);
-}
-const inRoom = () => !!ROOM;
-
 /** Kováč na nádvorí: krátky rozhovor, potom kováčňa. */
 function castleSmith(i) {
     const t = TW[i], sc = game.scene.getScene('Castle'), evil = heroSide() === 1;
@@ -67,7 +31,7 @@ function castleCaptain(i) {
     show('Veliteľ posádky, ' + t.n, '„Posádka má ' + t.g + ' mužov, hradby stupeň ' + (t.wl || 0) + '. ' + (t.g < 12 ? 'Je nás málo – ak prídu, dlho sa neudržíme.' : 'Hradby udržíme.') + ' Hľadáš vojakov? Pár chlapov by šlo.“');
     btn('Verbovať vojakov', () => tsub(i, 'r'), 0, 'recruit');
     btn('Vojsko, zajatci a odpočinok', () => tsub(i, 'v'), 0, 'rest');
-    btn('Turnaj v aréne (vstupné 20)', () => { G.gold -= 20; upd(); ROOM = null; ov.classList.add('hide'); if (game.scene.isActive('Castle')) game.scene.stop('Castle'); if (game.scene.isSleeping('Map')) game.scene.wake('Map'); startBattle({ n: 3 + Math.floor(G.lv / 2), f: t.f, ar: 1, t }); }, G.gold < 20, 'attack');
+    btn('Turnaj v aréne (vstupné 20)', () => { G.gold -= 20; upd(); leaveRoom(); startBattle({ n: 3 + Math.floor(G.lv / 2), f: t.f, ar: 1, t }); }, G.gold < 20, 'attack');
     btn('Späť na nádvorie', roomReturn, 0, 'back');
 }
 function castleWell(i) {
@@ -101,7 +65,7 @@ function castleSteward(i) {
     show('Správca hradu ' + t.n, '„' + (mine ? 'Vitaj doma, pane. Hrad má prosperitu ' + Math.round(t.pr ?? 40) + ' %, denný príjem ' + castleIncome(t) + ' zlata' + (built.length ? ', postavené: ' + built.join(', ') : '') + '.' : 'Vitaj v sieni ' + t.n + '. ' + (t.lord ? 'Léno drží ' + t.lord + '. ' : '') + 'Pán ' + (sc.lord ? 'je práve doma.' : 'je na výprave; v jeho mene hovorím ja.')) + '“');
     if (mine) btn('Správa hradu (stavby, hradby, léna)', () => tsub(i, 'h'), 0, 'castle');
     btn('Dvor a diplomacia', () => tsub(i, 'd'), 0, 'court');
-    if (mine && typeof kingdom === 'function') btn('Kráľovstvo: léna, vazali, dane', () => kingdom(i), 0, 'crown');
+    if (mine) btn('Kráľovstvo: léna, vazali, dane', () => kingdom(i), 0, 'crown');
     questsAt(t).forEach(q => { const d = qDef(q), s = qStep(q); if (s.k === 'r') btn('Úloha: uzavrieť „' + d.n + '“', () => { questComplete(q); msg('„' + qText(q, d.done) + '“', roomReturn); }, 0, 'quest'); else btn('Úloha: odovzdať ' + s.n + '× ' + goodOf(s.a).n, () => { if (questDeliver(q)) msg(q.step >= d.steps.length ? '„' + qText(q, d.done) + '“' : 'Tovar odovzdaný.', roomReturn); }, ((G.cargo || {})[s.a] || 0) < s.n, 'quest'); });
     if (G.ring === 1 && t.n === 'Barad-dûr' && bloc(G.fac) === 1) btn('Odovzdať Prsteň Sauronovi', () => { G.ring = 2; G.gold += 1000; G.ren += 10; lg('Odovzdal si Jeden prsteň Sauronovi.'); ach(); upd(); roomReturn(); }, 0, 'ring');
     btn('Zostať v hrade (čas plynie, hojíš sa)', () => stayInCastle(i), 0, 'rest');

@@ -23,7 +23,7 @@ function spawnX() {
             y = 200 + r() * (WH - 400);
             k++;
         } while ((TW.some(t => Math.hypot(t.x - x, t.y - y) < 300) || Math.hypot(G.x - x, G.y - y) < 500) && k < 30);
-        const reg = typeof regionAt === 'function' ? regionAt(x, y) : 'g', q = r();
+        const reg = regionAt(x, y), q = r();
         const kind = reg === 'a' || reg === 'd' ? (q < .7 ? 'orcs' : 'wolves') : reg === 's' ? (q < .5 ? 'wolves' : 'bandit') : q < .55 ? 'bandit' : q < .75 ? 'orcs' : q < .9 ? 'deserters' : 'wolves';
         const n = (kind === 'orcs' ? 6 : kind === 'wolves' ? 5 : 4) + Math.floor(r() * 6 + G.day / 4);
         const nm = kind === 'orcs' ? ['Orkská tlupa', 'Lúpežní orkovia', 'Gundabadskí orkovia', 'Orkovia z hôr'][Math.floor(r() * 4)] : kind === 'wolves' ? ['Vargovia', 'Vlčia svorka', 'Vargovia z Hmlistých hôr'][Math.floor(r() * 3)] : kind === 'deserters' ? ['Dezertéri', 'Zbehovia', 'Žoldnieri bez pána'][Math.floor(r() * 3)] : BN[Math.floor(r() * BN.length)];

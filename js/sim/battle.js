@@ -45,7 +45,7 @@ function startBattleBase(en, al) {
     snd('horn');
     roar(1);
     BI = regionAt(G.x, G.y);
-    FIELD = typeof battleTerrain === 'function' ? battleTerrain(G.x, G.y) : FIELD;   // bojisko podľa miesta na mape (les, rieka, kopec)
+    FIELD = battleTerrain(G.x, G.y);   // bojisko podľa miesta na mape (les, rieka, kopec)
     if (BI === 's' && WX.n === 'clear')
         WX = { ...WX, n: 'snow', r: Math.round(WX.r * .85) };
 }
@@ -59,22 +59,22 @@ function unitName(u) {
 /** Výsledná tabuľka bitky: víťaz, straty podľa druhu na oboch stranách, najlepší bojovník. Pridá riadky do otvoreného okna. */
 function battleReport(win) {
     const bt = document.getElementById('bt'); if (!bt) return;
-    const row = (text, color) => { const d = document.createElement('div'); d.style.cssText = 'grid-column:1/-1;text-align:left;font-size:.9rem' + (color ? ';color:' + color : ''); d.textContent = text; bt.appendChild(d); };
+    const line = (text, color) => row(text, { color });
     const tally = side => { const m = {}; U.filter(u => u.t === side && u.hp <= 0).forEach(u => { const n = unitName(u); m[n] = (m[n] || 0) + 1; }); return Object.entries(m).map(([n, c]) => c + '× ' + n).join(', ') || 'nikto'; };
     const mine = U.filter(u => !u.t), their = U.filter(u => u.t);
-    row('Výsledok: ' + (win ? 'víťazstvo' : 'porážka') + ' – ' + (win ? 'tvoja strana' : (LB && LB.nm ? LB.nm : 'nepriateľ')) + ' ovládla bojisko.', '#ffd24a');
-    row('Tvoje straty (' + mine.filter(u => u.hp <= 0).length + '/' + mine.length + '): ' + tally(0));
-    row('Straty nepriateľa (' + their.filter(u => u.hp <= 0).length + '/' + their.length + '): ' + tally(1));
+    line('Výsledok: ' + (win ? 'víťazstvo' : 'porážka') + ' – ' + (win ? 'tvoja strana' : (LB && LB.nm ? LB.nm : 'nepriateľ')) + ' ovládla bojisko.', '#ffd24a');
+    line('Tvoje straty (' + mine.filter(u => u.hp <= 0).length + '/' + mine.length + '): ' + tally(0));
+    line('Straty nepriateľa (' + their.filter(u => u.hp <= 0).length + '/' + their.length + '): ' + tally(1));
     const best = mine.filter(u => (u.kills || 0) > 0 || (u.dmg || 0) > 0).sort((a, b) => (b.kills || 0) - (a.kills || 0) || (b.dmg || 0) - (a.dmg || 0))[0];
-    if (best) row('Najlepší bojovník: ' + unitName(best) + ' – ' + (best.kills || 0) + ' zabití, ' + Math.round(best.dmg || 0) + ' zranení.', '#9fe08a');
+    if (best) line('Najlepší bojovník: ' + unitName(best) + ' – ' + (best.kills || 0) + ' zabití, ' + Math.round(best.dmg || 0) + ' zranení.', '#9fe08a');
     const worst = their.sort((a, b) => (b.kills || 0) - (a.kills || 0))[0];
-    if (worst && worst.kills) row('Najnebezpečnejší nepriateľ: ' + unitName(worst) + ' – ' + worst.kills + ' zabití.', '#ff9a80');
+    if (worst && worst.kills) line('Najnebezpečnejší nepriateľ: ' + unitName(worst) + ' – ' + worst.kills + ' zabití.', '#ff9a80');
 }
 /** Chrám v niektorom z tvojich hradov: tvoji vojaci sú pevnejší (o 10 % menej zranení). */
 const temple = () => TW.some(t => t.mine && t.bd && t.bd.c);
 function hit(b, d, from) {
     const was = b.hp > 0;
-    if (from && typeof onHill === 'function' && onHill(from) && !onHill(b)) d *= 1.15;   // útok z kopca
+    if (from && onHill(from) && !onHill(b)) d *= 1.15;   // útok z kopca
     b.hp -= d * (b.h ? red() : !b.t && temple() ? .9 : 1);
     if (from) { from.dmg = (from.dmg || 0) + d; if (was && b.hp <= 0) from.kills = (from.kills || 0) + 1; }
     snd(b.hp <= 0 ? 'dy' : b.h ? 'sh' : Math.random() < .5 ? 'sw' : 'hb');
@@ -97,16 +97,14 @@ function mk(t, k, f) {
     Object.assign(u, { uk: k, hp: F.hp, mh: F.hp, d: F.d, sp: F.sp, r: F.r, fc: F.f });
     return u;
 }
-let SGB = null, BG0 = null, CBG = null, PAUSE = 0, KD = 0, SHAKE = 0;
+let SGB = null, PAUSE = 0, KD = 0, SHAKE = 0;
 function startBattle(en, al) {
-    L_startBattle1: {
-        if (en.ar) {
-            const s = { inf: G.inf, cav: G.cav, arc: G.arc, elf: G.elf, roh: G.roh, vet: G.vet };
-            G.inf = G.cav = G.arc = G.elf = G.roh = G.vet = 0;
-            startBattleBase(en, al);
-            Object.assign(G, s);
-            break L_startBattle1;
-        }
+    if (en.ar) {   // aréna: hrdina bojuje sám, vojsko ostáva pred bránou
+        const s = { inf: G.inf, cav: G.cav, arc: G.arc, elf: G.elf, roh: G.roh, vet: G.vet };
+        G.inf = G.cav = G.arc = G.elf = G.roh = G.vet = 0;
+        startBattleBase(en, al);
+        Object.assign(G, s);
+    } else {
         startBattleBase(en, al);
         for (const k in FU)
             if (k[0] === 'u' && G[k])
@@ -117,8 +115,6 @@ function startBattle(en, al) {
     if (en.siege) {
         const sg = G.sg && G.sg.t === TW.indexOf(en.t) ? G.sg : {};
         SGB = { gate: 60 + (en.t.wl || 0) * 30, mg: 60 + (en.t.wl || 0) * 30, lad: sg.lad, ram: sg.ram };
-        BG0 = BG;
-        BG = CBG || (CBG = mkCBG());
     }
     else
         SGB = null;
@@ -126,36 +122,35 @@ function startBattle(en, al) {
 function endBattle(win) {
     compAfterBattle();
     if (SGB) {
-        BG = BG0;
         SGB = null;
         G.sg = null;
     }
     const L = LB;
-    L_endBattle1: {
-        const L = LB;
-        if (L.ar) {
-            mode = 'over';
-            od.style.display = 'none';
-            tb.style.display = 'flex';
-            roar(0);
-            G.safe = 180;
-            G.hp = Math.max(20, U[0].hp);
-            if (win) {
-                const g = 80 + G.lv * 20;
-                G.gold += g;
-                G.ren++;
-                G.tw = (G.tw || 0) + 1;
-                rl(G.fac, L.t.f, 5);
-                lg('Víťazstvo v turnaji v ' + L.t.n + '.');
-                show('Víťaz turnaja', 'Ľud ťa oslavuje. Získal si ' + g + ' zlata a +1 slávu.');
-            }
-            else
-                show('Porážka v aréne', 'Prebral si sa v ošetrovni. Nabudúce budeš mať viac šťastia.');
-            btn('Pokračovať', () => { ov.classList.add('hide'); mode = 'map'; });
-            upd();
-            ach();
-            break L_endBattle1;
+    if (L.ar) {   // turnaj v aréne
+        mode = 'over';
+        od.style.display = 'none';
+        tb.style.display = 'flex';
+        roar(0);
+        G.safe = 180;
+        G.hp = Math.max(20, U[0].hp);
+        if (win) {
+            const g = 80 + G.lv * 20;
+            G.gold += g;
+            G.ren++;
+            G.tw = (G.tw || 0) + 1;
+            rl(G.fac, L.t.f, 5);
+            lg('Víťazstvo v turnaji v ' + L.t.n + '.');
+            show('Víťaz turnaja', 'Ľud ťa oslavuje. Získal si ' + g + ' zlata a +1 slávu.');
         }
+        else
+            show('Porážka v aréne', 'Prebral si sa v ošetrovni. Nabudúce budeš mať viac šťastia.');
+        btn('Pokračovať', () => { ov.classList.add('hide'); mode = 'map'; });
+        upd();
+        ach();
+        afterBattleFlags(win, L);
+        return;
+    }
+    {
         if (win) {
             G.dl = G.dl || [];
             G.tro = G.tro || [];
@@ -192,7 +187,7 @@ function endBattle(win) {
             for (const k in FU)
                 if (k[0] === 'u' && G[k])
                     G[k] = Math.floor(G[k] / 2);
-        L_endBattle0: {
+        {
             const dI = U.filter(u => !u.t && !u.ally && !u.cp && u.k === 'i' && u.hp <= 0).length, dC = U.filter(u => !u.t && u.k === 'c' && u.hp <= 0).length;
             {
                 const S = G.st || (G.st = { b: 0, w: 0, l: 0, k: 0, d: 0, c: 0, r: 0 });
@@ -215,7 +210,7 @@ function endBattle(win) {
             G.safe = 180;
             G.chase = null;
             roar(0);
-            if (LB && LB.id != null && MAR[LB.f] === LB.id && typeof mst === 'function') { if (win) mst(LB.f).losses++; else mst(LB.f).wins++; }   // maršal v bitke s hráčom
+            if (LB && LB.id != null && MAR[LB.f] === LB.id) { if (win) mst(LB.f).losses++; else mst(LB.f).wins++; }   // maršal v bitke s hráčom
             E = E.filter(e => e !== LB);
             if (win) {
                 const loot = LB.n * 7 + 10 + (LB.siege ? 120 : 0) + (LB.vil ? 80 + Math.floor(Math.random() * 80) : 0);
@@ -254,7 +249,9 @@ function endBattle(win) {
                 if (G.king && G.ren >= 30) {
                     show('Slávny vojvodca', 'Orkské tlupy sú rozprášené a Stredozem ťa oslavuje. Dosiahol si slávu 12 za ' + G.day + ' dní.');
                     btn('Hrať znova', newGame);
-                    break L_endBattle0;
+                    ach();
+                    afterBattleFlags(win, L);
+                    return;
                 }
                 show('Víťazstvo', 'Padlo ' + (dI + dC) + ' tvojich mužov. Korisť: ' + loot + ' zlata.' + lv);
                 battleReport(true);
@@ -282,7 +279,7 @@ function endBattle(win) {
                     btn('Pokračovať', () => { ov.classList.add('hide'); mode = 'map'; });
                 }
             }
-            else if (L.nm && L.f !== 9 && !L.siege && !L.vil && !L.nz && Math.random() < .6 && typeof captureHero === 'function' && captureHero(L)) {
+            else if (L.nm && L.f !== 9 && !L.siege && !L.vil && !L.nz && Math.random() < .6 && captureHero(L)) {
                 G.inf = Math.max(2, Math.floor(G.inf / 2));
                 G.cav = Math.floor(G.cav / 2);
                 G.arc = Math.floor(G.arc / 2);
@@ -307,6 +304,10 @@ function endBattle(win) {
         }
         ach();
     }
+    afterBattleFlags(win, L);
+}
+/** Po každej bitke: česť a strach za rabovanie, popravu a prepustenie (doplní sa k tlačidlám okna). */
+function afterBattleFlags(win, L) {
     if (win && L.vil) {
         G.hon = (G.hon || 0) - 3;
         G.fear = (G.fear || 0) + 2;
@@ -316,7 +317,7 @@ function endBattle(win) {
         b.addEventListener('click', () => { G.hon = (G.hon || 0) + 5; lg('Tvoja česť rastie.'); upd(); }); });
 }
 function updBattle(dt) {
-    L_updBattle0: {
+    {
         if (Math.random() < .06 * dt)
             snd('cl');
         compBattleShout();
@@ -351,7 +352,7 @@ function updBattle(dt) {
             u.x = Math.max(10, Math.min(BW - 10, u.x));
             u.y = Math.max(20, Math.min(BH - 10, u.y));
             u.bs = u.bs || u.sp;
-            u.sp = u.bs * (typeof fieldSlow === 'function' ? fieldSlow(u) : 1);
+            u.sp = u.bs * fieldSlow(u);
             if (u.h) {
                 let mx = 0, my = 0;
                 if (keys.ArrowLeft || keys.a)
@@ -448,10 +449,9 @@ function updBattle(dt) {
         U[0].tt = (U[0].tt || 0) + dt;
         if (U[0].tt > 9000) {
             const s = t => U.filter(u => u.t === t && u.hp > 0).reduce((a, u) => a + u.hp, 0);
-            endBattle(s(0) >= s(1));
-            break L_updBattle0;
+            endBattle(s(0) >= s(1));   // dlhá bitka: rozhodne zostávajúce zdravie
         }
-        if (U[0].hp <= 0)
+        else if (U[0].hp <= 0)
             endBattle(false);
         else if (!U.some(u => u.t && u.hp > 0))
             endBattle(true);

@@ -3,8 +3,8 @@
  */
 function place(i, inScene) {
     const P = PLACES[i], last = (G.pv || (G.pv = {}))[P.id], ready = last == null || G.day - last >= P.cd;
-    const inRoomNow = typeof ROOM !== 'undefined' && ROOM && ROOM.room === 'place' && ROOM.pi === i;
-    if (inScene == null && typeof roomSceneOk === 'function' && roomSceneOk('Place') && !inRoomNow) return enterPlace(i);   // vlastná scéna miesta
+    const inRoomNow = ROOM && ROOM.room === 'place' && ROOM.pi === i;
+    if (inScene == null && roomSceneOk('Place') && !inRoomNow) return enterPlace(i);   // vlastná scéna miesta
     if (inScene == null && inRoomNow) return roomReturn();
     const inS = inScene != null;
     mode = inS ? 'room' : 'town'; G.dest = -1;

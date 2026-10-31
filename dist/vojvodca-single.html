@@ -1912,6 +1912,10 @@ function hit(b, d, from) {
     snd(b.hp <= 0 ? 'dy' : b.h ? 'sh' : Math.random() < .5 ? 'sw' : 'hb');
     for (let i = 0; i < 4; i++)
         PT.push({ x: b.x, y: b.y, vx: Math.random() * 3 - 1.5, vy: Math.random() * 3 - 1.5, l: 18, c: b.t ? '#8a2a1a' : '#d9a441' });
+    for (let i = 0; i < 3; i++)   // iskry kovu: letia hore a padajú
+        PT.push({ x: b.x, y: b.y - 4, vx: Math.random() * 4 - 2, vy: -2 - Math.random() * 2.5, g: .18, l: 14 + Math.random() * 8, c: '#fff0b0', sp: 1 });
+    if (b.hp <= 0) for (let i = 0; i < 6; i++) PT.push({ x: b.x, y: b.y, vx: Math.random() * 2 - 1, vy: -.4 - Math.random() * .8, l: 30, c: '#5a1a12', g: .02, bl: 1 });   // krv pri páde
+    if (from && (from.k === 't' || from.k === 'x' || from.k === 'n' || from.k === 'z')) SHAKE = Math.max(SHAKE, from.k === 'x' ? 3 : 2);   // ťažký úder otrasie kamerou
 }
 function mk(t, k, f) {
     if (k === 'roh')
@@ -1925,7 +1929,7 @@ function mk(t, k, f) {
     Object.assign(u, { uk: k, hp: F.hp, mh: F.hp, d: F.d, sp: F.sp, r: F.r, fc: F.f });
     return u;
 }
-let SGB = null, BG0 = null, CBG = null, PAUSE = 0, KD = 0;
+let SGB = null, BG0 = null, CBG = null, PAUSE = 0, KD = 0, SHAKE = 0;
 function startBattle(en, al) {
     L_startBattle1: {
         if (en.ar) {
@@ -2155,8 +2159,10 @@ function updBattle(dt) {
         for (const p of PT) {
             p.x += p.vx * dt;
             p.y += p.vy * dt;
+            if (p.g) p.vy += p.g * dt;
             p.l -= dt;
         }
+        if (SHAKE > 0) SHAKE -= dt * .3;
         PT = PT.filter(p => p.l > 0);
         for (const a of AR) {
             a.x += a.vx * dt;
@@ -7338,8 +7344,8 @@ const Art = {
             img.src = T[key];
         });
         // po menších dávkach, aby prehliadač medzitým stihol prekresliť priebeh
-        const batches = []; for (let i = 0; i < keys.length; i += 6) batches.push(keys.slice(i, i + 6));
-        const p = batches.reduce((acc, b) => acc.then(() => Promise.all(b.map(one))), Promise.resolve());
+        const batches = []; for (let i = 0; i < keys.length; i += group === 'battle' ? 2 : 6) batches.push(keys.slice(i, i + (group === 'battle' ? 2 : 6)));
+        const p = batches.reduce((acc, b) => acc.then(() => Promise.all(b.map(one))).then(() => new Promise(r => setTimeout(r, group === 'battle' ? 30 : 0))), Promise.resolve());   // medzi dávkami sa pustí k slovu vykresľovanie
         if (group) Art.loading[group] = p.then(() => { Art.loaded[group] = 1; });
         return group ? Art.loading[group] : p;
     },
@@ -7369,6 +7375,18 @@ const Art = {
             c.globalCompositeOperation = 'destination-in'; c.drawImage(team, 0, 0);
             o.drawImage(t, 0, 0);
         }
+        // objem: svetlo zhora zľava a tieň zdola sprava na každej snímke (zbroj prestane byť plochá), jemný odlesk kovu
+        const fw = base.height, n = Math.max(1, Math.round(base.width / fw));
+        o.globalCompositeOperation = 'source-atop';
+        for (let i = 0; i < n; i++) {
+            const x0 = i * fw, gr = o.createLinearGradient(x0 + fw * .25, fw * .2, x0 + fw * .8, fw * .85);
+            gr.addColorStop(0, 'rgba(255,255,255,.2)'); gr.addColorStop(.45, 'rgba(255,255,255,0)'); gr.addColorStop(.6, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,.32)');
+            o.fillStyle = gr; o.fillRect(x0, 0, fw, fw);
+            const rg = o.createRadialGradient(x0 + fw * .42, fw * .4, 2, x0 + fw * .42, fw * .4, fw * .22);
+            rg.addColorStop(0, 'rgba(255,255,255,.14)'); rg.addColorStop(1, 'rgba(255,255,255,0)');
+            o.fillStyle = rg; o.fillRect(x0, 0, fw, fw);
+        }
+        o.globalCompositeOperation = 'source-over';
         return out;
     },
 
@@ -7924,11 +7942,10 @@ class BootScene extends Phaser.Scene {
         const ends = [.1, .7, .78, .88, 1];
         steps.reduce((acc, [name, fn], i) => acc.then(() => { this.step = name; return fn().then(() => { this.target = ends[i]; }); }), Promise.resolve()).then(() => {
             this.step = 'Brána sa otvára…'; this.target = 1;
-            const go = () => { if (this.prog < .985) return this.time.delayedCall(60, go); this.time.delayedCall(250, () => {
+            const go = () => { if (this.prog < .97 && this.scene.isActive()) return this.time.delayedCall(60, go); this.time.delayedCall(150, () => {
                 ov.classList.remove('hide');
                 this.scene.launch('UI');
                 this.scene.start('Intro');
-                Art.loadTextures(this.scene.get('UI'), 'battle');   // bojisko a vojaci sa dočítajú na pozadí počas úvodu
             }); };
             go();
         });
@@ -7953,7 +7970,7 @@ class BootScene extends Phaser.Scene {
 
     update(time, delta) {
         this.t += delta / 1000;
-        this.prog += (this.target - this.prog) * Math.min(1, delta / 180);
+        this.prog += (this.target - this.prog) * .3;   // po snímkach, nie podľa času – na pomalom stroji Phaser skracuje delta
         const S = RES, cx = W * S / 2, cy = H * S / 2 - 30 * S, t = this.t;
         // Prsteň: zlatý prstenec s odleskom a ohnivým písmom, ktoré sa posúva po obvode
         const g = this.ring; g.clear();
@@ -8000,6 +8017,7 @@ class IntroScene extends Phaser.Scene {
         if (this.textures.exists('intro')) this.textures.remove('intro');
         this.tex = this.textures.addCanvas('intro', c);
         this.add.image(0, 0, 'intro').setOrigin(0);
+        setTimeout(() => { if (!Art.loaded.battle && !Art.loading.battle) Art.loadTextures(this, 'battle'); }, 400);   // bojisko a vojaci sa dočítajú na pozadí počas úvodu
     }
 
     update() {
@@ -8098,6 +8116,39 @@ class MapScene extends Phaser.Scene {
         return out;
     }
 
+    /** Reliéf krajiny: výškové pole zo šumu, hôr a lesov, tieňované svetlom zo severozápadu (svetlé hrebene, tmavšie údolia),
+     *  tmavšia vlhká zem pri rieke. Jedna textúra 720 × 480 položená pod stromy – mapa prestane byť plochá. */
+    buildRelief(T) {
+        if (this.textures.exists('relief')) return this.add.image(0, 0, 'relief').setOrigin(0).setScale(WW / 720).setDepth(-9.3).setAlpha(.85);
+        const Wc = 720, Hc = 480, cv = document.createElement('canvas'); cv.width = Wc; cv.height = Hc;
+        const c = cv.getContext('2d'), img = c.createImageData(Wc, Hc), d = img.data;
+        const hash = (x, y) => { const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return n - Math.floor(n); };
+        const noise = (x, y) => { const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy); return (hash(ix, iy) * (1 - u) + hash(ix + 1, iy) * u) * (1 - v) + (hash(ix, iy + 1) * (1 - u) + hash(ix + 1, iy + 1) * u) * v; };
+        const M = T.mountains.map(([mx, my, sz]) => [mx / 1800 * Wc, my / 1200 * Hc, sz / 1800 * Wc]);
+        const rp = typeof riverPoints === 'function' ? riverPoints().map(([x, y]) => [x / WW * Wc, y / WH * Hc]) : [];
+        const H = new Float32Array((Wc + 1) * (Hc + 1));
+        for (let y = 0; y <= Hc; y++) for (let x = 0; x <= Wc; x++) {
+            let h = noise(x / 38, y / 38) * .6 + noise(x / 13, y / 13) * .3 + noise(x / 5, y / 5) * .1;
+            for (const [mx, my, r] of M) { const dd = Math.hypot(x - mx, y - my); if (dd < r * 1.6) h += (1 - dd / (r * 1.6)) * 1.2; }
+            const fi = Math.floor(x / Wc * T.cols), fj = Math.floor(y / Hc * T.rows);
+            if (T.forest[fj * T.cols + fi] >= 33) h += .08;
+            H[y * (Wc + 1) + x] = h;
+        }
+        for (let y = 0; y < Hc; y++) for (let x = 0; x < Wc; x++) {
+            const h = H[y * (Wc + 1) + x], dx = H[y * (Wc + 1) + x + 1] - h, dy = H[(y + 1) * (Wc + 1) + x] - h;
+            const sh = (-dx - dy) * 38;   // svetlo zo severozápadu
+            let a = Math.min(.45, Math.abs(sh)) * (sh > 0 ? .55 : 1), col = sh > 0 ? 255 : 0;
+            let wet = 0; if (rp.length && (x % 2 === 0) && (y % 2 === 0)) { let bd = 1e9; for (let i = 0; i < rp.length; i += 3) { const q = rp[i], dd = (q[0] - x) * (q[0] - x) + (q[1] - y) * (q[1] - y); if (dd < bd) bd = dd; } wet = bd < 100 ? .18 * (1 - bd / 100) : 0; }
+            const i = (y * Wc + x) * 4;
+            d[i] = col; d[i + 1] = col; d[i + 2] = col; d[i + 3] = Math.round(a * 255 * .55);
+            if (wet) { d[i] = 20; d[i + 1] = 30; d[i + 2] = 20; d[i + 3] = Math.max(d[i + 3], Math.round(wet * 255)); }
+        }
+        c.putImageData(img, 0, 0);
+        c.filter = 'blur(1px)'; c.drawImage(cv, 0, 0); c.filter = 'none';
+        this.textures.addCanvas('relief', cv);
+        return this.add.image(0, 0, 'relief').setOrigin(0).setScale(WW / 720).setDepth(-9.3).setAlpha(.85);
+    }
+
     /** Les ako jednotlivé stromy: hustý vnútri, pri okraji redší a s náhodne vysunutými stromami, aby hranica nebola kockatá. */
     buildForest(T) {
         const ts = WW / T.cols, rnd = n => { const x = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
@@ -8131,7 +8182,17 @@ class MapScene extends Phaser.Scene {
         }
         const kept = trees.filter(([x, y]) => !this.clearZone(x, y));
         kept.sort((a, b) => a[1] - b[1]);
-        for (const [x, y, sc, key] of kept) layer.add(this.add.image(x, y, 'map_trees', KEYS.indexOf(key)).setOrigin(.5, .89).setScale(sc));
+        // stromy podľa kraja: mallorny so zlatými korunami okolo Lothlórienu, modrasté borovice na severe, popolavé kmene v Mordore
+        const lor = TW.find(t => t.n === 'Lothlórien');
+        for (const [x, y, sc, key] of kept) {
+            const im = this.add.image(x, y, 'map_trees', KEYS.indexOf(key)).setOrigin(.5, .89).setScale(sc);
+            const reg = regionAt(x, y);
+            if (lor && Math.hypot(x - lor.x, y - lor.y) < 150 * K) im.setTint(0xffc830).setScale(sc * 1.3);
+            else if (reg === 's') { im.setTint(0xa8c8d0); if (key !== 'deadtree') im.setFrame(KEYS.indexOf('tree_2')); }
+            else if (reg === 'a') im.setTint(0x7a6a62);
+            else if (reg === 'd') im.setTint(0xc8c070);
+            layer.add(im);
+        }
         return [layer];
     }
 
@@ -8193,6 +8254,7 @@ class MapScene extends Phaser.Scene {
         if (this.textures.exists('forestwash')) this.textures.remove('forestwash');
         this.textures.addCanvas('forestwash', fc2);
         out.push(this.add.image(-WW / T.cols * .5, -WH / T.rows * .5, 'forestwash').setOrigin(0).setScale(WW / T.cols).setAlpha(.9).setDepth(-8.7));
+        out.push(this.buildRelief(T));
         // lesy: namiesto štvorcových dlaždíc jednotlivé stromy s rozhádzanými okrajmi (prirodzená hranica lesa)
         out.push(...this.buildForest(T));
         out.push(...this.buildPlaces());
@@ -8329,12 +8391,18 @@ class MapScene extends Phaser.Scene {
             o.txt.setPosition(e.x, e.y + 19).setText(e.nm + ' ' + Math.ceil(e.n))
                 .setColor(hos(e.f, G.fac) ? '#ff8a70' : (AL[G.fac][e.f] || e.f === G.fac) ? '#9fe08a' : '#ecdfc6');
             o.crown.setVisible(!!e.kr).setPosition(e.x + 17, e.y - 46);
+            // kolóna: za veliteľom veľkého vojska kráčajú ďalšie postavičky (1 za každých 10 mužov, najviac 3)
+            const nf = Math.min(3, Math.floor(e.n / 10));
+            if (!o.fol) o.fol = [];
+            while (o.fol.length < nf) { const im = Art.image(this, e.x, e.y, o.spr.texture.key, 0, true).setScale(o.spr.scaleX * .85).setAlpha(.9); this.mmCam.ignore([im]); o.fol.push(im); }
+            while (o.fol.length > nf) o.fol.pop().destroy();
+            if (o.fol.length) { const dir = Math.atan2(e.vy || 0, e.vx || 1), flip = e.vx < 0; o.fol.forEach((im, k) => { if (im.texture.key !== o.spr.texture.key) im.setTexture(o.spr.texture.key, 0).setScale(o.spr.scaleX * .85); const dd = (k + 1) * 26; im.setPosition(e.x - Math.cos(dir) * dd + ((k % 2) ? 6 : -6), e.y - Math.sin(dir) * dd * .5 + (k % 2 ? 4 : -3)).setDepth(e.y - .1 * (k + 1)).setFlipX(flip); if (!im.anims.isPlaying) im.play({ key: o.spr.texture.key + ':wave', startFrame: (e.id + k) % 4 }); }); }
             const isM = typeof MAR !== 'undefined' && MAR[e.f] === e.id;
             o.flag.setVisible(isM).setPosition(e.x + 22, e.y - 92);
             if (isM && o.flag.texture.key !== 'banner_' + e.f) o.flag.setTexture(Art.banner(this, e.f));
         }
         for (const [id, o] of this.armies)
-            if (!seen.has(id)) { o.spr.destroy(); o.txt.destroy(); o.crown.destroy(); o.flag.destroy(); this.armies.delete(id); }
+            if (!seen.has(id)) { o.spr.destroy(); o.txt.destroy(); o.crown.destroy(); o.flag.destroy(); (o.fol || []).forEach(im => im.destroy()); this.armies.delete(id); }
     }
 
     syncHero() {
@@ -8397,8 +8465,13 @@ class MapScene extends Phaser.Scene {
         }
         // Hora osudu: dym a pulz žiary
         if (this.doom) { for (let k = 0; k < 5; k++) { const s = (tm * .3 + k * 30) % 150; g.fillStyle(0x2a1a18, .35 - s / 500).fillCircle(this.doom.x + Math.sin(s * .05 + k) * 20 - 10, this.doom.y - this.doom.displayHeight * .9 - s * 1.2, 14 + s * .25); } }
+        // život v dedinách: dym z komínov cez deň, svietiace okná v noci (len pri kamere)
+        { const nn = nightness(), cx = cam.x + W / Z / 2, cy = cam.y + H / Z / 2, rr = Math.max(W, H) / Z;
+          for (let i = 0; i < VL.length; i++) { const v = VL[i]; if (v.st > 0 || Math.abs(v.x - cx) > rr || Math.abs(v.y - cy) > rr) continue;
+            if (nn > .35) { g.fillStyle(0xffd080, .5 + .3 * Math.sin(tm / 7 + i)); for (let k = 0; k < 1 + lvl(v) / 2; k++) g.fillRect(v.x - 10 + ((k * 13 + i * 5) % 24), v.y - 6 + ((k * 7) % 8), 2.5, 2); g.fillStyle(0xffc060, .08).fillCircle(v.x, v.y, 26); }
+            else if (lvl(v) >= 2) { for (let k = 0; k < 3; k++) { const sm = (tm * .35 + k * 20 + i * 7) % 60; g.fillStyle(0xd8d0c8, .22 - sm / 300).fillCircle(v.x + 6 + Math.sin(sm * .12 + k + i) * 4, v.y - 12 - sm * .55, 2.2 + sm * .08); } } } }
         // prach pod armádami na pochode
-        for (const e of E) if ((e.vx || e.vy) && Math.hypot(e.x - G.x, e.y - G.y) < 900) for (let k = 1; k < 3; k++) g.fillStyle(0xc8b48c, .14 - k * .04).fillCircle(e.x - e.vx * k * 9, e.y - e.vy * k * 9 + 8, 4 - k * .5);
+        for (const e of E) if ((e.vx || e.vy) && Math.hypot(e.x - G.x, e.y - G.y) < 900) for (let k = 1; k < 3 + Math.min(3, e.n / 10); k++) g.fillStyle(regionAt(e.x, e.y) === 's' ? 0xffffff : 0xc8b48c, .16 - k * .03).fillCircle(e.x - e.vx * k * 9 + Math.sin(tm / 3 + k) * 2, e.y - e.vy * k * 9 + 8, 4 + k * .4);
         if (G.camp) {
             g.fillStyle(0xc8a870, 1).fillTriangle(G.x - 30, G.y + 6, G.x - 18, G.y - 12, G.x - 6, G.y + 6);
             g.fillStyle(0xff9a3a, 1).fillCircle(G.x + 26, G.y + 4, 3 + Math.random() * 1.5);
@@ -8626,8 +8699,14 @@ class BattleScene extends Phaser.Scene {
         }
         g.lineStyle(1.6, 0xe8d8b0, 1);
         for (const a of AR) { g.lineBetween(a.x, a.y, a.x - a.vx * 3, a.y - a.vy * 3); if (a.l <= 1 && !a.mk) { a.mk = 1; this.markArrow(a); } }
-        for (const p of PT) { const a = Math.max(0, p.l / 18); g.fillStyle(hex(p.c), a).fillRect(p.x, p.y, 3, 3); if (p.l > 14) g.fillStyle(0xfff0c0, a * .9).fillRect(p.x - 1, p.y - 1, 2, 2); }   // iskra pri zásahu
-        for (const u of U) if (u.hp > 0 && (u.k === 'c' || u.k === 'r' || (u.h && G.eq.m)) ) { const o = this.units.get(u); if (o && o.state === 'walk') for (let k = 1; k < 3; k++) g.fillStyle(0xc8b48c, .14 - k * .04).fillCircle(u.x - Math.cos(u.f) * k * 10, u.y - Math.sin(u.f) * k * 10 + 6, 4 - k); }
+        for (const p of PT) { const a = Math.max(0, p.l / 18); if (p.sp) { g.lineStyle(1.2, 0xfff0b0, Math.min(1, a)).lineBetween(p.x, p.y, p.x - p.vx * 1.5, p.y - p.vy * 1.5); g.fillStyle(0xffffff, Math.min(1, a)).fillRect(p.x - .7, p.y - .7, 1.4, 1.4); continue; } if (p.bl) { g.fillStyle(hex(p.c), Math.min(.7, a * .7)).fillCircle(p.x, p.y, 1.6 + (30 - p.l) * .06); continue; } g.fillStyle(hex(p.c), a).fillRect(p.x, p.y, 3, 3); if (p.l > 14) g.fillStyle(0xfff0c0, a * .9).fillRect(p.x - 1, p.y - 1, 2, 2); }   // iskra pri zásahu
+        // prach za jazdou a veľkými tvormi: obláčiky za kopytami, ktoré sa rozplývajú
+        this.dust = this.dust || [];
+        for (const u of U) if (u.hp > 0 && (u.k === 'c' || u.k === 'r' || u.k === 'x' || u.k === 't' || u.k === 'n' || (u.h && G.eq.m) || u.uk === 'uI2' || u.uk === 'uN2' || u.uk === 'uG3')) { const o = this.units.get(u); if (o && o.state === 'walk' && Math.random() < (u.k === 'x' ? .5 : .25)) this.dust.push({ x: u.x - Math.cos(u.f) * u.r * .8 + (Math.random() - .5) * 6, y: u.y - Math.sin(u.f) * u.r * .8 + 4, l: 1, r: 3 + Math.random() * 3 }); }
+        const dc = BI === 's' ? 0xffffff : BI === 'a' ? 0x6a5a52 : BI === 'd' ? 0xe0c890 : 0xc8b48c;
+        for (const d of this.dust) { d.l -= .025; d.y -= .15; d.r += .18; g.fillStyle(dc, Math.max(0, d.l) * .28).fillCircle(d.x, d.y, d.r); }
+        this.dust = this.dust.filter(d => d.l > 0);
+        if (typeof SHAKE !== 'undefined' && SHAKE > 0 && !this.shaking) { this.shaking = 1; this.cameras.main.shake(140, .0022 * SHAKE, false, () => { this.shaking = 0; }); }
         if (fx > 0) g.lineStyle(3, 0xecdfc6, fx / 10).strokeCircle(U[0].x, U[0].y, it('w').r || 34);
         if (SGB) {
             if (SGB.lad) for (const l of [250, 710]) {
@@ -9578,9 +9657,15 @@ class UIScene extends Phaser.Scene {
             if (se === 3) g.fillStyle(0xdce6ff, .14).fillRect(0, 0, W, H);
             this.drawWeather(g, MW.n, 1);
             // noc: modré stmavenie, v hlbokej noci hviezdy
-            const nn = nightness();
-            g.fillStyle(0x080e28, .18 * (.5 - .5 * Math.cos(dayT / 600 * 6.283)) + nn * .22).fillRect(0, 0, W, H);
-            if (nn > .3 && MW.n === 'clear') { g.fillStyle(0xffffff, (nn - .3) * .9); for (let k = 0; k < 40; k++) g.fillRect((k * 173 + 31) % W, (k * 97 + 11) % (H * .6), 1.2, 1.2); }
+            const nn = nightness(), raw = .5 - .5 * Math.cos(dayT / 600 * 6.283), ph = dayT / 600;
+            // súmrak a úsvit: teplé oranžové svetlo zhora (súmrak) alebo ružové (úsvit), potom modrá noc
+            const warm = Math.exp(-Math.pow((raw - .42) / .13, 2));
+            if (warm > .02) { const dusk = ph < .5; for (let k = 0; k < 6; k++) g.fillStyle(dusk ? 0xff8a30 : 0xff9a70, warm * .07 * (1 - k / 6)).fillRect(0, k * H / 6, W, H / 6); g.fillStyle(dusk ? 0xffb060 : 0xffc0a0, warm * .05).fillRect(0, 0, W, H); }
+            if (raw > .25 && raw < .42) g.fillStyle(0xffe0a0, (raw - .25) * .3).fillRect(0, 0, W, H);   // zlatá hodina
+            g.fillStyle(0x080e28, .18 * raw + nn * .22).fillRect(0, 0, W, H);
+            if (nn > .3 && MW.n === 'clear') { g.fillStyle(0xffffff, (nn - .3) * .9); for (let k = 0; k < 40; k++) g.fillRect((k * 173 + 31) % W, (k * 97 + 11) % (H * .6), 1.2, 1.2);
+                const mx = W - 90 - (ph - .5) * 200, my = 60 + Math.abs(ph - .5) * 80;   // mesiac putuje po oblohe
+                g.fillStyle(0xfff4d0, Math.min(.95, (nn - .3) * 1.4)).fillCircle(mx, my, 11); g.fillStyle(0x080e28, Math.min(.9, (nn - .3) * 1.4) * .8).fillCircle(mx + 5, my - 3, 9); g.fillStyle(0xfff4d0, (nn - .3) * .12).fillCircle(mx, my, 26); }
         }
         this.gateTxt.setVisible(false);
         if (scene === 'battle' && U && U[0]) {
@@ -9884,6 +9969,7 @@ class UIScene extends Phaser.Scene {
         const PW = 440, IW = PW - 32, root = this.add.container(0, 0).setDepth(40);
         const shade = this.add.rectangle(0, 0, W, H, 0x0c0907, .35).setOrigin(0).setInteractive();
         const h1 = ov.querySelector('h1'), title = h1 ? h1.textContent : '';
+        const letter = /^List /.test(title), LC = letter ? { gold: '#6a2a10', ink: '#2e2014', dim: '#6a5a48' } : UI_C;   // list = pergamen s tmavým atramentom
         const bt = ov.querySelector('#bt'), kids = bt ? [...bt.children] : [];
         const nBtn = kids.filter(k => k.tagName === 'BUTTON').length, cols = nBtn > 8 || /^Trh:/.test(title) ? 3 : 2, bw = (IW - (cols - 1) * 6) / cols;
         this.dlgButtons = [];
@@ -9895,10 +9981,10 @@ class UIScene extends Phaser.Scene {
             const por = ov.querySelector('canvas.por'), pk = por && por.dataset.key;
             let px0 = 16, pw0 = IW, py0 = y, pimg = null;
             if (por && pk) { if (!this.textures.exists(pk)) this.textures.addCanvas(pk, por); pimg = this.add.image(16, y, pk).setOrigin(0).setDisplaySize(78, 78); items.push(pimg); px0 = 16 + 86; pw0 = IW - 86; }
-            if (title) { const t = this.add.text(pimg ? px0 : PW / 2, y, title, txtStyle(19, UI_C.gold, { fontFamily: TITLE_FONT, align: pimg ? 'left' : 'center', wordWrap: { width: pw0 } })).setOrigin(pimg ? 0 : .5, 0); items.push(t); y += t.height + 5; }
+            if (title) { const t = this.add.text(pimg ? px0 : PW / 2, y, title, txtStyle(19, LC.gold, { fontFamily: TITLE_FONT, align: pimg ? 'left' : 'center', wordWrap: { width: pw0 } })).setOrigin(pimg ? 0 : .5, 0); items.push(t); y += t.height + 5; }
             ov.querySelectorAll(':scope > p').forEach(p => {
                 if (!p.textContent.trim()) return;
-                const t = this.add.text(pimg ? px0 : PW / 2, y, p.textContent, txtStyle(12, p.style.color ? UI_C.gold : UI_C.ink, { align: pimg ? 'left' : 'center', lineSpacing: 2, wordWrap: { width: pw0 } })).setOrigin(pimg ? 0 : .5, 0);
+                const t = this.add.text(pimg ? px0 : PW / 2, y, p.textContent, txtStyle(letter ? 12.5 : 12, p.style.color ? LC.gold : LC.ink, { fontStyle: letter ? 'italic' : 'normal', align: pimg ? 'left' : 'center', lineSpacing: 2, wordWrap: { width: pw0 } })).setOrigin(pimg ? 0 : .5, 0);
                 items.push(t); y += t.height + 6;
             });
             if (pimg) { y = Math.max(y, py0 + 84); px0 = 16; }
@@ -9914,7 +10000,7 @@ class UIScene extends Phaser.Scene {
                     flush();
                     const ik = this.iconFor(k), ix = ik ? 40 : 0;   // riadok s ikonkou/portrétom vľavo
                     if (ik) items.push(this.add.image(16, y, ik).setOrigin(0).setDisplaySize(34, 34));
-                    const t = this.add.text(16 + ix, y, k.textContent, txtStyle(k.style.color ? 12.5 : 11.5, k.style.color ? UI_C.gold : k.style.opacity && +k.style.opacity < 1 ? UI_C.dim : UI_C.ink, { wordWrap: { width: IW - 26 - ix } }));
+                    const t = this.add.text(16 + ix, y, k.textContent, txtStyle(k.style.color ? 12.5 : 11.5, k.style.color ? LC.gold : k.style.opacity && +k.style.opacity < 1 ? LC.dim : LC.ink, { wordWrap: { width: IW - 26 - ix } }));
                     items.push(t); y += Math.max(t.height, ik ? 34 : 0) + 3;
                 }
             });
@@ -9933,11 +10019,13 @@ class UIScene extends Phaser.Scene {
         const footH = foot.length ? 34 : 0, viewH = Math.min(L.CH, maxH - footH), CH = L.CH;
         const PH = viewH + 34 + footH, px = (W - PW) / 2, py = Math.max(44, (H - PH) / 2);
         const panel = this.add.graphics();
-        this.drawFrame(panel, px, py, PW, PH);
+        this.drawFrame(panel, px, py, PW, PH, letter);
+        if (letter) this.drawSeal(panel, px + PW - 34, py + 30, title);
         const content = this.add.container(0, 0);
         content.add(L.items);
         content.setPosition(px, py + 20 - scroll);
         root.add([shade, panel, content]);
+        if (this.pendingSeal) { root.add(this.pendingSeal); this.pendingSeal = null; }
         const maskG = this.make.graphics({ add: false });
         maskG.fillStyle(0xffffff).fillRect(px, py + 14, PW, viewH + 12);
         const d = this.dlg = { root, content, mask: maskG, px, py, PW, PH, CH, maxH: viewH, scroll: 0, title, vy0: py + 14, vy1: py + 26 + viewH };
@@ -9964,7 +10052,23 @@ class UIScene extends Phaser.Scene {
     }
 
     /** Rám okna s ornamentom podľa strany: dobro elfské úponky a zlato, zlo ostré hroty a červeň. */
-    drawFrame(panel, px, py, PW, PH) {
+    drawFrame(panel, px, py, PW, PH, letter) {
+        if (letter) {   // pergamen: roztrhané okraje, zažltnuté rohy, stopy po zložení
+            let sd = Math.round(px + py);
+            const rnd = () => (sd = sd * 16807 % 2147483647) / 2147483647;
+            const pts = [];
+            for (let x = px; x < px + PW; x += 10) pts.push([x, py + (rnd() - .5) * 5]);
+            for (let y = py; y < py + PH; y += 10) pts.push([px + PW + (rnd() - .5) * 5, y]);
+            for (let x = px + PW; x > px; x -= 10) pts.push([x, py + PH + (rnd() - .5) * 5]);
+            for (let y = py + PH; y > py; y -= 10) pts.push([px + (rnd() - .5) * 5, y]);
+            panel.fillStyle(0x2a1a0c, .5).fillPoints(pts.map(([x, y]) => ({ x: x + 4, y: y + 5 })), true);   // tieň
+            panel.fillStyle(0xe6d5a8, 1).fillPoints(pts.map(([x, y]) => ({ x, y })), true);
+            panel.fillStyle(0xc8b080, .35); for (let k = 0; k < 40; k++) panel.fillEllipse(px + rnd() * PW, py + rnd() * PH, 10 + rnd() * 40, 4 + rnd() * 12);   // škvrny
+            panel.fillStyle(0x8a6a3a, .18); panel.fillRect(px, py, PW, 6); panel.fillRect(px, py + PH - 6, PW, 6); panel.fillRect(px, py, 6, PH); panel.fillRect(px + PW - 6, py, 6, PH);   // tmavšie okraje
+            panel.lineStyle(1, 0x8a6a3a, .25).lineBetween(px + 8, py + PH / 3, px + PW - 8, py + PH / 3 + 2).lineBetween(px + 8, py + PH * 2 / 3, px + PW - 8, py + PH * 2 / 3 - 1);   // prehyby
+            panel.lineStyle(1.2, 0x6a4a2a, .6).strokePoints(pts.map(([x, y]) => ({ x, y })), true);
+            return;
+        }
         const evil = G && heroSide() === 1, line = evil ? 0x9a2a1a : UI_C.line, line2 = evil ? 0x5a1a12 : 0x8a6a2a;
         panel.fillStyle(evil ? 0x14100f : UI_C.panel, .97).fillRoundedRect(px, py, PW, PH, 6);
         panel.lineStyle(2, line, 1).strokeRoundedRect(px, py, PW, PH, 6);
@@ -9978,6 +10082,20 @@ class UIScene extends Phaser.Scene {
         const mx = px + PW / 2;
         if (evil) { panel.fillStyle(line, 1).fillTriangle(mx - 6, py + 1, mx, py + 9, mx + 6, py + 1); }
         else { panel.lineStyle(1.2, line, .8); panel.beginPath(); panel.moveTo(mx - 22, py + 1); panel.lineTo(mx - 8, py + 6); panel.lineTo(mx, py + 2); panel.lineTo(mx + 8, py + 6); panel.lineTo(mx + 22, py + 1); panel.strokePath(); }
+    }
+
+    /** Vosková pečať listu: červený vosk s erbom frakcie odosielateľa (podľa mena v nadpise), stuha. */
+    drawSeal(panel, x, y, title) {
+        let f = -1;
+        const m = /od (?:maršala |lorda )?([^:,]+)/.exec(title);
+        if (m) { const nm = m[1].trim(); const fi = FN.indexOf(nm); if (fi >= 0) f = fi; else { const e = E.find(o => o.nm === nm); if (e) f = e.f; } }
+        if (f < 0) f = G ? G.fac : 0;
+        panel.fillStyle(0x6a2a1a, 1).fillRect(x - 4, y - 26, 8, 30); panel.fillStyle(0x8a3a24, 1).fillRect(x - 3, y - 26, 3, 30);   // stuha
+        panel.fillStyle(0x3a0a06, .6).fillCircle(x + 2, y + 3, 15);
+        panel.fillStyle(0xa02018, 1).fillCircle(x, y, 15); panel.fillStyle(0xc03028, 1).fillCircle(x - 2, y - 2, 12); panel.fillStyle(0x8a1810, 1).fillCircle(x, y, 9);
+        const key = 'seal_' + f;
+        if (!this.textures.exists(key)) { const out = document.createElement('canvas'); out.width = out.height = 64; try { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, 64, 64); ctx.translate(32, 32); ctx.scale(1.3, 1.3); if (typeof embBase === 'function') embBase(0, 0, 14, f); ctx.restore(); out.getContext('2d').drawImage(cv, 0, 0, 64, 64, 0, 0, 64, 64); } catch (e) { } this.textures.addCanvas(key, out); }
+        const im = this.add.image(x, y, key).setDisplaySize(22, 22).setAlpha(.85).setTint(0xffb0a0); this.sealImgs = this.sealImgs || []; this.sealImgs.push(im); if (this.dlg) this.dlg.root.add(im); else this.pendingSeal = im;
     }
 
     /** Tlačidlo okna podľa pôvodného HTML tlačidla k (aj s ikonkou výbavy). Vráti pole objektov s výškou .h. */

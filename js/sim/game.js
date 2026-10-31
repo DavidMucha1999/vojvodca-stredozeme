@@ -19,14 +19,34 @@ function slotData(slot) {
         return { g, look: g.look, text: g.name + ' · deň ' + g.day + ' · ' + (g.kn || FN[g.fac]) + ' · úroveň ' + (g.lv || 1) + (castles ? ' · hradov: ' + castles : '') + (place ? ' · pri ' + place : '') + (s.when ? ' · ' + s.when : '') };
     } catch (x) { return null; }
 }
+/** Verzia formátu uloženia; staršie uloženia prevedie migrateSave. */
+const SAVE_VERSION = 2;
+/** Dočasné polia, ktoré sa neukladajú (každý snímok sa prepočítajú). */
+const SAVE_SKIP = { G: ['chase', 'talk'], E: ['vx', 'vy', 'fo', 'wp', 'wpd', 'inside', 'hold', 'ti', 'vi', 'wait', 'dead'] };
+const strip = (o, skip) => { const r = {}; for (const k of Object.keys(o)) { const d = Object.getOwnPropertyDescriptor(o, k); if (!skip.includes(k) && d && !d.get && typeof o[k] !== 'function') r[k] = o[k]; } return r; };
+/** Uloží celý stav sveta: hrdina, hrady, dediny, lordi, diplomacia, maršali, vzťahy lordov a nedoručené listy. */
 function save(slot) {
     try {
-        localStorage.setItem(slotKey(slot), JSON.stringify({ G: { ...G, chase: null, talk: null }, T: TW.map(t => ({ f: t.f, g: t.g, mine: t.mine, wl: t.wl || 0, pr: t.pr, bd: t.bd, lord: t.lord, inv: t.inv })), E: E.map(e => ({ id: e.id, x: e.x, y: e.y, f: e.f, n: e.n, nm: e.nm, kr: e.kr, nz: e.nz, rl: e.rl || 0, home: e.home, role: e.role, cp: e.cp, vas: e.vas, loy: e.loy, kind: e.kind, vx: 0, vy: 0, w: 0 })), WR, REL, AL, CP, VL, MW, K, when: new Date().toLocaleString('sk-SK', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) }));
+        const data = {
+            v: SAVE_VERSION, K, when: new Date().toLocaleString('sk-SK', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            G: strip(G, SAVE_SKIP.G), T: TW.map(t => strip(t, ['x', 'y', 'n'])), E: E.filter(e => !e.dead).map(e => strip(e, SAVE_SKIP.E)), VL,
+            WR, REL, AL, CP, MW, MAR, MST, LRL, LETTERS, NID
+        };
+        localStorage.setItem(slotKey(slot), JSON.stringify(data));
         return 1;
     }
     catch (x) {
         return 0;
     }
+}
+/** Prevedie staršie uloženie na súčasný formát (mierka mapy, výbava, domovské hrady lordov, zajatci). */
+function migrateSave(s) {
+    const G0 = s.G;
+    if (!G0.own) G0.own = Object.fromEntries(Object.keys(G0.eq).map(k => [k, Array.from({ length: G0.eq[k] + 1 }, (_, i) => i)]));
+    const q = s.K ? K / s.K : K / 4.5;
+    if (q !== 1) { const sc = o => { o.x *= q; o.y *= q; if (o.tx != null) { o.tx *= q; o.ty *= q; } }; sc(G0); s.E.forEach(sc); (s.VL || []).forEach(sc); G0.sg = null; }
+    s.G.pri = (s.G.pri || []).map(p => typeof p === 'string' ? { nm: p, f: 9, n: 6, day: s.G.day } : p);
+    return s;
 }
 function newGame() {
     ov.classList.remove('intro');
@@ -51,7 +71,7 @@ function newGame() {
         G.st = { b: 0, w: 0, l: 0, k: 0, d: 0, c: 0, r: 0 };
         for (let i = 0; i < 110; i++)
             spawnE();
-        [0, 1, 2, 3, 4, 5, 7, 8].forEach(f => { if (typeof assignRoles === 'function') assignRoles(f); });
+        [0, 1, 2, 3, 4, 5, 7, 8].forEach(assignRoles);
         for (let i = 0; i < 4; i++)
             spawnX();
         if (bloc(f0))
@@ -81,41 +101,36 @@ function newGame() {
     }
 }
 function load(slot) {
-    L_load0: {
-        initA();
-        try {
-            const s = JSON.parse(localStorage.getItem(slotKey(slot)));
-            if (!s)
-                break L_load0;
+    initA();
+    try {
+        const raw = JSON.parse(localStorage.getItem(slotKey(slot)));
+        if (raw) {
+            const s = migrateSave(raw);
             TW = mkTW();
             s.T.forEach((o, i) => Object.assign(TW[i], o));
             G = s.G;
-            if (!G.own)   // staré uloženie: výbava sa kupovala postupne, takže hrdina vlastní všetko až po súčasnú vec
-                G.own = Object.fromEntries(Object.keys(G.eq).map(k => [k, Array.from({ length: G.eq[k] + 1 }, (_, i) => i)]));
             E = s.E;
-            if (typeof priMigrate === 'function') priMigrate();
             QS = bloc(G.fac) ? QE : QG;
-            WR = s.WR.length < 10 ? mkWR() : s.WR;
-            REL = s.REL.length < 10 ? mkREL() : s.REL;
-            AL = s.AL.length < 10 ? mkAL() : s.AL;
+            WR = s.WR && s.WR.length >= 10 ? s.WR : mkWR();
+            REL = s.REL && s.REL.length >= 10 ? s.REL : mkREL();
+            AL = s.AL && s.AL.length >= 10 ? s.AL : mkAL();
             CP = s.CP || {};
             VL = s.VL || mkVL();
-            if (s.K && s.K !== K) {   // staršie uloženie z menšej mapy: prepočítať polohy na novú mierku
-                const q = K / s.K; const sc = o => { o.x *= q; o.y *= q; if (o.tx != null) { o.tx *= q; o.ty *= q; } };
-                sc(G); E.forEach(sc); VL.forEach(sc); if (G.sg) G.sg = null;
-            }
-            if (!s.K) { const q = K / 4.5; const sc = o => { o.x *= q; o.y *= q; if (o.tx != null) { o.tx *= q; o.ty *= q; } }; sc(G); E.forEach(sc); VL.forEach(sc); }
-            E.forEach(e => { if (e.home == null && !e.nz && e.f !== 9) { const t = TW.map((x, i) => i).filter(i => TW[i].f === e.f).sort((a, b) => Math.hypot(TW[a].x - e.x, TW[a].y - e.y) - Math.hypot(TW[b].x - e.x, TW[b].y - e.y))[0]; e.home = t; e.role = e.role || 'army'; } });
             MW = s.MW || { n: 'clear', l: 0 };
-            NID = 1e5;
+            if (s.MAR) { for (const k in MAR) delete MAR[k]; Object.assign(MAR, s.MAR); }
+            if (s.MST) { for (const k in MST) delete MST[k]; Object.assign(MST, s.MST); }
+            if (s.LRL) LRL = s.LRL;
+            LETTERS = s.LETTERS || [];
+            E.forEach(e => { e.vx = 0; e.vy = 0; e.w = 0; if (e.home == null && !e.nz && e.f !== 9) { const t = TW.map((x, i) => i).filter(i => TW[i].f === e.f).sort((a, b) => Math.hypot(TW[a].x - e.x, TW[a].y - e.y) - Math.hypot(TW[b].x - e.x, TW[b].y - e.y))[0]; e.home = t; e.role = e.role || 'army'; } });
+            NID = Math.max(s.NID || 0, 1e5);
             sp = 100;
             dayT = 0;
             mode = 'map';
             ov.classList.add('hide');
             upd();
         }
-        catch (x) { }
     }
+    catch (x) { console.warn('Načítanie zlyhalo', x); }
     if (G) {
         ov.classList.remove('intro');
         tb.style.display = 'flex';

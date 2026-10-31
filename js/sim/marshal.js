@@ -21,7 +21,7 @@ function electMarshal(f, why) {
         const txt = (why === 'overthrow' ? 'Lordi ' + FN[f] + ' zvrhli maršala ' + (old ? old.nm : '?') + ' a zvolili ' : 'Lordi ' + FN[f] + ' zvolili za maršala vojska ') + m.nm + '.';
         lg(txt);
         if (f === G.fac || (G.fac === 6 && !hos(f, G.fac) && bloc(f) === heroSide())) TS = { s: txt, l: 320 };
-        if (why === 'overthrow' && typeof courtEvent === 'function') courtEvent(f, 'overthrow');
+        if (why === 'overthrow') courtEvent(f, 'overthrow');
     }
     return m;
 }

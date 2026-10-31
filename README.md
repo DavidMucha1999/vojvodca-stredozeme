@@ -6,20 +6,15 @@ Autor a vývojár hry: **Dávid Mucha**
 
 ## Spustenie
 
-Hra má dve verzie, ktoré zdieľajú rovnakú logiku (`js/data`, `js/sim`):
-
-- **`Vojvodca Stredozeme.html`** – hlavná verzia (spúšťa sa dvojklikom, má vlastnú ikonu `assets/ikona.ico`; vedľa je aj odkaz `Vojvodca Stredozeme.lnk` s touto ikonou) v hernom engine **Phaser 3**: ostrý obraz, dlaždicová mapa, animovaní vojaci, zvuky zo súborov a rozhranie v Phaseri. Phaser je v projekte (`vendor/phaser.min.js`), takže hra beží aj bez internetu.
-- `index.html` – pôvodná verzia kreslená priamo na plátno.
-
-Obe otvoríš dvojklikom, server ani inštalácia nie sú potrebné. Celú hru v jednom súbore vytvorí `python tools/build_single.py` (výsledok je v `dist/phaser-single.html`).
+Hra je jeden súbor **`Vojvodca Stredozeme.html`** (spúšťa sa dvojklikom, má vlastnú ikonu `assets/ikona.ico`; vedľa je aj odkaz `Vojvodca Stredozeme.lnk` s touto ikonou) v hernom engine **Phaser 3**: ostrý obraz, dlaždicová mapa, animovaní vojaci, zvuky zo súborov a rozhranie v Phaseri. Phaser je v projekte (`vendor/phaser.min.js`), takže hra beží aj bez internetu. Server ani inštalácia nie sú potrebné. Celú hru v jednom súbore vytvorí `python tools/build_single.py` (výsledok je v `dist/vojvodca-single.html`).
 
 ## Testy
 
 ```bash
-npm test                          # simulácia bez prehliadača: 60+ dní hry, obliehanie, uloženie
+npm test                          # simulácia bez prehliadača (skripty hry bez Phaseru): 40+ dní hry, obliehanie, uloženie, nové systémy
 python tests/phaser_test.py       # Phaser verzia: scény, okná v Phaseri, animácie, zvuky
 python tests/real_phaser_test.py  # Phaser verzia: prejde hru a uloží snímky obrazovky do tests/screens/
-python tests/browser_test.py      # pôvodná verzia (index.html)
+python tests/browser_test.py      # rýchla simulácia v prehliadači: 30 000 tikov, obliehanie, okná, uloženie
 ```
 
 Testy v prehliadači potrebujú `pip install playwright && playwright install chromium`. Spusti ich po každej väčšej zmene.
@@ -125,40 +120,53 @@ Zvuky boja sú v `assets/audio/` (`render_sfx.py` ich vie vytvoriť znova). Hra 
 
 ## Štruktúra kódu
 
-Skripty sa načítavajú v poradí uvedenom v `Vojvodca Stredozeme.html` (resp. `index.html`) a zdieľajú globálny priestor premenných.
+Skripty sa načítavajú v poradí uvedenom v `Vojvodca Stredozeme.html` a zdieľajú globálny priestor premenných. Logika (`js/data`, `js/sim`, `js/ui`) nepozná Phaser – dá sa spustiť aj bez prehliadača (testy); Phaser je len v `js/engine`.
 
 ```
 js/
-  core/setup.js       plátno, rozmery sveta, globálny stav hry
-  data/               čisté dáta: frakcie, hrady (map.js je generovaný z mapy), jednotky, výbava, príbeh, úspechy, rozhovory (dialogue.js)
-  sim/                logika hry bez kreslenia: diplomacia, hrdina, armády a tlupy, svet a AI, maršali a oznámenia (marshal.js), zajatci (prisoners.js), dvor (court.js), udalosti na ceste (travel.js), bojisko podľa mapy (field.js), obchod (trade.js), počasie (weather.js), bitka, obliehanie, politika, príbeh, uloženie
-  render/             pôvodné kreslenie na plátno (index.html; Phaser ho používa ako náhradnú grafiku)
-    soldiers.js       vojaci, kone a výbava pohľadom zhora: hrdina podľa výbavy, ikonky u kováča, pásy snímok pre generátor
-    figures.js        postavičky na mape a v krčme pohľadom zboku: hrdina podľa výbavy (kôň/pešo), lordi podľa frakcie, spoločníci; zástava erbu na dlhej žrdi vysoko nad hlavou a zbraňou
+  core/setup.js       plátno, rozmery sveta, globálny stav hry, konštanty (DAY_LEN, regionAt, ENGAGE_R)
+  data/               čisté dáta: frakcie, hrady (map.js je generovaný z mapy), jednotky, výbava, príbeh, úspechy, rozhovory (dialogue.js), spoločníci, rasy, miesta
+  sim/                logika hry bez kreslenia
+    world.js          pohyb hrdinu, tok dní, vojny a mier medzi frakciami, Hora osudu, updMap (volá AI lordov a denné udalosti)
+    lords.js          AI lordov a tlúp (lordTick): strážcovia lén, poľné vojsko maršala, ťaženia; maršal, rozdelenie úloh, strategická AI
+    economy.js        prosperita, príjem, budovy, denné udalosti (daily2) a ozvena povahy lordov
+    marshal.js        voľba a zvrhnutie maršala, listy (readLetter rozdeľuje aj listy o výkupnom a prestupe), oznámenia o dobytí
+    court.js          vzťahy a vernosť lordov, prestupy, hostina, okno dvora
+    prisoners.js      zajatci, výkupné, zajatie hráča
+    travel.js         udalosti počas cesty
+    field.js          bojisko podľa miesta na mape (les, rieka, kopec)
+    battle.js         bitka: jednotky, začiatok a koniec (tabuľka výsledkov), boj, šípy, rozkazy, hradby
+    armies.js, diplomacy.js, hero.js, trade.js, weather.js, quests.js, companions.js, siege.js, politics.js, story.js, achievements.js
+    game.js           nová hra, uloženie (celé objekty, verzia SAVE_VERSION) a načítanie s migráciou starších uložení
+  render/             kreslenie kódom na plátno (používa ho Phaser cez Art)
+    soldiers.js       vojaci, kone a výbava pohľadom zhora: hrdina podľa výbavy, ikonky u kováča, pásy snímok, enti a ťažké jednotky
+    figures.js        postavičky na mape a v miestnostiach pohľadom zboku: hrdina podľa výbavy, lordi podľa frakcie, tlupy, spoločníci
     portraits.js      portréty tvárí spredu (rozhovory, tvorba postavy, encyklopédia)
-  audio/sound.js      syntetické zvuky a hudba
-  audio/room.js       kroky a šum prostredia v miestnostiach
-  ui/                 herné menu ako HTML (v Phaser verzii ich prekresľuje UIScene), inventory.js = kováč a inventár, market.js = trh, create.js = tvorba postavy, tavern.js = rozhovory v krčme, village.js = dedina a pamätihodnosti, kingdom.js = kráľovstvo, party.js = správa družiny
-  input.js            klávesnica a myš (pôvodná verzia)
-  main.js             hlavná slučka pôvodnej verzie
-  engine/             Phaser verzia
-    art.js            grafika: textúry, zafarbovanie vojakov, vlastné obrázky, animácie
-    icons.js          ikony rozhrania kreslené kódom (lišta, tlačidlá, okná)
+    heraldry.js       erby, zástavy, koruna
+    intro.js          animovaná úvodná scéna
+  audio/sound.js      syntetické zvuky a hudba; ambience.js = zvuky počasia; room.js = kroky a šum miestností
+  ui/                 herné okná: show/btn/row v dom.js opisujú okno, UIDialog ho kreslí v Phaseri
+    rooms.js          jeden vstup a výstup pre všetky miestnosti (enterRoom/leaveRoom/roomReturn, ROOM, ROOM_MODES)
+    town.js           okno hradu a jeho karty (verbovanie, vojsko, správa, dvor a diplomacia), dediny (okno), korunovácia
+    lord.js           rokovanie a rozhovor s veliteľom, úlohy od pána;  save.js = uloženie a načítanie
+    castle.js, tavern.js, village.js, places.js, kingdom.js, party.js, inventory.js, market.js, create.js (HTML tvorba postavy), menus.js (prehľady, encyklopédia)
+  engine/             Phaser
+    art.js            textúry z obrázkov a z kódu, zafarbovanie a tieňovanie vojakov, animácie, načítanie po skupinách
+    icons.js          ikony rozhrania kreslené kódom
+    tex.js            procedurálne textúry miestností a mäkké žiary svetiel
     assets.js         zbalené obrázky a zvuky (generuje pack_assets.py)
     audio.js          zvuky zo súborov, priestorový zvuk v bitke
     game.js           spustenie Phaseru (rozlíšenie 1440 × 960)
     scenes/
-      BootScene.js    načítanie textúr, obrázkov, zvukov a písma
-      IntroScene.js   úvodná obrazovka
-      MapScene.js     mapa: dlaždicový terén, lesy z jednotlivých stromov (voľný priestor okolo hradov, dedín a ciest), voda, cesty, hory, hrady, dediny, armády, minimapa
-      BattleScene.js  bitka: bojisko z textúr, animovaní vojaci, zástavy, šípy, obliehanie, častice
-      RoomScene.js    základ miestností: hráčova postava, chôdza, postavy a miesta (klik alebo medzerník/E pri najbližšej osobe), obloha v okne
-      tex.js          procedurálne textúry miestností v 2× rozlíšení (dosky, kvádre, dlažba, piesok, tráva, čierny kameň, elfské drevo) a mäkké žiary svetiel
-      TavernScene.js  krčma: miestnosť podľa témy hradu z textúr, krb a sviečky s mäkkým svetlom, krčmár a spoločníci
-      CastleScene.js  nádvorie a sieň hradu podľa frakcie (textúry múrov a dlažby, vyhňa, fakle, koše s ohňom): kováč, kupec, veliteľ, správca, pán hradu
-      VillageScene.js náves dediny podľa kraja a strany: starosta/dozorca, kupec, dobrovoľníci, studňa, kaplnka/oltár, krčmička
-      PlaceScene.js   pamätihodnosti: kulisy miest (Amon Sûl, Argonath, Bombadil, Fangorn, Beorn…) s postavami a miestami
-      UIScene.js      rozhranie v Phaseri: lišta, tlačidlá, okná, popisky, legenda, počasie
+      BootScene.js    načítacia obrazovka (Prsteň, lišta, citáty), textúry mapy, zvuky, písma
+      IntroScene.js   úvodná obrazovka; na pozadí dočíta textúry bojiska
+      MapScene.js     mapa: terén, reliéf, lesy podľa kraja, voda, cesty, hory, hrady, dediny, armády s kolónami, minimapa HD
+      BattleScene.js  bitka: bojisko podľa mapy, animovaní vojaci, prach, iskry, otras kamery, obliehanie
+      RoomScene.js    základ miestností: hráčova postava, chôdza, postavy a miesta, medzerník, zvuky krokov
+      TavernScene.js, CastleScene.js, VillageScene.js, PlaceScene.js – krčma, nádvorie a sieň, dedina, pamätihodnosti
+      UIScene.js      rozhranie: lišta, panel tlačidiel, počasie a svetlo dňa, oznámenia
+      UIDialog.js     okná v Phaseri (rám, portrét, ikonky, posúvanie, klávesy; listy ako pergamen s pečaťou)
+      UIMaps.js       minimapa, veľká mapa (M), popisky pri myši, legenda
 vendor/phaser.min.js  Phaser 3.80.1
 ```
 

@@ -18,7 +18,7 @@ const VNAMES = {
 function nameVillages(list) {
     const used = new Set(), idx = { g: 0, s: 0, d: 0, a: 0 };
     list.forEach(v => {
-        const reg = typeof regionAt === 'function' ? regionAt(v.x, v.y) : 'g', L = VNAMES[reg] || VNAMES.g;
+        const reg = regionAt(v.x, v.y), L = VNAMES[reg] || VNAMES.g;
         let n = L[idx[reg] % L.length], k = 1; idx[reg]++;
         while (used.has(n)) { n = L[(idx[reg]++) % L.length] + (idx[reg] > L.length ? ' ' + ['II', 'III', 'IV'][k++ % 3] : ''); }
         used.add(n); v.n = n;
