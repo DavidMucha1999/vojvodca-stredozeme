@@ -119,7 +119,6 @@ Zvuky boja sú v `assets/audio/` (`render_sfx.py` ich vie vytvoriť znova). Hra 
 | `render_sfx.py` | vyrenderuje zvuky boja do `assets/audio/` |
 | `build_single.py` | zostaví celú hru do jedného HTML súboru v `dist/` |
 | `proto_iso.html` | samostatný prototyp izometrickej bitky (nie je súčasťou hry) |
-| `proto_3d_krcma.html`, `proto3d/` | samostatná 3D ukážka krčmy z modelu GLB: vlastné WebGL vykresľovanie bez knižníc, chôdza postavy (WASD, klik na podlahu), kamera za postavou alebo zhora, priesvitné steny medzi kamerou a postavou, mriežka chodenia vypočítaná z modelu, krčmár s rozhovorom. Iný model: `python3 tools/proto3d/pack.py model.glb tools/proto3d/data.js && python3 tools/proto3d/build.py` (model = jedna sieť s jednou textúrou) |
 
 ## Štruktúra kódu
 
