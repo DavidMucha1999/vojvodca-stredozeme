@@ -5,12 +5,13 @@
 function lordTick(e, dt) {
     const pd = Math.hypot(G.x - e.x, G.y - e.y);
     let tg = null, td = SEEK_R, fol = null, stopHere = false;
-    if (hos(e.f, G.fac) && pd < td) {
+    const sheltered = G.defend >= 0 && TW[G.defend] && Math.hypot(G.x - TW[G.defend].x, G.y - TW[G.defend].y) < 20 * K;   // hráč za hradbami
+    if (hos(e.f, G.fac) && pd < td && !sheltered) {
         tg = G;
         td = pd;
     }
     for (const o of E)
-        if (o !== e && !o.dead && hos(o.f, e.f)) {
+        if (o !== e && !o.dead && !o.inside && hos(o.f, e.f)) {
             const d = Math.hypot(o.x - e.x, o.y - e.y);
             if (d < td) {
                 td = d;
@@ -76,29 +77,18 @@ function lordTick(e, dt) {
                     const own = TW.filter(x => x.f === e.f), muster = own.length ? own.reduce((b, x) => Math.hypot(x.x - t.x, x.y - t.y) < Math.hypot(b.x - t.x, b.y - t.y) ? x : b) : TW[e.home];
                     const gathered = E.filter(o => o !== e && !o.dead && (o.f === e.f || AL[e.f][o.f]) && Math.hypot(o.x - e.x, o.y - e.y) < 40 * K).reduce((s, o) => s + o.n, 0) + e.n;
                     const need = t.g + 6 + (t.wl || 0) * 8 + E.filter(o => o.f === t.f && !o.dead && Math.hypot(o.x - t.x, o.y - t.y) < 15 * K).reduce((s, o) => s + o.n, 0);
-                    const ready = gathered >= need * 1.1 || G.day - e.mu.day >= 5;
+                    const besieging = t.sg && (t.sg.f === e.f || AL[t.sg.f][e.f]);
+                    const ready = besieging || gathered >= need * 1.1 || G.day - e.mu.day >= 5;
                     tg = ready ? t : muster;
                     if (!ready && Math.hypot(muster.x - e.x, muster.y - e.y) < 20) { stopHere = true; tg = null; }
-                    if (ready && Math.hypot(t.x - e.x, t.y - e.y) < 20 && e.atkDay === G.day) { tg = null; stopHere = true; }   // dnes už útočil, čaká na ďalší deň
-                    else if (ready && Math.hypot(t.x - e.x, t.y - e.y) < 20) {
-                        e.atkDay = G.day;
-                        // útok na hrad: útočníci v okolí proti posádke a lordom vnútri
-                        const att = E.filter(o => !o.dead && (o.f === e.f || AL[e.f][o.f]) && Math.hypot(o.x - t.x, o.y - t.y) < 35 * K).reduce((s, o) => s + o.n, 0);
-                        const def = t.g + 4 + (t.wl || 0) * 8 + E.filter(o => o.f === t.f && !o.dead && Math.hypot(o.x - t.x, o.y - t.y) < 15 * K).reduce((s, o) => s + o.n, 0);
-                        if (att > def) {
-                            const oldF = t.f;
-                            captureEvent(t, oldF, e.f, e.nm); mst(e.f).wins++; { courtEvent(e.f, 'won'); courtEvent(oldF, 'lost'); }
-                            if (G.join && G.join.ci === ci && Math.hypot(G.x - t.x, G.y - t.y) < 40 * K) { G.ren += 3; G.gold += 60; e.rl = (e.rl || 0) + 6; lg('Za účasť na ťažení si dostal podiel na koristi (60 zlata) a slávu.'); G.join = null; }
-                            t.lord = 0; e.n = Math.max(3, e.n - t.g * .5); t.f = e.f; t.g = 5; t.mine = 0; t.wl = 0;
-                            E.filter(o => o.home === ci && o.f !== e.f).forEach(o => { o.n = Math.max(2, o.n * .5); o.home = null; });
-                            CP[e.f] = null; e.mu = null;
-                        } else {
-                            mst(e.f).losses++;
-                            e.n = Math.max(3, e.n - 2); t.g = Math.max(3, t.g - 2);   // neúspešný útok: straty na oboch stranách
-                            if (G.day - e.mu.day >= 8) { CP[e.f] = null; e.mu = null; }
-                        }
-                        tg = null; stopHere = true;
+                    else if (ready && Math.hypot(t.x - e.x, t.y - e.y) < SIEGE_R) {
+                        // obliehanie: tábor okolo hradu, technika sa stavia každý deň, útok podľa js/sim/siege.js
+                        if (!t.sg) startSiege(ci, e.f, e.id);
+                        const a = (e.id * 2.39996) % 6.283;
+                        tg = { x: t.x + Math.cos(a) * 24 * K, y: t.y + Math.sin(a) * 15 * K };
+                        if (Math.hypot(tg.x - e.x, tg.y - e.y) < 8) { stopHere = true; tg = null; }
                     }
+                    if (!t.sg && G.day - e.mu.day >= 14) { CP[e.f] = null; e.mu = null; }   // ťaženie bez obliehania po dvoch týždňoch skončí
                 }
             }
         }
@@ -113,7 +103,7 @@ function lordTick(e, dt) {
     }
     e.x = Math.max(10, Math.min(WW - 10, e.x + e.vx * dt));
     e.y = Math.max(10, Math.min(WH - 10, e.y + e.vy * dt));
-    if (hos(e.f, G.fac) && pd < ENGAGE_R && mode === 'map' && !(G.safe > 0)) {
+    if (hos(e.f, G.fac) && pd < ENGAGE_R && mode === 'map' && !(G.safe > 0) && !sheltered) {
         startBattle(e, e.fo && !hos(e.fo.f, G.fac) ? e.fo : null);
         return true;
     }

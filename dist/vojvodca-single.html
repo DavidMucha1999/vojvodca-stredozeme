@@ -818,7 +818,7 @@ function worldTick(dt) {
         spawnX();
         const a0 = [0, 1, 2, 3, 4, 5, 7, 8];
         TW.forEach(t => {
-            t.g = Math.min(20 + (t.wl || 0) * 10, t.g + 1 + (t.wl || 0));
+            if (!t.sg) t.g = Math.min(20 + (t.wl || 0) * 10, t.g + 1 + (t.wl || 0));   // obliehaný hrad nedostáva posily
             if (t.mine)
                 G.gold += Math.round((G.king ? 20 : 10) * taxMul() * fiefShare(t));
         });
@@ -868,9 +868,14 @@ function worldTick(dt) {
     cam.x = Math.max(0, Math.min(WW - W / Z, G.x - W / Z / 2));
     cam.y = Math.max(0, Math.min(WH - H / Z, G.y - H / Z / 2));
 }
+/** Hráč čaká (tábor, obliehanie, obrana hradu, zajatie): čas plynie aj bez pohybu a dá sa zrýchliť. */
+const waiting = () => !!G && (G.camp || G.besiege >= 0 || G.defend >= 0 || !!G.captive);
+/** Rýchlosť času na mape: pri čakaní ×1/×3/×8 (tlačidlo „Čas“), podržaný medzerník = ×8 (ako vo Warbande). */
+let HOLD_FAST = false;
+const timeMul = () => waiting() ? (HOLD_FAST ? 8 : (G.tmul || 1)) : 1;
 function updMap(dt) {
     const idle = Math.hypot(G.tx - G.x, G.ty - G.y) <= 3 && G.dest < 0 && !(G.vd >= 0) && !G.chase && !G.talk && !G.qd;
-    if (idle && !G.camp && !G.captive) {
+    if (idle && !waiting()) {
         PAUSE = 1;
         return;
     }
@@ -882,6 +887,10 @@ function updMap(dt) {
         if (G.day !== d)
             daily2();
         if (LETTERS.length && mode === 'map' && ov.classList.contains('hide')) readLetter();
+        if (SIEGE_EVENT && mode === 'map' && ov.classList.contains('hide')) siegeEventUI();
+        // odchod od obliehaného / bráneného hradu
+        if (G.besiege >= 0 && TW[G.besiege] && Math.hypot(G.x - TW[G.besiege].x, G.y - TW[G.besiege].y) > SIEGE_R * 1.5) leaveSiege(G.besiege);
+        if (G.defend >= 0 && TW[G.defend] && (Math.hypot(G.x - TW[G.defend].x, G.y - TW[G.defend].y) > 20 * K || !TW[G.defend].sg)) { if (TW[G.defend].sg) lg('Opustil si hrad ' + TW[G.defend].n + '.'); G.defend = -1; upd(); }
         if (G.captive && mode === 'map' && ov.classList.contains('hide') && !(G.capShown === G.day)) { G.capShown = G.day; captiveDay(); }
         const dd = Math.hypot(G.x - DOOM.x, G.y - DOOM.y);
         if (G.ring === 1 && mode === 'map' && dd < 180 && !G.rp) {
@@ -915,12 +924,13 @@ function updMap(dt) {
 function lordTick(e, dt) {
     const pd = Math.hypot(G.x - e.x, G.y - e.y);
     let tg = null, td = SEEK_R, fol = null, stopHere = false;
-    if (hos(e.f, G.fac) && pd < td) {
+    const sheltered = G.defend >= 0 && TW[G.defend] && Math.hypot(G.x - TW[G.defend].x, G.y - TW[G.defend].y) < 20 * K;   // hráč za hradbami
+    if (hos(e.f, G.fac) && pd < td && !sheltered) {
         tg = G;
         td = pd;
     }
     for (const o of E)
-        if (o !== e && !o.dead && hos(o.f, e.f)) {
+        if (o !== e && !o.dead && !o.inside && hos(o.f, e.f)) {
             const d = Math.hypot(o.x - e.x, o.y - e.y);
             if (d < td) {
                 td = d;
@@ -986,29 +996,18 @@ function lordTick(e, dt) {
                     const own = TW.filter(x => x.f === e.f), muster = own.length ? own.reduce((b, x) => Math.hypot(x.x - t.x, x.y - t.y) < Math.hypot(b.x - t.x, b.y - t.y) ? x : b) : TW[e.home];
                     const gathered = E.filter(o => o !== e && !o.dead && (o.f === e.f || AL[e.f][o.f]) && Math.hypot(o.x - e.x, o.y - e.y) < 40 * K).reduce((s, o) => s + o.n, 0) + e.n;
                     const need = t.g + 6 + (t.wl || 0) * 8 + E.filter(o => o.f === t.f && !o.dead && Math.hypot(o.x - t.x, o.y - t.y) < 15 * K).reduce((s, o) => s + o.n, 0);
-                    const ready = gathered >= need * 1.1 || G.day - e.mu.day >= 5;
+                    const besieging = t.sg && (t.sg.f === e.f || AL[t.sg.f][e.f]);
+                    const ready = besieging || gathered >= need * 1.1 || G.day - e.mu.day >= 5;
                     tg = ready ? t : muster;
                     if (!ready && Math.hypot(muster.x - e.x, muster.y - e.y) < 20) { stopHere = true; tg = null; }
-                    if (ready && Math.hypot(t.x - e.x, t.y - e.y) < 20 && e.atkDay === G.day) { tg = null; stopHere = true; }   // dnes už útočil, čaká na ďalší deň
-                    else if (ready && Math.hypot(t.x - e.x, t.y - e.y) < 20) {
-                        e.atkDay = G.day;
-                        // útok na hrad: útočníci v okolí proti posádke a lordom vnútri
-                        const att = E.filter(o => !o.dead && (o.f === e.f || AL[e.f][o.f]) && Math.hypot(o.x - t.x, o.y - t.y) < 35 * K).reduce((s, o) => s + o.n, 0);
-                        const def = t.g + 4 + (t.wl || 0) * 8 + E.filter(o => o.f === t.f && !o.dead && Math.hypot(o.x - t.x, o.y - t.y) < 15 * K).reduce((s, o) => s + o.n, 0);
-                        if (att > def) {
-                            const oldF = t.f;
-                            captureEvent(t, oldF, e.f, e.nm); mst(e.f).wins++; { courtEvent(e.f, 'won'); courtEvent(oldF, 'lost'); }
-                            if (G.join && G.join.ci === ci && Math.hypot(G.x - t.x, G.y - t.y) < 40 * K) { G.ren += 3; G.gold += 60; e.rl = (e.rl || 0) + 6; lg('Za účasť na ťažení si dostal podiel na koristi (60 zlata) a slávu.'); G.join = null; }
-                            t.lord = 0; e.n = Math.max(3, e.n - t.g * .5); t.f = e.f; t.g = 5; t.mine = 0; t.wl = 0;
-                            E.filter(o => o.home === ci && o.f !== e.f).forEach(o => { o.n = Math.max(2, o.n * .5); o.home = null; });
-                            CP[e.f] = null; e.mu = null;
-                        } else {
-                            mst(e.f).losses++;
-                            e.n = Math.max(3, e.n - 2); t.g = Math.max(3, t.g - 2);   // neúspešný útok: straty na oboch stranách
-                            if (G.day - e.mu.day >= 8) { CP[e.f] = null; e.mu = null; }
-                        }
-                        tg = null; stopHere = true;
+                    else if (ready && Math.hypot(t.x - e.x, t.y - e.y) < SIEGE_R) {
+                        // obliehanie: tábor okolo hradu, technika sa stavia každý deň, útok podľa js/sim/siege.js
+                        if (!t.sg) startSiege(ci, e.f, e.id);
+                        const a = (e.id * 2.39996) % 6.283;
+                        tg = { x: t.x + Math.cos(a) * 24 * K, y: t.y + Math.sin(a) * 15 * K };
+                        if (Math.hypot(tg.x - e.x, tg.y - e.y) < 8) { stopHere = true; tg = null; }
                     }
+                    if (!t.sg && G.day - e.mu.day >= 14) { CP[e.f] = null; e.mu = null; }   // ťaženie bez obliehania po dvoch týždňoch skončí
                 }
             }
         }
@@ -1023,7 +1022,7 @@ function lordTick(e, dt) {
     }
     e.x = Math.max(10, Math.min(WW - 10, e.x + e.vx * dt));
     e.y = Math.max(10, Math.min(WH - 10, e.y + e.vy * dt));
-    if (hos(e.f, G.fac) && pd < ENGAGE_R && mode === 'map' && !(G.safe > 0)) {
+    if (hos(e.f, G.fac) && pd < ENGAGE_R && mode === 'map' && !(G.safe > 0) && !sheltered) {
         startBattle(e, e.fo && !hos(e.fo.f, G.fac) ? e.fo : null);
         return true;
     }
@@ -1144,6 +1143,7 @@ function daily2() {
     compDaily();
     prisonersDaily();
     courtDaily();
+    siegeDaily();
     if (mode === 'map' && save('auto')) TS = TS && TS.l > 0 ? TS : { s: 'Hra automaticky uložená (deň ' + G.day + ').', l: 150 };
     if (G.comp && G.comp.length && Math.random() < .5) { const c = compDef(G.comp[Math.floor(Math.random() * G.comp.length)]); if (c) TS = { s: c.n + ': „' + compLine(c) + '“', l: 320 }; }
     VL.forEach(v => { v.pr = Math.max(0, Math.min(100, (v.pr ?? 40) + (v.st > 0 ? -2 : 1) + (TW[v.t].mine ? taxPr() : 0))); if (TW[v.t].mine)
@@ -1884,16 +1884,19 @@ function startBattleBase(en, al) {
         U.push(mk(0, 'r'));
     for (let i = 0; i < Math.min(G.ent || 0, 3); i++)
         U.push(mk(0, 'n'));
-    if (al)
-        for (let i = 0; i < Math.min(Math.ceil(al.n), 12); i++)
-            U.push(Object.assign(mk(0, 'i'), { ally: 1 }));
+    // kto sa pridá: spojenci hráča a priatelia nepriateľa v okolí (pri obliehaní celý tábor), posádka pri obrane hradu
+    BSIDES = battleSides(en, al);
+    U.push(...sideUnits(BSIDES.allies, 0, ALLY_CAP));
+    if (en.def != null) { const t = TW[en.def], gn = Math.min(30, Math.max(2, t.g)); BSIDES.gUnits = gn; for (let i = 0; i < gn; i++) { const u = mk(0, i % 3 === 2 ? 'a' : 'i', t.f); u.ally = 1; u.garrison = 1; U.push(u); } }
     for (let i = 0; i < en.n; i++)
         U.push(mk(1, en.nz ? 'z' : en.trolls || en.beorn ? 't' : en.spiders ? 'w' : en.kind === 'wolves' ? (i % 3 ? 'w' : 'uI2') : en.kind === 'orcs' ? (i % 7 === 6 ? 't' : i % 4 === 3 ? 'uM1' : 'o') : en.kind === 'deserters' ? (i % 3 === 2 ? 'a' : i % 5 === 4 ? 'c' : 'i') : (i % 3 === 1 && FK[en.f] && FK[en.f].length ? FK[en.f][i % 2] : ek(en.f, i)), en.f));   // miesta: trollovia, Beorn (medveď), pavúky
-    if (en.siege)
-        U.forEach(u => {
-            if (u.t)
-                u.hp = u.mh = u.mh * (1.3 + (en.t.wl || 0) * .15);
-        });
+    U.push(...sideUnits(BSIDES.foes, 1, Math.max(0, FOE_CAP - en.n)));
+    if (en.siege) {
+        const sg = en.t.sg || {}, k = 1.3 + (en.t.wl || 0) * .15 - (sg.tow ? .15 : 0) - (en.sgFood != null && en.sgFood <= 0 ? .1 : 0);   // veža a hlad oslabujú obrancov
+        U.forEach(u => { if (u.t) u.hp = u.mh = u.mh * k; });
+    }
+    if (en.def != null)   // obrana hradu: hradby pomáhajú hráčovej strane
+        U.forEach(u => { if (!u.t) u.hp = u.mh = u.mh * 1.25; });
     mode = 'battle';
     setOrd(G.ord0 || 'a');
     od.style.display = 'flex';
@@ -1905,6 +1908,48 @@ function startBattleBase(en, al) {
     FIELD = battleTerrain(G.x, G.y);   // bojisko podľa miesta na mape (les, rieka, kopec)
     if (BI === 's' && WX.n === 'clear')
         WX = { ...WX, n: 'snow', r: Math.round(WX.r * .85) };
+}
+/** Okruh, z ktorého sa do bitky pridávajú ďalšie armády, a najväčší počet ich vojakov na bojisku. */
+const JOIN_R = 300, ALLY_CAP = 30, FOE_CAP = 70;
+let BSIDES = { allies: [], foes: [] };
+/** Kto sa pridá do bitky (ako vo Warbande): spojenci hráča v okolí, ktorí sú vo vojne s nepriateľom, a armády priateľské
+ *  nepriateľovi. Pri útoku na hrad bojujú všetci spojenci z obliehacieho tábora; pri obrane hradu všetci obliehatelia. */
+function battleSides(en, al) {
+    if (en.ar || en.vil || en.sortie != null) return { allies: [], foes: [] };
+    if (en.siege) { const i = TW.indexOf(en.t); return { allies: en.t.sg ? besiegers(i).filter(e => !hos(e.f, G.fac)) : [], foes: [] }; }
+    if (en.def != null) return { allies: [], foes: en.foes || [] };
+    const near = E.filter(o => o !== en && !o.dead && !o.nz && Math.hypot(o.x - G.x, o.y - G.y) < JOIN_R);
+    const allies = near.filter(o => o.f !== 9 && !hos(o.f, G.fac) && hos(o.f, en.f));
+    if (al && !al.dead && !allies.includes(al)) allies.unshift(al);
+    const foes = en.f === 9 || en.f == null ? [] : near.filter(o => !allies.includes(o) && hos(o.f, G.fac) && (o.f === en.f || AL[en.f][o.f]));
+    return { allies, foes };
+}
+/** Vojaci pridaných armád: každá dostane podiel z limitu podľa svojej sily; jednotka si pamätá svoju armádu (straty po bitke). */
+function sideUnits(armies, team, cap) {
+    const tot = armies.reduce((a, e) => a + e.n, 0), out = [];
+    if (!tot || cap <= 0) return out;
+    armies.forEach(e => {
+        const k = Math.max(1, Math.round(Math.min(cap, tot) * e.n / tot)), fk = FK[e.f] || [];
+        for (let i = 0; i < k; i++) { const u = mk(team, i % 3 === 1 && fk.length ? fk[i % fk.length] : ek(e.f, i), e.f); u.src = e; if (!team) u.ally = 1; out.push(u); }
+    });
+    return out;
+}
+/** Straty pridaných armád a posádky podľa padlých vojakov na bojisku; spojencom sa za pomoc zlepší vzťah. */
+function sideLosses(win, L) {
+    for (const e of BSIDES.allies.concat(BSIDES.foes)) {
+        const us = U.filter(u => u.src === e); if (!us.length) continue;
+        const dead = us.filter(u => u.hp <= 0).length;
+        e.n = Math.max(0, e.n - e.n * dead / us.length * .9);
+        if (BSIDES.foes.includes(e) && win) e.n *= .85;   // porazení pomocníci nepriateľa sa rozpŕchnu
+        if (e.n < 1) e.dead = 1;
+        if (BSIDES.allies.includes(e)) { e.rl = (e.rl || 0) + 4; rl(G.fac, e.f, 2); }
+    }
+    if (L.def != null && BSIDES.gUnits) { const t = TW[L.def], gu = U.filter(u => u.garrison), dead = gu.filter(u => u.hp <= 0).length; t.g = Math.max(2, Math.round(t.g * (1 - dead / gu.length * .9))); }
+    if ((L.siege || L.sortie != null) && L.t) {   // preživší obrancovia sa vrátia za hradby
+        const en = U.filter(u => u.t && !u.src), alive = en.filter(u => u.hp > 0).length;
+        if (L.sortie != null) L.t.g += Math.round(alive * L.n / Math.max(1, en.length));
+        else if (!win) L.t.g = Math.max(3, Math.round(L.t.g * alive / Math.max(1, en.length)));
+    }
 }
 /** Meno jednotky pre tabuľku výsledkov. */
 function unitName(u) {
@@ -1922,6 +1967,9 @@ function battleReport(win) {
     line('Výsledok: ' + (win ? 'víťazstvo' : 'porážka') + ' – ' + (win ? 'tvoja strana' : (LB && LB.nm ? LB.nm : 'nepriateľ')) + ' ovládla bojisko.', '#ffd24a');
     line('Tvoje straty (' + mine.filter(u => u.hp <= 0).length + '/' + mine.length + '): ' + tally(0));
     line('Straty nepriateľa (' + their.filter(u => u.hp <= 0).length + '/' + their.length + '): ' + tally(1));
+    if (BSIDES.allies.length) line('Po tvojom boku bojovali: ' + BSIDES.allies.map(e => e.nm).join(', ') + '.', '#9fe08a');
+    if (BSIDES.gUnits) line('Po tvojom boku bojovala posádka hradu.', '#9fe08a');
+    if (BSIDES.foes.length) line('Nepriateľovi prišli na pomoc: ' + BSIDES.foes.map(e => e.nm).join(', ') + '.', '#ff8a70');
     const best = mine.filter(u => (u.kills || 0) > 0 || (u.dmg || 0) > 0).sort((a, b) => (b.kills || 0) - (a.kills || 0) || (b.dmg || 0) - (a.dmg || 0))[0];
     if (best) line('Najlepší bojovník: ' + unitName(best) + ' – ' + (best.kills || 0) + ' zabití, ' + Math.round(best.dmg || 0) + ' zranení.', '#9fe08a');
     const worst = their.sort((a, b) => (b.kills || 0) - (a.kills || 0))[0];
@@ -1970,19 +2018,17 @@ function startBattle(en, al) {
         U.push(...compUnits());    // spoločníci bojujú ako hrdinovia
     }
     if (en.siege) {
-        const sg = G.sg && G.sg.t === TW.indexOf(en.t) ? G.sg : {};
-        SGB = { gate: 60 + (en.t.wl || 0) * 30, mg: 60 + (en.t.wl || 0) * 30, lad: sg.lad, ram: sg.ram };
+        const sg = en.t.sg || {};
+        SGB = { gate: 60 + (en.t.wl || 0) * 30, mg: 60 + (en.t.wl || 0) * 30, lad: sg.lad, ram: sg.ram, tow: sg.tow };
     }
     else
         SGB = null;
 }
 function endBattle(win) {
     compAfterBattle();
-    if (SGB) {
-        SGB = null;
-        G.sg = null;
-    }
+    SGB = null;
     const L = LB;
+    if (!L.ar) { sideLosses(win, L); if (!win) siegeLost(L); }
     if (L.ar) {   // turnaj v aréne
         mode = 'over';
         od.style.display = 'none';
@@ -2075,12 +2121,21 @@ function endBattle(win) {
                 if (LB.vil)
                     LB.vil.st = 8;
                 if (LB.siege) {
-                    lg('Dobyl si hrad ' + LB.t.n + ' aj s okolitými dedinami.');
-                    captureEvent(LB.t, LB.t.f, G.fac, G.name);
-                    (LB.lords || []).forEach(e => { e.n = Math.max(2, e.n * .4); e.home = null; e.role = 'army'; });   // obrancovia z hradu utekajú zdecimovaní
-                    LB.t.f = G.fac;
-                    LB.t.g = 8;
-                    LB.t.mine = 1;
+                    const ti = TW.indexOf(LB.t), sg = LB.t.sg;
+                    if (sg && sg.lead !== 'G' && sg.f !== G.fac) {   // obliehanie viedla spojenecká frakcia: hrad pripadne jej
+                        const ld = E.find(e => e.id === sg.lead) || null;
+                        siegeCapture(ti, sg.f, (ld ? ld.nm : FN[sg.f]) + ' a ' + G.name, ld);
+                        G.ren += 2; lg('Pomohol si ' + FN[sg.f] + ' dobyť hrad ' + LB.t.n + '.');
+                    } else {
+                        lg('Dobyl si hrad ' + LB.t.n + ' aj s okolitými dedinami.');
+                        siegeCapture(ti, G.fac, G.name, null);
+                        LB.t.g = 8;
+                        LB.t.mine = 1;
+                    }
+                }
+                if (LB.def != null) {   // obrana hradu: obliehatelia sú rozprášení
+                    const t = TW[LB.def]; (LB.foes || []).forEach(e => { e.n = Math.max(2, e.n * .35); if (CP[e.f] === LB.def) CP[e.f] = null; e.mu = null; });
+                    t.sg = null; G.defend = -1; G.ren += 2; rl(G.fac, t.f, 8); lg('Ubránil si hrad ' + t.n + '. Obliehanie je prelomené.');
                 }
                 G.inf = Math.max(0, G.inf - dI);
                 G.arc = Math.max(0, G.arc - U.filter(u => !u.t && u.k === 'a' && u.hp <= 0).length);
@@ -2319,11 +2374,11 @@ function updBattle(dt) {
     for (const u of U) {
         if (u.hp <= 0)
             continue;
-        const gate = SGB.gate <= 0 && u.y > 440 && u.y < 520, lad = SGB.lad && !u.t && LY.some(l => Math.abs(u.y - l) < 22);
-        if (u.x > 990 && u.x < 1050 && !gate && !lad)
+        const gate = SGB.gate <= 0 && u.y > 440 && u.y < 520, lad = SGB.lad && !u.t && LY.some(l => Math.abs(u.y - l) < 22), tow = SGB.tow && !u.t && Math.abs(u.y - 610) < 34;   // veža: široký prechod
+        if (u.x > 990 && u.x < 1050 && !gate && !lad && !tow)
             u.x = u.x < 1020 ? 990 : 1050;
         if (!u.t && !u.h && u.x >= 980 && u.x <= 992) {
-            const py = [480, ...(SGB.lad ? LY : [])].reduce((a, b) => Math.abs(b - u.y) < Math.abs(a - u.y) ? b : a);
+            const py = [480, ...(SGB.lad ? LY : []), ...(SGB.tow ? [610] : [])].reduce((a, b) => Math.abs(b - u.y) < Math.abs(a - u.y) ? b : a);
             u.y += Math.sign(py - u.y) * Math.min(Math.abs(py - u.y), u.sp * dt * 1.2);
         }
         if (u.t && u.x >= 1048 && u.x <= 1056 && SGB.gate <= 0)
@@ -2347,25 +2402,132 @@ function updBattle(dt) {
 </script>
 <script>
 /*
- * Obliehanie: tábor obliehateľov, rebríky, baranidlo a vyhladovanie.
+ * Obliehanie hradov (ako v Mount & Blade: Warband). Stav je uložený priamo v hrade: TW[i].sg, takže sa ukladá spolu s hradmi.
+ *   sg = { f: frakcia útočníkov, d0: deň začiatku, lead: 'G' (vedie hráč) alebo id lorda, w: { lad, ram, tow } odpracovaná práca,
+ *          lad/ram/tow: hotová technika (rebríky, baranidlo, obliehacia veža), build: čo hráč práve stavia, food: dni zásob posádky,
+ *          fail: neúspešné útoky, ask: deň, kedy sa hráča naposledy pýtali na útok }
+ * Technika sa stavia prácou mužov: každý deň pribudne toľko práce, koľko mužov oblieha (najviac 60). Rebríky = 90, baranidlo = 150,
+ * veža = 300 práce (rebríky najskôr za dva dni, veža za päť). Kým nie sú rebríky alebo veža, na hradby sa nedá zaútočiť; AI útočí
+ * najskôr na štvrtý deň, keď má všetku techniku, ktorú si na daný hrad naplánovalo (pevnejšie hradby = aj baranidlo a veža). Posádka počas obliehania nedostáva posily a je
+ * odkázaná na zásoby; keď dôjdu, každý deň časť mužov zomrie od hladu alebo zbehne. Obrancovia môžu podniknúť výpad.
+ * AI lordi (poľné vojsko maršala) oblieha rovnako; keď majú techniku, zaútočia – ak je hráč pri tom, môže sa pridať (alebo brániť).
+ * Okná pre hráča sú v js/ui/siegeui.js.
  */
-function siege(i) {
+const SIEGE_WORK = { lad: 90, ram: 150, tow: 300 }, SIEGE_DAY_WORK = 60, SIEGE_NAME = { lad: 'rebríky', ram: 'baranidlo', tow: 'obliehacia veža' };
+const SIEGE_R = 40 * K;   // okruh obliehacieho tábora okolo hradu
+/** Nové obliehanie hradu i frakciou f (lead = 'G' alebo id lorda). */
+function startSiege(i, f, lead) {
     const t = TW[i];
-    if (!G.sg || G.sg.t !== i)
-        G.sg = { t: i, lad: 0, ram: 0, d: 0 };
-    const s = G.sg;
-    mode = 'town';
-    G.dest = -1;
-    const inside = E.filter(e => e.f === t.f && !e.dead && Math.hypot(e.x - t.x, e.y - t.y) < 15 * K), lordN = Math.round(inside.reduce((a, e) => a + e.n, 0));
-    show('Obliehanie: ' + t.n, 'Posádka ' + t.g + (t.wl ? ', hradby stupeň ' + t.wl : '') + (inside.length ? '. V hrade bráni aj ' + inside.map(e => e.nm).join(', ') + ' s ' + lordN + ' mužmi' : '') + '. Obliehanie trvá ' + s.d + ' dní. Rebríky: ' + (s.lad ? 'pripravené' : 'nie') + ', baranidlo: ' + (s.ram ? 'pripravené' : 'nie') + '. Každý deň obliehania posádka hladuje.');
-    const day = () => { endDay(); worldTick(1); t.g = Math.max(3, t.g - 3 - (t.wl || 0)); s.d++; mode = 'town'; siege(i); };
-    if (!s.lad)
-        btn('Postaviť rebríky (1 deň)', () => { s.lad = 1; day(); });
-    if (!s.ram)
-        btn('Postaviť baranidlo (2 dni)', () => { s.ram = 1; endDay(); worldTick(1); day(); });
-    btn('Vyhladovať posádku (čakať 1 deň)', () => day());
-    btn('Zaútočiť na hradby', () => { ov.classList.add('hide'); startBattle({ n: Math.min(40, Math.max(3, t.g + lordN)), f: t.f, t, siege: 1, lords: inside }); });
-    btn('Zrušiť obliehanie', () => { G.sg = null; ov.classList.add('hide'); mode = 'map'; });
+    t.sg = { f, d0: G.day, lead, w: { lad: 0, ram: 0, tow: 0 }, lad: 0, ram: 0, tow: 0, build: 'lad', food: siegeFood(t), fail: 0 };
+    lg(FN[f] + ' začal obliehať hrad ' + t.n + '.');
+    if (t.mine || t.f === G.fac) TS = { s: 'Hrad ' + t.n + ' je obliehaný! (' + FN[f] + ')', l: 400 };
+    return t.sg;
+}
+/** Zásoby posádky v dňoch: väčší a bohatší hrad vydrží dlhšie, trhovisko pridá. */
+const siegeFood = t => 6 + lvl(t) * 2 + (t.wl || 0) * 2 + (t.bd && t.bd.t ? 3 : 0);
+/** Armády obliehateľov pri hrade i (spojenci frakcie obliehania, nepriatelia hradu). */
+function besiegers(i) {
+    const t = TW[i], s = t.sg; if (!s) return [];
+    return E.filter(e => !e.dead && !e.nz && e.f !== 9 && (e.f === s.f || AL[s.f][e.f]) && hos(e.f, t.f) && Math.hypot(e.x - t.x, e.y - t.y) < SIEGE_R);
+}
+/** Lordi, ktorí bránia hrad i zvnútra (frakcia hradu v jeho bezprostrednej blízkosti). */
+const defenders = i => { const t = TW[i]; return E.filter(e => !e.dead && e.f === t.f && Math.hypot(e.x - t.x, e.y - t.y) < 15 * K); };
+/** Sila obrancov: posádka + lordi vnútri. */
+const defStrength = i => TW[i].g + defenders(i).reduce((a, e) => a + e.n, 0);
+/** Je hráč súčasťou obliehania i (vedie ho alebo sa pridal a stojí pri hrade)? */
+const playerBesieging = i => G.besiege === i && Math.hypot(G.x - TW[i].x, G.y - TW[i].y) < SIEGE_R * 1.3;
+/** Muži obliehateľov (hráčovo vojsko + lordi). */
+const siegeMen = i => besiegers(i).reduce((a, e) => a + e.n, 0) + (playerBesieging(i) ? ar() : 0);
+/** Postup práce na technike k (0–1). */
+const siegeProg = (s, k) => s[k] ? 1 : Math.min(1, (s.w[k] || 0) / SIEGE_WORK[k]);
+/** Dá sa zaútočiť na hradby (sú rebríky alebo veža)? */
+const siegeReady = s => !!(s && (s.lad || s.tow));
+/** Čo stavajú AI obliehatelia: rebríky, potom pri pevnejších hradbách baranidlo a vežu. */
+function aiBuild(t) { const s = t.sg; return !s.lad ? 'lad' : (t.wl || 0) >= 1 && !s.ram ? 'ram' : (t.wl || 0) >= 2 && !s.tow ? 'tow' : null; }
+
+/** Denný prepočet všetkých obliehaní (volá daily2). */
+function siegeDaily() {
+    TW.forEach((t, i) => {
+        const s = t.sg; if (!s) return;
+        if (!hos(t.f, s.f)) { t.sg = null; return; }   // mier alebo hrad zmenil majiteľa inak
+        const bs = besiegers(i), me = playerBesieging(i);
+        if (!bs.length && !me) { lg('Obliehanie hradu ' + t.n + ' sa skončilo – obliehatelia odtiahli.'); t.sg = null; if (G.besiege === i) G.besiege = -1; return; }
+        // práca na technike
+        const men = Math.min(SIEGE_DAY_WORK, siegeMen(i)), k = s.lead === 'G' ? s.build : aiBuild(t);
+        if (k && !s[k]) {
+            s.w[k] = (s.w[k] || 0) + men;
+            if (s.w[k] >= SIEGE_WORK[k]) { s[k] = 1; if (s.lead === 'G' || me) TS = { s: 'Pri ' + t.n + ' je hotová technika: ' + SIEGE_NAME[k] + '.', l: 320 }; if (s.lead === 'G') { s.build = !s.lad ? 'lad' : !s.ram ? 'ram' : !s.tow ? 'tow' : null; } }
+        }
+        // zásoby posádky a hlad
+        s.food--;
+        if (s.food <= 0) { const lost = Math.max(1, Math.ceil(t.g * .12)); t.g = Math.max(2, t.g - lost); if (me) TS = { s: 'V ' + t.n + ' došli zásoby: posádka hladuje (−' + lost + ' mužov).', l: 300 }; }
+        // výpad obrancov
+        const D = defStrength(i), A = siegeMen(i);
+        if (D > A * .7 && t.g >= 8 && Math.random() < .2) {
+            if (me) { SIEGE_EVENT = { kind: 'sortie', i }; return; }
+            const kill = Math.min(A * .1, D * .15); bs.forEach(e => e.n = Math.max(2, e.n - kill / bs.length)); t.g = Math.max(3, t.g - Math.ceil(kill * .6));
+        }
+        // AI útok, keď je technika pripravená a hráč obliehanie nevedie
+        if (s.lead !== 'G' && siegeReady(s) && !aiBuild(t) && G.day - s.d0 >= 3 && bs.length) {
+            const pd = Math.hypot(G.x - t.x, G.y - t.y), near = pd < SIEGE_R * 1.6 && !G.captive;
+            const withAtt = near && !hos(G.fac, s.f) && hos(G.fac, t.f), withDef = near && (G.defend === i || (!hos(G.fac, t.f) && hos(G.fac, s.f) && pd < 20 * K));
+            if ((withAtt || withDef) && s.ask !== G.day) { s.ask = G.day; SIEGE_EVENT = { kind: withAtt ? 'assault' : 'defend', i }; return; }
+            siegeAssaultAI(i);
+        }
+        // príliš slabé obliehanie sa rozpadne
+        if (t.sg && s.lead !== 'G' && A < D * .45) { lg(FN[s.f] + ' zrušil obliehanie hradu ' + t.n + ' – obrancovia sú príliš silní.'); t.sg = null; if (CP[s.f] === i) CP[s.f] = null; if (G.besiege === i) G.besiege = -1; }
+    });
+}
+/** Udalosť obliehania, ktorá čaká na okno hráča (útok, obrana, výpad); spracuje ju updMap, keď je mapa voľná. */
+let SIEGE_EVENT = null;
+
+/** Útok AI na hradby (bez hráča): sila útočníkov s technikou proti obrancom za hradbami. */
+function siegeAssaultAI(i) {
+    const t = TW[i], s = t.sg, bs = besiegers(i); if (!bs.length) return;
+    const A = bs.reduce((a, e) => a + e.n, 0) * (s.tow ? 1.3 : 1) * (s.ram && (t.wl || 0) ? 1.1 : 1);
+    const D = defStrength(i) * (1.5 + .2 * (t.wl || 0)) * (s.food <= 0 ? .8 : 1);
+    const lead = bs.find(e => e.id === s.lead) || bs.reduce((a, b) => b.n > a.n ? b : a);
+    if (A * (.8 + Math.random() * .4) > D) {
+        bs.forEach(e => e.n = Math.max(3, e.n - D * .35 / bs.length));
+        siegeCapture(i, lead.f, lead.nm, lead);
+    } else {
+        bs.forEach(e => e.n = Math.max(3, e.n - A * .15 / bs.length)); t.g = Math.max(3, Math.round(t.g * .8));
+        s.fail++; mst(s.f).losses++;
+        lg('Útok ' + FN[s.f] + ' na hradby ' + t.n + ' bol odrazený.');
+        if (s.fail >= 3) { lg(FN[s.f] + ' po troch neúspešných útokoch zrušil obliehanie hradu ' + t.n + '.'); t.sg = null; if (CP[s.f] === i) CP[s.f] = null; if (G.besiege === i) G.besiege = -1; }
+    }
+}
+/** Dobytie hradu i frakciou f (who = meno dobyvateľa, e = lord alebo null pre hráča). Spoločné pre AI aj hráča. */
+function siegeCapture(i, f, who, e) {
+    const t = TW[i], oldF = t.f;
+    captureEvent(t, oldF, f, who); mst(f).wins++; courtEvent(f, 'won'); courtEvent(oldF, 'lost');
+    defenders(i).forEach(o => { o.n = Math.max(2, o.n * .4); o.home = null; o.role = 'army'; });   // obrancovia utekajú zdecimovaní
+    E.filter(o => o.home === i && o.f !== f).forEach(o => { o.n = Math.max(2, o.n * .5); o.home = null; });
+    // podiel na koristi pre hráča, ak bol pri tom na strane útočníkov
+    if (e && (G.besiege === i || (G.join && G.join.ci === i)) && Math.hypot(G.x - t.x, G.y - t.y) < SIEGE_R * 1.3) { G.ren += 3; G.gold += 60; e.rl = (e.rl || 0) + 6; lg('Za účasť na obliehaní si dostal podiel na koristi (60 zlata) a slávu.'); G.join = null; }
+    if (G.defend === i) G.defend = -1;
+    if (G.besiege === i) G.besiege = -1;
+    t.lord = 0; t.f = f; t.g = 5; t.mine = 0; t.wl = 0; t.sg = null;
+    if (CP[f] === i) CP[f] = null;
+    if (e) e.mu = null;
+}
+/** Hráč prehral bitku pri obliehaní: útok na hradby zlyhal, bránený hrad padol, alebo výpad rozprášil jeho tábor. */
+function siegeLost(L) {
+    const i = L.siege ? TW.indexOf(L.t) : L.def != null ? L.def : L.sortie != null ? L.sortie : -1;
+    if (i < 0) return;
+    const t = TW[i], s = t.sg, bs = besiegers(i);
+    if (L.def != null) {
+        G.defend = -1;
+        if (s && bs.length) { const ld = bs.reduce((a, b) => b.n > a.n ? b : a); siegeCapture(i, s.f, ld.nm, ld); }
+        return;
+    }
+    G.besiege = -1;
+    if (!s) return;
+    if (L.siege) s.fail = (s.fail || 0) + 1;
+    if (s.lead === 'G') {
+        if (!bs.length) { t.sg = null; lg('Obliehanie hradu ' + t.n + ' sa skončilo tvojou porážkou.'); }
+        else s.lead = bs.reduce((a, b) => b.n > a.n ? b : a).id;
+    }
 }
 
 </script>
@@ -4689,7 +4851,9 @@ function upd() {
         FN[6] = G.kn;
         BF[6] = G.kc;
     }
-    hud.innerHTML += '<span>Česť <b>' + (G.hon || 0) + '</b></span><span>Strach <b>' + (G.fear || 0) + '</b></span>' + (G.camp ? '<span><b>Tábor</b></span>' : '');
+    hud.innerHTML += '<span>Česť <b>' + (G.hon || 0) + '</b></span><span>Strach <b>' + (G.fear || 0) + '</b></span>' + (G.camp ? '<span><b>Tábor</b></span>' : '')
+        + (G.besiege >= 0 && TW[G.besiege] ? '<span>Obliehanie <b>' + TW[G.besiege].n + '</b></span>' : '') + (G.defend >= 0 && TW[G.defend] ? '<span>Obrana <b>' + TW[G.defend].n + '</b></span>' : '');
+    if (typeof timeBtn !== 'undefined') { timeBtn.style.display = waiting() ? '' : 'none'; timeBtn.textContent = 'Čas ×' + (G.tmul || 1); }
     if (G.king && !G.kn && !KD) {
         KD = 1;
         setTimeout(kingDlg, 0);
@@ -4786,8 +4950,16 @@ function town(i) {
     G.dest = -1;
     mode = 'town';
     if (hos(t.f, G.fac)) {
-        show(t.n + ' (' + FN[t.f] + ')', 'Nepriateľský hrad. Garnizón: ' + t.g + ' mužov. Pri dobývaní sa bránia o 30 % silnejšie.');
-        btn('Obliehať hrad', () => siege(i), 0, 'ram');
+        if (G.besiege === i && t.sg) return siegeMenu(i);
+        const sg = t.sg, ally = sg && !hos(sg.f, G.fac);
+        show(t.n + ' (' + FN[t.f] + ')', 'Nepriateľský hrad. Posádka: ' + t.g + ' mužov' + (t.wl ? ', hradby stupeň ' + t.wl : '') + '. Za hradbami sa bránia oveľa silnejšie; na útok treba rebríky alebo obliehaciu vežu.' + (sg ? ' Hrad práve oblieha ' + FN[sg.f] + ' (' + (G.day - sg.d0 + 1) + '. deň).' : ''));
+        if (!sg || ally) btn(ally ? 'Pridať sa k obliehaniu (' + FN[sg.f] + ')' : 'Obliehať hrad (postaviť tábor)', () => siege(i), 0, 'ram');
+        btn('Odísť', () => { ov.classList.add('hide'); mode = 'map'; }, 0, 'door');
+        return;
+    }
+    if (t.sg && hos(t.sg.f, G.fac) && G.defend !== i) {   // spojenecký hrad v obliehaní: hráč môže vstúpiť a brániť ho
+        show(t.n + ' – v obliehaní', 'Hrad oblieha ' + FN[t.sg.f] + ' (' + Math.round(siegeMen(i)) + ' mužov, ' + (G.day - t.sg.d0 + 1) + '. deň). Posádka ' + t.g + ', zásoby ' + (t.sg.food > 0 ? 'na ' + t.sg.food + ' dní' : 'došli') + '. Obliehatelia stavajú: ' + (aiBuild(t) ? SIEGE_NAME[aiBuild(t)] + ' (' + pct(siegeProg(t.sg, aiBuild(t))) + ')' : 'technika je hotová') + '.');
+        btn('Vstúpiť do hradu a brániť ho', () => defendCastle(i), 0, 'shield');
         btn('Odísť', () => { ov.classList.add('hide'); mode = 'map'; }, 0, 'door');
         return;
     }
@@ -4938,6 +5110,97 @@ function questLog() {
 }
 
 /** Výber pozície na uloženie. */
+
+</script>
+<script>
+/*
+ * Okná obliehania pre hráča (logika v js/sim/siege.js):
+ *   siege(i)      – „Obliehať hrad“: založí obliehanie, alebo sa pridá k obliehaniu spojencov, a otvorí prehľad
+ *   siegeMenu(i)  – stav obliehania (deň, posádka, zásoby, technika, kto oblieha) a voľby: čo stavať, čakať, zaútočiť, odtiahnuť
+ *   defendCastle(i) – vstúpiť do spojeneckého obliehaného hradu a brániť ho, keď útočníci zaútočia
+ *   siegeEventUI() – výzva, keď AI spojenci útočia (pridať sa), nepriateľ útočí na hrad, ktorý bránime, alebo posádka robí výpad
+ * Počas obliehania čas plynie ako v tábore (dá sa zrýchliť); klik na mapu ďaleko od hradu obliehanie opustí.
+ */
+const pct = v => Math.round(v * 100) + ' %';
+function siege(i) {
+    const t = TW[i];
+    let s = t.sg;
+    if (s && hos(s.f, G.fac)) { msg('Hrad ' + t.n + ' už oblieha ' + FN[s.f] + ', s ktorým si vo vojne. Najprv musíš poraziť ich vojsko.', () => town(i)); return; }
+    if (!s) s = startSiege(i, G.fac === 6 && !G.kn ? 6 : G.fac, 'G');
+    else if (s.lead !== 'G') lg('Pridal si sa k obliehaniu hradu ' + t.n + ' (' + FN[s.f] + ').');
+    G.besiege = i; G.defend = -1; G.camp = 0;
+    G.x = G.tx = t.x - 70; G.y = G.ty = t.y + 50;   // tábor pred bránou
+    siegeMenu(i);
+}
+function siegeMenu(i) {
+    const t = TW[i], s = t.sg;
+    if (!s) { G.besiege = -1; mode = 'map'; ov.classList.add('hide'); return; }
+    mode = 'town'; G.dest = -1;
+    const bs = besiegers(i), ins = defenders(i), lead = s.lead === 'G' ? 'ty' : (E.find(e => e.id === s.lead) || {}).nm || FN[s.f];
+    show('Obliehanie: ' + t.n, (s.lead === 'G' ? 'Obliehanie vedieš ty' : 'Obliehanie vedie ' + lead) + ' – ' + (G.day - s.d0 + 1) + '. deň. Posádka ' + t.g + (t.wl ? ', hradby stupeň ' + t.wl : '') + (ins.length ? '; v hrade sú aj ' + ins.map(e => e.nm + ' (' + Math.ceil(e.n) + ')').join(', ') : '') + '. Zásoby posádky: ' + (s.food > 0 ? 'na ' + s.food + ' dní' : 'došli – posádka hladuje') + '.');
+    row('Obliehatelia: tvoje vojsko (' + ar() + ')' + (bs.length ? ', ' + bs.map(e => e.nm + ' (' + Math.ceil(e.n) + ')').join(', ') : '') + ' – spolu ' + Math.round(siegeMen(i)) + ' mužov proti ' + Math.round(defStrength(i)) + ' obrancom.', { icon: { canvas: Icons.canvas('sword'), key: 'ico_ui_sword' } });
+    row('Technika: ' + ['lad', 'ram', 'tow'].map(k => SIEGE_NAME[k] + ' ' + (s[k] ? 'hotové' : pct(siegeProg(s, k)))).join(', ') + '. Za deň pribudne práca ' + Math.min(SIEGE_DAY_WORK, Math.round(siegeMen(i))) + ' (rebríky ' + SIEGE_WORK.lad + ', baranidlo ' + SIEGE_WORK.ram + ', veža ' + SIEGE_WORK.tow + ').', { dim: 1 });
+    if (s.lead === 'G') {
+        const days = k => Math.max(1, Math.ceil((SIEGE_WORK[k] - (s.w[k] || 0)) / Math.max(1, Math.min(SIEGE_DAY_WORK, siegeMen(i)))));
+        [['lad', 'Stavať rebríky', 'ladder'], ['ram', 'Stavať baranidlo (rýchlejšie rozbije bránu)', 'ram'], ['tow', 'Stavať obliehaciu vežu (široký prechod cez hradby, obrancovia slabší)', 'castle']].forEach(([k, n, ic]) => {
+            if (s[k]) return;
+            const b = btn((s.build === k ? '▶ ' : '') + n + ' (≈' + days(k) + ' d.)', () => { s.build = k; siegeMenu(i); }, 0, ic);
+            if (s.build === k) select(b);
+        });
+    } else row('Techniku stavia ' + lead + ': ' + (aiBuild(t) ? SIEGE_NAME[aiBuild(t)] : 'všetko je hotové') + '. Keď bude pripravená, zaútočí – môžeš sa pridať.', { dim: 1 });
+    btn('Čakať v tábore (čas plynie, dá sa zrýchliť)', () => { ov.classList.add('hide'); mode = 'map'; upd(); }, 0, 'tent');
+    btn(siegeReady(s) ? 'Zaútočiť na hradby' : 'Zaútočiť na hradby (najprv postav rebríky alebo vežu)', () => siegeBattle(i), !siegeReady(s), 'attack');
+    btn('Odtiahnuť od hradu', () => { leaveSiege(i); ov.classList.add('hide'); mode = 'map'; }, 0, 'back');
+}
+/** Hráč opúšťa obliehanie; ak ho viedol a nikto iný neoblieha, obliehanie skončí. */
+function leaveSiege(i) {
+    const t = TW[i], s = t.sg; G.besiege = -1;
+    if (s && s.lead === 'G') {
+        const bs = besiegers(i);
+        if (!bs.length) { t.sg = null; lg('Zrušil si obliehanie hradu ' + t.n + '.'); }
+        else { s.lead = bs.reduce((a, b) => b.n > a.n ? b : a).id; lg('Odtiahol si od ' + t.n + '; obliehanie preberá ' + (E.find(e => e.id === s.lead) || {}).nm + '.'); }
+    } else if (s) lg('Odtiahol si od obliehaného hradu ' + t.n + '.');
+    upd();
+}
+/** Útok na hradby: obrancovia (posádka + lordi vnútri) proti hráčovi a všetkým spojencom v obliehacom tábore. */
+function siegeBattle(i) {
+    const t = TW[i], s = t.sg || {}, ins = defenders(i), lordN = Math.round(ins.reduce((a, e) => a + e.n, 0));
+    ov.classList.add('hide');
+    startBattle({ n: Math.min(60, Math.max(3, t.g + lordN)), f: t.f, t, siege: 1, lords: ins, sgFood: s.food });
+}
+/** Vstup do spojeneckého obliehaného hradu: hráč čaká vnútri a bojuje, keď nepriateľ zaútočí. */
+function defendCastle(i) {
+    const t = TW[i]; G.defend = i; G.besiege = -1; G.camp = 0;
+    G.x = G.tx = t.x; G.y = G.ty = t.y + 10;
+    lg('Vstúpil si do obliehaného hradu ' + t.n + ' a pomáhaš ho brániť.');
+    msg('Si za hradbami ' + t.n + '. Keď obliehatelia zaútočia, budeš brániť hradby spolu s posádkou. Čas plynie ako v tábore (dá sa zrýchliť); klik na mapu hrad opustí.', () => { ov.classList.add('hide'); mode = 'map'; upd(); });
+}
+/** Obrana hradu: útočníci z tábora proti hráčovi a posádke (posádka bojuje po boku hráča, hradby jej dodávajú silu). */
+function defendBattle(i) {
+    const t = TW[i], s = t.sg, bs = besiegers(i), A = Math.round(bs.reduce((a, e) => a + e.n, 0));
+    ov.classList.add('hide');
+    startBattle({ nm: 'Obliehatelia ' + t.n, n: Math.min(60, Math.max(4, A)), f: s.f, def: i, foes: bs, t });
+}
+/** Výzva hráčovi pri udalosti obliehania (volá updMap, keď je mapa voľná). */
+function siegeEventUI() {
+    const ev = SIEGE_EVENT; SIEGE_EVENT = null;
+    const t = TW[ev.i], s = t.sg; if (!s) return;
+    mode = 'town';
+    if (ev.kind === 'assault') {
+        const lead = (E.find(e => e.id === s.lead) || besiegers(ev.i)[0] || {}).nm || FN[s.f];
+        show('Útok na ' + t.n, lead + ' dáva rozkaz k útoku na hradby. Technika je pripravená (' + ['lad', 'ram', 'tow'].filter(k => s[k]).map(k => SIEGE_NAME[k]).join(', ') + '). Obrancov je asi ' + Math.round(defStrength(ev.i)) + ', útočníkov ' + Math.round(siegeMen(ev.i) + (playerBesieging(ev.i) ? 0 : ar())) + '.');
+        btn('Pridať sa k útoku', () => { G.besiege = ev.i; siegeBattle(ev.i); }, 0, 'attack');
+        btn('Zostať bokom (útočia bez teba)', () => { siegeAssaultAI(ev.i); ov.classList.add('hide'); mode = 'map'; upd(); }, 0, 'back');
+    } else if (ev.kind === 'defend') {
+        show('Nepriateľ útočí na ' + t.n, FN[s.f] + ' sa ženie na hradby s ' + Math.round(siegeMen(ev.i)) + ' mužmi. Posádka (' + t.g + ') čaká na tvoj rozkaz.');
+        btn('Brániť hradby', () => defendBattle(ev.i), 0, 'shield');
+        btn('Nechať posádku brániť samu', () => { siegeAssaultAI(ev.i); if (G.defend === ev.i && TW[ev.i].f !== G.fac && hos(TW[ev.i].f, G.fac)) G.defend = -1; ov.classList.add('hide'); mode = 'map'; upd(); }, 0, 'back');
+    } else if (ev.kind === 'sortie') {
+        const n = Math.max(4, Math.round(t.g * .6));
+        show('Výpad posádky ' + t.n, 'Brána sa otvorila a ' + n + ' obrancov vyráža na tvoj tábor!');
+        btn('Do zbrane!', () => { ov.classList.add('hide'); t.g = Math.max(2, t.g - n); startBattle({ nm: 'Výpad posádky ' + t.n, n, f: t.f, sortie: ev.i, t }); }, 0, 'attack');
+    }
+}
 
 </script>
 <script>
@@ -5864,9 +6127,15 @@ wrapEl.appendChild(tb);
         }]].forEach(([n, fn]) => { const b = document.createElement('button'); b.textContent = n; b.style.cssText = 'font-size:.8rem;padding:.3rem .55rem'; b.onclick = fn; tb.appendChild(b); });
 tb.style.flexWrap = 'wrap';
 tb.style.maxWidth = '70%';
+/** Rýchlosť času pri čakaní: ×1 → ×3 → ×8 (viditeľné len v tábore, pri obliehaní, obrane hradu a v zajatí). */
+const timeBtn = document.createElement('button');
+timeBtn.style.cssText = 'font-size:.8rem;padding:.3rem .55rem;display:none';
+timeBtn.onclick = () => { if (!G) return; G.tmul = { 1: 3, 3: 8, 8: 1 }[G.tmul || 1]; upd(); };
 [['Tábor', function () { if (!G || mode !== 'map')
             return; G.camp = !G.camp; if (!G.camp) G.stay = null; this.textContent = G.camp ? 'Zrušiť tábor' : 'Tábor'; upd(); }], ['Encyklopédia', () => { if (G && mode === 'map')
             ency(); }], ['Celá obrazovka', () => fsc()]].forEach(([n, fn]) => { const b = document.createElement('button'); b.textContent = n; b.style.cssText = 'font-size:.8rem;padding:.3rem .55rem'; b.onclick = fn; tb.appendChild(b); });
+
+tb.appendChild(timeBtn);
 
 </script>
 <script>
@@ -6337,6 +6606,8 @@ const Icons = (() => {
     draw.gear = c => { c.fillStyle = steel; c.beginPath(); for (let k = 0; k < 16; k++) { const a = k * Math.PI / 8, r = k % 2 ? 6.5 : 9; c.lineTo(12 + Math.cos(a) * r, 12 + Math.sin(a) * r); } c.closePath(); c.fill(); c.fillStyle = '#2a2420'; c.beginPath(); c.arc(12, 12, 3, 0, 7); c.fill(); };
     draw.quest = draw.scroll;
     draw.camp = draw.tent;
+    draw.ladder = c => { c.strokeStyle = '#8a6a3a'; c.lineWidth = 2.2; c.beginPath(); c.moveTo(7, 21); c.lineTo(10, 3); c.moveTo(14, 21); c.lineTo(17, 3); c.stroke(); c.lineWidth = 1.8; for (let y = 6; y < 20; y += 4) { const k = (21 - y) / 18 * 3; c.beginPath(); c.moveTo(7 + k, y); c.lineTo(14 + k, y); c.stroke(); } };
+    draw.time = c => { c.fillStyle = gold; c.fillRect(6, 3, 12, 2); c.fillRect(6, 19, 12, 2); c.fillStyle = '#d8c8a0'; path(c, [[7, 5], [17, 5], [12, 12], [17, 19], [7, 19], [12, 12]], true); c.fill(); c.fillStyle = '#c8902e'; path(c, [[9, 7], [15, 7], [12, 11]], true); c.fill(); path(c, [[12, 14], [16, 19], [8, 19]], true); c.fill(); };
     draw.village = c => { c.fillStyle = '#d8c8a0'; c.fillRect(5, 11, 14, 9); c.fillStyle = '#8a5a30'; path(c, [[3, 12], [12, 4], [21, 12]], true); c.fill(); c.fillStyle = '#4a2a10'; c.fillRect(10, 14, 4, 6); c.fillStyle = '#8ab0d8'; c.fillRect(15, 13, 3, 3); c.fillStyle = steel2; c.fillRect(15, 5, 2.5, 5); };
     draw.shield = c => { c.fillStyle = '#2a4a7a'; path(c, [[12, 3], [20, 6], [19, 14], [12, 21], [5, 14], [4, 6]], true); c.fill(); c.strokeStyle = gold; c.lineWidth = 1.5; c.stroke(); c.fillStyle = gold; c.fillRect(11, 6, 2, 12); c.fillRect(7, 10, 10, 2); shine(c, 9, 7, 2.5); };
     draw.talk = c => { c.fillStyle = ink; c.beginPath(); c.ellipse(12, 11, 9, 7, 0, 0, 7); c.fill(); path(c, [[7, 16], [6, 21], [12, 17]], true); c.fill(); c.fillStyle = gold2; for (const x of [8, 12, 16]) { c.beginPath(); c.arc(x, 11, 1.3, 0, 7); c.fill(); } };
@@ -6363,12 +6634,12 @@ const Icons = (() => {
     }
     const has = name => !!draw[name];
     /** Ikona podľa textu v lište alebo na tlačidle. */
-    const HUD = [[/^Zlato/, 'coins'], [/^Pešiaci/, 'sword'], [/^Jazdci/, 'horse'], [/^Lukostrelci/, 'bow'], [/^Elfovia/, 'leaf'], [/^Rohirimi/, 'horn'], [/^Veteráni/, 'medal'], [/^Zajatci/, 'chain'], [/^Skúsenosti/, 'book'], [/^Kapitola/, 'scroll'], [/^Zdravie/, 'heart'], [/^Úroveň/, 'level'], [/^Body/, 'crown'], [/^Sláva/, 'star'], [/^Deň/, 'sun'], [/^Elitné/, 'elite'], [/prsteň/i, 'ring'], [/^Česť/, 'honor'], [/^Strach/, 'skull'], [/^Tábor/, 'tent'], [/^Voz/, 'cart'], [/^Úlohy/, 'quest'], [/^Družina/, 'group']];
+    const HUD = [[/^Zlato/, 'coins'], [/^Pešiaci/, 'sword'], [/^Jazdci/, 'horse'], [/^Lukostrelci/, 'bow'], [/^Elfovia/, 'leaf'], [/^Rohirimi/, 'horn'], [/^Veteráni/, 'medal'], [/^Zajatci/, 'chain'], [/^Skúsenosti/, 'book'], [/^Kapitola/, 'scroll'], [/^Zdravie/, 'heart'], [/^Úroveň/, 'level'], [/^Body/, 'crown'], [/^Sláva/, 'star'], [/^Deň/, 'sun'], [/^Elitné/, 'elite'], [/prsteň/i, 'ring'], [/^Česť/, 'honor'], [/^Strach/, 'skull'], [/^Tábor/, 'tent'], [/^Obliehanie/, 'ram'], [/^Obrana/, 'shield'], [/^Čas/, 'time'], [/^Voz/, 'cart'], [/^Úlohy/, 'quest'], [/^Družina/, 'group']];
     const BTN = { '−': 'zoomout', '+': 'zoomin', 'Prehľad': 'map', 'Denník': 'diary', 'Úlohy': 'quest', 'Družina': 'group', 'Inventár': 'bag', 'Štatistiky': 'chart', 'Legenda': 'legend', 'Trofeje': 'trophy', 'Úspechy': 'achievement', 'Návod': 'help', 'Zvuk': 'sound', 'Tábor': 'tent', 'Encyklopédia': 'encyclopedia', 'Celá obrazovka': 'fullscreen', '1 Útok': 'attack', '2 Držať': 'hold', '3 Ústup': 'retreat', '4 Šík': 'formation' };
     const DLG = [[/^Späť/, 'back'], [/^(Odísť|Zavrieť|Pokračovať na mapu)/, 'door'], [/^(Uložiť|Načítať|Pozícia|Automatick)/, 'chest'], [/^Trh/, 'scales'], [/^Krčma/, 'mug'], [/^Kováč/, 'anvil'], [/^Verbovanie/, 'recruit'], [/^Obliehať|^Zaútočiť/, 'ram'], [/^(Prijať úlohu|Úloha)/, 'quest'], [/^Hovoriť|^Rozhovor|^Porozprávať/, 'group'], [/^Kúpiť|^Predať/, 'coins'], [/^Vyrabovať/, 'fire'], [/^Diplomacia/, 'honor'], [/^Hrdina/, 'hero'], [/^Turnaj/, 'attack'], [/^Správa hradu/, 'castle'], [/^Dvor/, 'court'], [/^Vojsko,/, 'rest'], [/^Nová hra|^Vyraziť/, 'sword']];
     const forDialog = text => { const m = DLG.find(([re]) => re.test(text.trim())); return m ? m[1] : null; };
     const forHud = (text, first) => { const m = HUD.find(([re]) => re.test(text)); return m ? m[1] : first ? 'helm' : null; };
-    const forButton = text => { const t = text.trim(); if (/^Zvuk: vyp/.test(t)) return 'soundoff'; if (/^Zvuk/.test(t)) return 'sound'; if (/tábor|pobyt/i.test(t)) return 'tent'; return BTN[t] || null; };
+    const forButton = text => { const t = text.trim(); if (/^Zvuk: vyp/.test(t)) return 'soundoff'; if (/^Zvuk/.test(t)) return 'sound'; if (/tábor|pobyt/i.test(t)) return 'tent'; if (/^Čas/.test(t)) return 'time'; if (/^Obliehanie/.test(t)) return 'ram'; return BTN[t] || null; };
     return { tex, canvas, has, forHud, forButton, forDialog, SZ };
 })();
 
@@ -7042,7 +7313,13 @@ class MapScene extends Phaser.Scene {
 
     update(time, delta) {
         if (!G) return;
-        if (mode === 'map') updMap(Math.min(2, delta / 16.67));
+        if (mode === 'map') {
+            // čakanie (tábor, obliehanie, obrana): čas sa dá zrýchliť – svet sa v jednom snímku prepočíta viackrát
+            if (!this.spaceKey) this.spaceKey = this.input.keyboard.addKey('SPACE', false);
+            HOLD_FAST = this.spaceKey.isDown && ov.classList.contains('hide');
+            const n = timeMul(), dt = Math.min(2, delta / 16.67);
+            for (let k = 0; k < n && mode === 'map'; k++) updMap(dt);
+        }
         if (mode === 'battle') { this.scene.start('Battle'); return; }
 
         const c = this.cameras.main;
@@ -7125,6 +7402,31 @@ class MapScene extends Phaser.Scene {
         this.heroCrown.setVisible(!!G.king).setPosition(G.x + 17, G.y - 46);
     }
 
+    /** Obliehací tábor: stany a ohne okolo hradu, rebríky, baranidlo a veža podľa postupu, popis s dňom a zásobami. */
+    drawSieges(g) {
+        if (!this.sgTxt) this.sgTxt = new Map();
+        TW.forEach((t, i) => {
+            const s = t.sg; let tx = this.sgTxt.get(i);
+            if (!s) { if (tx) { tx.destroy(); this.sgTxt.delete(i); } return; }
+            if (!tx) { tx = this.add.text(0, 0, '', { fontFamily: 'sans-serif', fontSize: '11px', fontStyle: 'bold', color: '#ffd27a', backgroundColor: 'rgba(40,12,8,.82)', padding: { x: 5, y: 1 }, resolution: RES }).setOrigin(.5, 0).setDepth(9003); this.mmCam.ignore(tx); this.sgTxt.set(i, tx); }
+            const parts = ['lad', 'ram', 'tow'].filter(k => s[k]).map(k => SIEGE_NAME[k]);
+            const k = s.lead === 'G' ? s.build : aiBuild(t);
+            tx.setPosition(t.x, t.y + 44).setText('Obliehanie ' + (G.day - s.d0 + 1) + '. deň · ' + (parts.length ? parts.join(', ') : 'stavia ' + (k ? SIEGE_NAME[k] + ' ' + pct(siegeProg(s, k)) : '')) + ' · zásoby ' + Math.max(0, s.food) + ' d.');
+            const col = BF[s.f] ? Phaser.Display.Color.HexStringToColor(BF[s.f]).color : 0xc8a870;
+            for (let a = 0; a < 7; a++) {   // stany v kruhu pred hradbami
+                const an = a / 7 * 6.283 + .4, x = t.x + Math.cos(an) * 30 * K * .55, y = t.y + Math.sin(an) * 18 * K * .55 + 10;
+                g.fillStyle(0x000000, .25).fillEllipse(x, y + 7, 26, 8);
+                g.fillStyle(0xd8c8a0, 1).fillTriangle(x - 12, y + 6, x, y - 12, x + 12, y + 6); g.fillStyle(0xa8946a, 1).fillTriangle(x, y - 12, x + 12, y + 6, x, y + 6);
+                g.fillStyle(col, 1).fillRect(x - 1, y - 20, 2, 9).fillRect(x + 1, y - 20, 6, 4);
+                if (a % 2 === 0) { const fx = x + 16, fl = 3 + Math.sin(tm / 2 + a) * 1.5; g.fillStyle(0xff7a20, .9).fillTriangle(fx - 3, y + 6, fx, y - fl * 2, fx + 3, y + 6); g.fillStyle(0xffd060, .25).fillCircle(fx, y + 3, 10); }
+            }
+            const bx = t.x - 52, by = t.y + 20;
+            if (s.lad) { g.lineStyle(2, 0x8a6a3a, 1); for (const o of [0, 10]) { g.lineBetween(bx + o, by, bx + o + 14, by - 30); g.lineBetween(bx + o + 6, by, bx + o + 20, by - 30); } }
+            if (s.ram) { g.fillStyle(0x6b4a2e, 1).fillRect(t.x + 20, t.y + 22, 26, 8); g.fillStyle(0x3a2a1a, 1).fillTriangle(t.x + 16, t.y + 22, t.x + 33, t.y + 12, t.x + 50, t.y + 22); }
+            if (s.tow) { g.fillStyle(0x6b4a2e, 1).fillRect(t.x + 46, t.y - 26, 16, 40); g.lineStyle(1.5, 0x3a2a1a, 1).strokeRect(t.x + 46, t.y - 26, 16, 40); g.lineBetween(t.x + 46, t.y - 26, t.x + 62, t.y + 14); }
+        });
+    }
+
     drawFx() {
         const g = this.fx; g.clear();
         const moving = Math.hypot(G.tx - G.x, G.ty - G.y) > 3;
@@ -7181,7 +7483,8 @@ class MapScene extends Phaser.Scene {
             else if (lvl(v) >= 2) { for (let k = 0; k < 3; k++) { const sm = (tm * .35 + k * 20 + i * 7) % 60; g.fillStyle(0xd8d0c8, .22 - sm / 300).fillCircle(v.x + 6 + Math.sin(sm * .12 + k + i) * 4, v.y - 12 - sm * .55, 2.2 + sm * .08); } } } }
         // prach pod armádami na pochode
         for (const e of E) if ((e.vx || e.vy) && Math.hypot(e.x - G.x, e.y - G.y) < 900) for (let k = 1; k < 3 + Math.min(3, e.n / 10); k++) g.fillStyle(regionAt(e.x, e.y) === 's' ? 0xffffff : 0xc8b48c, .16 - k * .03).fillCircle(e.x - e.vx * k * 9 + Math.sin(tm / 3 + k) * 2, e.y - e.vy * k * 9 + 8, 4 + k * .4);
-        if (G.camp) {
+        this.drawSieges(g);
+        if (G.camp || G.besiege >= 0) {
             g.fillStyle(0xc8a870, 1).fillTriangle(G.x - 30, G.y + 6, G.x - 18, G.y - 12, G.x - 6, G.y + 6);
             g.fillStyle(0xff9a3a, 1).fillCircle(G.x + 26, G.y + 4, 3 + Math.random() * 1.5);
         }
@@ -7411,6 +7714,13 @@ class BattleScene extends Phaser.Scene {
             if (SGB.lad) for (const l of [250, 710]) {
                 g.lineStyle(3, 0x7a5a30, 1); g.lineBetween(985, l - 10, 1045, l - 10); g.lineBetween(985, l + 10, 1045, l + 10);
                 g.lineStyle(2, 0x7a5a30, 1); for (let k = 990; k < 1045; k += 9) g.lineBetween(k, l - 10, k, l + 10);
+            }
+            if (SGB.tow) {   // obliehacia veža pri hradbách: drevená konštrukcia s mostíkom
+                g.fillStyle(0x000000, .25).fillEllipse(960, 652, 90, 20);
+                g.fillStyle(0x6b4a2e, 1).fillRect(925, 560, 70, 92); g.fillStyle(0x4a3220, 1).fillRect(925, 560, 12, 92).fillRect(983, 560, 12, 92);
+                g.lineStyle(2, 0x3a2a1a, 1); for (let k = 572; k < 650; k += 16) g.lineBetween(925, k, 995, k); g.lineBetween(925, 560, 995, 652); g.lineBetween(995, 560, 925, 652);
+                g.fillStyle(0x8a6a3a, 1).fillRect(990, 590, 56, 40); g.lineStyle(1.5, 0x4a3220, 1); for (let k = 996; k < 1046; k += 8) g.lineBetween(k, 590, k, 630);
+                g.fillStyle(0x3a2a1a, 1).fillCircle(935, 652, 8).fillCircle(985, 652, 8);
             }
             if (SGB.gate > 0) {
                 g.fillStyle(0x5a3a1a, 1).fillRect(1004, 437, 32, 86);
@@ -8509,7 +8819,7 @@ class UIScene extends Phaser.Scene {
     syncBars() {
         const vis = el => el.style.display !== 'none' && !!G && !this.dlg && !ROOM_MODES.has(mode);
         if (this.dlg || !vis(tb)) this.menu = null;
-        const sig = [vis(tb), vis(od), this.menu, this.big, ...[...tb.children, ...od.children].map(b => b.textContent + (b.style.opacity || ''))].join('|');
+        const sig = [vis(tb), vis(od), this.menu, this.big, ...[...tb.children, ...od.children].map(b => b.textContent + (b.style.opacity || '') + b.style.display)].join('|');
         if (sig === this.sig.bars) return;
         this.sig.bars = sig;
         this.barLayer.removeAll(true);
@@ -8546,7 +8856,7 @@ class UIScene extends Phaser.Scene {
                 });
             }
             // tlačidlá, ktoré nepatria do žiadnej skupiny ani nie sú vyššie (nové položky), ostanú viditeľné
-            all.filter(b => { const t = b.textContent.trim(); return !/^[−+]$/.test(t) && !/tábor|pobyt/i.test(t) && ![...grouped].some(n => t.startsWith(n)); })
+            all.filter(b => { const t = b.textContent.trim(); return b.style.display !== 'none' && !/^[−+]$/.test(t) && !/tábor|pobyt/i.test(t) && ![...grouped].some(n => t.startsWith(n)); })
                .forEach(b => put(b.textContent, Icons.forButton(b.textContent), () => b.click()));
             this.barLayer.add(out);
             if (this.pause) this.pause.y = y - 14;

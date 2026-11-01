@@ -219,6 +219,13 @@ class BattleScene extends Phaser.Scene {
                 g.lineStyle(3, 0x7a5a30, 1); g.lineBetween(985, l - 10, 1045, l - 10); g.lineBetween(985, l + 10, 1045, l + 10);
                 g.lineStyle(2, 0x7a5a30, 1); for (let k = 990; k < 1045; k += 9) g.lineBetween(k, l - 10, k, l + 10);
             }
+            if (SGB.tow) {   // obliehacia veža pri hradbách: drevená konštrukcia s mostíkom
+                g.fillStyle(0x000000, .25).fillEllipse(960, 652, 90, 20);
+                g.fillStyle(0x6b4a2e, 1).fillRect(925, 560, 70, 92); g.fillStyle(0x4a3220, 1).fillRect(925, 560, 12, 92).fillRect(983, 560, 12, 92);
+                g.lineStyle(2, 0x3a2a1a, 1); for (let k = 572; k < 650; k += 16) g.lineBetween(925, k, 995, k); g.lineBetween(925, 560, 995, 652); g.lineBetween(995, 560, 925, 652);
+                g.fillStyle(0x8a6a3a, 1).fillRect(990, 590, 56, 40); g.lineStyle(1.5, 0x4a3220, 1); for (let k = 996; k < 1046; k += 8) g.lineBetween(k, 590, k, 630);
+                g.fillStyle(0x3a2a1a, 1).fillCircle(935, 652, 8).fillCircle(985, 652, 8);
+            }
             if (SGB.gate > 0) {
                 g.fillStyle(0x5a3a1a, 1).fillRect(1004, 437, 32, 86);
                 g.lineStyle(2, 0x2a1a0a, 1); for (let k = 445; k < 520; k += 12) g.lineBetween(1004, k, 1036, k);

@@ -16,7 +16,9 @@ function upd() {
         FN[6] = G.kn;
         BF[6] = G.kc;
     }
-    hud.innerHTML += '<span>Česť <b>' + (G.hon || 0) + '</b></span><span>Strach <b>' + (G.fear || 0) + '</b></span>' + (G.camp ? '<span><b>Tábor</b></span>' : '');
+    hud.innerHTML += '<span>Česť <b>' + (G.hon || 0) + '</b></span><span>Strach <b>' + (G.fear || 0) + '</b></span>' + (G.camp ? '<span><b>Tábor</b></span>' : '')
+        + (G.besiege >= 0 && TW[G.besiege] ? '<span>Obliehanie <b>' + TW[G.besiege].n + '</b></span>' : '') + (G.defend >= 0 && TW[G.defend] ? '<span>Obrana <b>' + TW[G.defend].n + '</b></span>' : '');
+    if (typeof timeBtn !== 'undefined') { timeBtn.style.display = waiting() ? '' : 'none'; timeBtn.textContent = 'Čas ×' + (G.tmul || 1); }
     if (G.king && !G.kn && !KD) {
         KD = 1;
         setTimeout(kingDlg, 0);

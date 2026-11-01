@@ -127,7 +127,7 @@ try {
     check('Lordi majú úlohy: strážcovia lén a poľné vojsko maršala', run('E.filter(e => e.role === "guard").length > 5 && E.filter(e => e.role === "army").length > 5 && [0,1,2,3,4,5,7,8].every(f => !E.some(e => e.f === f) || marshal(f))'));
     run('var gd = E.find(e => e.role === "guard" && TW[e.home] && TW[e.home].f === e.f); var gh = gd ? gd.home : null; mode = "map"; G.camp = 1; for (let i = 0; i < 1200; i++) worldTick(1); G.camp = 0;');
     check('Strážca léna ostáva pri svojom hrade', run('!gd || gd.dead || gd.home !== gh || Math.hypot(gd.x - TW[gh].x, gd.y - TW[gh].y) < 110 * K || E.some(o => o !== gd && hos(o.f, gd.f) && Math.hypot(o.x - gd.x, o.y - gd.y) < 100 * K)'));
-    run('var m0 = marshal(0); mst(0).losses = 5; mst(0).since = -10; marshalDaily(); var m1 = marshal(0); G.fac = 0; WR[0][2] = WR[2][0] = true; CP[0] = TW.findIndex(t => hos(t.f, 0)); LETTERS.length = 0; onMuster(m1, CP[0]);');
+    run('var m0 = marshal(0); if (m0) m0.n = 3; mst(0).losses = 5; mst(0).since = -10; marshalDaily(); var m1 = marshal(0); G.fac = 0; WR[0][2] = WR[2][0] = true; CP[0] = TW.findIndex(t => hos(t.f, 0)); LETTERS.length = 0; onMuster(m1, CP[0]);');
     check('Maršal: zvrhnutie po prehrách a list hráčovi pri zvolaní vojska', run('m1 && (m1 !== m0 || E.filter(e => e.f === 0).length < 2) && LETTERS.length === 1 && /zvolávam zraz/.test(LETTERS[0].text)'));
     run('if (LETTERS.length) { readLetter(); var jb = document.getElementById("bt").children.find(b => /Pridať sa/.test(b.textContent)); jb.onclick(); }');
     check('Prijatie výzvy nastaví cieľ na zraz', run('!LETTERS.length && (G.join == null || (G.join.f === 0 && Math.hypot(G.tx - G.x, G.ty - G.y) >= 0))'));
@@ -152,7 +152,7 @@ try {
     check('Zajatie veliteľa a výkupné', run('G.pri.length === pr0 + 1 && typeof G.pri[G.pri.length - 1] === "object" && ro > 60'), 'výkupné ' + run('ro'));
     run('G.pri = G.pri.filter(p => p.f !== 9); G.pri.forEach(p => { p.day = G.day - 5; p.offered = null; }); LETTERS.length = 0; for (let i = 0; i < 60 && !LETTERS.length && G.pri.length; i++) { prisonersDaily(); G.pri.forEach(p => { p.offered = null; }); }');
     check('List s ponukou výkupného', run('LETTERS.some(L => L.kind === "ransom") || !G.pri.length'));
-    run('if (LETTERS.length) { readLetter(); var ab = document.getElementById("bt").children.find(b => /Prijať výkupné/.test(b.textContent)); var g0 = G.gold; if (ab && !ab.disabled) ab.onclick(); }');
+    run('LETTERS.sort((a, b) => (b.kind === "ransom") - (a.kind === "ransom")); if (LETTERS.length && LETTERS[0].kind === "ransom") { readLetter(); var ab = document.getElementById("bt").children.find(b => /Prijať výkupné/.test(b.textContent)); if (ab && !ab.disabled) { var g0 = G.gold; ab.onclick(); } }');
     check('Prijatie výkupného pridá zlato', run('typeof g0 === "undefined" || G.gold > g0 || !G.pri.length'));
     run('mode = "map"; var vic = E.find(e => e.f === 0 && !e.nz) || E.find(e => e.f !== 9 && !e.nz); G.captive = null; var cap = captureHero(vic);');
     check('Zajatie hráča: žalár v hrade víťaza', run('cap && G.captive && TW[G.captive.t].f === G.captive.f'));
@@ -176,6 +176,45 @@ try {
     run(closeMenus + '; mode = "map";');
     check('Správa družiny: záložky', run('party(); document.getElementById("bt").children.some(b => /Vojsko/.test(b.textContent)) && (party(null, "o"), document.getElementById("bt").children.some(b => /Držať líniu/.test(b.textContent)))'));
     run(closeMenus + '; mode = "map";');
+    // čas a obliehanie
+    run('mode = "map"; G.camp = 1; G.besiege = -1; G.defend = -1; G.captive = null; G.tmul = 8; var tmA = timeMul(); G.camp = 0; var tmB = timeMul(); G.tmul = 1;');
+    check('Zrýchlenie času len pri čakaní', run('tmA === 8 && tmB === 1'));
+    run('mode = "map"; G.inf = 60; G.cav = 0; G.arc = 0; G.vet = 0; G.elf = 0; G.roh = 0; var ps = TW.findIndex(t => hos(t.f, G.fac) && t.f !== 9 && !t.sg); TW[ps].sg = null; siege(ps); var psg = TW[ps].sg; var food0 = psg.food; var aDis = document.getElementById("bt").children.find(b => b.textContent.startsWith("Zaútočiť")).disabled; siegeDaily(); siegeDaily(); siegeMenu(ps); var aOn = document.getElementById("bt").children.find(b => b.textContent.startsWith("Zaútočiť")).disabled;');
+    check('Hráč oblieha: tábor, rebríky za dva dni, zásoby ubúdajú', run('psg.lead === "G" && G.besiege === ps && aDis === true && psg.lad === 1 && !aOn && psg.food === food0 - 2'));
+    run('leaveSiege(ps); ov.classList.add("hide"); mode = "map";');
+    check('Odtiahnutie: obliehanie skončí alebo ho prevezme spojenec', run('G.besiege === -1 && (!TW[ps].sg || TW[ps].sg.lead !== "G")'));
+    run('TW[ps].sg = null;');
+    // AI obliehanie trvá niekoľko dní a končí útokom
+    run(`G.x = G.tx = 50; G.y = G.ty = 50; var ai = TW.findIndex(t => t.f !== 9 && t.f !== 6 && t.f !== G.fac && !t.mine && !t.sg); var tf = TW[ai].f; var af = [0,1,2,3,4,5,7,8].find(f => f !== tf && f !== G.fac);
+        WR[af][tf] = WR[tf][af] = true; AL[af][tf] = AL[tf][af] = false; TW[ai].g = 8; TW[ai].wl = 1;
+        E.filter(e => e.f === tf && Math.hypot(e.x - TW[ai].x, e.y - TW[ai].y) < 400).forEach(e => { e.x += 3000; });
+        var al3 = E.filter(e => e.f === af && !e.nz).slice(0, 3); al3.forEach((e, k) => { e.x = TW[ai].x + 60 + k * 20; e.y = TW[ai].y + 40; e.n = 60; });
+        startSiege(ai, af, al3[0].id); var aiDays = 0; while (TW[ai].f !== af && aiDays < 15) { G.day++; aiDays++; siegeDaily(); }`);
+    check('AI obliehanie: technika, potom útok a dobytie (nie hneď)', run('TW[ai].f === af && !TW[ai].sg && aiDays >= 3'), run('aiDays') + ' dní');
+    // spojenci v okolí sa pridajú do bitky
+    run(`mode = "map"; G.safe = 0; var foe = { nm: "Testovacia tlupa", n: 12, f: 9, x: G.x + 40, y: G.y, id: 99901 }; E.push(foe);
+        var friend = E.find(e => e.f !== 9 && !e.nz && !hos(e.f, G.fac)); friend.x = G.x + 60; friend.y = G.y + 30; friend.n = 30; friend.dead = 0; var rl0 = friend.rl || 0;
+        startBattle(foe); var allyU = U.filter(u => u.src === friend).length; for (const u of U) if (u.t) u.hp = 0; U[0].hp = 999; var kb = 0; while (mode === "battle" && kb < 2000) { updBattle(1); kb++; }`);
+    check('Spojenci v okolí sa pridajú do bitky', run('allyU > 0 && (friend.rl || 0) > rl0'), run('allyU') + ' vojakov spojenca');
+    run(closeMenus + '; mode = "map";');
+    // obrana spojeneckého hradu
+    run(`var di = TW.findIndex(t => t.f !== 9 && !hos(t.f, G.fac) && !t.sg); var ef = [0,1,2,3,4,5,7,8].find(f => f !== TW[di].f && f !== G.fac && !AL[G.fac][f]); WR[ef][TW[di].f] = WR[TW[di].f][ef] = true; WR[ef][G.fac] = WR[G.fac][ef] = true;
+        var en2 = E.filter(e => e.f === ef && !e.nz).slice(0, 2); en2.forEach((e, k) => { e.x = TW[di].x + 70 + k * 15; e.y = TW[di].y + 50; e.n = 15; });
+        startSiege(di, ef, en2[0].id); town(di); var defBtn = document.getElementById("bt").children.some(b => b.textContent.startsWith("Vstúpiť do hradu a brániť")); defendCastle(di); ov.classList.add("hide"); mode = "map";
+        defendBattle(di); var garr = U.filter(u => u.garrison).length; for (const u of U) if (u.t) u.hp = 0; U[0].hp = 999; var kd2 = 0; while (mode === "battle" && kd2 < 2000) { updBattle(1); kd2++; }`);
+    check('Obrana hradu: posádka bojuje s hráčom, obliehanie je prelomené', run('defBtn && garr > 0 && !TW[di].sg && G.defend === -1'), run('garr') + ' vojakov posádky');
+    run(closeMenus + '; mode = "map";');
+    // výzva pridať sa k útoku spojencov
+    run(`mode = "map"; var ji = TW.findIndex(t => t.f !== 9 && hos(t.f, G.fac) && !t.sg); var jf = [0,1,2,3,4,5,7,8].find(f => f !== TW[ji].f && f !== G.fac && !hos(f, G.fac));
+        WR[jf][TW[ji].f] = WR[TW[ji].f][jf] = true; E.filter(e => e.f === TW[ji].f && Math.hypot(e.x - TW[ji].x, e.y - TW[ji].y) < 400).forEach(e => { e.x += 3000; });
+        var jl = E.filter(e => e.f === jf && !e.nz).slice(0, 2); jl.forEach((e, k) => { e.x = TW[ji].x + 80 + k * 20; e.y = TW[ji].y + 50; e.n = 40; });
+        startSiege(ji, jf, jl[0].id); var js = TW[ji].sg; js.lad = 1; js.d0 = G.day - 5; if ((TW[ji].wl || 0) >= 1) js.ram = 1; if ((TW[ji].wl || 0) >= 2) js.tow = 1;
+        G.x = G.tx = TW[ji].x - 60; G.y = G.ty = TW[ji].y + 60; G.besiege = -1; G.defend = -1; SIEGE_EVENT = null; siegeDaily(); var jev = SIEGE_EVENT && SIEGE_EVENT.kind; if (SIEGE_EVENT) siegeEventUI(); var jbtn = document.getElementById("bt").children.some(b => b.textContent.startsWith("Pridať sa k útoku"));`);
+    check('Útok spojencov: výzva pridať sa', run('jev === "assault" && jbtn'));
+    run('TW[ji].sg = null; SIEGE_EVENT = null; ov.classList.add("hide"); mode = "map";');
+    run('save(5); var sgOk = true; TW[ai].sg = { f: 0, d0: 1, lead: "G", w: { lad: 10, ram: 0, tow: 0 }, lad: 0, ram: 0, tow: 0, build: "lad", food: 4, fail: 0 }; save(5); TW[ai].sg = null; load(5);');
+    check('Obliehanie sa uloží s hradom', run('!!TW[ai].sg && TW[ai].sg.w.lad === 10'));
+    run('TW[ai].sg = null; mode = "map";');
 } catch (e) { fails++; console.log('CHYBA výnimka: ' + e.stack); }
 console.log(fails ? '\n' + fails + ' testov zlyhalo.' : '\nVšetky testy prešli.');
 process.exit(fails ? 1 : 0);

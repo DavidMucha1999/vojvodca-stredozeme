@@ -173,7 +173,7 @@ class UIScene extends Phaser.Scene {
     syncBars() {
         const vis = el => el.style.display !== 'none' && !!G && !this.dlg && !ROOM_MODES.has(mode);
         if (this.dlg || !vis(tb)) this.menu = null;
-        const sig = [vis(tb), vis(od), this.menu, this.big, ...[...tb.children, ...od.children].map(b => b.textContent + (b.style.opacity || ''))].join('|');
+        const sig = [vis(tb), vis(od), this.menu, this.big, ...[...tb.children, ...od.children].map(b => b.textContent + (b.style.opacity || '') + b.style.display)].join('|');
         if (sig === this.sig.bars) return;
         this.sig.bars = sig;
         this.barLayer.removeAll(true);
@@ -210,7 +210,7 @@ class UIScene extends Phaser.Scene {
                 });
             }
             // tlačidlá, ktoré nepatria do žiadnej skupiny ani nie sú vyššie (nové položky), ostanú viditeľné
-            all.filter(b => { const t = b.textContent.trim(); return !/^[−+]$/.test(t) && !/tábor|pobyt/i.test(t) && ![...grouped].some(n => t.startsWith(n)); })
+            all.filter(b => { const t = b.textContent.trim(); return b.style.display !== 'none' && !/^[−+]$/.test(t) && !/tábor|pobyt/i.test(t) && ![...grouped].some(n => t.startsWith(n)); })
                .forEach(b => put(b.textContent, Icons.forButton(b.textContent), () => b.click()));
             this.barLayer.add(out);
             if (this.pause) this.pause.y = y - 14;

@@ -86,7 +86,7 @@ function worldTick(dt) {
         spawnX();
         const a0 = [0, 1, 2, 3, 4, 5, 7, 8];
         TW.forEach(t => {
-            t.g = Math.min(20 + (t.wl || 0) * 10, t.g + 1 + (t.wl || 0));
+            if (!t.sg) t.g = Math.min(20 + (t.wl || 0) * 10, t.g + 1 + (t.wl || 0));   // obliehaný hrad nedostáva posily
             if (t.mine)
                 G.gold += Math.round((G.king ? 20 : 10) * taxMul() * fiefShare(t));
         });
@@ -136,9 +136,14 @@ function worldTick(dt) {
     cam.x = Math.max(0, Math.min(WW - W / Z, G.x - W / Z / 2));
     cam.y = Math.max(0, Math.min(WH - H / Z, G.y - H / Z / 2));
 }
+/** Hráč čaká (tábor, obliehanie, obrana hradu, zajatie): čas plynie aj bez pohybu a dá sa zrýchliť. */
+const waiting = () => !!G && (G.camp || G.besiege >= 0 || G.defend >= 0 || !!G.captive);
+/** Rýchlosť času na mape: pri čakaní ×1/×3/×8 (tlačidlo „Čas“), podržaný medzerník = ×8 (ako vo Warbande). */
+let HOLD_FAST = false;
+const timeMul = () => waiting() ? (HOLD_FAST ? 8 : (G.tmul || 1)) : 1;
 function updMap(dt) {
     const idle = Math.hypot(G.tx - G.x, G.ty - G.y) <= 3 && G.dest < 0 && !(G.vd >= 0) && !G.chase && !G.talk && !G.qd;
-    if (idle && !G.camp && !G.captive) {
+    if (idle && !waiting()) {
         PAUSE = 1;
         return;
     }
@@ -150,6 +155,10 @@ function updMap(dt) {
         if (G.day !== d)
             daily2();
         if (LETTERS.length && mode === 'map' && ov.classList.contains('hide')) readLetter();
+        if (SIEGE_EVENT && mode === 'map' && ov.classList.contains('hide')) siegeEventUI();
+        // odchod od obliehaného / bráneného hradu
+        if (G.besiege >= 0 && TW[G.besiege] && Math.hypot(G.x - TW[G.besiege].x, G.y - TW[G.besiege].y) > SIEGE_R * 1.5) leaveSiege(G.besiege);
+        if (G.defend >= 0 && TW[G.defend] && (Math.hypot(G.x - TW[G.defend].x, G.y - TW[G.defend].y) > 20 * K || !TW[G.defend].sg)) { if (TW[G.defend].sg) lg('Opustil si hrad ' + TW[G.defend].n + '.'); G.defend = -1; upd(); }
         if (G.captive && mode === 'map' && ov.classList.contains('hide') && !(G.capShown === G.day)) { G.capShown = G.day; captiveDay(); }
         const dd = Math.hypot(G.x - DOOM.x, G.y - DOOM.y);
         if (G.ring === 1 && mode === 'map' && dd < 180 && !G.rp) {

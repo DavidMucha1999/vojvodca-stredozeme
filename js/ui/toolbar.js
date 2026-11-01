@@ -21,6 +21,12 @@ wrapEl.appendChild(tb);
         }]].forEach(([n, fn]) => { const b = document.createElement('button'); b.textContent = n; b.style.cssText = 'font-size:.8rem;padding:.3rem .55rem'; b.onclick = fn; tb.appendChild(b); });
 tb.style.flexWrap = 'wrap';
 tb.style.maxWidth = '70%';
+/** Rýchlosť času pri čakaní: ×1 → ×3 → ×8 (viditeľné len v tábore, pri obliehaní, obrane hradu a v zajatí). */
+const timeBtn = document.createElement('button');
+timeBtn.style.cssText = 'font-size:.8rem;padding:.3rem .55rem;display:none';
+timeBtn.onclick = () => { if (!G) return; G.tmul = { 1: 3, 3: 8, 8: 1 }[G.tmul || 1]; upd(); };
 [['Tábor', function () { if (!G || mode !== 'map')
             return; G.camp = !G.camp; if (!G.camp) G.stay = null; this.textContent = G.camp ? 'Zrušiť tábor' : 'Tábor'; upd(); }], ['Encyklopédia', () => { if (G && mode === 'map')
             ency(); }], ['Celá obrazovka', () => fsc()]].forEach(([n, fn]) => { const b = document.createElement('button'); b.textContent = n; b.style.cssText = 'font-size:.8rem;padding:.3rem .55rem'; b.onclick = fn; tb.appendChild(b); });
+
+tb.appendChild(timeBtn);

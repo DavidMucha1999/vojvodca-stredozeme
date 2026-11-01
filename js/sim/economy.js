@@ -19,6 +19,7 @@ function daily2() {
     compDaily();
     prisonersDaily();
     courtDaily();
+    siegeDaily();
     if (mode === 'map' && save('auto')) TS = TS && TS.l > 0 ? TS : { s: 'Hra automaticky uložená (deň ' + G.day + ').', l: 150 };
     if (G.comp && G.comp.length && Math.random() < .5) { const c = compDef(G.comp[Math.floor(Math.random() * G.comp.length)]); if (c) TS = { s: c.n + ': „' + compLine(c) + '“', l: 320 }; }
     VL.forEach(v => { v.pr = Math.max(0, Math.min(100, (v.pr ?? 40) + (v.st > 0 ? -2 : 1) + (TW[v.t].mine ? taxPr() : 0))); if (TW[v.t].mine)

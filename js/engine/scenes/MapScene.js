@@ -291,7 +291,13 @@ class MapScene extends Phaser.Scene {
 
     update(time, delta) {
         if (!G) return;
-        if (mode === 'map') updMap(Math.min(2, delta / 16.67));
+        if (mode === 'map') {
+            // čakanie (tábor, obliehanie, obrana): čas sa dá zrýchliť – svet sa v jednom snímku prepočíta viackrát
+            if (!this.spaceKey) this.spaceKey = this.input.keyboard.addKey('SPACE', false);
+            HOLD_FAST = this.spaceKey.isDown && ov.classList.contains('hide');
+            const n = timeMul(), dt = Math.min(2, delta / 16.67);
+            for (let k = 0; k < n && mode === 'map'; k++) updMap(dt);
+        }
         if (mode === 'battle') { this.scene.start('Battle'); return; }
 
         const c = this.cameras.main;
@@ -374,6 +380,31 @@ class MapScene extends Phaser.Scene {
         this.heroCrown.setVisible(!!G.king).setPosition(G.x + 17, G.y - 46);
     }
 
+    /** Obliehací tábor: stany a ohne okolo hradu, rebríky, baranidlo a veža podľa postupu, popis s dňom a zásobami. */
+    drawSieges(g) {
+        if (!this.sgTxt) this.sgTxt = new Map();
+        TW.forEach((t, i) => {
+            const s = t.sg; let tx = this.sgTxt.get(i);
+            if (!s) { if (tx) { tx.destroy(); this.sgTxt.delete(i); } return; }
+            if (!tx) { tx = this.add.text(0, 0, '', { fontFamily: 'sans-serif', fontSize: '11px', fontStyle: 'bold', color: '#ffd27a', backgroundColor: 'rgba(40,12,8,.82)', padding: { x: 5, y: 1 }, resolution: RES }).setOrigin(.5, 0).setDepth(9003); this.mmCam.ignore(tx); this.sgTxt.set(i, tx); }
+            const parts = ['lad', 'ram', 'tow'].filter(k => s[k]).map(k => SIEGE_NAME[k]);
+            const k = s.lead === 'G' ? s.build : aiBuild(t);
+            tx.setPosition(t.x, t.y + 44).setText('Obliehanie ' + (G.day - s.d0 + 1) + '. deň · ' + (parts.length ? parts.join(', ') : 'stavia ' + (k ? SIEGE_NAME[k] + ' ' + pct(siegeProg(s, k)) : '')) + ' · zásoby ' + Math.max(0, s.food) + ' d.');
+            const col = BF[s.f] ? Phaser.Display.Color.HexStringToColor(BF[s.f]).color : 0xc8a870;
+            for (let a = 0; a < 7; a++) {   // stany v kruhu pred hradbami
+                const an = a / 7 * 6.283 + .4, x = t.x + Math.cos(an) * 30 * K * .55, y = t.y + Math.sin(an) * 18 * K * .55 + 10;
+                g.fillStyle(0x000000, .25).fillEllipse(x, y + 7, 26, 8);
+                g.fillStyle(0xd8c8a0, 1).fillTriangle(x - 12, y + 6, x, y - 12, x + 12, y + 6); g.fillStyle(0xa8946a, 1).fillTriangle(x, y - 12, x + 12, y + 6, x, y + 6);
+                g.fillStyle(col, 1).fillRect(x - 1, y - 20, 2, 9).fillRect(x + 1, y - 20, 6, 4);
+                if (a % 2 === 0) { const fx = x + 16, fl = 3 + Math.sin(tm / 2 + a) * 1.5; g.fillStyle(0xff7a20, .9).fillTriangle(fx - 3, y + 6, fx, y - fl * 2, fx + 3, y + 6); g.fillStyle(0xffd060, .25).fillCircle(fx, y + 3, 10); }
+            }
+            const bx = t.x - 52, by = t.y + 20;
+            if (s.lad) { g.lineStyle(2, 0x8a6a3a, 1); for (const o of [0, 10]) { g.lineBetween(bx + o, by, bx + o + 14, by - 30); g.lineBetween(bx + o + 6, by, bx + o + 20, by - 30); } }
+            if (s.ram) { g.fillStyle(0x6b4a2e, 1).fillRect(t.x + 20, t.y + 22, 26, 8); g.fillStyle(0x3a2a1a, 1).fillTriangle(t.x + 16, t.y + 22, t.x + 33, t.y + 12, t.x + 50, t.y + 22); }
+            if (s.tow) { g.fillStyle(0x6b4a2e, 1).fillRect(t.x + 46, t.y - 26, 16, 40); g.lineStyle(1.5, 0x3a2a1a, 1).strokeRect(t.x + 46, t.y - 26, 16, 40); g.lineBetween(t.x + 46, t.y - 26, t.x + 62, t.y + 14); }
+        });
+    }
+
     drawFx() {
         const g = this.fx; g.clear();
         const moving = Math.hypot(G.tx - G.x, G.ty - G.y) > 3;
@@ -430,7 +461,8 @@ class MapScene extends Phaser.Scene {
             else if (lvl(v) >= 2) { for (let k = 0; k < 3; k++) { const sm = (tm * .35 + k * 20 + i * 7) % 60; g.fillStyle(0xd8d0c8, .22 - sm / 300).fillCircle(v.x + 6 + Math.sin(sm * .12 + k + i) * 4, v.y - 12 - sm * .55, 2.2 + sm * .08); } } } }
         // prach pod armádami na pochode
         for (const e of E) if ((e.vx || e.vy) && Math.hypot(e.x - G.x, e.y - G.y) < 900) for (let k = 1; k < 3 + Math.min(3, e.n / 10); k++) g.fillStyle(regionAt(e.x, e.y) === 's' ? 0xffffff : 0xc8b48c, .16 - k * .03).fillCircle(e.x - e.vx * k * 9 + Math.sin(tm / 3 + k) * 2, e.y - e.vy * k * 9 + 8, 4 + k * .4);
-        if (G.camp) {
+        this.drawSieges(g);
+        if (G.camp || G.besiege >= 0) {
             g.fillStyle(0xc8a870, 1).fillTriangle(G.x - 30, G.y + 6, G.x - 18, G.y - 12, G.x - 6, G.y + 6);
             g.fillStyle(0xff9a3a, 1).fillCircle(G.x + 26, G.y + 4, 3 + Math.random() * 1.5);
         }

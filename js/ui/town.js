@@ -86,8 +86,16 @@ function town(i) {
     G.dest = -1;
     mode = 'town';
     if (hos(t.f, G.fac)) {
-        show(t.n + ' (' + FN[t.f] + ')', 'Nepriateľský hrad. Garnizón: ' + t.g + ' mužov. Pri dobývaní sa bránia o 30 % silnejšie.');
-        btn('Obliehať hrad', () => siege(i), 0, 'ram');
+        if (G.besiege === i && t.sg) return siegeMenu(i);
+        const sg = t.sg, ally = sg && !hos(sg.f, G.fac);
+        show(t.n + ' (' + FN[t.f] + ')', 'Nepriateľský hrad. Posádka: ' + t.g + ' mužov' + (t.wl ? ', hradby stupeň ' + t.wl : '') + '. Za hradbami sa bránia oveľa silnejšie; na útok treba rebríky alebo obliehaciu vežu.' + (sg ? ' Hrad práve oblieha ' + FN[sg.f] + ' (' + (G.day - sg.d0 + 1) + '. deň).' : ''));
+        if (!sg || ally) btn(ally ? 'Pridať sa k obliehaniu (' + FN[sg.f] + ')' : 'Obliehať hrad (postaviť tábor)', () => siege(i), 0, 'ram');
+        btn('Odísť', () => { ov.classList.add('hide'); mode = 'map'; }, 0, 'door');
+        return;
+    }
+    if (t.sg && hos(t.sg.f, G.fac) && G.defend !== i) {   // spojenecký hrad v obliehaní: hráč môže vstúpiť a brániť ho
+        show(t.n + ' – v obliehaní', 'Hrad oblieha ' + FN[t.sg.f] + ' (' + Math.round(siegeMen(i)) + ' mužov, ' + (G.day - t.sg.d0 + 1) + '. deň). Posádka ' + t.g + ', zásoby ' + (t.sg.food > 0 ? 'na ' + t.sg.food + ' dní' : 'došli') + '. Obliehatelia stavajú: ' + (aiBuild(t) ? SIEGE_NAME[aiBuild(t)] + ' (' + pct(siegeProg(t.sg, aiBuild(t))) + ')' : 'technika je hotová') + '.');
+        btn('Vstúpiť do hradu a brániť ho', () => defendCastle(i), 0, 'shield');
         btn('Odísť', () => { ov.classList.add('hide'); mode = 'map'; }, 0, 'door');
         return;
     }

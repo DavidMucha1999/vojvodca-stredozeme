@@ -27,16 +27,19 @@ function startBattleBase(en, al) {
         U.push(mk(0, 'r'));
     for (let i = 0; i < Math.min(G.ent || 0, 3); i++)
         U.push(mk(0, 'n'));
-    if (al)
-        for (let i = 0; i < Math.min(Math.ceil(al.n), 12); i++)
-            U.push(Object.assign(mk(0, 'i'), { ally: 1 }));
+    // kto sa pridá: spojenci hráča a priatelia nepriateľa v okolí (pri obliehaní celý tábor), posádka pri obrane hradu
+    BSIDES = battleSides(en, al);
+    U.push(...sideUnits(BSIDES.allies, 0, ALLY_CAP));
+    if (en.def != null) { const t = TW[en.def], gn = Math.min(30, Math.max(2, t.g)); BSIDES.gUnits = gn; for (let i = 0; i < gn; i++) { const u = mk(0, i % 3 === 2 ? 'a' : 'i', t.f); u.ally = 1; u.garrison = 1; U.push(u); } }
     for (let i = 0; i < en.n; i++)
         U.push(mk(1, en.nz ? 'z' : en.trolls || en.beorn ? 't' : en.spiders ? 'w' : en.kind === 'wolves' ? (i % 3 ? 'w' : 'uI2') : en.kind === 'orcs' ? (i % 7 === 6 ? 't' : i % 4 === 3 ? 'uM1' : 'o') : en.kind === 'deserters' ? (i % 3 === 2 ? 'a' : i % 5 === 4 ? 'c' : 'i') : (i % 3 === 1 && FK[en.f] && FK[en.f].length ? FK[en.f][i % 2] : ek(en.f, i)), en.f));   // miesta: trollovia, Beorn (medveď), pavúky
-    if (en.siege)
-        U.forEach(u => {
-            if (u.t)
-                u.hp = u.mh = u.mh * (1.3 + (en.t.wl || 0) * .15);
-        });
+    U.push(...sideUnits(BSIDES.foes, 1, Math.max(0, FOE_CAP - en.n)));
+    if (en.siege) {
+        const sg = en.t.sg || {}, k = 1.3 + (en.t.wl || 0) * .15 - (sg.tow ? .15 : 0) - (en.sgFood != null && en.sgFood <= 0 ? .1 : 0);   // veža a hlad oslabujú obrancov
+        U.forEach(u => { if (u.t) u.hp = u.mh = u.mh * k; });
+    }
+    if (en.def != null)   // obrana hradu: hradby pomáhajú hráčovej strane
+        U.forEach(u => { if (!u.t) u.hp = u.mh = u.mh * 1.25; });
     mode = 'battle';
     setOrd(G.ord0 || 'a');
     od.style.display = 'flex';
@@ -48,6 +51,48 @@ function startBattleBase(en, al) {
     FIELD = battleTerrain(G.x, G.y);   // bojisko podľa miesta na mape (les, rieka, kopec)
     if (BI === 's' && WX.n === 'clear')
         WX = { ...WX, n: 'snow', r: Math.round(WX.r * .85) };
+}
+/** Okruh, z ktorého sa do bitky pridávajú ďalšie armády, a najväčší počet ich vojakov na bojisku. */
+const JOIN_R = 300, ALLY_CAP = 30, FOE_CAP = 70;
+let BSIDES = { allies: [], foes: [] };
+/** Kto sa pridá do bitky (ako vo Warbande): spojenci hráča v okolí, ktorí sú vo vojne s nepriateľom, a armády priateľské
+ *  nepriateľovi. Pri útoku na hrad bojujú všetci spojenci z obliehacieho tábora; pri obrane hradu všetci obliehatelia. */
+function battleSides(en, al) {
+    if (en.ar || en.vil || en.sortie != null) return { allies: [], foes: [] };
+    if (en.siege) { const i = TW.indexOf(en.t); return { allies: en.t.sg ? besiegers(i).filter(e => !hos(e.f, G.fac)) : [], foes: [] }; }
+    if (en.def != null) return { allies: [], foes: en.foes || [] };
+    const near = E.filter(o => o !== en && !o.dead && !o.nz && Math.hypot(o.x - G.x, o.y - G.y) < JOIN_R);
+    const allies = near.filter(o => o.f !== 9 && !hos(o.f, G.fac) && hos(o.f, en.f));
+    if (al && !al.dead && !allies.includes(al)) allies.unshift(al);
+    const foes = en.f === 9 || en.f == null ? [] : near.filter(o => !allies.includes(o) && hos(o.f, G.fac) && (o.f === en.f || AL[en.f][o.f]));
+    return { allies, foes };
+}
+/** Vojaci pridaných armád: každá dostane podiel z limitu podľa svojej sily; jednotka si pamätá svoju armádu (straty po bitke). */
+function sideUnits(armies, team, cap) {
+    const tot = armies.reduce((a, e) => a + e.n, 0), out = [];
+    if (!tot || cap <= 0) return out;
+    armies.forEach(e => {
+        const k = Math.max(1, Math.round(Math.min(cap, tot) * e.n / tot)), fk = FK[e.f] || [];
+        for (let i = 0; i < k; i++) { const u = mk(team, i % 3 === 1 && fk.length ? fk[i % fk.length] : ek(e.f, i), e.f); u.src = e; if (!team) u.ally = 1; out.push(u); }
+    });
+    return out;
+}
+/** Straty pridaných armád a posádky podľa padlých vojakov na bojisku; spojencom sa za pomoc zlepší vzťah. */
+function sideLosses(win, L) {
+    for (const e of BSIDES.allies.concat(BSIDES.foes)) {
+        const us = U.filter(u => u.src === e); if (!us.length) continue;
+        const dead = us.filter(u => u.hp <= 0).length;
+        e.n = Math.max(0, e.n - e.n * dead / us.length * .9);
+        if (BSIDES.foes.includes(e) && win) e.n *= .85;   // porazení pomocníci nepriateľa sa rozpŕchnu
+        if (e.n < 1) e.dead = 1;
+        if (BSIDES.allies.includes(e)) { e.rl = (e.rl || 0) + 4; rl(G.fac, e.f, 2); }
+    }
+    if (L.def != null && BSIDES.gUnits) { const t = TW[L.def], gu = U.filter(u => u.garrison), dead = gu.filter(u => u.hp <= 0).length; t.g = Math.max(2, Math.round(t.g * (1 - dead / gu.length * .9))); }
+    if ((L.siege || L.sortie != null) && L.t) {   // preživší obrancovia sa vrátia za hradby
+        const en = U.filter(u => u.t && !u.src), alive = en.filter(u => u.hp > 0).length;
+        if (L.sortie != null) L.t.g += Math.round(alive * L.n / Math.max(1, en.length));
+        else if (!win) L.t.g = Math.max(3, Math.round(L.t.g * alive / Math.max(1, en.length)));
+    }
 }
 /** Meno jednotky pre tabuľku výsledkov. */
 function unitName(u) {
@@ -65,6 +110,9 @@ function battleReport(win) {
     line('Výsledok: ' + (win ? 'víťazstvo' : 'porážka') + ' – ' + (win ? 'tvoja strana' : (LB && LB.nm ? LB.nm : 'nepriateľ')) + ' ovládla bojisko.', '#ffd24a');
     line('Tvoje straty (' + mine.filter(u => u.hp <= 0).length + '/' + mine.length + '): ' + tally(0));
     line('Straty nepriateľa (' + their.filter(u => u.hp <= 0).length + '/' + their.length + '): ' + tally(1));
+    if (BSIDES.allies.length) line('Po tvojom boku bojovali: ' + BSIDES.allies.map(e => e.nm).join(', ') + '.', '#9fe08a');
+    if (BSIDES.gUnits) line('Po tvojom boku bojovala posádka hradu.', '#9fe08a');
+    if (BSIDES.foes.length) line('Nepriateľovi prišli na pomoc: ' + BSIDES.foes.map(e => e.nm).join(', ') + '.', '#ff8a70');
     const best = mine.filter(u => (u.kills || 0) > 0 || (u.dmg || 0) > 0).sort((a, b) => (b.kills || 0) - (a.kills || 0) || (b.dmg || 0) - (a.dmg || 0))[0];
     if (best) line('Najlepší bojovník: ' + unitName(best) + ' – ' + (best.kills || 0) + ' zabití, ' + Math.round(best.dmg || 0) + ' zranení.', '#9fe08a');
     const worst = their.sort((a, b) => (b.kills || 0) - (a.kills || 0))[0];
@@ -113,19 +161,17 @@ function startBattle(en, al) {
         U.push(...compUnits());    // spoločníci bojujú ako hrdinovia
     }
     if (en.siege) {
-        const sg = G.sg && G.sg.t === TW.indexOf(en.t) ? G.sg : {};
-        SGB = { gate: 60 + (en.t.wl || 0) * 30, mg: 60 + (en.t.wl || 0) * 30, lad: sg.lad, ram: sg.ram };
+        const sg = en.t.sg || {};
+        SGB = { gate: 60 + (en.t.wl || 0) * 30, mg: 60 + (en.t.wl || 0) * 30, lad: sg.lad, ram: sg.ram, tow: sg.tow };
     }
     else
         SGB = null;
 }
 function endBattle(win) {
     compAfterBattle();
-    if (SGB) {
-        SGB = null;
-        G.sg = null;
-    }
+    SGB = null;
     const L = LB;
+    if (!L.ar) { sideLosses(win, L); if (!win) siegeLost(L); }
     if (L.ar) {   // turnaj v aréne
         mode = 'over';
         od.style.display = 'none';
@@ -218,12 +264,21 @@ function endBattle(win) {
                 if (LB.vil)
                     LB.vil.st = 8;
                 if (LB.siege) {
-                    lg('Dobyl si hrad ' + LB.t.n + ' aj s okolitými dedinami.');
-                    captureEvent(LB.t, LB.t.f, G.fac, G.name);
-                    (LB.lords || []).forEach(e => { e.n = Math.max(2, e.n * .4); e.home = null; e.role = 'army'; });   // obrancovia z hradu utekajú zdecimovaní
-                    LB.t.f = G.fac;
-                    LB.t.g = 8;
-                    LB.t.mine = 1;
+                    const ti = TW.indexOf(LB.t), sg = LB.t.sg;
+                    if (sg && sg.lead !== 'G' && sg.f !== G.fac) {   // obliehanie viedla spojenecká frakcia: hrad pripadne jej
+                        const ld = E.find(e => e.id === sg.lead) || null;
+                        siegeCapture(ti, sg.f, (ld ? ld.nm : FN[sg.f]) + ' a ' + G.name, ld);
+                        G.ren += 2; lg('Pomohol si ' + FN[sg.f] + ' dobyť hrad ' + LB.t.n + '.');
+                    } else {
+                        lg('Dobyl si hrad ' + LB.t.n + ' aj s okolitými dedinami.');
+                        siegeCapture(ti, G.fac, G.name, null);
+                        LB.t.g = 8;
+                        LB.t.mine = 1;
+                    }
+                }
+                if (LB.def != null) {   // obrana hradu: obliehatelia sú rozprášení
+                    const t = TW[LB.def]; (LB.foes || []).forEach(e => { e.n = Math.max(2, e.n * .35); if (CP[e.f] === LB.def) CP[e.f] = null; e.mu = null; });
+                    t.sg = null; G.defend = -1; G.ren += 2; rl(G.fac, t.f, 8); lg('Ubránil si hrad ' + t.n + '. Obliehanie je prelomené.');
                 }
                 G.inf = Math.max(0, G.inf - dI);
                 G.arc = Math.max(0, G.arc - U.filter(u => !u.t && u.k === 'a' && u.hp <= 0).length);
@@ -462,11 +517,11 @@ function updBattle(dt) {
     for (const u of U) {
         if (u.hp <= 0)
             continue;
-        const gate = SGB.gate <= 0 && u.y > 440 && u.y < 520, lad = SGB.lad && !u.t && LY.some(l => Math.abs(u.y - l) < 22);
-        if (u.x > 990 && u.x < 1050 && !gate && !lad)
+        const gate = SGB.gate <= 0 && u.y > 440 && u.y < 520, lad = SGB.lad && !u.t && LY.some(l => Math.abs(u.y - l) < 22), tow = SGB.tow && !u.t && Math.abs(u.y - 610) < 34;   // veža: široký prechod
+        if (u.x > 990 && u.x < 1050 && !gate && !lad && !tow)
             u.x = u.x < 1020 ? 990 : 1050;
         if (!u.t && !u.h && u.x >= 980 && u.x <= 992) {
-            const py = [480, ...(SGB.lad ? LY : [])].reduce((a, b) => Math.abs(b - u.y) < Math.abs(a - u.y) ? b : a);
+            const py = [480, ...(SGB.lad ? LY : []), ...(SGB.tow ? [610] : [])].reduce((a, b) => Math.abs(b - u.y) < Math.abs(a - u.y) ? b : a);
             u.y += Math.sign(py - u.y) * Math.min(Math.abs(py - u.y), u.sp * dt * 1.2);
         }
         if (u.t && u.x >= 1048 && u.x <= 1056 && SGB.gate <= 0)
