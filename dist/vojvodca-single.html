@@ -7037,6 +7037,8 @@ class MapScene extends Phaser.Scene {
     create() {
         this.armies = new Map();
         this.hover = null;
+        // scéna sa po bitke spúšťa znova: objekty z minulého spustenia sú zničené, preto sa vytvoria nanovo
+        this.sgTxt = new Map(); this.musterTxt = null; this.spaceKey = null;
         const worldObjs = this.buildTerrain();
         this.vill = VL.map(v => ({
             v, key: '',

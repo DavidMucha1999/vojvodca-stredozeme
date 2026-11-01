@@ -16,6 +16,18 @@ with sync_playwright() as p:
     for t in ['f','l','u','h','r']: E(f"ov.classList.add('hide');mode='map';ency('{t}')")
     print(E("""(()=>{try{ov.classList.add('hide');mode='map';town(0);for(const c of 'revhd')tsub(0,c);ovw();ov.classList.add('hide');mode='map';sts();ov.classList.add('hide');mode='map';tro();ov.classList.add('hide');mode='map';achs();ov.classList.add('hide');mode='map';dnk();ov.classList.add('hide');mode='map';G.king=1;KD=0;upd();return 'menus ok'}catch(e){return 'ERR '+e.stack}})()"""))
     pg.wait_for_timeout(300)
+    # mapa po bitke (scéna sa spustí znova) s obliehaním a zrazom vojska na obrazovke – predtým tu mapa zamrzla
+    n0 = len(errs)
+    E("(() => { ov.classList.add('hide'); if (ROOM) leaveRoom(); mode = 'map'; const i = TW.findIndex(t => hos(t.f, G.fac) && t.f !== 9 && !t.sg); startSiege(i, G.fac === 6 ? 6 : G.fac, 'G'); G.x = G.tx = TW[i].x - 80; G.y = G.ty = TW[i].y + 60; })()")
+    pg.wait_for_function("f => game.loop.frame > f + 6", arg=E("game.loop.frame"), timeout=120000)   # popis obliehania sa vytvorí pred bitkou
+    E("startBattle({ n: 3, f: 9, nm: 'Test' })")
+    pg.wait_for_function("game.scene.isActive('Battle') && game.scene.getScene('Battle').ready", timeout=120000)
+    E("for (const u of U) if (u.t) u.hp = 0"); pg.wait_for_function("mode === 'over'", timeout=120000)
+    E("(() => { ov.classList.add('hide'); mode = 'map'; const i = TW.findIndex(t => hos(t.f, G.fac) && t.f !== 9 && !t.sg); startSiege(i, G.fac === 6 ? 6 : G.fac, 'G'); G.x = G.tx = TW[i].x - 80; G.y = G.ty = TW[i].y + 60; const m = marshal(0); if (m) { m.mu = { t: i, day: G.day }; G.fac = 0; } })()")
+    pg.wait_for_function("game.scene.isActive('Map')", timeout=120000)
+    pg.wait_for_function("f => game.loop.frame > f + 10", arg=E("game.loop.frame"), timeout=120000)
+    print('map after battle', 'ok' if len(errs) == n0 else 'ERR ' + str(errs[n0:n0 + 2]))
+    E("TW.forEach(t => t.sg = null); G.fac = 6; ov.classList.add('hide'); mode = 'map'")
     # všetky izometrické miestnosti, každá dvakrát (scéna sa znova používa) a počkať na niekoľko snímok – chyba v update() by tu vyskočila
     rooms = ["enterCastle(%d,'yard')", "enterCastle(%d,'hall')", "enterTavern(%d)"]
     n_err = len(errs)
