@@ -7446,7 +7446,7 @@ class IsoRoom extends Phaser.Scene {
         this.FW = FW; this.FD = FD; this.WH = WH;
         this.OX = OX ?? W / 2 - (FW - FD) / 2; this.OY = OY ?? Math.max(WH + 60, (H - (FW + FD) / 2 + WH) / 2 + 20);
         this.blocks = []; this.people = []; this.props = [];
-        this.glows = null; this.winPts = []; this.chimneys = []; this.waters = []; this.sky = null; this.skyRect = null; this.bgN = 0;   // scéna sa po reštarte používa znova, staré hodnoty nesmú ostať
+        this.glows = null; this.winPts = []; this.chimneys = []; this.waters = []; this.bgN = 0;   // scéna sa po reštarte používa znova, staré hodnoty nesmú ostať
     }
     /** Svet → obrazovka. */
     P(wx, wy, wz = 0) { return [this.OX + wx - wy, this.OY + (wx + wy) / 2 - wz]; }
@@ -7514,7 +7514,7 @@ class IsoRoom extends Phaser.Scene {
     /** Vonkajšok: obzor s kopcami a zem za kosoštvorcom (statická kresba pod podlahou); obloha sa kreslí do this.sky každý snímok. */
     outdoor(ground, hills = [], horizon) {
         const hz = horizon ?? this.OY - 30, R = n => { const x = Math.sin((this.OX + n) * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
-        this.sky = this.sky || this.add.graphics().setDepth(-1); this.skyRect = [0, 0, W, hz + 20];
+        this.sky = this.add.graphics().setDepth(-1); this.skyRect = [0, 0, W, hz + 20];
         const g = this.add.graphics().setDepth(-.5);
         for (const [col, n, y0, h] of hills) { g.fillStyle(col, 1); for (let i = 0; i < n; i++) g.fillEllipse(i * (W / (n - 1)), hz + y0 + R(i + 40) * 10, W / n * 2.3, h + R(i + 50) * 20); }
         g.fillStyle(this.hexc(ground), 1).fillRect(0, hz, W, H - hz);

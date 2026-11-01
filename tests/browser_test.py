@@ -16,6 +16,21 @@ with sync_playwright() as p:
     for t in ['f','l','u','h','r']: E(f"ov.classList.add('hide');mode='map';ency('{t}')")
     print(E("""(()=>{try{ov.classList.add('hide');mode='map';town(0);for(const c of 'revhd')tsub(0,c);ovw();ov.classList.add('hide');mode='map';sts();ov.classList.add('hide');mode='map';tro();ov.classList.add('hide');mode='map';achs();ov.classList.add('hide');mode='map';dnk();ov.classList.add('hide');mode='map';G.king=1;KD=0;upd();return 'menus ok'}catch(e){return 'ERR '+e.stack}})()"""))
     pg.wait_for_timeout(300)
+    # všetky izometrické miestnosti, každá dvakrát (scéna sa znova používa) a počkať na niekoľko snímok – chyba v update() by tu vyskočila
+    rooms = ["enterCastle(%d,'yard')", "enterCastle(%d,'hall')", "enterTavern(%d)"]
+    n_err = len(errs)
+    frames = lambda: pg.wait_for_function("f => game.loop.frame > f + 4", arg=E("game.loop.frame"))
+    for rep in range(2):
+        for i in [0, E("TW.findIndex(t => t.n === 'Dale')"), E("TW.findIndex(t => t.n === 'Barad-dûr')")]:
+            for r in rooms:
+                E("ov.classList.add('hide'); if (ROOM) leaveRoom(); mode = 'map'; " + (r % i)); frames()
+        for v in [0, E("VL.findIndex(v => regionAt(v.x, v.y) === 'a')")]:
+            E(f"ov.classList.add('hide'); if (ROOM) leaveRoom(); mode = 'map'; enterVillage({v})"); frames()
+        for pl in range(E("PLACES.length")):
+            E(f"ov.classList.add('hide'); if (ROOM) leaveRoom(); mode = 'map'; enterPlace({pl})"); frames()
+    E("ov.classList.add('hide'); if (ROOM) leaveRoom(); mode = 'map'")
+    print('rooms', 'ok' if len(errs) == n_err else 'ERR ' + str(errs[n_err:n_err + 2]))
     print(E("""(()=>{try{ov.classList.add('hide');mode='map';save();G=null;load();return 'load '+(G&&G.day)}catch(e){return 'ERR '+e.stack}})()"""))
     pg.wait_for_timeout(500);
     print('errors',errs[:5]);b.close()
+    if errs: sys.exit(1)
