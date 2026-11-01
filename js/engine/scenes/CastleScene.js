@@ -36,7 +36,7 @@ class CastleScene extends IsoRoom {
         this.th = th; this.C = C; this.R = R; this.t = t;
         this.sky = this.add.graphics().setDepth(-1);
         this.fx = this.add.graphics().setDepth(1700);
-        this.torches = []; this.braziers = []; this.candles = []; this.forge = null;
+        this.torches = []; this.braziers = []; this.candles = []; this.forge = null; this.chapel = this.well = null; this.windows = [];
         if (this.roomKind === 'hall') this.buildHall(t, th, C, R); else this.buildYard(t, th, C, R);
         this.commitBg();
     }

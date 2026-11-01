@@ -1,5 +1,5 @@
 /*
- * ENGINE: izometrický základ miestností (krčma, nádvorie, sieň) – nahrádza bočný pohľad RoomScene pre tieto tri scény.
+ * ENGINE: izometrický základ miestností (krčma, nádvorie, sieň) – spoločný základ krčmy, nádvoria, siene, dedín a pamätihodností.
  * Svet miestnosti je obdĺžnik FW × FD „podlahových jednotiek“ (1 jednotka ≈ 1 px); premietanie 2:1 (dimetria):
  *   P(wx, wy, wz) = [OX + wx − wy, OY + (wx + wy) / 2 − wz]
  * Podlaha a steny sú textúry (Tex.pattern) premietnuté do izometrie cez transformáciu plátna (bez skreslenia dlaždíc),
@@ -15,6 +15,7 @@ class IsoRoom extends Phaser.Scene {
         this.FW = FW; this.FD = FD; this.WH = WH;
         this.OX = OX ?? W / 2 - (FW - FD) / 2; this.OY = OY ?? Math.max(WH + 60, (H - (FW + FD) / 2 + WH) / 2 + 20);
         this.blocks = []; this.people = []; this.props = [];
+        this.glows = null; this.winPts = []; this.chimneys = []; this.waters = []; this.sky = null; this.skyRect = null; this.bgN = 0;   // scéna sa po reštarte používa znova, staré hodnoty nesmú ostať
     }
     /** Svet → obrazovka. */
     P(wx, wy, wz = 0) { return [this.OX + wx - wy, this.OY + (wx + wy) / 2 - wz]; }
@@ -35,10 +36,11 @@ class IsoRoom extends Phaser.Scene {
         return p;
     }
     /** Podlaha: textúra kind vo farbe color premietnutá na kosoštvorec FW × FD, s jemným tieňom pri stenách. */
-    floor(kind, color, seed = 1) {
+    floor(kind, color, seed = 1, edge = true) {
         const c = this.bgCanvas(), S = RES;
         c.save(); c.setTransform(S, .5 * S, -S, .5 * S, this.OX * S, this.OY * S);
         c.fillStyle = this.patternOf(kind, color, seed); c.fillRect(0, 0, this.FW, this.FD);
+        if (!edge) { c.restore(); return; }
         const g1 = c.createLinearGradient(0, 0, 0, 60); g1.addColorStop(0, 'rgba(0,0,0,.35)'); g1.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g1; c.fillRect(0, 0, this.FW, 60);
         const g2 = c.createLinearGradient(0, 0, 60, 0); g2.addColorStop(0, 'rgba(0,0,0,.3)'); g2.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g2; c.fillRect(0, 0, 60, this.FD);
         c.restore();
@@ -77,6 +79,67 @@ class IsoRoom extends Phaser.Scene {
         this.bg = this.add.image(0, 0, key).setOrigin(0).setScale(1 / RES).setDepth(0);
         this.bgCv = null; this.bgCtx = null;
     }
+
+    /** Vonkajšok: obzor s kopcami a zem za kosoštvorcom (statická kresba pod podlahou); obloha sa kreslí do this.sky každý snímok. */
+    outdoor(ground, hills = [], horizon) {
+        const hz = horizon ?? this.OY - 30, R = n => { const x = Math.sin((this.OX + n) * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
+        this.sky = this.sky || this.add.graphics().setDepth(-1); this.skyRect = [0, 0, W, hz + 20];
+        const g = this.add.graphics().setDepth(-.5);
+        for (const [col, n, y0, h] of hills) { g.fillStyle(col, 1); for (let i = 0; i < n; i++) g.fillEllipse(i * (W / (n - 1)), hz + y0 + R(i + 40) * 10, W / n * 2.3, h + R(i + 50) * 20); }
+        g.fillStyle(this.hexc(ground), 1).fillRect(0, hz, W, H - hz);
+        g.fillStyle(0x000000, .12).fillRect(0, hz, W, 4);
+        return g;
+    }
+    /** Dom: kváder so sedlovou (rh > 0) alebo plochou strechou, dvere na prednej ľavej stene, okná, komín. Vráti svetové súradnice dverí. */
+    house(x, y, w, d, h, wall, roof, o = {}) {
+        const rh = o.rh ?? h * .7, ov = o.ov ?? 6, g = this.add.graphics().setDepth(this.depth(x + w, y + d) + (o.dz || 0));
+        const P = (a, b, c) => this.P(a, b, c);
+        const poly = (pts, c, line = true) => { g.fillStyle(c, 1); g.beginPath(); pts.forEach(([a, b, cc], i) => { const [sx, sy] = P(a, b, cc); i ? g.lineTo(sx, sy) : g.moveTo(sx, sy); }); g.closePath(); g.fillPath(); if (line) { g.lineStyle(1, 0x000000, .3); g.strokePath(); } };
+        const sh = this.add.graphics().setDepth(this.depth(x, y) - .5); sh.fillStyle(0x000000, .25).fillEllipse(...P(x + w * .55, y + d * .55).map((v, i) => v + (i ? 4 : 6)), (w + d) * .95, (w + d) * .45);
+        poly([[x, y + d, 0], [x + w, y + d, 0], [x + w, y + d, h], [x, y + d, h]], this.shade(wall, .78));
+        poly([[x + w, y, 0], [x + w, y + d, 0], [x + w, y + d, h], [x + w, y, h]], this.hexc(wall));
+        if (o.logs) { g.lineStyle(1, 0x000000, .25); for (let z = 6; z < h; z += 7) { const [a1, b1] = P(x, y + d, z), [a2, b2] = P(x + w, y + d, z), [a3, b3] = P(x + w, y, z); g.lineBetween(a1, b1, a2, b2); g.lineBetween(a2, b2, a3, b3); } }
+        if (o.beam) { g.lineStyle(2, this.hexc(o.beam), 1); const L = (a, b) => { const [p1, q1] = P(...a), [p2, q2] = P(...b); g.lineBetween(p1, q1, p2, q2); }; L([x, y + d, 0], [x, y + d, h]); L([x + w, y + d, 0], [x + w, y + d, h]); L([x + w, y, 0], [x + w, y, h]); L([x, y + d, h / 2], [x + w, y + d, h / 2]); L([x + w, y + d, h / 2], [x + w, y, h / 2]); L([x, y + d, h], [x + w, y + d, h]); L([x + w, y + d, h], [x + w, y, h]); L([x + w * .5, y + d, 0], [x + w * .5, y + d, h]); L([x, y + d, h], [x + w * .5, y + d, h / 2]); L([x + w, y + d, h], [x + w * .5, y + d, h / 2]); }
+        if (rh > 0) {   // sedlová strecha s hrebeňom pozdĺž osi x
+            const ym = y + d / 2;
+            poly([[x - ov, y - ov, h], [x + w + ov, y - ov, h], [x + w + ov, ym, h + rh], [x - ov, ym, h + rh]], this.shade(roof, 1.12));
+            poly([[x + w, y, h], [x + w, y + d, h], [x + w, ym, h + rh]], this.shade(wall, 1.05));
+            poly([[x - ov, y + d + ov, h], [x + w + ov, y + d + ov, h], [x + w + ov, ym, h + rh], [x - ov, ym, h + rh]], this.hexc(roof));
+            if (o.thatch) { g.lineStyle(1, 0x000000, .18); for (let k = 1; k < 6; k++) { const z = h + rh * k / 6, yy = y + d + ov - (d / 2 + ov) * k / 6; const [a1, b1] = P(x - ov, yy, z), [a2, b2] = P(x + w + ov, yy, z); g.lineBetween(a1, b1, a2, b2); } }
+            if (o.chimney !== false) { const cx = x + w * .3, cy = ym + 8; poly([[cx, cy + 8, h + rh * .5], [cx + 8, cy + 8, h + rh * .5], [cx + 8, cy + 8, h + rh + 10], [cx, cy + 8, h + rh + 10]], this.shade(o.chimneyCol || 0x8a8a90, .8)); poly([[cx + 8, cy, h + rh * .5], [cx + 8, cy + 8, h + rh * .5], [cx + 8, cy + 8, h + rh + 10], [cx + 8, cy, h + rh + 10]], this.hexc(o.chimneyCol || 0x8a8a90)); poly([[cx, cy, h + rh + 10], [cx + 8, cy, h + rh + 10], [cx + 8, cy + 8, h + rh + 10], [cx, cy + 8, h + rh + 10]], this.shade(o.chimneyCol || 0x8a8a90, 1.15)); this.chimneys = this.chimneys || []; this.chimneys.push([cx + 4, cy + 4, h + rh + 10]); }
+        } else {   // plochá strecha s nízkou atikou
+            poly([[x, y, h], [x + w, y, h], [x + w, y + d, h], [x, y + d, h]], this.shade(roof, 1.1));
+            poly([[x, y + d, h], [x + w, y + d, h], [x + w, y + d, h + 5], [x, y + d, h + 5]], this.shade(wall, .78)); poly([[x + w, y, h], [x + w, y + d, h], [x + w, y + d, h + 5], [x + w, y, h + 5]], this.hexc(wall));
+        }
+        const dw = o.doorW || 12, dh = o.doorH || 22, dx = x + (o.doorAt ?? .3) * w;   // dvere na prednej ľavej stene
+        if (o.door !== false) { poly([[dx, y + d, 0], [dx + dw, y + d, 0], [dx + dw, y + d, dh], [dx, y + d, dh]], 0x15100c, false); if (o.doorCol) poly([[dx + 1.5, y + d, 0], [dx + dw - 1.5, y + d, 0], [dx + dw - 1.5, y + d, dh - 2], [dx + 1.5, y + d, dh - 2]], this.hexc(o.doorCol), false); }
+        this.winPts = this.winPts || [];
+        if (o.win !== false) {   // okná: na prednej ľavej stene vpravo od dverí a na pravej stene
+            const wz = h * .45, ww = 10, wh = 9;
+            for (const [a, b, c2, e] of [[x + w * .72, y + d, x + w * .72 + ww, y + d], [x + w, y + d * .35, x + w, y + d * .35 + ww]]) { poly([[a, b, wz], [c2, e, wz], [c2, e, wz + wh], [a, b, wz + wh]], 0x2a3a4a); this.winPts.push(this.P((a + c2) / 2, (b + e) / 2, wz + wh / 2)); }
+        }
+        this.blocks.push([x, y, w, d]); this.props.push(g);
+        return [dx + dw / 2, y + d + 14];
+    }
+    /** Strom: kind round | pine | willow | dead | mallorn | palm. */
+    tree(x, y, kind = 'round', sc = 1, col) {
+        return this.prop(x, y, (g, sx, sy) => {
+            g.fillStyle(0x000000, .22).fillEllipse(sx, sy + 2, 30 * sc, 12 * sc);
+            if (kind === 'pine') { g.fillStyle(0x4a3220, 1).fillRect(sx - 3 * sc, sy - 30 * sc, 6 * sc, 30 * sc); g.fillStyle(col || 0x2a5a30, 1); for (let k = 0; k < 4; k++) g.fillTriangle(sx - (26 - k * 5) * sc, sy - (18 + k * 16) * sc, sx + (26 - k * 5) * sc, sy - (18 + k * 16) * sc, sx, sy - (46 + k * 16) * sc); g.fillStyle(0xffffff, .0); }
+            else if (kind === 'dead') { g.fillStyle(0x4a4a44, 1).fillRect(sx - 4 * sc, sy - 60 * sc, 8 * sc, 60 * sc); g.lineStyle(4 * sc, 0x4a4a44, 1); for (const [dx, dy] of [[-26, -84], [22, -90], [-10, -98], [30, -66]]) g.lineBetween(sx, sy - 50 * sc, sx + dx * sc, sy + dy * sc); }
+            else if (kind === 'willow') { g.fillStyle(0x4a3a2a, 1).fillRect(sx - 4 * sc, sy - 56 * sc, 8 * sc, 56 * sc); g.fillStyle(col || 0x6a9a4a, .95).fillEllipse(sx, sy - 60 * sc, 60 * sc, 30 * sc); g.lineStyle(2, col || 0x7aa050, .9); for (let b = 0; b < 9; b++) g.lineBetween(sx - 28 * sc + b * 7 * sc, sy - 56 * sc, sx - 30 * sc + b * 7.5 * sc, sy - 12 * sc); }
+            else if (kind === 'mallorn') { g.fillStyle(0x8a7a60, 1).fillRect(sx - 6 * sc, sy - 100 * sc, 12 * sc, 100 * sc); g.fillStyle(col || 0xd8c870, .92).fillCircle(sx, sy - 112 * sc, 36 * sc); g.fillStyle(0xe8dc90, .8).fillCircle(sx - 10 * sc, sy - 124 * sc, 22 * sc); }
+            else if (kind === 'palm') { g.fillStyle(0x8a6a3a, 1).fillRect(sx - 3 * sc, sy - 60 * sc, 6 * sc, 60 * sc); g.lineStyle(4 * sc, col || 0x4a8a3a, 1); for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283; g.lineBetween(sx, sy - 60 * sc, sx + Math.cos(a) * 24 * sc, sy - 60 * sc + Math.sin(a) * 10 * sc + 8 * sc); } }
+            else { g.fillStyle(0x4a3a2a, 1).fillRect(sx - 4 * sc, sy - 34 * sc, 8 * sc, 34 * sc); g.fillStyle(col || 0x3a6a2a, 1).fillCircle(sx, sy - 48 * sc, 24 * sc).fillCircle(sx - 14 * sc, sy - 38 * sc, 16 * sc).fillCircle(sx + 14 * sc, sy - 40 * sc, 17 * sc); g.fillStyle(0xffffff, .12).fillCircle(sx - 6 * sc, sy - 56 * sc, 10 * sc); }
+        });
+    }
+    /** Vodná plocha na podlahe (svetový obdĺžnik) s brehom; trblietanie kreslí waterFx(). */
+    water(x, y, w, d, col = '#2c5b73') { this.onFloor(c => { c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(x - 4, y - 4, w + 8, d + 8); c.fillStyle = col; c.fillRect(x, y, w, d); c.fillStyle = 'rgba(120,180,200,.35)'; c.fillRect(x + 3, y + 3, w - 6, d - 6); }); this.waters = this.waters || []; this.waters.push([x, y, w, d]); }
+    waterFx(f) { const t = tm; f.fillStyle(0xffffff, .22); for (const [x, y, w, d] of this.waters || []) for (let i = 0; i < 14; i++) { const wx = x + (i * 53 + t * 1.2) % w, wy = y + (i * 37) % d; const [sx, sy] = this.P(wx, wy); f.fillRect(sx, sy, 10, 1.5); } }
+    /** Plameň na mieste sveta (x, y, z) – do grafiky f. */
+    flame(f, x, y, z, n = 5, col = 0xff7a20) { const [fx, fy] = this.P(x, y, z), t = tm; for (let k = 0; k < n; k++) { const ph = t / 3 + k * 1.9, h = 10 + Math.sin(ph) * 4; f.fillStyle(col, .9).fillTriangle(fx - (n - 1) * 2 + k * 4 - 3, fy, fx - (n - 1) * 2 + k * 4 + 3, fy, fx - (n - 1) * 2 + k * 4 + Math.sin(ph) * 2, fy - h); } f.fillStyle(0xffd060, .9).fillTriangle(fx - 4, fy, fx + 4, fy, fx, fy - 6 - Math.sin(t / 2) * 2); }
+    /** Dym zo svetového bodu (x, y, z). */
+    smokeFx(f, x, y, z, col = 0x8a8a90, a0 = .3) { const [sx, sy] = this.P(x, y, z), t = tm; for (let k = 0; k < 4; k++) { const a = (t * .4 + k * 20 + x) % 80; f.fillStyle(col, a0 - a / 320).fillCircle(sx + Math.sin(a * .1 + k) * 6, sy - a * .8, 4 + a * .12); } }
 
     /* ---------- kvádre a predmety ---------- */
     hexc(c) { return typeof c === 'number' ? c : parseInt(c.slice(1), 16); }
