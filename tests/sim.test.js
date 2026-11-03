@@ -215,6 +215,22 @@ try {
     run('save(5); var sgOk = true; TW[ai].sg = { f: 0, d0: 1, lead: "G", w: { lad: 10, ram: 0, tow: 0 }, lad: 0, ram: 0, tow: 0, build: "lad", food: 4, fail: 0 }; save(5); TW[ai].sg = null; load(5);');
     check('Obliehanie sa uloží s hradom', run('!!TW[ai].sg && TW[ai].sg.w.lad === 10'));
     run('TW[ai].sg = null; mode = "map";');
+    // nový boj (combat.js): kryt, úder zozadu, morálka a útek, utečenci prežijú, skupiny a šík
+    run(closeMenus + '; mode = "map"; G.inf = 20; G.arc = 6; G.cav = 4; G.hp = mh(); G.eq.s = 1; G.s.ls = 1;');
+    run(`startBattle({ n: 12, f: 2, nm: "Gorbag" }); var h = U[0], e1 = U.find(u => u.t && !u.cmd); e1.x = h.x + 12; e1.y = h.y; e1.f = Math.PI; h.f = 0;
+        CMB.blk = 1; CMB.blkT = 30; CMB.st = 100; var hp0 = h.hp; var res1 = meleeHit(e1, h, 20, "ai"); var blocked = !res1 && h.hp === hp0 && CMB.shp < CMB.shMax;
+        CMB.blk = 0; e1.f = 0; var hpE = e1.hp = 500; meleeHit(h, e1, 10, "swing"); var back = Math.round(500 - e1.hp);
+        var hasCmd = U.some(u => u.cmd); var ammo = CMB.ammo;`);
+    check('Kryt štítom zastaví úder, úder zozadu +50 %, veliteľ a šípy hrdinu', run('blocked && back === 15 && hasCmd && ammo > 0'), run('blocked + " " + back + " " + hasCmd + " " + ammo'));
+    run(`var mine0 = U.filter(u => !u.t && !u.h && !u.cp).length; CMB.sel = "l"; setOrd("l"); var archLine = U.filter(u => !u.t && !u.ally && u.k === "a").every(u => u.hx != null) && U.filter(u => !u.t && !u.ally && u.k === "i").every(u => u.hx == null) && CMB.og.l === "l" && CMB.og.p === "a";
+        CMB.sel = "all"; setOrd("a"); CMB.M[1] = 0; for (const u of U) if (u.t && fearless(u)) u.hp = 0; var kr = 0; while (mode === "battle" && kr < 3000) { U[0].hp = 999; for (const u of U) if (!u.t) u.stun = 99; updBattle(1); kr++; }
+        var fledN = U.filter(u => u.t && u.fled).length, deadN = U.filter(u => u.t && fallen(u)).length;`);
+    check('Šík len pre lukostrelcov; pri nulovej morálke nepriatelia utečú a bitka je vyhraná', run('archLine && mode !== "battle" && fledN > 0'), run('archLine + ", utieklo " + fledN + ", padlo " + deadN + ", " + kr + " snímok"'));
+    run(closeMenus + '; mode = "map";');
+    run(`G.inf = 20; startBattle({ n: 30, f: 2, nm: "Shagrat" }); var inf0 = G.inf; CMB.M[0] = 0; var kf = 0; while (mode === "battle" && kf < 3000) { U[0].hp = 999; for (const u of U) if (u.t) u.stun = 99; if (kf > 500) for (const u of U) if (u.t) u.hp = 0; updBattle(1); kf++; }
+        var ownFled = U.filter(u => !u.t && u.fled && u.k === "i" && !u.ally).length;`);
+    check('Tvoji utečenci prežijú (neodpočítajú sa z družiny)', run('ownFled > 0 && G.inf === inf0'), run('"utieklo " + ownFled + ", pešiakov " + inf0 + " → " + G.inf'));
+    run(closeMenus + '; mode = "map";');
 } catch (e) { fails++; console.log('CHYBA výnimka: ' + e.stack); }
 console.log(fails ? '\n' + fails + ' testov zlyhalo.' : '\nVšetky testy prešli.');
 process.exit(fails ? 1 : 0);

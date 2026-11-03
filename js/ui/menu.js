@@ -38,12 +38,16 @@ function mnPanel(title, html, btns) {
 function mnSettings() {
     mnPanel('Nastavenia', '<p>Zvuk a hudbu môžeš kedykoľvek prepnúť aj tlačidlom Zvuk na mape. Celá obrazovka: tlačidlo nižšie' + (DESKTOP ? ', F11 alebo Alt+Enter.' : '.') + '</p>', [
         ['Zvuk: ' + (mu ? 'vypnutý' : 'zapnutý'), b => { mu = !mu; b.textContent = 'Zvuk: ' + (mu ? 'vypnutý' : 'zapnutý'); if (!mu) uiSnd('click'); }],
+        ['Krv v bitke: ' + (OPT.blood ? 'áno' : 'nie'), b => { OPT.blood = !OPT.blood; saveOpt(); b.textContent = 'Krv v bitke: ' + (OPT.blood ? 'áno' : 'nie'); }],
         ['Celá obrazovka', () => fsc()],
         ['Späť', () => mnShow('mn')]]);
 }
 function mnHelp() {
     mnPanel('Návod', '<p>Veď svoju družinu po veľkej mape Stredozeme, pridaj sa ku Gondoru, Rohanu, Mordoru alebo Isengardu a dobýjaj hrady. Najímaj vojakov, kupuj zbrane, brnenie, štít a koňa, porážaj nepriateľov, plň kapitoly príbehu a prepracuj sa až na kráľa.</p>'
-        + '<p><b>Mapa:</b> klikni, kam chceš ísť; v tábore podrž medzerník a čas pobeží rýchlejšie.<br><b>Bitka:</b> šípky alebo WASD a medzerník na útok, vojsku veľ klávesmi 1 až 4.<br><b>Dotykový displej:</b> drž prst tam, kam chceš bežať, a hrdina útočí sám.</p>', [['Späť', () => mnShow('mn')]]);
+        + '<p><b>Mapa:</b> klikni, kam chceš ísť; v tábore podrž medzerník a čas pobeží rýchlejšie.</p>'
+        + '<p><b>Bitka:</b> WASD alebo šípky pohyb, myš mieri. Ľavé tlačidlo alebo medzerník = sek (oblúk, až traja nepriatelia), E = bod (ďalej a silnejšie), pravé tlačidlo alebo Shift = kryt (so štítom široký; kryt tesne pred úderom nepriateľa ho zapotáca). Q = luk (s lukostreľbou), V = bojový pokrik. Na koni rovný cval = nápor. Sleduj červený oblúk – nepriateľ sa napriahol. Úder zboku +25 %, zozadu +50 %.</p>'
+        + '<p><b>Velenie:</b> 1 Všetci, 2 Pechota, 3 Lukostrelci, 4 Jazda; potom T Útok, H Držať, F Za mnou, G Šík, R Ústup. Keď morálka klesne, vojaci utekajú – padlý veliteľ (zlatý kruh) zlomí nepriateľa.</p>'
+        + '<p><b>Dotykový displej:</b> drž prst tam, kam chceš bežať, a hrdina útočí sám.</p>', [['Späť', () => mnShow('mn')]]);
 }
 /** Prepojí tlačidlá menu (raz, po načítaní stránky). */
 function buildMenu() {

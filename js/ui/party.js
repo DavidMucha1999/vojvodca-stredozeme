@@ -56,9 +56,9 @@ function party(back, tab) {
         if (G.cap) btn('Prepustiť zajatcov (česť +1)', () => { G.cap = 0; G.hon = (G.hon || 0) + 1; upd(); re('a'); }, 0, 'chain');
     }
     if (tab === 'o') {
-        show('Správa družiny – rozkazy', 'Východzí rozkaz, s ktorým vojsko vstupuje do bitky (v bitke sa dá kedykoľvek zmeniť klávesmi 1–4).');
+        show('Správa družiny – rozkazy', 'Východzí rozkaz, s ktorým vojsko vstupuje do bitky (v bitke vyberieš skupinu klávesmi 1–4 a rozkaz T Útok, H Držať, F Za mnou, G Šík, R Ústup).');
         tabs();
-        [['a', 'Útok – všetci vpred', 'attack'], ['h', 'Držať líniu – lukostrelci strieľajú, pešiaci čakajú', 'shield'], ['f', 'Nasledovať hrdinu – šík okolo teba', 'hero'], ['r', 'Ústup', 'back']].forEach(([k, n, ic]) => { const b = btn(n, () => { G.ord0 = k; re('o'); }, 0, ic); if ((G.ord0 || 'a') === k) select(b); });
+        [['a', 'Útok – všetci vpred', 'attack'], ['h', 'Držať líniu – lukostrelci strieľajú, pešiaci čakajú', 'shield'], ['f', 'Nasledovať hrdinu – šík okolo teba', 'hero'], ['l', 'Šík – línia čelom k nepriateľovi (lukostrelci za pechotou)', 'shield'], ['r', 'Ústup', 'back']].forEach(([k, n, ic]) => { const b = btn(n, () => { G.ord0 = k; re('o'); }, 0, ic); if ((G.ord0 || 'a') === k) select(b); });
     }
     btn(fromMap ? 'Zavrieť' : 'Späť', back, 0, 'back');
 }

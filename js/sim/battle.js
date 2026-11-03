@@ -41,7 +41,7 @@ function startBattleBase(en, al) {
     if (en.def != null)   // obrana hradu: hradby pomáhajú hráčovej strane
         U.forEach(u => { if (!u.t) u.hp = u.mh = u.mh * 1.25; });
     mode = 'battle';
-    setOrd(G.ord0 || 'a');
+    CMB.sel = 'all'; CMB.og = { p: G.ord0 || 'a', l: G.ord0 || 'a', j: G.ord0 || 'a' }; odSync();
     od.style.display = 'flex';
     tb.style.display = 'none';
     WX = battleWeather();       // počasie z mapy, v noci kratší dostrel
@@ -81,15 +81,15 @@ function sideUnits(armies, team, cap) {
 function sideLosses(win, L) {
     for (const e of BSIDES.allies.concat(BSIDES.foes)) {
         const us = U.filter(u => u.src === e); if (!us.length) continue;
-        const dead = us.filter(u => u.hp <= 0).length;
+        const dead = us.filter(fallen).length;
         e.n = Math.max(0, e.n - e.n * dead / us.length * .9);
         if (BSIDES.foes.includes(e) && win) e.n *= .85;   // porazení pomocníci nepriateľa sa rozpŕchnu
         if (e.n < 1) e.dead = 1;
         if (BSIDES.allies.includes(e)) { e.rl = (e.rl || 0) + 4; rl(G.fac, e.f, 2); }
     }
-    if (L.def != null && BSIDES.gUnits) { const t = TW[L.def], gu = U.filter(u => u.garrison), dead = gu.filter(u => u.hp <= 0).length; t.g = Math.max(2, Math.round(t.g * (1 - dead / gu.length * .9))); }
+    if (L.def != null && BSIDES.gUnits) { const t = TW[L.def], gu = U.filter(u => u.garrison), dead = gu.filter(fallen).length; t.g = Math.max(2, Math.round(t.g * (1 - dead / gu.length * .9))); }
     if ((L.siege || L.sortie != null) && L.t) {   // preživší obrancovia sa vrátia za hradby
-        const en = U.filter(u => u.t && !u.src), alive = en.filter(u => u.hp > 0).length;
+        const en = U.filter(u => u.t && !u.src), alive = en.filter(u => !fallen(u)).length;
         if (L.sortie != null) L.t.g += Math.round(alive * L.n / Math.max(1, en.length));
         else if (!win) L.t.g = Math.max(3, Math.round(L.t.g * alive / Math.max(1, en.length)));
     }
@@ -105,11 +105,14 @@ function unitName(u) {
 function battleReport(win) {
     const bt = document.getElementById('bt'); if (!bt) return;
     const line = (text, color) => row(text, { color });
-    const tally = side => { const m = {}; U.filter(u => u.t === side && u.hp <= 0).forEach(u => { const n = unitName(u); m[n] = (m[n] || 0) + 1; }); return Object.entries(m).map(([n, c]) => c + '× ' + n).join(', ') || 'nikto'; };
+    const tally = side => { const m = {}; U.filter(u => u.t === side && fallen(u)).forEach(u => { const n = unitName(u); m[n] = (m[n] || 0) + 1; }); return Object.entries(m).map(([n, c]) => c + '× ' + n).join(', ') || 'nikto'; };
     const mine = U.filter(u => !u.t), their = U.filter(u => u.t);
     line('Výsledok: ' + (win ? 'víťazstvo' : 'porážka') + ' – ' + (win ? 'tvoja strana' : (LB && LB.nm ? LB.nm : 'nepriateľ')) + ' ovládla bojisko.', '#ffd24a');
-    line('Tvoje straty (' + mine.filter(u => u.hp <= 0).length + '/' + mine.length + '): ' + tally(0));
-    line('Straty nepriateľa (' + their.filter(u => u.hp <= 0).length + '/' + their.length + '): ' + tally(1));
+    line('Tvoje straty (' + mine.filter(fallen).length + '/' + mine.length + '): ' + tally(0));
+    line('Straty nepriateľa (' + their.filter(fallen).length + '/' + their.length + '): ' + tally(1));
+    const fl = side => U.filter(u => u.t === side && u.fled).length;
+    if (fl(1)) line('Z bojiska utieklo nepriateľov: ' + fl(1) + '.', '#ffd24a');
+    if (fl(0)) line('Z tvojich mužov utieklo (vrátia sa k družine): ' + fl(0) + '.');
     if (BSIDES.allies.length) line('Po tvojom boku bojovali: ' + BSIDES.allies.map(e => e.nm).join(', ') + '.', '#9fe08a');
     if (BSIDES.gUnits) line('Po tvojom boku bojovala posádka hradu.', '#9fe08a');
     if (BSIDES.foes.length) line('Nepriateľovi prišli na pomoc: ' + BSIDES.foes.map(e => e.nm).join(', ') + '.', '#ff8a70');
@@ -125,12 +128,13 @@ function hit(b, d, from) {
     if (from && onHill(from) && !onHill(b)) d *= 1.15;   // útok z kopca
     b.hp -= d * (b.h ? red() : !b.t && temple() ? .9 : 1);
     if (from) { from.dmg = (from.dmg || 0) + d; if (was && b.hp <= 0) from.kills = (from.kills || 0) + 1; }
+    if (was && b.hp <= 0) cmbDeath(b);
     snd(b.hp <= 0 ? 'dy' : b.h ? 'sh' : Math.random() < .5 ? 'sw' : 'hb');
     for (let i = 0; i < 4; i++)
         PT.push({ x: b.x, y: b.y, vx: Math.random() * 3 - 1.5, vy: Math.random() * 3 - 1.5, l: 18, c: b.t ? '#8a2a1a' : '#d9a441' });
     for (let i = 0; i < 3; i++)   // iskry kovu: letia hore a padajú
         PT.push({ x: b.x, y: b.y - 4, vx: Math.random() * 4 - 2, vy: -2 - Math.random() * 2.5, g: .18, l: 14 + Math.random() * 8, c: '#fff0b0', sp: 1 });
-    if (b.hp <= 0) for (let i = 0; i < 6; i++) PT.push({ x: b.x, y: b.y, vx: Math.random() * 2 - 1, vy: -.4 - Math.random() * .8, l: 30, c: '#5a1a12', g: .02, bl: 1 });   // krv pri páde
+    if (b.hp <= 0 && OPT.blood) for (let i = 0; i < 6; i++) PT.push({ x: b.x, y: b.y, vx: Math.random() * 2 - 1, vy: -.4 - Math.random() * .8, l: 30, c: '#5a1a12', g: .02, bl: 1 });   // krv pri páde
     if (from && (from.k === 't' || from.k === 'x' || from.k === 'n' || from.k === 'z')) SHAKE = Math.max(SHAKE, from.k === 'x' ? 3 : 2);   // ťažký úder otrasie kamerou
 }
 function mk(t, k, f) {
@@ -166,6 +170,7 @@ function startBattle(en, al) {
     }
     else
         SGB = null;
+    cmbStart(en);   // morálka, veliteľ, výdrž, štít a šípy hrdinu (js/sim/combat.js)
 }
 function endBattle(win) {
     compAfterBattle();
@@ -225,7 +230,7 @@ function endBattle(win) {
         }
         for (const u of U)
             if (u.uk && !u.cp) {
-                if (!u.t && u.hp <= 0 && G[u.uk] > 0)
+                if (!u.t && fallen(u) && G[u.uk] > 0)
                     G[u.uk]--;
                 u.k = 'fx';
             }
@@ -234,13 +239,13 @@ function endBattle(win) {
                 if (k[0] === 'u' && G[k])
                     G[k] = Math.floor(G[k] / 2);
         {
-            const dI = U.filter(u => !u.t && !u.ally && !u.cp && u.k === 'i' && u.hp <= 0).length, dC = U.filter(u => !u.t && u.k === 'c' && u.hp <= 0).length;
+            const dI = U.filter(u => !u.t && !u.ally && !u.cp && u.k === 'i' && fallen(u)).length, dC = U.filter(u => !u.t && !u.ally && u.k === 'c' && fallen(u)).length;
             {
                 const S = G.st || (G.st = { b: 0, w: 0, l: 0, k: 0, d: 0, c: 0, r: 0 });
                 S.b++;
                 S[win ? 'w' : 'l']++;
-                S.k += U.filter(u => u.t && u.hp <= 0).length;
-                S.d += U.filter(u => !u.t && !u.h && !u.ally && !u.cp && u.hp <= 0).length;
+                S.k += U.filter(u => u.t && fallen(u)).length;
+                S.d += U.filter(u => !u.t && !u.h && !u.ally && !u.cp && fallen(u)).length;
                 if (win && LB.siege)
                     S.c++;
                 if (win && LB.vil)
@@ -281,12 +286,12 @@ function endBattle(win) {
                     t.sg = null; G.defend = -1; G.ren += 2; rl(G.fac, t.f, 8); lg('Ubránil si hrad ' + t.n + '. Obliehanie je prelomené.');
                 }
                 G.inf = Math.max(0, G.inf - dI);
-                G.arc = Math.max(0, G.arc - U.filter(u => !u.t && u.k === 'a' && u.hp <= 0).length);
-                G.vet = Math.max(0, G.vet - U.filter(u => !u.t && u.k === 'v' && u.hp <= 0).length);
-                G.elf = Math.max(0, G.elf - U.filter(u => !u.t && u.k === 'e' && u.hp <= 0).length);
-                G.roh = Math.max(0, G.roh - U.filter(u => !u.t && u.k === 'r' && u.hp <= 0).length);
+                G.arc = Math.max(0, G.arc - U.filter(u => !u.t && !u.ally && u.k === 'a' && fallen(u)).length);
+                G.vet = Math.max(0, G.vet - U.filter(u => !u.t && !u.ally && u.k === 'v' && fallen(u)).length);
+                G.elf = Math.max(0, G.elf - U.filter(u => !u.t && !u.ally && u.k === 'e' && fallen(u)).length);
+                G.roh = Math.max(0, G.roh - U.filter(u => !u.t && !u.ally && u.k === 'r' && fallen(u)).length);
                 G.cav = Math.max(0, G.cav - dC);
-                if (G.ent) G.ent = Math.max(0, G.ent - U.filter(u => !u.t && u.k === 'n' && u.hp <= 0).length);
+                if (G.ent) G.ent = Math.max(0, G.ent - U.filter(u => !u.t && u.k === 'n' && fallen(u)).length);
                 G.gold += loot;
                 G.ren++;
                 G.xp += Math.round(LB.n * 5 * (G.twise ? 1.1 : 1));
@@ -394,6 +399,7 @@ function updBattle(dt) {
             a.l -= dt;
             for (const v of U)
                 if (v.hp > 0 && v.t !== a.t && Math.abs(v.x - a.x) < 7 && Math.abs(v.y - a.y) < 7) {
+                    if (arrowBlocked(v, a)) { a.l = 0; break; }
                     hit(v, (a.d || 4.5) + (a.t ? 0 : G.s.ls), a.by);
                     a.l = 0;
                     break;
@@ -408,6 +414,8 @@ function updBattle(dt) {
             u.y = Math.max(20, Math.min(BH - 10, u.y));
             u.bs = u.bs || u.sp;
             u.sp = u.bs * fieldSlow(u);
+            if (u.rout) { cmbFlee(u, dt); continue; }
+            if (u.stun > 0) { u.stun -= dt; continue; }
             if (u.h) {
                 let mx = 0, my = 0;
                 if (keys.ArrowLeft || keys.a)
@@ -418,31 +426,22 @@ function updBattle(dt) {
                     my--;
                 if (keys.ArrowDown || keys.s)
                     my++;
-                if (ptr.down) {
+                if (ptr.down && !CMB.km) {
                     const dx = ptr.x + bc.x - u.x, dy = ptr.y + bc.y - u.y, d = Math.hypot(dx, dy);
                     if (d > 8) {
                         mx = dx / d;
                         my = dy / d;
                     }
                 }
+                let mv = null;
                 if (mx || my) {
-                    const m = Math.hypot(mx, my);
-                    u.f = Math.atan2(my, mx);
-                    u.x = Math.max(8, Math.min(BW - 8, u.x + mx / m * u.sp * dt));
-                    u.y = Math.max(20, Math.min(BH - 8, u.y + my / m * u.sp * dt));
+                    const m = Math.hypot(mx, my), k = CMB.blk && !G.eq.m ? .6 : 1;   // v kryte pešo pomalšie
+                    mv = Math.atan2(my, mx);
+                    if (!CMB.km) u.f = mv;
+                    u.x = Math.max(8, Math.min(BW - 8, u.x + mx / m * u.sp * k * dt));
+                    u.y = Math.max(20, Math.min(BH - 8, u.y + my / m * u.sp * k * dt));
                 }
-                const rg = it('w').r || 34;
-                let near = false;
-                for (const v of U)
-                    if (v.t && v.hp > 0 && Math.hypot(v.x - u.x, v.y - u.y) < rg)
-                        near = true;
-                if ((keys[' '] || (ptr.down && near)) && u.c <= 0) {
-                    u.c = 22;
-                    fx = 10;
-                    for (const v of U)
-                        if (v.t && v.hp > 0 && Math.hypot(v.x - u.x, v.y - u.y) < rg)
-                            hit(v, dmg(), u);
-                }
+                cmbHero(u, dt, mv);   // mierenie, kryt, sek, bod, luk, pokrik, nápor (js/sim/combat.js)
             }
             else {
                 let b = null, bd = 1e9;
@@ -455,12 +454,13 @@ function updBattle(dt) {
                         }
                     }
                 if (!u.t && !u.ally && b) {
+                    const ORD = CMB.og[grpOf(u)] || 'a';   // rozkaz skupiny vojaka (pechota, lukostrelci, jazda)
                     if (ORD === 'r') {
                         u.f = Math.PI;
                         u.x = Math.max(20, u.x - u.sp * 1.15 * dt);
                         continue;
                     }
-                    if (ORD === 'h' && bd > 75 && u.k !== 'a' && u.k !== 'e')
+                    if ((ORD === 'h' || ORD === 'l') && holdSlot(u, b, bd, dt))
                         continue;
                     if (ORD === 'f') {
                         const h = U[0], ix = U.indexOf(u), tx = h.x - 30, ty = h.y + (ix % 11 - 5) * 22, dd = Math.hypot(tx - u.x, ty - u.y);
@@ -490,17 +490,15 @@ function updBattle(dt) {
                             snd('ar');
                         }
                     }
+                    else if (aiMelee(u, b, bd, dt)) { }   // nápriah a úder, nápor jazdy (js/sim/combat.js)
                     else if (bd > 13) {
                         u.x += (b.x - u.x) / bd * u.sp * dt;
                         u.y += (b.y - u.y) / bd * u.sp * dt;
                     }
-                    else if (u.c <= 0) {
-                        hit(b, u.d * (.7 + Math.random() * .6), u);
-                        u.c = 45;
-                    }
                 }
             }
         }
+        cmbMorale(dt);
         U[0].tt = (U[0].tt || 0) + dt;
         if (U[0].tt > 9000) {
             const s = t => U.filter(u => u.t === t && u.hp > 0).reduce((a, u) => a + u.hp, 0);
@@ -510,6 +508,10 @@ function updBattle(dt) {
             endBattle(false);
         else if (!U.some(u => u.t && u.hp > 0))
             endBattle(true);
+        else if (!U.some(u => u.t && u.hp > 0 && !u.rout) && (CMB.endT += dt) > 150) {   // všetci nepriatelia utekajú: bojisko je tvoje
+            for (const u of U) if (u.t && u.hp > 0) { u.fled = 1; u.hp = 0; }
+            endBattle(true);
+        }
     }
     if (!SGB || mode !== 'battle')
         return;

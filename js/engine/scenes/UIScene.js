@@ -68,7 +68,7 @@ class UIScene extends Phaser.Scene {
     // ---------- Prekryvné efekty ----------------------------------------------------
     drawOverlay(scene, dt) {
         const g = this.g; g.clear();
-        if (TS && TS.l > 0 && G) { TS.l -= dt; this.toast.setVisible(!this.dlg).setText(TS.s).setAlpha(Math.min(1, TS.l / 40)); }
+        if (TS && TS.l > 0 && G) { TS.l -= dt; this.toast.setVisible(!this.dlg).setText(TS.s).setAlpha(Math.min(1, TS.l / 40)).setY(scene === 'battle' ? 114 : 70); }
         else this.toast.setVisible(false);
         this.pause.setVisible(scene === 'map' && mode === 'map' && !!PAUSE && !this.dlg && !this.menu && !this.big);
         if (scene === 'map') {
@@ -88,17 +88,37 @@ class UIScene extends Phaser.Scene {
                 g.fillStyle(0xfff4d0, Math.min(.95, (nn - .3) * 1.4)).fillCircle(mx, my, 11); g.fillStyle(0x080e28, Math.min(.9, (nn - .3) * 1.4) * .8).fillCircle(mx + 5, my - 3, 9); g.fillStyle(0xfff4d0, (nn - .3) * .12).fillCircle(mx, my, 26); }
         }
         this.gateTxt.setVisible(false);
+        if (this.cmbT) this.cmbT.forEach(t => t.setVisible(false));
         if (scene === 'battle' && U && U[0]) {
             this.drawWeather(g, WX.n, 1.3);
             const h = U[0];
             g.fillStyle(0x000000, .55).fillRect(W / 2 - 82, 58, 164, 10);
             g.fillStyle(0xb8402a, 1).fillRect(W / 2 - 80, 60, 160 * Math.max(0, h.hp) / h.mh, 6);
+            this.drawCombatHud(g);
             if (SGB) {
                 g.fillStyle(0x000000, .6).fillRect(W / 2 - 82, 114, 164, 8);
                 g.fillStyle(0xc08a3a, 1).fillRect(W / 2 - 80, 116, 160 * Math.max(0, SGB.gate) / SGB.mg, 4);
                 this.gateTxt.setVisible(true).setText(SGB.gate > 0 ? 'Brána hradu' : 'Brána je zničená!');
             }
         }
+    }
+
+    /** Bitka: výdrž a štít hrdinu pod zdravím, morálka oboch strán, stav (nápor, šípy, pokrik, prelomený kryt). */
+    drawCombatHud(g) {
+        if (typeof CMB === 'undefined') return;
+        const C = CMB, x = W / 2 - 80;
+        if (!this.cmbT) { const t = (s, c, ox) => this.add.text(0, 0, s, txtStyle(10, c, { stroke: '#000', strokeThickness: 3 })).setOrigin(ox, .5).setDepth(5); this.cmbT = [t('Tvoje vojsko', '#e8d8a8', 0), t('Nepriateľ', '#ffb0a0', 1), t('', '#ffd24a', .5)]; }
+        g.fillStyle(0x000000, .5).fillRect(x - 2, 69, 164, 6);
+        g.fillStyle(C.gb > 0 ? (Math.floor(tm / 4) % 2 ? 0xff5030 : 0x802010) : 0xd9b84a, 1).fillRect(x, 70, 160 * Math.max(0, C.st) / 100, 4);   // výdrž
+        if (C.shMax) { g.fillStyle(0x000000, .5).fillRect(x - 2, 76, 164, 5); g.fillStyle(C.blk ? 0xd8e8ff : 0x8aa0c0, 1).fillRect(x, 77, 160 * C.shp / C.shMax, 3); }   // štít
+        if (!C.noRout) {   // morálka: vľavo tvoja (zlatá), vpravo nepriateľa (červená)
+            const mw = 120, y = 60, bar = (bx, v, col) => { g.fillStyle(0x000000, .55).fillRect(bx - 2, y - 2, mw + 4, 10); g.fillStyle(col, 1).fillRect(bx, y, mw * Math.max(0, v) / 100, 6); g.fillStyle(0xffffff, .5).fillRect(bx + mw * .35, y - 2, 1, 10); };
+            bar(18, C.M[0], C.M[0] < 35 ? 0xd07030 : 0xd9a441); bar(W - 18 - mw, C.M[1], C.M[1] < 35 ? 0xd07030 : 0xc0392b);
+            this.cmbT[0].setPosition(18, 50).setText('Morálka – tvoje vojsko').setVisible(true);
+            this.cmbT[1].setPosition(W - 18, 50).setText('Morálka – nepriateľ').setVisible(true);
+        }
+        const st = [C.charging ? 'NÁPOR!' : '', C.gb > 0 ? 'Kryt prelomený' : '', C.ammo0 ? 'Šípy: ' + C.ammo : '', C.cry > 0 ? '' : 'Pokrik (V) pripravený', 'Skupina: ' + GRP_N[C.sel]].filter(Boolean).join('   ');
+        this.cmbT[2].setPosition(W / 2, 90).setText(st).setVisible(true);
     }
 
     /** Počasie cez celú obrazovku: dážď, búrka s bleskom, hmla, sneh, popolový dážď Mordoru. k = hustota. */
@@ -215,9 +235,10 @@ class UIScene extends Phaser.Scene {
             this.barLayer.add(out);
             if (this.pause) this.pause.y = y - 14;
         }
-        if (vis(od)) {
-            const bs = [...od.children], w = 84, x0 = W / 2 - (bs.length * (w + 4)) / 2;
-            bs.forEach((b, i) => { const ic = Icons.forButton(b.textContent); this.barLayer.add(this.button(x0 + i * (w + 4), H - BH - 4, w, BH, b.textContent, () => b.click(), { size: 11, alpha: +(b.style.opacity || 1), icon: ic ? Icons.tex(this, ic) : null })); });
+        if (vis(od)) {   // dolný rad rozkazy, nad ním skupiny vojska
+            const all = [...od.children], rowOf = (bs, w, y, sz) => { const x0 = W / 2 - (bs.length * (w + 4)) / 2; bs.forEach((b, i) => { const ic = Icons.forButton(b.textContent.replace(/^\S+ /, '')); this.barLayer.add(this.button(x0 + i * (w + 4), y, w, b === bs[0] && sz ? BH - 4 : BH - (sz ? 4 : 0), b.textContent, () => b.click(), { size: sz || 11, alpha: +(b.style.opacity || 1), icon: ic ? Icons.tex(this, ic) : null })); }); };
+            rowOf(all.filter(b => !b.dataset.g), 92, H - BH - 4);
+            rowOf(all.filter(b => b.dataset.g), 96, H - 2 * BH - 6, 10);
         }
     }
 

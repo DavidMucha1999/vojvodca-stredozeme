@@ -51,10 +51,12 @@ class BattleScene extends Phaser.Scene {
         this.cameras.main.setBounds(0, 0, BW, BH).setZoom(RES * BZ).setBackgroundColor(WX.night ? '#0c1018' : '#22301a');
         // simulácia počíta cieľ ako ptr + bc, preto ukladáme bod na bojisku mínus bc
         const set = p => { const w = this.cameras.main.getWorldPoint(p.x, p.y); ptr.x = w.x - bc.x; ptr.y = w.y - bc.y; };
-        this.input.on('pointerdown', p => { set(p); ptr.down = true; });
+        // myš: ľavé tlačidlo útok (po prvom pohybe klávesnicou), pravé kryt; dotyk: drž prst, kam bežať (js/sim/combat.js)
+        if (this.input.mouse) this.input.mouse.disableContextMenu();
+        this.input.on('pointerdown', p => { set(p); if (p.rightButtonDown()) { CMB.rmb = 1; CMB.km = 1; } else { ptr.down = true; if (CMB.km) CMB.lmb = 1; } });
         this.input.on('pointermove', set);
-        this.input.on('pointerup', () => ptr.down = false);
-        this.events.once('shutdown', () => { this.input.removeAllListeners(); ptr.down = false; });
+        this.input.on('pointerup', p => { if (p.rightButtonReleased()) CMB.rmb = 0; else { ptr.down = false; CMB.lmb = 0; } });
+        this.events.once('shutdown', () => { this.input.removeAllListeners(); ptr.down = false; CMB.lmb = CMB.rmb = 0; });
     }
 
     addUnit(u) {
@@ -122,6 +124,7 @@ class BattleScene extends Phaser.Scene {
         for (const u of U) {
             let o = this.units.get(u);
             if (!o) { this.addUnit(u); o = this.units.get(u); }
+            if (u.fled) { if (!o.dead) { o.dead = true; o.spr.setVisible(false); if (o.flag) o.flag.setVisible(false); } continue; }   // utiekol z bojiska
             if (u.hp <= 0) {
                 if (!o.dead) { o.dead = true; o.spr.play(o.key + ':death').setDepth(-4 + u.y / 1e4); this.markDeath(u); }
                 continue;
@@ -167,7 +170,7 @@ class BattleScene extends Phaser.Scene {
     markDeath(u) {
         if (this.markN++ > 400) return;
         const g = this.marks, orc = u.t && bloc(u.fc), col = orc ? 0x2a1a14 : 0x7a1a12;
-        for (let k = 0; k < 4; k++) g.fillStyle(col, .35 + k * .08).fillEllipse(u.x + (Math.random() - .5) * 14, u.y + (Math.random() - .5) * 10, 12 - k * 2, 8 - k * 1.5);
+        if (OPT.blood) for (let k = 0; k < 4; k++) g.fillStyle(col, .35 + k * .08).fillEllipse(u.x + (Math.random() - .5) * 14, u.y + (Math.random() - .5) * 10, 12 - k * 2, 8 - k * 1.5);
         const a = Math.random() * 6.3; g.lineStyle(1.5, 0x9aa0a8, .9).lineBetween(u.x + Math.cos(a) * 4, u.y + Math.sin(a) * 4, u.x + Math.cos(a) * 14, u.y + Math.sin(a) * 14);
         g.lineStyle(2, 0x3a2a1a, .9).lineBetween(u.x + Math.cos(a) * 1, u.y + Math.sin(a) * 1, u.x + Math.cos(a) * 4, u.y + Math.sin(a) * 4);
     }
@@ -196,6 +199,37 @@ class BattleScene extends Phaser.Scene {
         g.lineStyle(1.5, 0xffe8a0, .35 + .2 * p).strokeCircle(h.x, h.y, 22 + 2 * Math.sin(tm / 7));
     }
 
+    /** Nový boj: oblúk sekania a bodnutia, nápor, kryt, varovanie pred úderom nepriateľa, veliteľ, utekajúci a zapotácaní. */
+    drawCombat(g) {
+        const h = U[0], C = CMB, sw = C.swing;
+        if (sw && h.hp > 0) {
+            const k = sw.t / 10;
+            if (sw.k === 's') {   // sek: zlatý oblúk pred hrdinom
+                g.fillStyle(0xfff0c0, .16 * k).slice(h.x, h.y, sw.r, sw.a - 1.05, sw.a + 1.05).fillPath();
+                g.lineStyle(3, 0xfff4d0, .85 * k).beginPath().arc(h.x, h.y, sw.r * (.85 + .15 * (1 - k)), sw.a - 1.05 + (1 - k) * .4, sw.a + 1.05 - (1 - k) * .4).strokePath();
+            } else if (sw.k === 't') {   // bod: úzky klin
+                g.fillStyle(0xfff0c0, .3 * k).fillTriangle(h.x + Math.cos(sw.a + .35) * 10, h.y + Math.sin(sw.a + .35) * 10, h.x + Math.cos(sw.a) * sw.r, h.y + Math.sin(sw.a) * sw.r, h.x + Math.cos(sw.a - .35) * 10, h.y + Math.sin(sw.a - .35) * 10);
+            } else {   // nápor: náraz
+                g.lineStyle(4, 0xffd080, .8 * k).strokeCircle(h.x + Math.cos(sw.a) * 14, h.y + Math.sin(sw.a) * 14, sw.r * (1.3 - k * .5));
+            }
+        } else if (fx > 0 && !C.km) g.lineStyle(3, 0xecdfc6, fx / 10).strokeCircle(h.x, h.y, it('w').r || 34);   // dotykové ovládanie: kruh úderu
+        if (h.hp > 0 && C.charging) for (let k = 0; k < 5; k++) { const a = (C.lastA || h.f) + Math.PI + (k - 2) * .18, l = 18 + (k % 2) * 10; g.lineStyle(1.5, 0xfff0c0, .5).lineBetween(h.x + Math.cos(a) * 12, h.y + Math.sin(a) * 12, h.x + Math.cos(a) * (12 + l), h.y + Math.sin(a) * (12 + l)); }   // čiary rýchlosti
+        if (h.hp > 0 && C.blk) {   // kryt: štít alebo zbraň pred hrdinom
+            const arc = C.shp > 0 ? 1.4 : .85;
+            g.lineStyle(C.shp > 0 ? 4 : 2.5, C.shp > 0 ? 0xc8d8ff : 0xffffff, .75).beginPath().arc(h.x, h.y, h.r + 8, h.f - arc, h.f + arc).strokePath();
+        }
+        for (const u of U) {
+            if (u.hp <= 0) continue;
+            if (u.wu > 0 && u.wu0 && (u.t || u.wt === h) && Math.hypot(u.x - h.x, u.y - h.y) < 240) {   // nápriah: červený oblúk rastie do úderu
+                const p = 1 - u.wu / u.wu0, me = u.wt === h;
+                g.lineStyle(me ? 3 : 2, me ? 0xff3020 : 0xff7050, (me ? .45 : .25) + .5 * p).beginPath().arc(u.x, u.y, u.r + 6 + p * 5, u.f - .7, u.f + .7).strokePath();
+            }
+            if (u.cmd) g.lineStyle(1.5, 0xffd24a, .85).strokeEllipse(u.x, u.y + u.r * .5, u.r * 2.6, u.r * 1.1);   // veliteľ
+            if (u.rout) { g.lineStyle(1, 0x3a2a1a, 1).lineBetween(u.x, u.y - u.r * 1.6, u.x, u.y - u.r * 3.2); g.fillStyle(0xf4f0e0, .95).fillTriangle(u.x, u.y - u.r * 3.2, u.x + 7, u.y - u.r * 2.9, u.x, u.y - u.r * 2.6); }   // utekajúci: biela zástavka
+            if (u.stun > 0) for (let k = 0; k < 3; k++) { const a = tm / 6 + k * 2.1; g.fillStyle(0xffe680, .9).fillCircle(u.x + Math.cos(a) * 7, u.y - u.r * 2 + Math.sin(a) * 2.5, 1.4); }   // zapotácaný
+        }
+    }
+
     drawFx() {
         const g = this.fx; g.clear();
         for (const [u, o] of this.units) if (o.flag) g.lineStyle(1.5, 0x3a2a1a, 1).lineBetween(o.flag.x, o.flag.y, o.flag.x, o.flag.y + u.r * 2.6);
@@ -203,9 +237,11 @@ class BattleScene extends Phaser.Scene {
             g.fillStyle(0x000000, 1).fillRect(u.x - 7, u.y - u.r - 6, 14, 3);
             g.fillStyle(u.t ? 0xc0392b : 0x6fbf5a, 1).fillRect(u.x - 7, u.y - u.r - 6, 14 * u.hp / u.mh, 3);
         }
+        for (const a of AR) g.lineStyle(2.2, 0xe8d8b0, .18).lineBetween(a.x, a.y, a.x - a.vx * 7, a.y - a.vy * 7);   // stopa šípu
         g.lineStyle(1.6, 0xe8d8b0, 1);
         for (const a of AR) { g.lineBetween(a.x, a.y, a.x - a.vx * 3, a.y - a.vy * 3); if (a.l <= 1 && !a.mk) { a.mk = 1; this.markArrow(a); } }
-        for (const p of PT) { const a = Math.max(0, p.l / 18); if (p.sp) { g.lineStyle(1.2, 0xfff0b0, Math.min(1, a)).lineBetween(p.x, p.y, p.x - p.vx * 1.5, p.y - p.vy * 1.5); g.fillStyle(0xffffff, Math.min(1, a)).fillRect(p.x - .7, p.y - .7, 1.4, 1.4); continue; } if (p.bl) { g.fillStyle(hex(p.c), Math.min(.7, a * .7)).fillCircle(p.x, p.y, 1.6 + (30 - p.l) * .06); continue; } g.fillStyle(hex(p.c), a).fillRect(p.x, p.y, 3, 3); if (p.l > 14) g.fillStyle(0xfff0c0, a * .9).fillRect(p.x - 1, p.y - 1, 2, 2); }   // iskra pri zásahu
+        for (const p of PT) if (p.ring) { const k = p.l / 22; g.lineStyle(2, hex(p.c), Math.min(1, k * 1.6)).strokeCircle(p.x, p.y, (p.rr || 10) * (1.25 - k * .6)); }   // záblesk krytu, pokrik
+        for (const p of PT) { if (p.ring) continue; const a = Math.max(0, p.l / 18); if (p.sp) { g.lineStyle(1.2, 0xfff0b0, Math.min(1, a)).lineBetween(p.x, p.y, p.x - p.vx * 1.5, p.y - p.vy * 1.5); g.fillStyle(0xffffff, Math.min(1, a)).fillRect(p.x - .7, p.y - .7, 1.4, 1.4); continue; } if (p.bl) { g.fillStyle(hex(p.c), Math.min(.7, a * .7)).fillCircle(p.x, p.y, 1.6 + (30 - p.l) * .06); continue; } g.fillStyle(hex(p.c), a).fillRect(p.x, p.y, 3, 3); if (p.l > 14) g.fillStyle(0xfff0c0, a * .9).fillRect(p.x - 1, p.y - 1, 2, 2); }   // iskra pri zásahu
         // prach za jazdou a veľkými tvormi: obláčiky za kopytami, ktoré sa rozplývajú
         this.dust = this.dust || [];
         for (const u of U) if (u.hp > 0 && (u.k === 'c' || u.k === 'r' || u.k === 'x' || u.k === 't' || u.k === 'n' || (u.h && G.eq.m) || u.uk === 'uI2' || u.uk === 'uN2' || u.uk === 'uG3')) { const o = this.units.get(u); if (o && o.state === 'walk' && Math.random() < (u.k === 'x' ? .5 : .25)) this.dust.push({ x: u.x - Math.cos(u.f) * u.r * .8 + (Math.random() - .5) * 6, y: u.y - Math.sin(u.f) * u.r * .8 + 4, l: 1, r: 3 + Math.random() * 3 }); }
@@ -213,7 +249,7 @@ class BattleScene extends Phaser.Scene {
         for (const d of this.dust) { d.l -= .025; d.y -= .15; d.r += .18; g.fillStyle(dc, Math.max(0, d.l) * .28).fillCircle(d.x, d.y, d.r); }
         this.dust = this.dust.filter(d => d.l > 0);
         if (typeof SHAKE !== 'undefined' && SHAKE > 0 && !this.shaking) { this.shaking = 1; this.cameras.main.shake(140, .0022 * SHAKE, false, () => { this.shaking = 0; }); }
-        if (fx > 0) g.lineStyle(3, 0xecdfc6, fx / 10).strokeCircle(U[0].x, U[0].y, it('w').r || 34);
+        this.drawCombat(g);
         if (SGB) {
             if (SGB.lad) for (const l of [250, 710]) {
                 g.lineStyle(3, 0x7a5a30, 1); g.lineBetween(985, l - 10, 1045, l - 10); g.lineBetween(985, l + 10, 1045, l + 10);

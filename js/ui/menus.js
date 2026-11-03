@@ -14,7 +14,7 @@ function ovw() {
 }
 function help() {
     mode = 'town';
-    show('Návod', 'Na mape klikni, kam má družina ísť. Kliknutím na hrad, dedinu alebo armádu k nim dojdeš: s priateľmi sa porozprávaš, nepriateľov napadneš. V hradoch najímaš a povýšuješ vojakov, kupuješ výbavu, staviaš budovy a riešiš diplomaciu. V bitke sa hýbeš šípkami alebo WASD, útočíš medzerníkom a vojsku velíš klávesmi 1 až 4. Plň kapitoly príbehu, získavaj slávu a hrady a staň sa kráľom. Tlačidlo Denník ukazuje udalosti vo svete.');
+    show('Návod', 'Na mape klikni, kam má družina ísť. Kliknutím na hrad, dedinu alebo armádu k nim dojdeš: s priateľmi sa porozprávaš, nepriateľov napadneš. V hradoch najímaš a povýšuješ vojakov, kupuješ výbavu, staviaš budovy a riešiš diplomaciu. V bitke sa hýbeš WASD, mieriš myšou, sekáš ľavým tlačidlom alebo medzerníkom, bodáš E, kryješ sa pravým tlačidlom alebo Shiftom, strieľaš Q a pokrikom V dvíhaš morálku; skupiny vyberáš 1 až 4 a rozkazy dávaš T, H, F, G, R. Plň kapitoly príbehu, získavaj slávu a hrady a staň sa kráľom. Tlačidlo Denník ukazuje udalosti vo svete.');
     btn('Rozumiem', () => {
         ov.classList.add('hide');
         mode = 'map';
