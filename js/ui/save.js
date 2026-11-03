@@ -12,14 +12,23 @@ function saveMenu(back) {
     mode = 'town';
     show('Uložiť hru', 'Vyber pozíciu (6 ručných). Hra sa okrem toho sama ukladá na konci každého dňa do automatickej pozície.');
     SLOTS.filter(([k]) => k !== 'auto').forEach(([k, n]) => slotBtn(k, n, () => { const had = !!slotData(k); msg(save(k) ? 'Hra uložená do pozície ' + k + (had ? ' (pôvodná pozícia prepísaná).' : '.') : 'Ukladanie nie je v tomto prostredí dostupné.', back); }));
+    saveTransferBtns(() => saveMenu(back));
     btn('Späť', back, 0, 'back');
 }
 /** Výber pozície na načítanie (z úvodu). */
 function loadMenu() {
     const any = SLOTS.some(([k]) => slotInfo(k));
-    if (!any) return load(1);
+    if (!any && !DESKTOP) return load(1);
     show('Načítať hru', 'Vyber uloženú pozíciu.');
     ov.classList.add('intro');
     SLOTS.forEach(([k, n]) => slotBtn(k, n, () => load(k), !slotData(k)));
+    saveTransferBtns(loadMenu);
     btn('Späť', () => location.reload(), 0, 'back');
+}
+/** Prenos uložených hier: v prehliadači export do súboru, v desktopovej verzii import zo súboru a otvorenie priečinka s uloženiami. */
+function saveTransferBtns(back) {
+    if (DESKTOP) {
+        btn('Načítať uložené hry zo súboru (z prehliadačovej verzie)', () => { const n = DESKTOP.importSaves(); msg(n > 0 ? 'Načítaných ' + n + ' uložených pozícií.' : n === 0 ? 'V súbore neboli žiadne uložené hry.' : 'Žiadny súbor nebol vybraný.', back); }, 0, 'chest');
+        btn('Otvoriť priečinok s uloženými hrami', () => DESKTOP.openSaves(), 0, 'chest');
+    } else btn('Exportovať uložené hry do súboru (na prenos do počítačovej verzie)', () => { const n = exportSaves(); msg('Stiahnutý súbor vojvodca-ulozenia.json (' + n + ' pozícií). Počítačová verzia ho pri spustení nájde v priečinku Stiahnuté súbory.', back); }, 0, 'chest');
 }

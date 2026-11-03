@@ -1,12 +1,27 @@
 # Vojvodca Stredozeme
 
-Strategická hra v prehliadači inšpirovaná Mount & Blade: Warband vo svete Pána prsteňov.
+Strategická hra (v prehliadači alebo ako počítačová hra pre Windows) inšpirovaná Mount & Blade: Warband vo svete Pána prsteňov.
 
 Autor a vývojár hry: **Dávid Mucha**
 
 ## Spustenie
 
 Hra je jeden súbor **`Vojvodca Stredozeme.html`** (spúšťa sa dvojklikom, má vlastnú ikonu `assets/ikona.ico`; vedľa je aj odkaz `Vojvodca Stredozeme.lnk` s touto ikonou) v hernom engine **Phaser 3**: ostrý obraz, dlaždicová mapa, animovaní vojaci, zvuky zo súborov a rozhranie v Phaseri. Phaser je v projekte (`vendor/phaser.min.js`), takže hra beží aj bez internetu. Server ani inštalácia nie sú potrebné. Celú hru v jednom súbore vytvorí `python tools/build_single.py` (výsledok je v `dist/vojvodca-single.html`).
+
+## Počítačová verzia (Windows)
+
+Hra sa dá nainštalovať ako bežná počítačová hra – vlastný program s ikonou, bez prehliadača:
+
+1. V priečinku hry dvakrát klikni na **`Nainštalovať hru.bat`** (potrebný je internet; prvá inštalácia stiahne asi 110 MB).
+2. Na ploche a v ponuke Štart pribudne **Vojvodca Stredozeme**; hra sa po inštalácii sama spustí.
+
+Ako to funguje (`desktop/`): inštalátor (`desktop/install.ps1`) stiahne **Electron** (okno s rovnakým enginom ako Chrome) a nástroj **rcedit** (ikona programu), vytvorí program `%LOCALAPPDATA%\Programs\Vojvodca Stredozeme\Vojvodca Stredozeme.exe`, zástupcov a položku v *Nastavenia → Aplikácie* (odinštalovanie; uložené hry ostanú). Program načítava hru **priamo z priečinka projektu** (`config.json` → `gameDir`), takže úpravy hry sa prejavia bez preinštalovania; ak sa priečinok hry presunie, stačí znova spustiť `Nainštalovať hru.bat`.
+
+- **Okno:** predvolene celá obrazovka, **F11** alebo **Alt+Enter** prepína okno a celú obrazovku (zapamätá sa), hra vyplní obrazovku pri pomere 3 : 2; hra beží len raz (druhé spustenie prenesie okno dopredu); `desktop/main.js`.
+- **Uložené hry ako súbory:** `Dokumenty\Vojvodca Stredozeme\Uloženia\Pozícia 1.json` … `Automatická.json` (zapisujú sa cez dočasný súbor, takže sa pri výpadku nepoškodia); nastavenia okna v `Dokumenty\Vojvodca Stredozeme\nastavenia.json`. Hra pristupuje k úložisku cez `STORE` (`js/core/store.js`): v prehliadači `localStorage`, v počítačovej verzii súbory cez `window.desktop` (`desktop/preload.js`).
+- **Prenos uložení z prehliadača:** v prehliadačovej verzii *Uložiť hru → Exportovať uložené hry do súboru* stiahne `vojvodca-ulozenia.json`; počítačová verzia ho pri prvom spustení sama nájde v *Stiahnutých súboroch*, inak *Načítať uložené hry zo súboru*. Tlačidlo *Otvoriť priečinok s uloženými hrami* otvorí priečinok v Prieskumníkovi.
+- **Ukončiť hru:** na úvodnej obrazovke a v skupine *Nastavenia* na paneli (s ponukou uložiť do automatickej pozície); `js/ui/desktop.js`.
+- Nástroje pre vývojára: **Ctrl+Shift+F12**.
 
 ## Testy
 
@@ -15,6 +30,7 @@ npm test                          # simulácia bez prehliadača (skripty hry bez
 python tests/phaser_test.py       # Phaser verzia: scény, okná v Phaseri, animácie, zvuky
 python tests/real_phaser_test.py  # Phaser verzia: prejde hru a uloží snímky obrazovky do tests/screens/
 python tests/browser_test.py      # rýchla simulácia v prehliadači: 30 000 tikov, obliehanie, okná, uloženie
+ELECTRON=…/electron xvfb-run -a node tests/desktop_test.js   # počítačová verzia (Electron): okno, ukladanie do súborov, prenos uložení
 ```
 
 Testy v prehliadači potrebujú `pip install playwright && playwright install chromium`. Spusti ich po každej väčšej zmene.
@@ -130,6 +146,7 @@ Skripty sa načítavajú v poradí uvedenom v `Vojvodca Stredozeme.html` a zdie�
 ```
 js/
   core/setup.js       plátno, rozmery sveta, globálny stav hry, konštanty (DAY_LEN, regionAt, ENGAGE_R)
+  core/store.js       úložisko uložených hier (STORE): localStorage v prehliadači, súbory v počítačovej verzii; export uložení
   data/               čisté dáta: frakcie, hrady (map.js je generovaný z mapy), jednotky, výbava, príbeh, úspechy, rozhovory (dialogue.js), spoločníci, rasy, miesta
   sim/                logika hry bez kreslenia
     world.js          pohyb hrdinu, tok dní, vojny a mier medzi frakciami, Hora osudu, updMap (volá AI lordov a denné udalosti)
@@ -154,6 +171,7 @@ js/
     rooms.js          jeden vstup a výstup pre všetky miestnosti (enterRoom/leaveRoom/roomReturn, ROOM, ROOM_MODES)
     town.js           okno hradu a jeho karty (verbovanie, vojsko, správa, dvor a diplomacia), dediny (okno), korunovácia
     siegeui.js        okná obliehania: prehľad tábora a techniky, útok, odtiahnutie, obrana spojeneckého hradu, výzvy (útok AI, výpad)
+    desktop.js        počítačová verzia: tlačidlo Ukončiť hru (úvod, Nastavenia), celá obrazovka cez okno programu
     lord.js           rokovanie a rozhovor s veliteľom, úlohy od pána;  save.js = uloženie a načítanie
     castle.js, tavern.js, village.js, places.js, kingdom.js, party.js, inventory.js, market.js, create.js (HTML tvorba postavy), menus.js (prehľady, encyklopédia)
   engine/             Phaser

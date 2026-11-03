@@ -167,7 +167,7 @@ class UIScene extends Phaser.Scene {
     static get GROUPS() {
         return [['Hrdina', 'helm', ['Prehľad', 'Denník', 'Úlohy', 'Družina', 'Inventár', 'Štatistiky']],
                 ['Kronika', 'book', ['Legenda', 'Trofeje', 'Úspechy', 'Encyklopédia', 'Návod']],
-                ['Nastavenia', 'gear', ['Zvuk', 'Celá obrazovka']]];
+                ['Nastavenia', 'gear', ['Zvuk', 'Celá obrazovka', 'Ukončiť hru']]];
     }
 
     syncBars() {

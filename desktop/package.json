@@ -1,0 +1,9 @@
+{
+  "name": "vojvodca-stredozeme",
+  "productName": "Vojvodca Stredozeme",
+  "version": "1.0.0",
+  "description": "Vojvodca Stredozeme – počítačová verzia",
+  "author": "Dávid Mucha",
+  "main": "main.js",
+  "private": true
+}

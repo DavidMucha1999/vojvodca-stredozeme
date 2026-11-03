@@ -12,7 +12,7 @@ function slotInfo(slot) { const d = slotData(slot); return d ? d.text : null; }
 /** Náhľad uloženej pozície: text, vzhľad hrdinu (portrét), deň, frakcia… alebo null. */
 function slotData(slot) {
     try {
-        const s = JSON.parse(localStorage.getItem(slotKey(slot)));
+        const s = JSON.parse(STORE.getItem(slotKey(slot)));
         if (!s || !s.G) return null;
         const g = s.G, castles = (s.T || []).filter(t => t.mine).length;
         const place = g.day != null && s.T ? (() => { let b = null, bd = 1e9; (MAPDATA.castles || []).forEach((c, i) => { const d = Math.hypot(c[1] * (s.K || K) - g.x, c[2] * (s.K || K) - g.y); if (d < bd) { bd = d; b = c[0]; } }); return b; })() : null;
@@ -32,7 +32,7 @@ function save(slot) {
             G: strip(G, SAVE_SKIP.G), T: TW.map(t => strip(t, ['x', 'y', 'n'])), E: E.filter(e => !e.dead).map(e => strip(e, SAVE_SKIP.E)), VL,
             WR, REL, AL, CP, MW, MAR, MST, LRL, LETTERS, NID
         };
-        localStorage.setItem(slotKey(slot), JSON.stringify(data));
+        STORE.setItem(slotKey(slot), JSON.stringify(data));
         return 1;
     }
     catch (x) {
@@ -103,7 +103,7 @@ function newGame() {
 function load(slot) {
     initA();
     try {
-        const raw = JSON.parse(localStorage.getItem(slotKey(slot)));
+        const raw = JSON.parse(STORE.getItem(slotKey(slot)));
         if (raw) {
             const s = migrateSave(raw);
             TW = mkTW();
