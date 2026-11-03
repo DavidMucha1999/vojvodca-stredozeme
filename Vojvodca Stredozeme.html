@@ -24,11 +24,22 @@
 <canvas id="c" aria-label="Hra Vojvodca Stredozeme"></canvas>
 <div id="hud"></div>
 <div id="ov" class="intro hide">
-<h1>Vojvodca Stredozeme</h1>
-<p style="color:var(--gold);font-size:1rem">Autor a vývojár hry: Dávid Mucha</p>
-<p>Veď svoju družinu po veľkej mape Stredozeme, pridaj sa ku Gondoru, Rohanu, Mordoru alebo Isengardu a dobýjaj hrady. Najímaj vojakov, kupuj zbrane, brnenie, štít a koňa, porážaj nepriateľov, plň kapitoly príbehu a prepracuj sa až na kráľa.</p>
-<p>Mapa: klikni, kam chceš ísť. Bitka: šípky alebo WASD a medzerník na útok. Na dotykovom displeji drž prst tam, kam chceš bežať, a hrdina útočí sám.</p>
-<input id="pn" placeholder="Meno hrdinu" maxlength="16" value="Strážca" aria-label="Meno hrdinu"><select id="fs" aria-label="Frakcia"><option value="6">Nezávislý (vlastná družina)</option><option value="0">Gondor</option><option value="1">Rohan</option><option value="2">Mordor</option><option value="3">Isengard</option><option value="4">Haradrim</option><option value="5">Erebor</option><option value="7">Rhûn</option><option value="8">Lothlórien</option></select><button onclick="newGame()">Vyraziť do boja</button><button onclick="loadMenu()">Načítať uloženú hru</button>
+<div id="mn" class="scr">
+<h1 class="mn-title">Vojvodca Stredozeme</h1>
+<div class="mn-sub">Vojna o Stredozem</div>
+<div id="menuBtns" class="mn-btns"><button type="button" id="mnNew">Nová hra</button><button type="button" id="mnCont" hidden>Pokračovať<small id="mnContD"></small></button><button type="button" id="mnLoad" onclick="loadMenu()">Načítať hru</button><button type="button" id="mnSet">Nastavenia</button><button type="button" id="mnHelp">Návod</button></div>
+<p class="mn-credit">Autor a vývojár hry: Dávid Mucha</p>
+</div>
+<div id="mnPanel" class="scr off"></div>
+<div id="crs" class="scr off">
+<div class="crs-head"><span class="crs-orn"></span><h2>Tvorba postavy</h2><span class="crs-orn r"></span></div>
+<div class="crs-cols">
+<section class="pnl" id="crsL"><h3>Strana a frakcia</h3><div class="crs-tabs"><button type="button" id="creGood" class="cre-tab">☀ Dobro</button><button type="button" id="creEvil" class="cre-tab">☾ Zlo</button></div><div id="creFac" class="cre-facs"></div><h3>Rasa</h3><div id="creRaces" class="cre-races"></div><div id="creRaceD" class="cre-note"></div></section>
+<section class="pnl" id="crsC"><div class="cre-hero"><div class="cre-por"><canvas id="crePor" width="240" height="240"></canvas></div><canvas id="creFig" width="200" height="300"></canvas></div><label class="cre-name"><span>Meno hrdinu</span><input id="pn" placeholder="Meno hrdinu" maxlength="16" value="Strážca" aria-label="Meno hrdinu"></label><h3>Povaha</h3><div id="creTraits" class="cre-traits"></div><div id="creTraitD" class="cre-note"></div></section>
+<section class="pnl" id="crsR"><h3>Vzhľad <button type="button" id="creRnd" class="cre-rnd">⚄ Náhodná postava</button></h3><div id="creCtl" class="cre-ctl"></div><h3>Schopnosti <span class="cre-pts">voľné body: <b id="crePts"></b></span></h3><div id="creSk" class="cre-sks"></div></section>
+</div>
+<div class="crs-foot"><button type="button" id="creBack" class="crs-back">◀ Späť do menu</button><select id="fs" aria-label="Frakcia" hidden><option value="6">Nezávislý (vlastná družina)</option><option value="0">Gondor</option><option value="1">Rohan</option><option value="2">Mordor</option><option value="3">Isengard</option><option value="4">Haradrim</option><option value="5">Erebor</option><option value="7">Rhûn</option><option value="8">Lothlórien</option></select><button type="button" id="creGo" class="crs-go" onclick="newGame()">Vyraziť do boja</button></div>
+</div>
 </div>
 </div>
 <script src="vendor/phaser.min.js"></script>
@@ -91,6 +102,7 @@
 <script src="js/ui/kingdom.js"></script>
 <script src="js/ui/places.js"></script>
 <script src="js/ui/create.js"></script>
+<script src="js/ui/menu.js"></script>
 <script src="js/ui/menus.js"></script>
 <script src="js/ui/toolbar.js"></script>
 <script src="js/ui/desktop.js"></script>

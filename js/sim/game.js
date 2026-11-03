@@ -16,7 +16,7 @@ function slotData(slot) {
         if (!s || !s.G) return null;
         const g = s.G, castles = (s.T || []).filter(t => t.mine).length;
         const place = g.day != null && s.T ? (() => { let b = null, bd = 1e9; (MAPDATA.castles || []).forEach((c, i) => { const d = Math.hypot(c[1] * (s.K || K) - g.x, c[2] * (s.K || K) - g.y); if (d < bd) { bd = d; b = c[0]; } }); return b; })() : null;
-        return { g, look: g.look, text: g.name + ' · deň ' + g.day + ' · ' + (g.kn || FN[g.fac]) + ' · úroveň ' + (g.lv || 1) + (castles ? ' · hradov: ' + castles : '') + (place ? ' · pri ' + place : '') + (s.when ? ' · ' + s.when : '') };
+        return { g, look: g.look, ts: s.ts || 0, text: g.name + ' · deň ' + g.day + ' · ' + (g.kn || FN[g.fac]) + ' · úroveň ' + (g.lv || 1) + (castles ? ' · hradov: ' + castles : '') + (place ? ' · pri ' + place : '') + (s.when ? ' · ' + s.when : '') };
     } catch (x) { return null; }
 }
 /** Verzia formátu uloženia; staršie uloženia prevedie migrateSave. */
@@ -28,7 +28,7 @@ const strip = (o, skip) => { const r = {}; for (const k of Object.keys(o)) { con
 function save(slot) {
     try {
         const data = {
-            v: SAVE_VERSION, K, when: new Date().toLocaleString('sk-SK', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            v: SAVE_VERSION, K, ts: Date.now(), when: new Date().toLocaleString('sk-SK', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }),
             G: strip(G, SAVE_SKIP.G), T: TW.map(t => strip(t, ['x', 'y', 'n'])), E: E.filter(e => !e.dead).map(e => strip(e, SAVE_SKIP.E)), VL,
             WR, REL, AL, CP, MW, MAR, MST, LRL, LETTERS, NID
         };

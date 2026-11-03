@@ -26,7 +26,7 @@ with sync_playwright() as p:
     check('Phaser načítaný', E("typeof Phaser !== 'undefined' && Phaser.VERSION"), E("Phaser.VERSION"))
     check('Renderer', True, E("game.renderer.type === Phaser.WEBGL ? 'WebGL' : 'Canvas'"))
     check('Úvod beží', 'Intro' in active(), active()); shot('1_uvod')
-    pg.click('text=Vyraziť do boja'); pg.wait_for_timeout(800); shot('2_navod')
+    shot('1b_menu'); pg.click('text=Nová hra'); pg.wait_for_timeout(500); shot('1c_tvorba'); pg.click('text=Vyraziť do boja'); pg.wait_for_timeout(800); shot('2_navod')
     clk = lambda t: E("t => { const b = [...document.querySelectorAll('#bt button')].find(b => b.textContent.trim().startsWith(t)); if (!b) return false; b.click(); return true; }", t)
     clk('Rozumiem'); pg.wait_for_timeout(300); clk('Na cestu'); pg.wait_for_timeout(1500)
     check('Mapa beží', 'Map' in active(), active()); shot('3_mapa')

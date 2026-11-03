@@ -24,7 +24,7 @@ let fails = 0; const check = (n, ok, i = '') => { console.log((ok ? 'OK   ' : 'C
     check('Okno hry', await win.title() === 'Vojvodca Stredozeme' && await E("!!window.desktop && DESKTOP === window.desktop && document.documentElement.classList.contains('desktop')"));
     check('Tlačidlo Ukončiť hru na úvode', await E("[...document.querySelectorAll('#ov button')].some(b => b.textContent === 'Ukončiť hru')"));
     check('Prenos uložení z prehliadača', fs.existsSync(path.join(docs, 'Pozícia 3.json')) && /Importovaný/.test(await E("(slotData(3) || {}).text || ''")));
-    await win.click('text=Vyraziť do boja'); await win.waitForTimeout(800);
+    await win.click('text=Nová hra'); await win.waitForTimeout(300); await win.click('text=Vyraziť do boja'); await win.waitForTimeout(800);
     await E("(() => { for (const t of ['Rozumiem', 'Na cestu']) { const b = [...document.querySelectorAll('#bt button')].find(b => b.textContent.trim().startsWith(t)); if (b) b.click(); } })()");
     await win.waitForTimeout(2000);
     check('Uloženie do súboru', await E("save(1)") === 1 && fs.existsSync(path.join(docs, 'Pozícia 1.json')));

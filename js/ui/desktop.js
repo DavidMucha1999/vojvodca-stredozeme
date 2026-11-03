@@ -5,9 +5,10 @@
 if (DESKTOP) {
     const introQuit = document.createElement('button');
     introQuit.textContent = 'Ukončiť hru';
+    introQuit.type = 'button';
     introQuit.onclick = () => DESKTOP.quit();
-    const ovEl = document.getElementById('ov'), last = ovEl && [...ovEl.querySelectorAll('button')].pop();
-    if (last) last.after(introQuit);
+    const mb = document.getElementById('menuBtns');   // hlavné menu (js/ui/menu.js)
+    if (mb) mb.appendChild(introQuit);
     // panel na mape: patrí do skupiny Nastavenia (UIScene.GROUPS)
     const qb = document.createElement('button');
     qb.textContent = 'Ukončiť hru';

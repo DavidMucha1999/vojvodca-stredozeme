@@ -26,7 +26,7 @@ with sync_playwright() as p:
     scenes = lambda: E("game.scene.getScenes(true).map(s => s.sys.settings.key).sort((a, b) => a === 'UI' ? 1 : b === 'UI' ? -1 : 0).join(',')")
     check('Úvod a rozhranie bežia', scenes() == 'Intro,UI', scenes())
     check('Zvuky dekódované', E("Object.values(SFX).flat().length") >= 20, E("Object.values(SFX).flat().length"))
-    pg.click('text=Vyraziť do boja'); pg.wait_for_timeout(400)
+    pg.click('text=Nová hra'); pg.wait_for_timeout(300); pg.click('text=Vyraziť do boja'); pg.wait_for_timeout(400)
     waitfor("!!game.scene.getScene('UI').dlg")
     check('Návod je okno v Phaseri', E("!!game.scene.getScene('UI').dlg && ov.classList.contains('mirror')"))
     clk = lambda t: E("t => { const b = [...document.querySelectorAll('#bt button')].find(b => b.textContent.trim().startsWith(t)); if (!b) return false; b.click(); return true; }", t)

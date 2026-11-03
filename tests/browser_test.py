@@ -10,7 +10,7 @@ with sync_playwright() as p:
     pg.wait_for_function("typeof game !== 'undefined' && game.scene.getScenes(true).some(s => s.scene.key === 'Intro')")
     E=pg.evaluate
     clk=lambda t:E("t => { const b = [...document.querySelectorAll('#ov button, #bt button')].find(b => b.textContent.trim().startsWith(t)); if (!b) return false; b.click(); return true; }", t)
-    pg.click('text=Vyraziť do boja');pg.wait_for_timeout(600);clk('Rozumiem');pg.wait_for_timeout(200);clk('Na cestu');pg.wait_for_timeout(1500)
+    pg.click('text=Nová hra');pg.wait_for_timeout(300);pg.click('text=Vyraziť do boja');pg.wait_for_timeout(600);clk('Rozumiem');pg.wait_for_timeout(200);clk('Na cestu');pg.wait_for_timeout(1500)
     print(E("""(()=>{try{G.camp=1;G.gold=9999;for(let i=0;i<30000;i++){if(mode==='map')updMap(1);else if(mode==='battle'){for(const u of U)if(u.t)u.hp=0;updBattle(1)}else{const b=[...document.querySelectorAll('#bt button')].find(b=>!b.disabled);if(b&&Math.random()<.5)b.click();else{ov.classList.add('hide');mode='map'}}}return 'sim day '+G.day+' st '+JSON.stringify(G.st)+' log '+LOG.length}catch(e){return 'ERR '+e.stack}})()"""))
     print(E("""(()=>{try{ov.classList.add('hide');mode='map';G.camp=0;const i=TW.findIndex(t=>hos(t.f,G.fac)&&t.f!==9);G.inf=40;siege(i);TW[i].sg.lad=1;siegeMenu(i);[...document.querySelectorAll('#bt button')].find(b=>/Zaútočiť/.test(b.textContent)).click();let k=0;while(mode==='battle'&&k<12000){U[0].hp=999;updBattle(1);k++}return 'siege '+k+' '+document.querySelector('#ov h1').textContent}catch(e){return 'ERR '+e.stack}})()"""))
     for t in ['f','l','u','h','r']: E(f"ov.classList.add('hide');mode='map';ency('{t}')")
