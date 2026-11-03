@@ -5,8 +5,8 @@
  */
 class BootScene extends Phaser.Scene {
     constructor() { super('Boot'); }
-    /** Najkratšie trvanie načítavacej obrazovky (ms). */
-    static get MIN_LOAD() { return 5000; }
+    /** Najkratšie trvanie načítavacej obrazovky (ms): 5 s len pri prvom spustení hry; pri návrate do menu (znovunačítanie stránky v tom istom okne) bez čakania. */
+    static get MIN_LOAD() { return BootScene.again ? 0 : 5000; }
 
     create() {
         ov.classList.add('intro'); ov.classList.add('hide');   // úvodný formulár sa ukáže až po načítaní
@@ -17,6 +17,7 @@ class BootScene extends Phaser.Scene {
         cv.width = W * RES; cv.height = H * RES;          // pomocné plátno pre kreslenie vo vysokom rozlíšení
         this.buildScreen();
         this.prog = 0; this.target = 0; this.step = 'Kreslím mapu Stredozeme…';
+        try { BootScene.again = sessionStorage.getItem('vsBooted') === '1'; sessionStorage.setItem('vsBooted', '1'); } catch (e) { BootScene.again = false; }
         this.t0 = performance.now();   // načítanie trvá aspoň MIN_LOAD ms, aby si hráč stihol pozrieť obrazovku
         // vlastné vety v duchu Stredozeme a tipy k hre; striedajú sa každé 4 sekundy
         const QUOTES = ['„Kto drží meč, nech nezabudne, za koho ho drží.“', '„Aj najdlhšia noc nad Tieňom sa raz skončí pri brieždení.“', '„Hrad nepadá, keď sa zrúti brána, ale keď sa jeho ľudia vzdajú.“',
