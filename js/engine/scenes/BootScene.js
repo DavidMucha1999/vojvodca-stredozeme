@@ -5,6 +5,8 @@
  */
 class BootScene extends Phaser.Scene {
     constructor() { super('Boot'); }
+    /** Najkratšie trvanie načítavacej obrazovky (ms). */
+    static get MIN_LOAD() { return 5000; }
 
     create() {
         ov.classList.add('intro'); ov.classList.add('hide');   // úvodný formulár sa ukáže až po načítaní
@@ -15,9 +17,16 @@ class BootScene extends Phaser.Scene {
         cv.width = W * RES; cv.height = H * RES;          // pomocné plátno pre kreslenie vo vysokom rozlíšení
         this.buildScreen();
         this.prog = 0; this.target = 0; this.step = 'Kreslím mapu Stredozeme…';
-        const QUOTES = ['„Jeden prsteň vládne všetkým, jeden im všetkým káže…“', '„Aj ten najmenší človek môže zmeniť beh budúcnosti.“', '„Nie je všetko zlato, čo sa blyští, a nie každý, kto blúdi, je stratený.“', '„Stačí sa rozhodnúť, čo urobíme s časom, ktorý nám je daný.“', '„Mnohí, čo žijú, si zaslúžia smrť. A niektorí, čo zomreli, by si zaslúžili život.“', '„Dokonca aj tma musí pominúť. Príde nový deň.“', '„Cesta ide ďalej a ďalej, od dverí, kde sa začala.“'];
-        this.quote.setText(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
-        this.time.addEvent({ delay: 4200, loop: true, callback: () => { this.quote.setText(QUOTES[Math.floor(Math.random() * QUOTES.length)]); } });
+        this.t0 = performance.now();   // načítanie trvá aspoň MIN_LOAD ms, aby si hráč stihol pozrieť obrazovku
+        // vlastné vety v duchu Stredozeme a tipy k hre; striedajú sa každé 4 sekundy
+        const QUOTES = ['„Kto drží meč, nech nezabudne, za koho ho drží.“', '„Aj najdlhšia noc nad Tieňom sa raz skončí pri brieždení.“', '„Hrad nepadá, keď sa zrúti brána, ale keď sa jeho ľudia vzdajú.“',
+            '„Na každej ceste je krčma a v každej krčme niekto, kto pozná cestu.“', '„Prsteň šepká každému iné meno. Múdry nepočúva žiadne.“', '„Zástavy sa menia, kopce ostávajú.“',
+            'Tip: v tábore podrž medzerník a čas pobeží osemkrát rýchlejšie.', 'Tip: obliehanie potrebuje rebríky alebo vežu – pri pevných hradbách sa oplatí aj baranidlo.',
+            'Tip: keď zaútočíš pri spojencoch, pridajú sa k tebe do bitky.', 'Tip: obliehaná posádka žije zo zásob – čakanie ju oslabí, no hrozí výpad.',
+            'Tip: v krčme nájdeš spoločníkov a krčmár vie, čo sa deje vo svete.', 'Tip: zajatého veliteľa môžeš prepustiť za výkupné alebo pre česť.'];
+        let qi = Math.floor(Math.random() * QUOTES.length);
+        this.quote.setText(QUOTES[qi]);
+        this.time.addEvent({ delay: 4000, loop: true, callback: () => { qi = (qi + 1 + Math.floor(Math.random() * 3)) % QUOTES.length; this.quote.setText(QUOTES[qi]); } });
         const steps = [
             ['Kreslím mapu Stredozeme…', () => new Promise(r => setTimeout(r, 30))],
             ['Staviam hrady a dediny…', () => Art.loadTextures(this, 'map', (d, n) => { this.target = .1 + .6 * d / n; })],
@@ -30,7 +39,7 @@ class BootScene extends Phaser.Scene {
         const ends = [.1, .7, .78, .88, 1];
         steps.reduce((acc, [name, fn], i) => acc.then(() => { this.step = name; return fn().then(() => { this.target = ends[i]; }); }), Promise.resolve()).then(() => {
             this.step = 'Brána sa otvára…'; this.target = 1;
-            const go = () => { if (this.prog < .97 && this.scene.isActive()) return this.time.delayedCall(60, go); this.time.delayedCall(150, () => {
+            const go = () => { if ((this.prog < .97 || performance.now() - this.t0 < BootScene.MIN_LOAD) && this.scene.isActive()) return this.time.delayedCall(60, go); this.time.delayedCall(150, () => {
                 this.scene.launch('UI');   // formulár úvodu ukáže až IntroScene po prvom snímku (nie nad načítavacou obrazovkou)
                 this.scene.start('Intro');
             }); };
@@ -57,24 +66,33 @@ class BootScene extends Phaser.Scene {
 
     update(time, delta) {
         this.t += delta / 1000;
-        this.prog += (this.target - this.prog) * .3;   // po snímkach, nie podľa času – na pomalom stroji Phaser skracuje delta
+        const cap = Math.min(1, (performance.now() - this.t0) / BootScene.MIN_LOAD);   // lišta nepredbehne najkratší čas načítania
+        this.prog += (Math.min(this.target, cap) - this.prog) * .3;   // po snímkach, nie podľa času – na pomalom stroji Phaser skracuje delta
         const S = RES, cx = W * S / 2, cy = H * S / 2 - 30 * S, t = this.t;
-        // Prsteň: zlatý prstenec s odleskom a ohnivým písmom, ktoré sa posúva po obvode
+        // Prsteň: vznáša sa, pomaly sa natáča okolo zvislej osi (mení sa šírka elipsy), ohnivé písmo beží po obvode
         const g = this.ring; g.clear();
-        const R0 = 78 * S, th = 15 * S;
-        g.lineStyle(th + 4 * S, 0x2a1a08, 1).strokeEllipse(cx, cy, R0 * 2, R0 * 1.3);
-        g.lineStyle(th, 0xd9a441, 1).strokeEllipse(cx, cy, R0 * 2, R0 * 1.3);
-        g.lineStyle(th * .45, 0xffe6a0, .8).strokeEllipse(cx - 3 * S, cy - 3 * S, R0 * 2 - 6 * S, R0 * 1.3 - 6 * S);
-        g.lineStyle(th * .3, 0x8a5a10, .7).strokeEllipse(cx + 3 * S, cy + 4 * S, R0 * 2 - 4 * S, R0 * 1.3 - 4 * S);
-        for (let k = 0; k < 34; k++) {   // „tengwar“: ohnivé znaky
-            const a = t * .5 + k * 6.283 / 34, px = cx + Math.cos(a) * R0, py = cy + Math.sin(a) * R0 * .65, front = Math.sin(a) > -.2;
+        const bob = Math.sin(t * 1.15) * 6 * S, ry0 = cy + bob, spin = Math.cos(t * .55), R0 = 78 * S, th = 15 * S;
+        const rx = R0 * (.78 + .22 * Math.abs(spin)), ry = R0 * .65 * (1 + .04 * Math.sin(t * .8)), tilt = Math.sin(t * .4) * 3 * S;
+        g.fillStyle(0x000000, .35 - bob / S * .02).fillEllipse(cx, cy + 112 * S, rx * 1.6 * (1 - bob / S * .02), 14 * S);   // tieň pod prsteňom
+        for (let k = 0; k < 4; k++) g.fillStyle(0xff8a30, (.05 + .025 * Math.sin(t * 2 + k)) * (1 - k * .2)).fillEllipse(cx, ry0, rx * (2.2 + k * .35), ry * (2.6 + k * .35));   // pulzujúca žiara
+        g.lineStyle(th + 4 * S, 0x2a1a08, 1).strokeEllipse(cx, ry0 + tilt * .2, rx * 2, ry * 2);
+        g.lineStyle(th, 0xd9a441, 1).strokeEllipse(cx, ry0 + tilt * .2, rx * 2, ry * 2);
+        const sx = spin * 3 * S;   // odlesk sa posúva s natočením
+        g.lineStyle(th * .45, 0xffe6a0, .55 + .3 * Math.abs(spin)).strokeEllipse(cx - sx, ry0 - 3 * S, rx * 2 - 6 * S, ry * 2 - 6 * S);
+        g.lineStyle(th * .3, 0x8a5a10, .7).strokeEllipse(cx + sx, ry0 + 4 * S, rx * 2 - 4 * S, ry * 2 - 4 * S);
+        for (let k = 0; k < 34; k++) {   // ohnivé znaky
+            const a = t * .5 + k * 6.283 / 34, px = cx + Math.cos(a) * rx, py = ry0 + Math.sin(a) * ry, front = Math.sin(a) > -.2;
             if (!front) continue;
-            const h = (3 + ((k * 7) % 4)) * S, w = 1.6 * S, al = .55 + .45 * Math.sin(t * 3 + k);
+            const h = (3 + ((k * 7) % 4)) * S, w = 1.6 * S * (.6 + .4 * Math.abs(spin)), al = (.55 + .45 * Math.sin(t * 3 + k)) * (.6 + .4 * Math.abs(spin));
             g.fillStyle(0xff7a20, al).fillRect(px - w / 2, py - h / 2, w, h);
             if (k % 3 === 0) g.fillStyle(0xffb040, al).fillCircle(px + 2 * S, py - h / 2, .9 * S);
             if (k % 4 === 1) g.fillStyle(0xff9030, al).fillRect(px - 2.5 * S, py + h / 2, 5 * S, .8 * S);
         }
-        g.fillStyle(0xff8a30, .08 + .04 * Math.sin(t * 2)).fillEllipse(cx, cy, R0 * 2.6, R0 * 1.9);
+        // iskry stúpajú zo žiary
+        for (let k = 0; k < 18; k++) {
+            const life = (t * .35 + k * .37) % 1, ex = cx + Math.sin(k * 12.9 + t * .3) * (rx * 1.1) * (1 - life * .3), ey = ry0 + ry * .8 - life * 150 * S;
+            g.fillStyle(k % 3 ? 0xffb050 : 0xff7020, (1 - life) * .7).fillCircle(ex, ey, (1.6 - life) * S);
+        }
         // lišta
         const b = this.bar; b.clear();
         const bw = 420 * S, bh = 10 * S, bx = cx - bw / 2, by = cy + 148 * S;
