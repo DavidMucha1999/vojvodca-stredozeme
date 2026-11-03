@@ -83,14 +83,19 @@ html.desktop body{overflow:hidden}
 #c{display:none}#game{position:absolute;inset:0}
 /* Rozhranie kreslí Phaser: HTML predlohy ostávajú, len sú skryté */
 .phaser-ui #hud,.phaser-ui #tb,.phaser-ui #od,#ov.mirror{visibility:hidden!important}
+.phaser-ui #ov.pending{visibility:hidden!important}
+#boot{position:fixed;inset:0;z-index:9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.6rem;background:#120e0c;color:#d9a441;font-family:Georgia,serif;text-align:center}
+#boot h1{margin:0;font-size:2.2rem;font-weight:normal;color:#e8b84a}
+#boot p{margin:0;color:#b8a27a}
 </style>
 </head>
 <body>
+<div id="boot"><h1>Vojvodca Stredozeme</h1><p>Načítavam…</p><p style="font-size:.85rem">Autor a vývojár hry: Dávid Mucha</p></div>
 <div id="wrap">
 <div id="game"></div>
 <canvas id="c" aria-label="Hra Vojvodca Stredozeme"></canvas>
 <div id="hud"></div>
-<div id="ov">
+<div id="ov" class="intro hide">
 <h1>Vojvodca Stredozeme</h1>
 <p style="color:var(--gold);font-size:1rem">Autor a vývojár hry: Dávid Mucha</p>
 <p>Veď svoju družinu po veľkej mape Stredozeme, pridaj sa ku Gondoru, Rohanu, Mordoru alebo Isengardu a dobýjaj hrady. Najímaj vojakov, kupuj zbrane, brnenie, štít a koňa, porážaj nepriateľov, plň kapitoly príbehu a prepracuj sa až na kráľa.</p>
@@ -4803,6 +4808,7 @@ function show(h, body) {
             try { const c = Portraits.canvas(PORTRAIT); c.className = 'por'; c.dataset.key = 'por_' + JSON.stringify(PORTRAIT); ov.insertBefore(c, ov.firstChild); } catch (e) { }
         }
         PORTRAIT = null;
+        if (document.body && document.body.classList.contains('phaser-ui')) ov.classList.add('pending');   // okno nakreslí Phaser (UIScene); HTML verzia sa medzitým neukáže
         ov.classList.remove('hide');
     }
 }
@@ -6976,6 +6982,7 @@ class BootScene extends Phaser.Scene {
 
     create() {
         ov.classList.add('intro'); ov.classList.add('hide');   // úvodný formulár sa ukáže až po načítaní
+        const pre = document.getElementById('boot'); if (pre) pre.remove();   // statická obrazovka z HTML (kým sa načítali skripty)
         tb.style.display = 'none';
         hud.style.visibility = 'hidden';
         tb.id = 'tb'; od.id = 'od';
@@ -6998,8 +7005,7 @@ class BootScene extends Phaser.Scene {
         steps.reduce((acc, [name, fn], i) => acc.then(() => { this.step = name; return fn().then(() => { this.target = ends[i]; }); }), Promise.resolve()).then(() => {
             this.step = 'Brána sa otvára…'; this.target = 1;
             const go = () => { if (this.prog < .97 && this.scene.isActive()) return this.time.delayedCall(60, go); this.time.delayedCall(150, () => {
-                ov.classList.remove('hide');
-                this.scene.launch('UI');
+                this.scene.launch('UI');   // formulár úvodu ukáže až IntroScene po prvom snímku (nie nad načítavacou obrazovkou)
                 this.scene.start('Intro');
             }); };
             go();
@@ -7076,6 +7082,7 @@ class IntroScene extends Phaser.Scene {
     }
 
     update() {
+        if (!this.shown) { this.shown = 1; if (!G) ov.classList.remove('hide'); }   // úvodný formulár až keď je úvodná scéna nakreslená
         if (G) { this.scene.start('Map'); return; }
         ctx.save();
         ctx.setTransform(RES, 0, 0, RES, 0, 0);
@@ -9012,6 +9019,7 @@ Object.assign(UIScene.prototype, {
     syncDialog() {
         const m = this.mirrorable();
         ov.classList.toggle('mirror', !!m);
+        ov.classList.remove('pending');   // show() okno skryl, kým ho tu nepreberieme (formuláre ostávajú v HTML)
         const sig = m ? ov.innerHTML : '';
         if (sig === this.sig.dlg) return;
         const sameTitle = this.dlg && m && (ov.querySelector('h1') || {}).textContent === this.dlg.title;

@@ -16,6 +16,7 @@ class IntroScene extends Phaser.Scene {
     }
 
     update() {
+        if (!this.shown) { this.shown = 1; if (!G) ov.classList.remove('hide'); }   // úvodný formulár až keď je úvodná scéna nakreslená
         if (G) { this.scene.start('Map'); return; }
         ctx.save();
         ctx.setTransform(RES, 0, 0, RES, 0, 0);

@@ -12,6 +12,7 @@ Object.assign(UIScene.prototype, {
     syncDialog() {
         const m = this.mirrorable();
         ov.classList.toggle('mirror', !!m);
+        ov.classList.remove('pending');   // show() okno skryl, kým ho tu nepreberieme (formuláre ostávajú v HTML)
         const sig = m ? ov.innerHTML : '';
         if (sig === this.sig.dlg) return;
         const sameTitle = this.dlg && m && (ov.querySelector('h1') || {}).textContent === this.dlg.title;

@@ -8,6 +8,7 @@ class BootScene extends Phaser.Scene {
 
     create() {
         ov.classList.add('intro'); ov.classList.add('hide');   // úvodný formulár sa ukáže až po načítaní
+        const pre = document.getElementById('boot'); if (pre) pre.remove();   // statická obrazovka z HTML (kým sa načítali skripty)
         tb.style.display = 'none';
         hud.style.visibility = 'hidden';
         tb.id = 'tb'; od.id = 'od';
@@ -30,8 +31,7 @@ class BootScene extends Phaser.Scene {
         steps.reduce((acc, [name, fn], i) => acc.then(() => { this.step = name; return fn().then(() => { this.target = ends[i]; }); }), Promise.resolve()).then(() => {
             this.step = 'Brána sa otvára…'; this.target = 1;
             const go = () => { if (this.prog < .97 && this.scene.isActive()) return this.time.delayedCall(60, go); this.time.delayedCall(150, () => {
-                ov.classList.remove('hide');
-                this.scene.launch('UI');
+                this.scene.launch('UI');   // formulár úvodu ukáže až IntroScene po prvom snímku (nie nad načítavacou obrazovkou)
                 this.scene.start('Intro');
             }); };
             go();

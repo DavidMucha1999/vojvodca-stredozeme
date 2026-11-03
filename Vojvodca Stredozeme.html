@@ -11,14 +11,19 @@
 #c{display:none}#game{position:absolute;inset:0}
 /* Rozhranie kreslí Phaser: HTML predlohy ostávajú, len sú skryté */
 .phaser-ui #hud,.phaser-ui #tb,.phaser-ui #od,#ov.mirror{visibility:hidden!important}
+.phaser-ui #ov.pending{visibility:hidden!important}
+#boot{position:fixed;inset:0;z-index:9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.6rem;background:#120e0c;color:#d9a441;font-family:Georgia,serif;text-align:center}
+#boot h1{margin:0;font-size:2.2rem;font-weight:normal;color:#e8b84a}
+#boot p{margin:0;color:#b8a27a}
 </style>
 </head>
 <body>
+<div id="boot"><h1>Vojvodca Stredozeme</h1><p>Načítavam…</p><p style="font-size:.85rem">Autor a vývojár hry: Dávid Mucha</p></div>
 <div id="wrap">
 <div id="game"></div>
 <canvas id="c" aria-label="Hra Vojvodca Stredozeme"></canvas>
 <div id="hud"></div>
-<div id="ov">
+<div id="ov" class="intro hide">
 <h1>Vojvodca Stredozeme</h1>
 <p style="color:var(--gold);font-size:1rem">Autor a vývojár hry: Dávid Mucha</p>
 <p>Veď svoju družinu po veľkej mape Stredozeme, pridaj sa ku Gondoru, Rohanu, Mordoru alebo Isengardu a dobýjaj hrady. Najímaj vojakov, kupuj zbrane, brnenie, štít a koňa, porážaj nepriateľov, plň kapitoly príbehu a prepracuj sa až na kráľa.</p>

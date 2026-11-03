@@ -38,6 +38,7 @@ function show(h, body) {
             try { const c = Portraits.canvas(PORTRAIT); c.className = 'por'; c.dataset.key = 'por_' + JSON.stringify(PORTRAIT); ov.insertBefore(c, ov.firstChild); } catch (e) { }
         }
         PORTRAIT = null;
+        if (document.body && document.body.classList.contains('phaser-ui')) ov.classList.add('pending');   // okno nakreslí Phaser (UIScene); HTML verzia sa medzitým neukáže
         ov.classList.remove('hide');
     }
 }
