@@ -119,7 +119,16 @@ class UIScene extends Phaser.Scene {
         }
         const bo = bossAlive();   // boss: veľká lišta zdravia s menom
         if (bo) { g.fillStyle(0x000000, .65).fillRect(W / 2 - 152, 102, 304, 12); g.fillStyle(0x8a1a10, 1).fillRect(W / 2 - 150, 104, 300 * bo.hp / bo.mh, 8); g.fillStyle(0xff8a40, .5).fillRect(W / 2 - 150, 104, 300 * bo.hp / bo.mh, 3); if (!this.cmbT[3]) this.cmbT[3] = this.add.text(0, 0, '', txtStyle(12, '#ffb090', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5).setDepth(5); this.cmbT[3].setPosition(W / 2, 124).setText(BOSSES[bo.boss].n).setVisible(true); }
-        const st = [C.charging ? 'NÁPOR!' : '', C.gb > 0 ? 'Kryt prelomený' : '', C.ammo0 ? 'Šípy: ' + C.ammo : '', C.cry > 0 ? '' : 'Pokrik (V) pripravený', 'Skupina: ' + GRP_N[C.sel]].filter(Boolean).join('   ');
+        // smer úderu: zlatá šípka = tvoj nápriah, červená = úder, ktorý ide na teba (ako vo Warbande)
+        const chev = (d, col, k) => { const cx = W / 2, cy = H * .56, o = 34 * k, s = 9 * k; g.fillStyle(col, .85);
+            if (d === 'l') g.fillTriangle(cx - o - s, cy, cx - o + s * .6, cy - s, cx - o + s * .6, cy + s); else if (d === 'r') g.fillTriangle(cx + o + s, cy, cx + o - s * .6, cy - s, cx + o - s * .6, cy + s);
+            else if (d === 'u') g.fillTriangle(cx, cy - o - s, cx - s, cy - o + s * .6, cx + s, cy - o + s * .6); else g.fillTriangle(cx, cy + o + s, cx - s, cy + o - s * .6, cx + s, cy + o - s * .6); };
+        if (C.rd) chev(C.rd.d, C.rd.t >= C.rd.ready ? 0xffd24a : 0xa08040, 1 + Math.min(.4, Math.max(0, C.rd.t - C.rd.ready) / 75));
+        const h0 = U[0]; let inc = null, id = 1e9;
+        for (const u of U) if (u.t && u.hp > 0 && u.wu > 0 && u.wt === h0 && u.wd) { const dd = Math.hypot(u.x - h0.x, u.y - h0.y); if (dd < id) { id = dd; inc = u; } }
+        if (inc) chev(inc.wd, 0xff3020, .9 + .3 * (1 - inc.wu / inc.wu0));
+        if (C.blk && OPT.blkDir === 'manual' && !(C.shp > 0)) chev(C.bd, 0xc8d8ff, .7);
+        const st = [C.charging ? 'NÁPOR!' : '', C.couch ? 'Sklopená kopija!' : '', C.rd ? 'Nápriah ' + DIR_N[C.rd.d] + (C.rd.t > C.rd.ready + 4 ? ' ' + Math.round(100 + 45 * Math.min(1, (C.rd.t - C.rd.ready) / 30)) + ' %' : '') : '', C.draw > 0 ? 'Napínaš: ' + Math.round(Math.min(1, C.draw / 26) * 100) + ' %' : '', C.gb > 0 ? 'Kryt prelomený' : '', C.ammo0 ? 'Šípy: ' + C.ammo : '', C.cry > 0 ? '' : 'Pokrik (V) pripravený', 'Skupina: ' + GRP_N[C.sel]].filter(Boolean).join('   ');
         this.cmbT[2].setPosition(W / 2, 90).setText(st).setVisible(true);
     }
 

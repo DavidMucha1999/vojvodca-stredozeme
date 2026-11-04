@@ -163,7 +163,19 @@ Bitka sa predvolene zobrazuje v **3D pohľadom za hrdinom**, ako v Mount & Blade
 - **Ovládanie:** kamera je za hrdinom; **koliesko** približuje, **Z** a **C** alebo **stredné tlačidlo myši** (ťahanie) otáčajú kameru. **WASD** sa hýbe vzhľadom na kameru (W = dopredu od kamery), myš mieri na bod na zemi pod kurzorom; ostatné klávesy a rozkazy sú rovnaké ako v 2D.
 - **Prepínač:** Nastavenia → **Bitka: 3D / 2D**. Ak počítač nepodporuje WebGL alebo sa 3D nedá spustiť, hra sama použije 2D bojisko.
 
-Plátno Three.js leží pod priehľadným plátnom Phaseru, takže lišty, rozkazy a okná ostávajú z UIScene. Súradnice: x bojiska = X, y bojiska = Z, výška = Y. Ďalšie etapy: smerové útoky a kryty myšou ako vo Warbande, kopija pri cvale, mierenie s gravitáciou (etapa 2); šíky, obliehanie a bossovia v plnom 3D (etapa 3).
+Plátno Three.js leží pod priehľadným plátnom Phaseru, takže lišty, rozkazy a okná ostávajú z UIScene. Súradnice: x bojiska = X, y bojiska = Z, výška = Y. Ďalšia etapa: šíky, obliehanie a bossovia v plnom 3D (etapa 3).
+
+## Smerový boj (etapa 2, ako vo Warbande)
+
+Platí v 3D aj v 2D, keď hráš myšou a klávesnicou (`heroDirectional`, `heroStrike`, `heroShoot` v `js/sim/combat.js`); na dotykovom displeji ostáva pôvodné ovládanie.
+
+- **Smer úderu z pohybu myši:** tesne pred stlačením útoku pohni myšou – **hore = úder zhora** (jeden nepriateľ, +20 %), **vľavo / vpravo = sek z tej strany** (oblúk, až traja nepriatelia, zasiahne najprv toho na strane, odkiaľ ide čepeľ), **dole = bod** (úzky, dlhší dosah, +35 %, s kopijou +50 % a ešte ďalej). Bez pohybu myši sa seky striedajú zľava a sprava; **E** je vždy bod. Smer ukazuje zlatá šípka pri strede obrazovky a póza hrdinu.
+- **Držaný nápriah:** drž tlačidlo – keď je nápriah hotový (šípka zažiari), úder je pripravený; čím dlhšie držíš, tým silnejší (až **+45 %**), po troch sekundách sa ruka unaví a sila klesá. Pustenie tlačidla udrie. **Klam:** kryt počas nápriahu úder zruší (stojí trochu výdrže).
+- **Rýchlosť sa počíta:** úder v pohybe proti nepriateľovi je silnejší (na koni až +60 %), pri cúvaní slabší. Zbrane majú vlastný dosah a rýchlosť – obojručné sú pomalšie, kopije majú najdlhší dosah.
+- **Sklopená kopija:** na koni s kopijou v rovnom cvale drž **E** – kopija sa sklopí a každý nepriateľ v ceste dostane veľký zásah podľa rýchlosti koňa a odletí. Šík kopijníkov ťa stále zastaví.
+- **Vojaci volia smer:** každý nepriateľ sa napriahne zľava, sprava, zhora alebo na bod (trollovia bijú zhora, kopijníci bodajú) – červená šípka pri strede obrazovky ukazuje, odkiaľ ide úder na teba, a v 3D to vidno aj z jeho pózy. Vojaci sa učia: keď udieraš stále z rovnakej strany, kryjú to ľahšie; zmena smeru ich zaskočí. Silný obojručný úder kryt často prerazí.
+- **Kryt do smeru:** v Nastaveniach **Smer krytu: automatický / myšou**. Automatický kryje zbraňou všetko spredu (ako doteraz). **Myšou** (ako vo Warbande): pri držaní krytu pohni myšou k strane, odkiaľ úder ide (modrá šípka); zlý smer neubráni, správny má širšie okno na dokonalý kryt a nepriatelia sa napriahujú dlhšie, aby sa to dalo stihnúť. **Štít kryje všetky smery** spredu.
+- **Luk so zameriavačom:** drž **Q** – luk sa napína a kruh zameriavača na zemi sa zužuje (rýchlejšie s lukostreľbou; v pohybe a na koni je väčší). Pusti – šíp letí v oblúku **k bodu pod kurzorom** (ďalej nedoletí, ako luk dovolí; slabo napnutý luk strieľa kratšie a slabšie). Príliš dlho napnutý luk sa začne triasť. Oštepy rovnako, len kratšie; **kuša** vystrelí hneď, keď je nabitá.
 
 ## Štruktúra kódu
 
@@ -187,7 +199,7 @@ js/
     bosses.js         bossovia a súboj veliteľov;  voyage.js = plavba;  sidequests.js = vedľajšie výpravy
     chronicle.js      udalosti sveta, kronika hrdinu a konce hry
     supply.js         jedlo, morálka družiny, dezercie, ranení, zajatci;  perks.js = strom perkov
-    combat.js         nový boj: kryt, sek a bod, nápor, morálka a útek, skupiny a rozkazy
+    combat.js         boj: smerové údery a kryty z pohybu myši, držaný nápriah, klam, sklopená kopija, luk so zameriavačom, nápor, morálka a útek, skupiny a rozkazy
     battle.js         bitka: jednotky, začiatok a koniec (tabuľka výsledkov), boj, šípy, rozkazy, hradby
     armies.js, diplomacy.js, hero.js, trade.js, weather.js, quests.js, companions.js, siege.js, politics.js, story.js, achievements.js
     game.js           nová hra, uloženie (celé objekty, verzia SAVE_VERSION) a načítanie s migráciou starších uložení

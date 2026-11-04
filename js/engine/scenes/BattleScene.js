@@ -7,6 +7,8 @@
 /** Priblíženie kamery v bitke (1 = celé zorné pole simulácie 720×480). */
 const BZ = 1.35;
 
+/** Pohyb myši pre smer úderu a krytu (js/sim/combat.js mouseDir). */
+const mouseDelta = p => { CMB.mdx = (CMB.mdx || 0) + (p.x - p.prevPosition.x) / RES; CMB.mdy = (CMB.mdy || 0) + (p.y - p.prevPosition.y) / RES; };
 class BattleScene extends Phaser.Scene {
     constructor() { super('Battle'); }
 
@@ -56,7 +58,7 @@ class BattleScene extends Phaser.Scene {
         // myš: ľavé tlačidlo útok (po prvom pohybe klávesnicou), pravé kryt; dotyk: drž prst, kam bežať (js/sim/combat.js)
         if (this.input.mouse) this.input.mouse.disableContextMenu();
         this.input.on('pointerdown', p => { set(p); if (p.rightButtonDown()) { CMB.rmb = 1; CMB.km = 1; } else { ptr.down = true; if (CMB.km) CMB.lmb = 1; } });
-        this.input.on('pointermove', set);
+        this.input.on('pointermove', p => { set(p); mouseDelta(p); });
         this.input.on('pointerup', p => { if (p.rightButtonReleased()) CMB.rmb = 0; else { ptr.down = false; CMB.lmb = 0; } });
         this.events.once('shutdown', () => { this.input.removeAllListeners(); ptr.down = false; CMB.lmb = CMB.rmb = 0; });
     }
@@ -64,13 +66,14 @@ class BattleScene extends Phaser.Scene {
     /** 3D bitka: Phaser kreslí len rozhranie (UIScene), bojisko a vojakov kreslí B3 pod priehľadným plátnom. */
     build3d() {
         this.d3 = true; this.units = new Map();
+        if (this.sys.game.device.input.mouse !== false) CMB.km = 1;   // v 3D mieri myš od začiatku
         this.cameras.main.transparent = true;
         let last = null;
         const set = p => { last = { x: p.x, y: p.y }; const q = B3.pick(p.x, p.y); if (q) { ptr.x = q.x - bc.x; ptr.y = q.y - bc.y; } };
         this.repick = () => { if (last) set(last); };
         if (this.input.mouse) this.input.mouse.disableContextMenu();
         this.input.on('pointerdown', p => { if (p.middleButtonDown()) { B3.dragStart(p.x); return; } set(p); if (p.rightButtonDown()) { CMB.rmb = 1; CMB.km = 1; } else { ptr.down = true; if (CMB.km) CMB.lmb = 1; } });
-        this.input.on('pointermove', p => { B3.dragMove(p.x); set(p); });
+        this.input.on('pointermove', p => { B3.dragMove(p.x); set(p); if (!p.middleButtonDown()) mouseDelta(p); });
         this.input.on('pointerup', p => { if (p.middleButtonReleased()) { B3.dragEnd(); return; } if (p.rightButtonReleased()) CMB.rmb = 0; else { ptr.down = false; CMB.lmb = 0; } });
         this.input.on('wheel', (p, o, dx, dy) => B3.wheel(dy));
         this.events.once('shutdown', () => { this.input.removeAllListeners(); ptr.down = false; CMB.lmb = CMB.rmb = 0; B3.stop(); });
@@ -281,6 +284,7 @@ class BattleScene extends Phaser.Scene {
             const arc = C.shp > 0 ? (perk('stit') ? 1.7 : 1.4) : .85;
             g.lineStyle(C.shp > 0 ? 4 : 2.5, C.shp > 0 ? 0xc8d8ff : 0xffffff, .75).beginPath().arc(h.x, h.y, h.r + 8, h.f - arc, h.f + arc).strokePath();
         }
+        if (C.aim) { const A = C.aim; g.lineStyle(1.5, 0xffe8a0, .8).strokeCircle(A.x, A.y, A.r); g.lineBetween(A.x - A.r - 4, A.y, A.x - A.r + 3, A.y).lineBetween(A.x + A.r - 3, A.y, A.x + A.r + 4, A.y).lineBetween(A.x, A.y - A.r - 4, A.x, A.y - A.r + 3).lineBetween(A.x, A.y + A.r - 3, A.x, A.y + A.r + 4); }   // zameriavač luku
         for (const u of U) if (u.boss && u.hp > 0) this.drawBoss(g, u);
         for (const u of U) {
             if (u.hp <= 0) continue;

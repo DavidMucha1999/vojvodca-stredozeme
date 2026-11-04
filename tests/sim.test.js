@@ -324,6 +324,30 @@ try {
     run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
     run(`OPT.keys = { atk: "j" }; keys.j = true; var kOk = kd("atk") && !kd("thrust"); keys.j = false; OPT.keys = {}; Portraits.canvas({ race: "human", blink: 1, mood: "angry" }); Portraits.canvas({ race: "elf", mood: "scared" }); var pOk = true;`);
     check('Zmena kláves a živé portréty', run('kOk && pOk'));
+    // smerový boj (etapa 2 – ako Warband): smer z pohybu myši, držaný nápriah, kryt do smeru, klam, luk so zameriavačom, sklopená kopija
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide"); for (const k in keys) keys[k] = false; G.eq.w = 0; G.eq.s = 0; G.eq.m = 0; G.eq.r = 0; G.s.ls = 2;');
+    run(`startBattle({ n: 6, f: 9, nm: "T" }); CMB.km = 1; var h = U[0], fq = U.filter(u => u.t); fq.forEach((u, i) => { u.x = 2000 + i * 40; u.y = 2000; u.stun = 999; }); var e = fq[0]; e.x = h.x + 18; e.y = h.y; e.hp = e.mh = 9999; e.f = Math.PI; e.stun = 999; h.f = 0; ptr.x = e.x - bc.x; ptr.y = e.y - bc.y; h.c = 0;
+        var tick = n => { for (let i = 0; i < n; i++) cmbHero(h, 1, null); };
+        CMB.mdx = -30; CMB.mdy = 0; var dL = mouseDir(); CMB.mdx = 0; CMB.mdy = -30; var dU = mouseDir(); CMB.mdy = 30; var dT = mouseDir(); CMB.mdx = 0; CMB.mdy = 0;
+        var R0 = Math.random; Math.random = () => .999;
+        CMB.mdx = 30; keys[" "] = true; tick(1); var rdOk = CMB.rd && CMB.rd.d === "r"; tick(3); keys[" "] = false; tick(12); var hp1 = e.hp, quick = 9999 - hp1;
+        h.c = 0; CMB.st = 100; CMB.mdx = 30; keys[" "] = true; tick(45); keys[" "] = false; tick(2); var strong = hp1 - e.hp;
+        h.c = 0; CMB.st = 100; keys[" "] = true; tick(5); CMB.blk = 0; keys.Shift = true; tick(1); keys.Shift = false; keys[" "] = false; var feint = !CMB.rd; tick(2);`);
+    check('Smer úderu z pohybu myši, držaný nápriah je silnejší, kryt počas nápriahu je klam', run('dL === "l" && dU === "u" && dT === "t" && rdOk && quick > 0 && strong > quick * 1.3 && feint'), run('[dL, dU, dT, rdOk, quick, strong, feint].join(" ")'));
+    run(`OPT.blkDir = "manual"; CMB.shp = 0; CMB.shMax = 0; CMB.st = 100; CMB.blk = 1; CMB.blkT = 40; CMB.bd = "r"; e.lwd = "l"; e.f = Math.PI; h.f = 0; var hpA = h.hp = 500; meleeHit(e, h, 20, "ai"); var wrongDir = h.hp < hpA;
+        CMB.bd = "l"; CMB.st = 100; var hpB = h.hp; var res = meleeHit(e, h, 20, "ai"); var rightDir = !res && h.hp === hpB; OPT.blkDir = "auto"; CMB.blk = 0;
+        e.stun = 0; e.c = 0; e.wu = 0; Math.random = R0; e.x = h.x + 10; aiMelee(e, h, 10, 1); var aiDir = ["l", "r", "u", "t"].includes(e.wd);`);
+    check('Kryt do smeru (Nastavenia: myšou): zlý smer neubráni, správny áno; vojaci volia smer úderu', run('wrongDir && rightDir && aiDir'), run('[wrongDir, rightDir, aiDir].join(" ")'));
+    run(`e.wu = 0; e.stun = 999; var far = U.filter(u => u.t)[1]; far.x = h.x + 1000; CMB.ammo = 20; CMB.bowC = 0; AR.length = 0; ptr.x = h.x + 200 - bc.x; ptr.y = h.y - bc.y; e.x = h.x + 400; e.y = h.y + 300;
+        keys.q = true; tick(3); var early = CMB.aim && CMB.aim.r; tick(30); var full = CMB.aim && CMB.aim.r; keys.q = false; tick(1); var arw = AR[AR.length - 1]; var land = arw && Math.hypot(arw.x + arw.vx * arw.l - (h.x + 200), arw.y + arw.vy * arw.l - h.y);`);
+    check('Luk: držaním sa napína, zameriavač sa zúži, šíp dopadne k bodu pod kurzorom', run('early > full && arw && land < 30'), run('[early, full, land].join(" ")'));
+    run(`for (const u of U) if (u.t) u.hp = 0; var kq = 0; while (mode === "battle" && kq < 50) { U[0].hp = 999; updBattle(1); kq++; }`);
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide"); for (const k in keys) keys[k] = false;');
+    run(`G.eq.w = 2; G.eq.m = 2; G.own.m = [0, 2]; startBattle({ n: 6, f: 9, nm: "T" }); CMB.km = 1; var h = U[0], fq = U.filter(u => u.t); fq.forEach((u, i) => { u.x = 2000 + i * 40; u.y = 2000; u.stun = 999; }); var e = fq[0]; e.hp = e.mh = 9999; e.stun = 999; e.uk = null; e.k = "o";
+        h.x = 300; h.y = 400; h.f = 0; e.x = 360; e.y = 400; CMB.run = 30; CMB.lastA = 0; CMB.chg = 99; CMB.px = 290; CMB.py = 400; keys.e = true; cmbHero(h, 1, 0); keys.e = false; var couchHit = 9999 - e.hp; var couchOk = couchHit > dmg() * 2;
+        for (const u of U) if (u.t) u.hp = 0; var kc = 0; while (mode === "battle" && kc < 50) { U[0].hp = 999; updBattle(1); kc++; } G.eq.m = 0; G.eq.w = 0;`);
+    check('Sklopená kopija v cvale: veľký zásah podľa rýchlosti koňa', run('couchOk'), run('couchHit'));
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
 } catch (e) { fails++; console.log('CHYBA výnimka: ' + e.stack); }
 console.log(fails ? '\n' + fails + ' testov zlyhalo.' : '\nVšetky testy prešli.');
 process.exit(fails ? 1 : 0);

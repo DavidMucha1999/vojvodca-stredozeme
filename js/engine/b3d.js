@@ -364,7 +364,7 @@ const B3 = (() => {
         const t = T(), body = new t.Group(); body.scale.setScalar(H.scale); body.position.y = seat ? seat - 1 : 9.2 * H.scale; root.add(body);
         const torso = mesh(H.torso); body.add(torso);
         let cape = null; if (H.cape) { cape = mesh(H.cape); cape.position.set(-2.4, 9, 0); body.add(cape); }
-        const armR = new t.Group(); armR.position.set(0, 8.6, 4.6); armR.add(mesh(H.armR)); body.add(armR);
+        const armR = new t.Group(); armR.rotation.order = 'YZX'; armR.position.set(0, 8.6, 4.6); armR.add(mesh(H.armR)); body.add(armR);
         const armL = new t.Group(); armL.position.set(0, 8.6, -4.6); armL.add(mesh(H.armL)); body.add(armL);
         const legs = [1.8, -1.8].map(z => { const g = new t.Group(); g.position.set(0, .2, z); g.add(mesh(H.leg)); body.add(g); return g; });
         return { body, torso, cape, armR, armL, legs, bow: H.bow, spear: H.spear, orc: H.orc, scaleH: H.scale };
@@ -398,16 +398,23 @@ const B3 = (() => {
         if (o.armR) {
             const C2 = typeof CMB !== 'undefined' ? CMB : {};
             let aR = (o.spear ? 1.2 : .35) - sw * .5, aRx = 0, aL = o.bow ? 1.45 : .5 + sw * .4;
-            if (u.wu > 0 && u.wu0) { const p = 1 - u.wu / u.wu0; aR = .35 + p * 2.5; aRx = -p * .3; }   // nápriah – čitateľné varovanie
-            if (o.atk > 0) { const p = 1 - o.atk; if (o.bow) { aR = 1.45 - (1 - p) * .6; aL = 1.45; } else if (o.spear) aR = 1.3 + Math.sin(p * Math.PI) * .5; else aR = 2.8 - p * 2.6; }
+            const lerp = (a, b, k) => a + (b - a) * k;
+            const wind = (d, p) => { const P = DPOSE[d] || DPOSE.u; aR = lerp(.4, P[0], p); aRx = lerp(0, P[1], p); };
+            const strike = (d, p) => { const P = DPOSE[d] || DPOSE.u; aR = lerp(P[0], P[2], p); aRx = lerp(P[1], P[3], p); };
+            if (u.wu > 0 && u.wu0) wind(u.wd ? AI_D[u.wd] : 'u', Math.min(1, (1 - u.wu / u.wu0) * 1.4));   // nápriah – smer čitateľný z pózy
+            if (o.atk > 0) { const p = 1 - o.atk; if (o.bow) { aR = 1.45 - (1 - p) * .6; aL = 1.45; } else if (o.spear && !u.lwd) aR = 1.3 + Math.sin(p * Math.PI) * .5; else strike(u.lwd ? AI_D[u.lwd] : 'u', Math.min(1, p * 2)); }
             if (u.h) {
                 const swg = C2.swing;
-                if (swg && swg.t > 0) { const p = 1 - swg.t / 10; if (swg.k === 't') aR = 1.5; else if (swg.k === 's') { aR = 1.6; aRx = (p - .5) * 2.6; } else aR = 1.4; }
-                if (C2.blk) { aL = 1.4; aR = Math.max(aR, 1.9); }
-                if (C2.bowC > (C2.bowC0 || 30)) { aL = 1.5; aR = 1.4; }
+                o.atk = 0;
+                if (C2.rd) wind(C2.rd.d, Math.min(1, C2.rd.t / Math.max(1, C2.rd.ready)));
+                else if (swg && swg.t > 0) { const p = 1 - swg.t / 10; if (swg.k === 'c') aR = 1.4; else strike(swg.d || (swg.k === 't' ? 't' : 'r'), Math.min(1, p * 1.6)); }
+                if (C2.couch) { aR = 1.57; aRx = .12; }
+                if (C2.blk) { aL = 1.4; if (OPT.blkDir === 'manual' && !(C2.shp > 0)) { const B = { u: [2.7, .2], l: [1.9, .9], r: [1.9, -.9], t: [1.1, .3] }[C2.bd] || [1.9, 0]; aR = B[0]; aRx = B[1]; } else aR = Math.max(aR, 1.9); }
+                if (C2.draw > 0) { aL = 1.55; aR = 1.5 - Math.min(1, C2.draw / 26) * .5; aRx = .3; }
+                else if (C2.bowC > 30 && o.bow) { aL = 1.5; aR = 1.4; }
             }
             if (u.rout) { aR = -.4 + sw; aL = -.4 - sw; }
-            o.armR.rotation.z = aR; o.armR.rotation.x = aRx;
+            o.armR.rotation.z = aR; o.armR.rotation.y = aRx;   // poradie YZX: najprv zdvih ruky, potom vodorovný švih
             o.armL.rotation.z = aL; o.armL.rotation.x = o.bow ? .2 : 0;
         }
         if (o.wings) { const lift = (fly || u.boss === 'fell' ? .1 : .45) + Math.sin(clock * (u.boss === 'fell' || fly ? 5 : 1.6)) * (fly || u.boss === 'fell' ? .6 : .15); o.wings.forEach(w => { w.rotation.x = -w.userData.sd * lift; }); }
@@ -416,6 +423,9 @@ const B3 = (() => {
         if (o.arms) o.arms.forEach((a, i) => { a.rotation.z = (o.atk > 0 ? 1.8 - (1 - o.atk) * 1.6 : .2) + (i ? .1 : 0); });
         if (o.flag) o.flag.rotation.x = Math.sin(clock * 2 + o.ph) * .05;
     }
+
+    /** Pózy pravej ruky pre smer úderu z pohľadu útočníka: [nápriah rotZ, rotX, koniec úderu rotZ, rotX]. AI_D prevádza smer z pohľadu obrancu. */
+    const DPOSE = { u: [2.95, 0, .7, 0], r: [1.9, -1.45, 1.45, 1.1], l: [1.8, 1.25, 1.45, -1.1], t: [.8, -1, 1.6, 0] }, AI_D = { l: 'r', r: 'l', u: 'u', t: 't' };
 
     // ---------- prekryv na zemi ----------
     let ovN = 0;
@@ -443,6 +453,8 @@ const B3 = (() => {
             if (C2.blk) { const arc = C2.shp > 0 ? (typeof perk === 'function' && perk('stit') ? 1.7 : 1.4) : .85; ovSector(h.x, h.y, h.r + 6, h.r + 9, h.f - arc, h.f + arc, C2.shp > 0 ? '#c8d8ff' : '#ffffff', 12); }
             if (C2.charging) ovSector(h.x, h.y, 14, 22, (C2.lastA || h.f) - .4, (C2.lastA || h.f) + .4, '#ffe08a', 6);
             ovSector(h.x, h.y, h.r + 1, h.r + 2.4, 0, 6.283, '#ffd24a', 18);   // hrdina: zlatý krúžok
+            if (C2.aim) { const A = C2.aim; ovSector(A.x, A.y, A.r, A.r + 1.6, 0, 6.283, '#ffe8a0', 20); ovSector(A.x, A.y, 0, 1.4, 0, 6.283, '#ffffff', 8); }   // zameriavač: kruh sa zúži, keď je luk napnutý
+            if (C2.rd) { const k = Math.min(1, C2.rd.t / Math.max(1, C2.rd.ready)); ovSector(h.x, h.y, h.r + 4, h.r + 4 + 4 * k, h.f - .5, h.f + .5, C2.rd.t >= C2.rd.ready ? '#ffd24a' : '#a08040', 6); }
         }
         const g = overlay.geometry; g.setDrawRange(0, ovN); g.attributes.position.needsUpdate = g.attributes.color.needsUpdate = true;
     }

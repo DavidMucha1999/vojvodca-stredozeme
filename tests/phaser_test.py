@@ -68,7 +68,7 @@ with sync_playwright() as p:
     check('3D bitka beží', E("game.scene.getScene('Battle').d3 === true && B3.isOn() && document.getElementById('b3d').style.display === 'block'"), E("[game.scene.getScene('Battle').d3, typeof THREE, B3.want()]"))
     pg.wait_for_timeout(1500)
     check('3D: každý vojak má model', E("U.filter(u => !u.fled).every(u => !!B3.rigOf(u))"))
-    E("keys.w = 1"); x0 = E("[U[0].x, U[0].y]"); pg.wait_for_timeout(800); E("keys.w = 0"); x1 = E("[U[0].x, U[0].y]")
+    x0 = E("[U[0].x, U[0].y]"); E("keys.w = 1; for (let i = 0; i < 20; i++) updBattle(1); keys.w = 0"); x1 = E("[U[0].x, U[0].y]")
     check('3D: WASD vzhľadom na kameru (W = smer pohľadu)', ((x1[0]-x0[0]) * __import__('math').cos(E("B3.yaw")) + (x1[1]-x0[1]) * __import__('math').sin(E("B3.yaw"))) > 3, (x0, x1, E("B3.yaw")))
     check('3D: myš mieri na zem', E("(() => { const q = B3.pick(W * RES / 2, H * RES * .7); return !!q && Math.hypot(q.x - U[0].x, q.y - U[0].y) < 400; })()"))
     E("for (const u of U) if (u.t) u.hp = 0"); pg.wait_for_timeout(500)
