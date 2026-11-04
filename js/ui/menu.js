@@ -47,6 +47,7 @@ function mnHelp() {
         + '<p><b>Mapa:</b> klikni, kam chceš ísť; v tábore podrž medzerník a čas pobeží rýchlejšie.</p>'
         + '<p><b>Bitka:</b> WASD alebo šípky pohyb, myš mieri. Ľavé tlačidlo alebo medzerník = sek (oblúk, až traja nepriatelia), E = bod (ďalej a silnejšie), pravé tlačidlo alebo Shift = kryt (so štítom široký; kryt tesne pred úderom nepriateľa ho zapotáca). Q = luk (s lukostreľbou), V = bojový pokrik. Na koni rovný cval = nápor. Sleduj červený oblúk – nepriateľ sa napriahol. Úder zboku +25 %, zozadu +50 %.</p>'
         + '<p><b>Velenie:</b> 1 Všetci, 2 Pechota, 3 Lukostrelci, 4 Jazda; potom T Útok, H Držať, F Za mnou, G Šík, R Ústup. Keď morálka klesne, vojaci utekajú – padlý veliteľ (zlatý kruh) zlomí nepriateľa.</p>'
+        + '<p><b>Družina:</b> muži jedia – zásoby kupuj na trhu v hrade alebo v dedine (pestrá strava dvíha morálku, hlad vedie k dezerciám). Po víťazstve sa časť padlých len zraní a vráti sa. Za každú úroveň dostaneš bod perku (Družina → Perky).</p>'
         + '<p><b>Dotykový displej:</b> drž prst tam, kam chceš bežať, a hrdina útočí sám.</p>', [['Späť', () => mnShow('mn')]]);
 }
 /** Prepojí tlačidlá menu (raz, po načítaní stránky). */

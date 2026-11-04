@@ -42,6 +42,7 @@ function save(slot) {
 /** Prevedie staršie uloženie na súčasný formát (mierka mapy, výbava, domovské hrady lordov, zajatci). */
 function migrateSave(s) {
     const G0 = s.G;
+    if (!G0.fd) Object.assign(G0, { fd: { bread: 30 }, pm: 60, pmv: 0, wd: {}, pp: Math.max(0, (G0.lv || 1) - 1), perk: {} });   // staršie uloženie: zásoby a body perkov za doterajšie úrovne
     if (!G0.own) G0.own = Object.fromEntries(Object.keys(G0.eq).map(k => [k, Array.from({ length: G0.eq[k] + 1 }, (_, i) => i)]));
     const q = s.K ? K / s.K : K / 4.5;
     if (q !== 1) { const sc = o => { o.x *= q; o.y *= q; if (o.tx != null) { o.tx *= q; o.ty *= q; } }; sc(G0); s.E.forEach(sc); (s.VL || []).forEach(sc); G0.sg = null; }
@@ -69,6 +70,7 @@ function newGame() {
         sp = 150;
         QS = bloc(f0) ? QE : QG;
         G.st = { b: 0, w: 0, l: 0, k: 0, d: 0, c: 0, r: 0 };
+        Object.assign(G, { fd: { bread: 30, ale: 10 }, pm: 65, pmv: 0, wd: {}, pp: 0, perk: {} });   // zásoby, morálka družiny, ranení, perky (supply.js, perks.js)
         for (let i = 0; i < 110; i++)
             spawnE();
         [0, 1, 2, 3, 4, 5, 7, 8].forEach(assignRoles);

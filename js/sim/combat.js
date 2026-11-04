@@ -49,11 +49,11 @@ function cmbStart(en) {
     Object.assign(C, { blk: 0, blkT: 99, gb: 0, st: 100, run: 0, lastA: null, chg: 0, charging: 0, bowC: 0, cry: 0, swing: null, sel: 'all', endT: 0, lmb: 0, rmb: 0, said: {}, noRout: en && en.ar ? 1 : 0 });
     const mine = U.filter(u => !u.t), foe = U.filter(u => u.t), pw = s => s.reduce((a, u) => a + u.mh * (u.d || 5), 0) + 1, r = pw(mine) / pw(foe);
     const cl = v => Math.max(-18, Math.min(18, v));
-    const m0 = 62 + cl((r - 1) * 12) + Math.min(12, G.lv || 1) + (G.king ? 5 : 0) + Math.min(6, (G.ren || 0) / 3);
+    const m0 = 62 + cl((r - 1) * 12) + Math.min(12, G.lv || 1) + (G.king ? 5 : 0) + Math.min(6, (G.ren || 0) / 3) + ((G.pm ?? 60) - 50) * .3 + (perk('vodca') ? 8 : 0);   // morálka družiny a Charizma
     const m1 = 62 + cl((1 / r - 1) * 12) - Math.min(15, (G.fear || 0) * 1.2) + (en && en.nz ? 40 : 0) + (en && en.siege ? 10 : 0);
     C.M = [Math.min(95, m0), Math.max(25, Math.min(95, m1))]; C.M0 = C.M.slice(); C.n0 = [mine.length, foe.length];
-    C.shMax = heroShield() ? Math.round(70 + it('s').v * 500) : 0; C.shp = C.shMax;
-    C.ammo = C.ammo0 = G.s.ls >= 1 || G.race === 'elf' ? 6 + 4 * G.s.ls + (G.race === 'elf' ? 4 : 0) : 0;
+    C.shMax = heroShield() ? Math.round((70 + it('s').v * 500) * (perk('stit') ? 1.6 : 1)) : 0; C.shp = C.shMax;
+    C.ammo = C.ammo0 = G.s.ls >= 1 || G.race === 'elf' || perk('konilu') ? 6 + 4 * G.s.ls + (G.race === 'elf' ? 4 : 0) + (perk('konilu') ? 6 : 0) : 0;
     const o0 = G.ord0 || 'a'; C.og = { p: o0, l: o0, j: o0 };
     // veliteľ nepriateľa: najsilnejší vojak hlavnej armády nesie zástavu; jeho pád zlomí morálku
     if (en && en.nm && !en.ar && !en.nz) { const c = foe.filter(u => !u.src && !heavy(u)).sort((a, b) => b.mh - a.mh)[0]; if (c) { c.cmd = 1; c.bn = 1; c.hp = c.mh = c.mh * 1.6; c.d *= 1.2; } }
@@ -69,7 +69,8 @@ function cmbHero(u, dt, mv) {
     if (want && !C.blk) C.blkT = 0;
     C.blk = want ? 1 : 0;
     C.blkT += dt;
-    C.st = Math.min(100, C.st + dt * (C.blk ? .1 : mv != null && !G.eq.m ? .22 : .38));
+    C.st = Math.min(100, C.st + dt * (C.blk ? .1 : mv != null && !G.eq.m ? .22 : .38) * (perk('neunavny') ? 1.4 : 1));
+    const cost = perk('neunavny') ? .75 : 1;   // perk Neúnavný
     if (C.bowC > 0) C.bowC -= dt;
     if (C.cry > 0) C.cry -= dt;
     if (C.swing && (C.swing.t -= dt) <= 0) C.swing = null;
@@ -78,11 +79,11 @@ function cmbHero(u, dt, mv) {
     if (C.chg > 0) C.chg -= dt;
     if (G.eq.m > 0 && mv != null) { C.run = C.lastA != null && angD(mv, C.lastA) < .22 ? C.run + dt : Math.max(0, C.run - 14); C.lastA = mv; }
     else { C.run = 0; C.lastA = null; }
-    C.charging = C.run > 40 && C.chg <= 0 ? 1 : 0;
+    C.charging = C.run > (perk('kopija') ? 28 : 40) && C.chg <= 0 ? 1 : 0;
     if (C.charging) {
         const hits = U.filter(v => v.t && v.hp > 0 && Math.hypot(v.x - u.x, v.y - u.y) < u.r + v.r + 10 && angD(mv, dirTo(u, v)) < .8).slice(0, 2);
         if (hits.length) {
-            const lance = it('w').r ? 1 : 0, spd = Math.min(1.5, u.sp / 2.4);
+            const lance = it('w').r ? 1 : 0, spd = Math.min(1.5, u.sp / 2.4) * (perk('kopija') ? 1.4 : 1);
             hits.forEach(v => { if (meleeHit(u, v, dmg() * (1.6 + lance) * spd, 'charge') && v.hp > 0) { v.x += Math.cos(mv) * 16; v.y += Math.sin(mv) * 16; v.stun = 25; } });
             SHAKE = Math.max(SHAKE, 2.5); C.run = 0; C.chg = 40; C.swing = { t: 12, a: mv, k: 'c', r: u.r + 22 };
             cmbSay('chg', 'Nápor! Rovný cval na koni drví nepriateľov – s kopijou ešte viac.');
@@ -95,12 +96,12 @@ function cmbHero(u, dt, mv) {
             const tg = U.filter(v => v.t && v.hp > 0 && Math.hypot(v.x - u.x, v.y - u.y) < rg * 1.35 + v.r * .5 && (!C.km || angD(u.f, dirTo(u, v)) < .42)).sort((a, b) => Math.hypot(a.x - u.x, a.y - u.y) - Math.hypot(b.x - u.x, b.y - u.y))[0];
             if (tg && !C.km) u.f = dirTo(u, tg);
             if (tg) meleeHit(u, tg, dmg() * 1.35, 'thrust');
-            u.c = 18 * slow; C.st -= 7; fx = 6; C.swing = { t: 8, a: u.f, k: 't', r: rg * 1.35 };
+            u.c = 18 * slow; C.st -= 7 * cost; fx = 6; C.swing = { t: 8, a: u.f, k: 't', r: rg * 1.35 };
         } else if (keys[' '] || C.lmb || (!C.km && ptr.down && near)) {
             const tg = U.filter(v => v.t && v.hp > 0 && Math.hypot(v.x - u.x, v.y - u.y) < rg + v.r * .5 && (!C.km || angD(u.f, dirTo(u, v)) < 1.05))
                 .sort((a, b) => Math.hypot(a.x - u.x, a.y - u.y) - Math.hypot(b.x - u.x, b.y - u.y)).slice(0, C.km ? 3 : 99);
             tg.forEach((v, i) => meleeHit(u, v, dmg() * (i ? .75 : 1), 'swing'));
-            u.c = 22 * slow; C.st -= 10; fx = 10; C.swing = { t: 10, a: u.f, k: 's', r: rg };
+            u.c = 22 * slow; C.st -= 10 * cost; fx = 10; C.swing = { t: 10, a: u.f, k: 's', r: rg };
         }
         if (C.st < 0) C.st = 0;
     }
@@ -108,7 +109,7 @@ function cmbHero(u, dt, mv) {
     if (keys.q && C.ammo > 0 && C.bowC <= 0 && !C.blk) {
         let an = u.f;
         if (!C.km) { const t = U.filter(v => v.t && v.hp > 0).sort((a, b) => Math.hypot(a.x - u.x, a.y - u.y) - Math.hypot(b.x - u.x, b.y - u.y))[0]; if (t) an = u.f = dirTo(u, t); }
-        an += (Math.random() - .5) * (mv != null ? (G.eq.m && G.s.ls >= 2 ? .05 : .16) : .03);
+        an += (Math.random() - .5) * (mv != null ? (G.eq.m && (G.s.ls >= 2 || perk('konilu')) ? .04 : .16) : .03);
         AR.push({ x: u.x, y: u.y, vx: Math.cos(an) * 8, vy: Math.sin(an) * 8, l: 48, t: 0, d: 6 + G.s.ls * 1.5, by: u });
         C.ammo--; C.bowC = 42; snd('ar');
         if (!C.ammo) cmbSay('ammo', 'Došli ti šípy.');
@@ -127,7 +128,7 @@ function meleeHit(att, def, d, kind) {
     const C = CMB, from = dirTo(def, att), rel = angD(def.f, from);
     if (def.h && C.blk && C.st > 0) {
         const sh = C.shp > 0;
-        if (rel < (sh ? 1.4 : .85)) {
+        if (rel < (sh ? (perk('stit') ? 1.7 : 1.4) : .85)) {
             C.st -= kind === 'charge' ? 30 : sh ? 6 : 10;
             if (sh) { C.shp -= d * .6; if (C.shp <= 0) { C.shp = 0; TS = { s: 'Štít sa rozbil!', l: 120 }; } }
             if (C.blkT < 12 && !att.h) { att.stun = 40; att.wu = 0; cmbSay('perf', 'Dokonalý kryt! Útočník sa zapotácal – teraz udri.'); }
@@ -188,7 +189,8 @@ function cmbMorale(dt) {
         for (const u of U) {
             if (u.t !== s || u.hp <= 0 || fearless(u) || u.garrison && SGB) continue;
             if (u.rout) { if (M > 50 && Math.random() < .004 * dt) u.rout = 0; continue; }
-            if (M < 10 || (M < 35 && Math.random() < (35 - M) / 35 * .01 * dt * (u.hp < u.mh * .5 ? 2.5 : 1))) rout(u);
+            const th = s === 0 && perk('zastava') ? 25 : 35;   // perk Zástava
+            if (M < 10 || (M < th && Math.random() < (th - M) / th * .01 * dt * (u.hp < u.mh * .5 ? 2.5 : 1))) rout(u);
         }
     }
 }

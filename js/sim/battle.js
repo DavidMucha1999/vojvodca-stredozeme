@@ -12,18 +12,19 @@ function startBattleBase(en, al) {
     AR = [];
     en.n = Math.max(1, Math.round(en.n));
     PT = [];
-    U = [{ h: 1, t: 0, x: 140, y: BH / 2, hp: G.hp, mh: mh(), sp: 1.2 * it('m').v * (1 + .08 * G.s.ob), c: 0, r: 9, k: 'h', f: 0 }];
-    for (let i = 0; i < Math.min(G.inf, 40); i++)
+    U = [{ h: 1, t: 0, x: 140, y: BH / 2, hp: G.hp, mh: mh(), sp: 1.2 * it('m').v * (1 + .08 * G.s.ob) * (G.eq.m && perk('jazda') ? 1.1 : 1), c: 0, r: 9, k: 'h', f: 0 }];
+    const cap = n => Math.round(n * (perk('vojvodca') ? 1.5 : 1));   // perk Vojvodca: viac vojakov v bitke
+    for (let i = 0; i < Math.min(G.inf, cap(40)); i++)
         U.push(mk(0, 'i'));
-    for (let i = 0; i < Math.min(G.cav, 20); i++)
+    for (let i = 0; i < Math.min(G.cav, cap(20)); i++)
         U.push(mk(0, 'c'));
-    for (let i = 0; i < Math.min(G.arc, 20); i++)
+    for (let i = 0; i < Math.min(G.arc, cap(20)); i++)
         U.push(mk(0, 'a'));
-    for (let i = 0; i < Math.min(G.vet, 20); i++)
+    for (let i = 0; i < Math.min(G.vet, cap(20)); i++)
         U.push(mk(0, 'v'));
-    for (let i = 0; i < Math.min(G.elf, 15); i++)
+    for (let i = 0; i < Math.min(G.elf, cap(15)); i++)
         U.push(mk(0, 'e'));
-    for (let i = 0; i < Math.min(G.roh, 12); i++)
+    for (let i = 0; i < Math.min(G.roh, cap(12)); i++)
         U.push(mk(0, 'r'));
     for (let i = 0; i < Math.min(G.ent || 0, 3); i++)
         U.push(mk(0, 'n'));
@@ -126,6 +127,7 @@ const temple = () => TW.some(t => t.mine && t.bd && t.bd.c);
 function hit(b, d, from) {
     const was = b.hp > 0;
     if (from && onHill(from) && !onHill(b)) d *= 1.15;   // útok z kopca
+    if (from && !from.t && !from.h && perk('taktik')) d *= 1.1;   // perk Taktik
     b.hp -= d * (b.h ? red() : !b.t && temple() ? .9 : 1);
     if (from) { from.dmg = (from.dmg || 0) + d; if (was && b.hp <= 0) from.kills = (from.kills || 0) + 1; }
     if (was && b.hp <= 0) cmbDeath(b);
@@ -301,11 +303,15 @@ function endBattle(win) {
                     G.lv++;
                     up++;
                     G.sk++;
+                    G.pp = (G.pp || 0) + 1;   // bod perku (perks.js)
                 }
                 if (up)
                     G.hp = mh();
                 upd();
-                const lv = up ? ` Nová úroveň: ${G.lv}, zdravie je plné.` : '';
+                const lv = up ? ` Nová úroveň: ${G.lv}, zdravie je plné, +${up} bod schopností a perku (Družina → Perky).` : '';
+                G.pmv = Math.min(20, (G.pmv || 0) + 8); G.pm = Math.min(100, (G.pm ?? 60) + 4);   // víťazstvo dvíha morálku družiny
+                if (perk('slavny')) G.ren++;
+                const wnd = woundAfterBattle();
                 if (G.king && G.ren >= 30) {
                     show('Slávny vojvodca', 'Orkské tlupy sú rozprášené a Stredozem ťa oslavuje. Dosiahol si slávu 12 za ' + G.day + ' dní.');
                     btn('Hrať znova', newGame);
@@ -313,7 +319,7 @@ function endBattle(win) {
                     afterBattleFlags(win, L);
                     return;
                 }
-                show('Víťazstvo', 'Padlo ' + (dI + dC) + ' tvojich mužov. Korisť: ' + loot + ' zlata.' + lv);
+                show('Víťazstvo', 'Padlo ' + (dI + dC) + ' tvojich mužov' + (wnd ? ' (z padlých ' + wnd + ' prežilo ranených – vrátia sa po vyliečení)' : '') + '. Korisť: ' + loot + ' zlata.' + lv);
                 battleReport(true);
                 const L = LB;
                 if (!L.siege)
@@ -339,7 +345,7 @@ function endBattle(win) {
                     btn('Pokračovať', () => { ov.classList.add('hide'); mode = 'map'; });
                 }
             }
-            else if (L.nm && L.f !== 9 && !L.siege && !L.vil && !L.nz && Math.random() < .6 && captureHero(L)) {
+            else if ((G.pm = Math.max(0, (G.pm ?? 60) - 15)) >= 0 && L.nm && L.f !== 9 && !L.siege && !L.vil && !L.nz && Math.random() < .6 && captureHero(L)) {   // porážka: morálka družiny −15
                 G.inf = Math.max(2, Math.floor(G.inf / 2));
                 G.cav = Math.floor(G.cav / 2);
                 G.arc = Math.floor(G.arc / 2);

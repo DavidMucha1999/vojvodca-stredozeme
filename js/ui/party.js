@@ -25,7 +25,7 @@ function party(back, tab) {
     mode = 'town';
     tab = tab || 'c';
     const C = myComps(), re = t => party(fromMap ? null : back, t);
-    const tabs = () => { [['c', 'Spoločníci', 'hero'], ['a', 'Vojsko', 'recruit'], ['o', 'Rozkazy', 'sword']].forEach(([k, n, ic]) => { const b = btn(n, () => re(k), 0, ic); if (k === tab) select(b); }); };
+    const tabs = () => { [['c', 'Spoločníci', 'hero'], ['a', 'Vojsko', 'recruit'], ['z', 'Zásoby a zajatci', 'mug'], ['p', 'Perky' + (G.pp > 0 ? ' (' + G.pp + ')' : ''), 'crown'], ['o', 'Rozkazy', 'sword']].forEach(([k, n, ic]) => { const b = btn(n, () => re(k), 0, ic); if (k === tab) select(b); }); };
     if (tab === 'c') {
         show('Správa družiny – spoločníci', C.length ? 'Tvoji spoločníci (' + C.length + '/4). V bitke bojujú po tvojom boku, zbierajú skúsenosti (každých 40 = nová úroveň, +6 % zdravia a útoku) a ranený sa pár dní zotavuje.' : 'Zatiaľ cestuješ sám. Spoločníkov nájdeš v krčmách hradov: hrdinovia dobra v Bree, Lothlóriene, Erebore, Minas Tirith, Edorase, Osgiliathe a Hobitove; služobníci Tieňa v Isengarde, Minas Morgul, Edorase, Barad-dûre, Umbare a pri Morannone.');
         tabs();
@@ -54,6 +54,24 @@ function party(back, tab) {
         list.filter(([k]) => G[k] > 0).forEach(([k, n, u]) => { const b = btn(n + ': ' + G[k] + (k === 'inf' ? ' (žold 1/3 denne)' : k === 'cav' ? ' (žold 2/3 denne)' : ''), null, 1, { u }); b.style.opacity = 1; });
         if (G.inf > 3) btn('Prepustiť 5 pešiakov (menší žold)', () => { G.inf = Math.max(1, G.inf - 5); upd(); re('a'); }, 0, 'door');
         if (G.cap) btn('Prepustiť zajatcov (česť +1)', () => { G.cap = 0; G.hon = (G.hon || 0) + 1; upd(); re('a'); }, 0, 'chain');
+    }
+    if (tab === 'z') {
+        const fd = G.fd || {}, evil = heroSide() === 1, w = woundedTotal();
+        show('Správa družiny – zásoby a zajatci', 'Morálka družiny: ' + (G.pm ?? 60) + '/100' + ((G.pm ?? 60) < 25 ? ' – muži dezertujú!' : (G.pm ?? 60) < 40 ? ' – nespokojnosť' : (G.pm ?? 60) > 75 ? ' – výborná' : '') + '. Zásoby: ' + foodTotal() + ' porcií na ' + foodDays() + ' d (denne ' + foodNeed() + ').' + (G.hungry ? ' DRUŽINA HLADUJE.' : ''));
+        tabs();
+        row('Jedlo: ' + (Object.keys(fd).length ? Object.entries(fd).map(([k, n]) => foodName(k, evil) + ' ' + n).join(', ') : 'žiadne') + '. Jedlo kúpiš na trhu v hrade alebo v dedine; každý ďalší druh jedla dvíha morálku.', { gold: 1 });
+        row('Morálku dvíha pestrá strava, víťazstvá, tvoja úroveň a perk Charizma; znižuje ju hlad, nevyplatený žold (zlato pod nulou), porážky a veľké vojsko. Pod 25 muži zbiehajú. V bitke sa prenáša do odvahy vojska.');
+        row(w ? 'Ranení: ' + Object.entries(G.wd).map(([k, n]) => n + '× ' + ({ inf: 'pešiak', cav: 'jazdec', arc: 'lukostrelec', vet: 'veterán', elf: 'elf', roh: 'rohirim', ent: 'ent' }[k] || (FU[k] ? FU[k].n : k))).join(', ') + ' – hoja sa (v hrade rýchlejšie).' : 'Ranení: nikto.');
+        if (G.cap) btn('Presvedčiť zajatcov, aby sa pridali (' + G.cap + ' zajatcov, šanca ' + Math.round(Math.min(.8, .12 + .06 * G.s.pr + (perk('nabor') ? .15 : 0) + (G.pm > 70 ? .05 : 0)) * 100) + ' %' + (G.prd === G.day ? ', dnes už nie' : '') + ')', () => { const n = recruitPrisoners(); upd(); msg(n ? n + ' zajatcov prisahalo vernosť a pridalo sa k tvojim pešiakom.' : 'Zajatci mlčia a hľadia do zeme. Nikto sa nepridal.', () => re('z')); }, G.prd === G.day, 'chain');
+        if (G.cap) btn('Prepustiť zajatcov (česť +1)', () => { G.cap = 0; G.hon = (G.hon || 0) + 1; upd(); re('z'); }, 0, 'door');
+    }
+    if (tab === 'p') {
+        show('Perky hrdinu', 'Voľné body perkov: ' + (G.pp || 0) + '. Za každú novú úroveň získaš bod. Vyšší perk vo vetve vyžaduje predošlý a úroveň hrdinu 2, 4 alebo 6 (teraz ' + (G.lv || 1) + ').');
+        tabs();
+        PERKS.forEach(([, bn, , list], bi) => {
+            rowHead(bn);
+            list.forEach(([id, n, d], ti) => { const st = perkState(bi, ti); const b = btn((st === 'has' ? '✔ ' : '') + n + ' – ' + d + (st !== 'has' && st !== 'ok' ? ' (' + st + ')' : ''), () => { takePerk(bi, ti); upd(); re('p'); }, st !== 'ok', PERKS[bi][2]); if (st === 'has') select(b); });
+        });
     }
     if (tab === 'o') {
         show('Správa družiny – rozkazy', 'Východzí rozkaz, s ktorým vojsko vstupuje do bitky (v bitke vyberieš skupinu klávesmi 1–4 a rozkaz T Útok, H Držať, F Za mnou, G Šík, R Ústup).');

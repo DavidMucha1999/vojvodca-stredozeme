@@ -32,7 +32,7 @@ const Art = {
         const [fw, fh, ox, oy] = artSize(key), pw = fw * RES, ph = fh * RES;
         const out = document.createElement('canvas');
         out.width = pw * frames.length; out.height = ph;
-        const o = out.getContext('2d'), tm0 = tm;
+        const o = out.getContext('2d'), tm0 = tm, outl = /^(figure_|bigfig_)/.test(key);   // postavičky: obrys a tieňovanie
         frames.forEach((fn, i) => {
             ctx.save();
             ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -41,10 +41,27 @@ const Art = {
             ctx.translate(ox, oy);
             try { fn(); } catch (e) { console.warn('Art', key, i, e); }
             ctx.restore();
-            o.drawImage(cv, 0, 0, pw, ph, i * pw, 0, pw, ph);
+            if (outl) Art.outline(o, i * pw, pw, ph, /^bigfig_/.test(key) ? 1.4 : .9);
+            else o.drawImage(cv, 0, 0, pw, ph, i * pw, 0, pw, ph);
         });
         tm = tm0;
         return out;
+    },
+
+    /** Snímka z pomocného plátna s tmavým obrysom (čitateľnosť na mape) a tieňovaním: svetlo zľava hore, tieň vpravo dole. */
+    outline(o, x, pw, ph, w) {
+        const t = Art._ol || (Art._ol = document.createElement('canvas')), s = Art._ol2 || (Art._ol2 = document.createElement('canvas'));
+        t.width = s.width = pw; t.height = s.height = ph;
+        const tc = t.getContext('2d'), sc = s.getContext('2d');
+        tc.drawImage(cv, 0, 0, pw, ph, 0, 0, pw, ph);
+        tc.globalCompositeOperation = 'source-atop';
+        const g = tc.createLinearGradient(0, 0, pw, ph); g.addColorStop(0, 'rgba(255,240,210,.16)'); g.addColorStop(.5, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(10,5,20,.26)');
+        tc.fillStyle = g; tc.fillRect(0, 0, pw, ph); tc.globalCompositeOperation = 'source-over';
+        sc.drawImage(t, 0, 0); sc.globalCompositeOperation = 'source-in'; sc.fillStyle = 'rgba(18,10,6,.8)'; sc.fillRect(0, 0, pw, ph); sc.globalCompositeOperation = 'source-over';
+        const d = w * RES;
+        o.save(); o.beginPath(); o.rect(x, 0, pw, ph); o.clip();   // obrys nesmie pretiecť do susednej snímky
+        for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; o.drawImage(s, x + Math.cos(a) * d, Math.sin(a) * d); }
+        o.drawImage(t, x, 0); o.restore();
     },
 
     /** Zaregistruje plátno ako textúru Phaseru so snímkami 0..n-1. */

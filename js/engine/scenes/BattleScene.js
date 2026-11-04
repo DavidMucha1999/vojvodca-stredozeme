@@ -215,7 +215,7 @@ class BattleScene extends Phaser.Scene {
         } else if (fx > 0 && !C.km) g.lineStyle(3, 0xecdfc6, fx / 10).strokeCircle(h.x, h.y, it('w').r || 34);   // dotykové ovládanie: kruh úderu
         if (h.hp > 0 && C.charging) for (let k = 0; k < 5; k++) { const a = (C.lastA || h.f) + Math.PI + (k - 2) * .18, l = 18 + (k % 2) * 10; g.lineStyle(1.5, 0xfff0c0, .5).lineBetween(h.x + Math.cos(a) * 12, h.y + Math.sin(a) * 12, h.x + Math.cos(a) * (12 + l), h.y + Math.sin(a) * (12 + l)); }   // čiary rýchlosti
         if (h.hp > 0 && C.blk) {   // kryt: štít alebo zbraň pred hrdinom
-            const arc = C.shp > 0 ? 1.4 : .85;
+            const arc = C.shp > 0 ? (perk('stit') ? 1.7 : 1.4) : .85;
             g.lineStyle(C.shp > 0 ? 4 : 2.5, C.shp > 0 ? 0xc8d8ff : 0xffffff, .75).beginPath().arc(h.x, h.y, h.r + 8, h.f - arc, h.f + arc).strokePath();
         }
         for (const u of U) {

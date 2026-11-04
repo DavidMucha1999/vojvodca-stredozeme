@@ -231,6 +231,20 @@ try {
         var ownFled = U.filter(u => !u.t && u.fled && u.k === "i" && !u.ally).length;`);
     check('Tvoji utečenci prežijú (neodpočítajú sa z družiny)', run('ownFled > 0 && G.inf === inf0'), run('"utieklo " + ownFled + ", pešiakov " + inf0 + " → " + G.inf'));
     run(closeMenus + '; mode = "map";');
+    // družina (supply.js, perks.js): jedlo, hlad a dezercie, ranení, zajatci, perky
+    run(`mode = "map"; G.inf = 30; G.cav = 0; G.arc = 0; G.fd = { bread: 20, meat: 20, cheese: 20 }; G.pm = 50; G.hungry = 0; var f0 = foodTotal(), need = foodNeed(); supplyDaily(); var ate = f0 - foodTotal(), pmUp = G.pm > 50;
+        G.fd = {}; G.pm = 20; G.pmv = 0; var inf0 = G.inf; supplyDaily(); var deserted = G.inf < inf0 && G.hungry === 1;`);
+    check('Družina je jedlo (pestrá strava dvíha morálku), hlad a nízka morálka vedú k dezerciám', run('ate === need && pmUp && deserted'), run('"zjedli " + ate + "/" + need + ", pešiakov " + inf0 + " → " + G.inf'));
+    run(`G.inf = 20; G.wd = {}; G.pm = 60; G.fd = { bread: 50 }; startBattle({ n: 10, f: 2, nm: "Test" }); for (const u of U) if (!u.t && u.k === "i" && !u.ally) { u.hp = 0; } for (const u of U) if (u.t) u.hp = 0; updBattle(1);
+        var wnd = (G.wd.inf || 0), infAfter = G.inf; G.camp = 1; G.stay = 1; for (let d = 0; d < 6; d++) supplyDaily(); var healed = G.inf > infAfter && !(G.wd.inf > 0);`);
+    check('Časť padlých je ranená a vylieči sa', run('wnd > 0 && healed'), run('"ranení " + wnd + ", pešiaci po hojení " + G.inf'));
+    run(closeMenus + '; mode = "map"; G.camp = 0; G.stay = 0;');
+    run(`G.cap = 40; G.prd = -1; G.s.pr = 3; var c0 = G.cap, i0 = G.inf; var nr = recruitPrisoners(); var again = recruitPrisoners();`);
+    check('Zajatci sa dajú presvedčiť raz denne', run('nr > 0 && G.cap === c0 - nr && G.inf === i0 + nr && again === 0'), run('"pridalo sa " + nr'));
+    run(`G.lv = 4; G.pp = 2; G.perk = {}; var noJump = !takePerk(0, 2); var a1 = takePerk(0, 0), a2 = takePerk(0, 1), a3 = takePerk(0, 2); var d0 = dmg();`);
+    check('Perky: poradie vo vetve, úroveň a body', run('noJump && a1 && a2 && !a3 && G.pp === 0 && perk("sermiar")'));
+    run(`G.perk = {}; G.lv = 1; G.pp = 0; var sv = JSON.parse(JSON.stringify(G)); delete sv.fd; delete sv.pp; var mg = migrateSave({ G: sv, K, E: [], T: TW.map(t => ({})) });`);
+    check('Staršie uloženie dostane zásoby a body perkov', run('mg.G.fd && mg.G.fd.bread > 0 && mg.G.pp === 0 && mg.G.pm === 60'));
 } catch (e) { fails++; console.log('CHYBA výnimka: ' + e.stack); }
 console.log(fails ? '\n' + fails + ' testov zlyhalo.' : '\nVšetky testy prešli.');
 process.exit(fails ? 1 : 0);

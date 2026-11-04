@@ -14,6 +14,7 @@ function daily2() {
         G.gold += Math.round((lvl(t) * 4 + (t.bd && t.bd.t ? lvl(t) * 2 : 0)) * taxMul() * fiefShare(t)); });
     if ((G.tax || 'normal') === 'high') E.forEach(e => { if (e.f === G.fac && e.vas && e.loy != null) e.loy = Math.max(0, e.loy - .1); });
     if (G.camp && G.stay) G.hp = Math.min(mh(), G.hp + 25);   // pobyt v hrade: rýchlejšie hojenie
+    supplyDaily();   // jedlo, morálka družiny, dezercie, hojenie ranených (js/sim/supply.js)
     dailyTrade();
     dailyWeather();
     compDaily();

@@ -29,6 +29,19 @@ const Portraits = (() => {
         const cg = c.createLinearGradient(0, 78, 0, 110); cg.addColorStop(0, shade(cloth, 1.25)); cg.addColorStop(1, shade(cloth, .7));
         c.fillStyle = cg; E(c, cx, 106, 46, 32); c.fill();
         c.fillStyle = shade(cloth, .6); c.beginPath(); c.moveTo(cx - 14, cy + hh + 4); c.lineTo(cx - 24, 96); c.lineTo(cx + 24, 96); c.lineTo(cx + 14, cy + hh + 4); c.closePath(); c.fill();   // golier
+        // brnenie na pleciach: krúžková košeľa alebo plátové náplecníky (L.armor = 'mail' | 'plate', farba L.armorCol)
+        if (L.armor && race !== 'wraith') {
+            const ac = L.armorCol || (L.armor === 'plate' ? '#9aa0aa' : '#7a8088');
+            if (L.armor === 'mail') { c.save(); E(c, cx, 106, 46, 32); c.clip(); c.fillStyle = shade(ac, .55); c.fillRect(0, 74, 96, 22); c.strokeStyle = shade(ac, 1.15); c.lineWidth = .7; for (let y = 76; y < 96; y += 2.6) for (let x = (y * 1.3) % 3; x < 96; x += 3) { c.beginPath(); c.arc(x, y, 1.3, 0, Math.PI); c.stroke(); } c.restore(); }
+            else for (const s of [-1, 1]) {
+                const pg = c.createLinearGradient(cx + s * 20, 74, cx + s * 44, 96); pg.addColorStop(0, shade(ac, 1.35)); pg.addColorStop(.5, ac); pg.addColorStop(1, shade(ac, .55));
+                c.fillStyle = pg; c.beginPath(); c.ellipse(cx + s * 31, 88, 17, 11, s * .35, Math.PI, 0); c.lineTo(cx + s * 46, 96); c.lineTo(cx + s * 16, 96); c.closePath(); c.fill();
+                c.strokeStyle = shade(ac, .45); c.lineWidth = .8; c.beginPath(); c.ellipse(cx + s * 31, 91, 15, 8, s * .35, Math.PI * 1.05, -.05); c.stroke();
+                c.fillStyle = 'rgba(255,255,255,.35)'; E(c, cx + s * 26, 81, 5, 1.6, s * .4); c.fill();
+                c.fillStyle = '#d9b860'; for (const k of [0, 1, 2]) { c.beginPath(); c.arc(cx + s * (22 + k * 8), 84 + Math.abs(k - 1) * -1.5 + 2, .9, 0, 7); c.fill(); }
+            }
+            if (L.clasp !== false) { c.fillStyle = '#d9a441'; c.beginPath(); c.arc(cx - 15, 88, 2.4, 0, 7); c.fill(); c.fillStyle = '#fff0b0'; c.beginPath(); c.arc(cx - 15.6, 87.4, .8, 0, 7); c.fill(); }   // spona plášťa
+        }
         if (orcish) { c.fillStyle = '#6a6a70'; for (const sx of [-30, -18, 18, 30]) { c.beginPath(); c.moveTo(cx + sx - 3, 90); c.lineTo(cx + sx, 80); c.lineTo(cx + sx + 3, 90); c.fill(); } }   // ostne na pleciach
         if (race === 'dark') { c.fillStyle = '#d9a441'; c.fillRect(cx - 20, 88, 40, 3); }
         // krk s tieňom
@@ -36,7 +49,14 @@ const Portraits = (() => {
         c.fillStyle = ng; c.fillRect(cx - 9, cy + hh - 6, 18, 17);
         // vlasy vzadu
         const hair = L.hair || (f ? 'long' : 'short');
-        const hairBack = (w, bottom) => { c.fillStyle = shade(hcol, .8); P(c, [[cx - hw - w, cy - 10], [cx + hw + w, cy - 10], [cx + hw + w + 3, cy + bottom], [cx - hw - w - 3, cy + bottom]]); c.fill(); for (let k = 0; k < 6; k++) { c.strokeStyle = shade(hcol, k % 2 ? 1.15 : .7); c.lineWidth = 1.2; c.beginPath(); c.moveTo(cx - hw - w + 2 + k * (2 * hw + 2 * w - 4) / 5, cy - 6); c.lineTo(cx - hw - w - 1 + k * (2 * hw + 2 * w + 2) / 5, cy + bottom - 2); c.stroke(); } };
+        const seed = n => { const v = Math.sin(n * 127.1 + (L.hcol || '').length * 7.7) * 43758.5; return v - Math.floor(v); };
+        const grey = (k, col) => L.age >= .75 && k % 3 !== 0 ? '#c8c4bc' : L.age >= .5 && k % 5 === 0 ? '#a8a49c' : col;   // šediny podľa veku
+        const hairBack = (w, bottom) => {
+            const hg = c.createLinearGradient(0, cy - 10, 0, cy + bottom); hg.addColorStop(0, shade(hcol, .75)); hg.addColorStop(1, shade(hcol, .55));
+            c.fillStyle = hg; P(c, [[cx - hw - w, cy - 10], [cx + hw + w, cy - 10], [cx + hw + w + 3, cy + bottom], [cx - hw - w - 3, cy + bottom]]); c.fill();
+            c.lineCap = 'round';
+            for (let k = 0; k < 20; k++) { const t = k / 19, x0 = cx - hw - w + 1 + t * (2 * hw + 2 * w - 2), x1 = cx - hw - w - 3 + t * (2 * hw + 2 * w + 6) + (seed(k) - .5) * 3; c.strokeStyle = grey(k, shade(hcol, .55 + seed(k + 9) * .7)); c.lineWidth = .6 + seed(k + 3) * .8; c.beginPath(); c.moveTo(x0, cy - 6); c.quadraticCurveTo(x0 + (seed(k + 5) - .5) * 6, cy + bottom * .5, x1, cy + bottom + seed(k + 7) * 4); c.stroke(); }   // prame­ne a rozstrapkané končeky
+        };
         if (race !== 'wraith') { if (hair === 'long' || hair === 'braids' || hair === 'wavy') hairBack(4, 40); if (hair === 'lank') hairBack(2, 30); }
         // hlava s tieňovaním pleti (svetlo zľava hore)
         const g = c.createRadialGradient(cx - 8, cy - 10, 4, cx, cy + 4, hh + 14); g.addColorStop(0, shade(skin, 1.1)); g.addColorStop(.6, skin); g.addColorStop(1, shade(skin, .72));
@@ -45,6 +65,8 @@ const Portraits = (() => {
         else if (race === 'wraith') { c.fillStyle = '#050508'; E(c, cx, cy, hw, hh); c.fill(); }
         else { c.beginPath(); c.moveTo(cx - hw, cy - 4); c.quadraticCurveTo(cx - hw, cy - hh - 2, cx, cy - hh - 2); c.quadraticCurveTo(cx + hw, cy - hh - 2, cx + hw, cy - 4); c.quadraticCurveTo(cx + hw, cy + hh * .55, cx + (race === 'dwarf' ? 10 : f ? 5 : 7), cy + hh); c.lineTo(cx - (race === 'dwarf' ? 10 : f ? 5 : 7), cy + hh); c.quadraticCurveTo(cx - hw, cy + hh * .55, cx - hw, cy - 4); c.fill(); }
         if (race !== 'wraith') {
+            c.save(); E(c, cx, cy + 2, hw - 2, hh - 3); c.clip(); for (let k = 0; k < 160; k++) { const sx = cx + (seed(k * 3.1) - .5) * 2 * hw, sy = cy + (seed(k * 5.7) - .5) * 2 * hh; c.fillStyle = k % 2 ? 'rgba(0,0,0,.05)' : 'rgba(255,240,220,.06)'; c.fillRect(sx, sy, .8, .8); } c.restore();   // pórovitá pleť
+            if (L.freckles) { c.fillStyle = shade(skin, .62); for (let k = 0; k < 26; k++) { const s = k % 2 ? 1 : -1, fx = cx + s * (5 + seed(k) * 11), fy = cy + 1 + seed(k + 40) * 8; c.globalAlpha = .45 + seed(k + 20) * .4; c.beginPath(); c.arc(fx, fy, .45 + seed(k + 60) * .35, 0, 7); c.fill(); } c.globalAlpha = 1; }   // pehy
             c.fillStyle = 'rgba(0,0,0,.12)'; E(c, cx, cy + hh - 4, hw * .55, 4); c.fill();                                         // tieň pod bradou
             for (const s of [-1, 1]) { c.fillStyle = 'rgba(255,255,255,.08)'; E(c, cx + s * 12, cy + 4, 5, 3, s * .4); c.fill(); }     // lícne kosti
             if (race === 'hobbit' || L.rosy) { c.fillStyle = 'rgba(220,90,80,.22)'; E(c, cx - 12, cy + 7, 5, 3); c.fill(); E(c, cx + 12, cy + 7, 5, 3); c.fill(); }
@@ -69,6 +91,9 @@ const Portraits = (() => {
             const ig = c.createRadialGradient(x + (L.look || 0), ey, .2, x + (L.look || 0), ey, ir); ig.addColorStop(0, shade(eyes, 1.3)); ig.addColorStop(1, shade(eyes, .6));
             c.fillStyle = ig; c.beginPath(); c.arc(x + (L.look || 0), ey, ir, 0, 7); c.fill();
             c.fillStyle = '#0a0806'; c.beginPath(); c.arc(x + (L.look || 0), ey, ir * .45, 0, 7); c.fill();
+            c.strokeStyle = shade(eyes, 1.6); c.globalAlpha = .4; c.lineWidth = .3; for (let k = 0; k < 12; k++) { const a = k * .5236; c.beginPath(); c.moveTo(x + (L.look || 0) + Math.cos(a) * ir * .5, ey + Math.sin(a) * ir * .5); c.lineTo(x + (L.look || 0) + Math.cos(a) * ir * .92, ey + Math.sin(a) * ir * .92); c.stroke(); } c.globalAlpha = 1;   // vlákna dúhovky
+            c.strokeStyle = shade(eyes, .35); c.lineWidth = .45; c.beginPath(); c.arc(x + (L.look || 0), ey, ir, 0, 7); c.stroke();   // okraj dúhovky
+            c.fillStyle = 'rgba(120,60,50,.18)'; E(c, x - s * (erx - .6), ey + .3, .9, ery * .6); c.fill();   // vnútorný kútik
             c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(x - erx, ey - ery, erx * 2, ery * .55);                                        // tieň horného viečka
             c.restore();
             c.fillStyle = '#fff'; c.beginPath(); c.arc(x + .9 + (L.look || 0), ey - .9, .8, 0, 7); c.fill();
@@ -104,6 +129,7 @@ const Portraits = (() => {
         }
         // vrásky, jazva, maľovanie, tetovanie
         if (L.age > .4 && race !== 'wraith') { c.strokeStyle = shade(skin, .72); c.lineWidth = .8; for (const s of [-1, 1]) { c.beginPath(); c.moveTo(cx + s * 4, cy + 8); c.quadraticCurveTo(cx + s * 7, cy + 12, cx + s * 8, cy + 17); c.stroke(); c.beginPath(); c.moveTo(cx + s * 12, cy - 1); c.lineTo(cx + s * 15, cy + 1); c.stroke(); } c.beginPath(); c.moveTo(cx - 8, cy - 15); c.quadraticCurveTo(cx, cy - 17, cx + 8, cy - 15); c.stroke(); if (L.age > .7) { c.beginPath(); c.moveTo(cx - 9, cy - 11.5); c.quadraticCurveTo(cx, cy - 13.5, cx + 9, cy - 11.5); c.stroke(); } }
+        if (L.age > .6 && race !== 'wraith') { c.strokeStyle = shade(skin, .74); c.lineWidth = .6; for (let k = 0; k < 3; k++) { c.beginPath(); c.moveTo(cx - 9 + k, cy - hh * .52 + k * 2.4); c.quadraticCurveTo(cx, cy - hh * .58 + k * 2.4, cx + 9 - k, cy - hh * .52 + k * 2.4); c.stroke(); } for (const s of [-1, 1]) for (let k = 0; k < 3; k++) { c.beginPath(); c.moveTo(cx + s * 13, cy - 3 + k * 1.6); c.lineTo(cx + s * 16.5, cy - 4 + k * 2.4); c.stroke(); } }   // čelo a vranie pätky
         if (L.scar) { c.strokeStyle = '#8a3a30'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(cx + 10, cy - 12); c.lineTo(cx + 6, cy + 10); c.stroke(); c.strokeStyle = 'rgba(138,58,48,.6)'; c.lineWidth = .7; for (let k = 0; k < 4; k++) { const yy = cy - 8 + k * 5, xx = cx + 9.3 - k * .9; c.beginPath(); c.moveTo(xx - 2, yy); c.lineTo(xx + 2, yy + .4); c.stroke(); } }
         if (L.paint) { c.fillStyle = 'rgba(240,240,240,.9)'; E(c, cx, cy + 2, 5, 7); c.fill(); for (let k = -2; k <= 2; k++) c.fillRect(cx + k * 2.4 - .8, cy - 16, 1.6, 10); }
         if (L.warpaint) { c.fillStyle = L.warpaint === true ? 'rgba(200,40,30,.8)' : L.warpaint; for (const s of [-1, 1]) { c.fillRect(cx + s * 9 - 3, cy + 2, 6, 1.6); c.fillRect(cx + s * 9 - 3, cy + 5, 6, 1.6); } }
@@ -111,7 +137,14 @@ const Portraits = (() => {
         if (L.eyepatch) { c.fillStyle = '#1a1210'; E(c, cx + ex, ey, 5.5, 4.5); c.fill(); c.strokeStyle = '#1a1210'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(cx + ex - 5, ey - 3); c.lineTo(cx - hw, cy - 12); c.moveTo(cx + ex + 5, ey - 2); c.lineTo(cx + hw, cy - 10); c.stroke(); }
         // brada a fúzy s textúrou
         const beard = L.beard || 'none';
-        const beardTex = (poly, col) => { c.fillStyle = col; P(c, poly); c.fill(); c.save(); P(c, poly); c.clip(); for (let k = 0; k < 14; k++) { c.strokeStyle = k % 2 ? shade(col, 1.25) : shade(col, .7); c.lineWidth = .9; c.beginPath(); const xx = cx - 18 + k * 2.8; c.moveTo(xx, cy + 6); c.quadraticCurveTo(xx + (k % 2 ? 2 : -2), cy + 22, xx + (k - 7) * .6, cy + 50); c.stroke(); } c.restore(); };
+        const beardTex = (poly, col) => {
+            const ys = poly.map(p => p[1]), xs = poly.map(p => p[0]), y0 = Math.min(...ys), y1 = Math.max(...ys), x0 = Math.min(...xs), x1 = Math.max(...xs);
+            const bg = c.createLinearGradient(0, y0, 0, y1); bg.addColorStop(0, shade(col, .7)); bg.addColorStop(.35, col); bg.addColorStop(1, shade(col, 1.15));
+            c.fillStyle = bg; P(c, poly); c.fill(); c.save(); P(c, poly); c.clip(); c.lineCap = 'round';
+            for (let k = 0; k < 44; k++) { const xx = x0 + (k + seed(k + 90)) * (x1 - x0) / 44; c.strokeStyle = grey(k, k % 3 ? shade(col, .55 + seed(k + 30) * .4) : shade(col, 1.3 + seed(k) * .3)); c.lineWidth = .5 + seed(k + 11) * .6; c.beginPath(); c.moveTo(xx, y0 - 1); c.quadraticCurveTo(xx + (seed(k + 13) - .5) * 5, (y0 + y1) / 2, xx + (xx - cx) * .12 + (seed(k + 17) - .5) * 3, y1 + 2); c.stroke(); }
+            c.fillStyle = 'rgba(0,0,0,.18)'; E(c, cx, y0 + 2, (x1 - x0) * .35, 2.5); c.fill(); c.restore();
+            c.strokeStyle = shade(col, .85); c.lineWidth = .6; for (let k = 0; k < 9; k++) { const xx = cx + (k - 4) * (x1 - x0) / 12 * .8, yb = y1 - Math.abs(k - 4) * (y1 - y0) * .05; c.beginPath(); c.moveTo(xx, yb - 3); c.lineTo(xx + (seed(k + 70) - .5) * 2, yb + 1.5 + seed(k + 71) * 2); c.stroke(); }   // rozstrapkané končeky
+        };
         if (race !== 'wraith' && beard !== 'none' && !f) {
             if (beard === 'stubble') { c.fillStyle = 'rgba(40,30,20,.3)'; P(c, [[cx - hw + 3, cy + 6], [cx + hw - 3, cy + 6], [cx + 6, cy + hh + 1], [cx - 6, cy + hh + 1]]); c.fill(); c.fillStyle = 'rgba(30,20,10,.35)'; for (let k = 0; k < 40; k++) { const px = cx - 14 + (k * 7.3) % 28, py = cy + 8 + (k * 5.1) % 18; if (Math.abs(px - cx) < 6 && py < my + 3 && py > my - 3) continue; c.fillRect(px, py, .9, .9); } }
             else if (beard === 'mustache') { c.strokeStyle = hcol; c.lineWidth = 2.2; c.lineCap = 'round'; c.beginPath(); c.moveTo(cx - 1, my - 3); c.quadraticCurveTo(cx - 6, my - 4.5, cx - 10, my); c.moveTo(cx + 1, my - 3); c.quadraticCurveTo(cx + 6, my - 4.5, cx + 10, my); c.stroke(); }
@@ -122,7 +155,13 @@ const Portraits = (() => {
         }
         // vlasy vpredu s prameňmi a leskom
         if (race !== 'wraith' && !L.hood && !L.helm && !L.turban) {
-            const front = (path) => { c.fillStyle = hcol; path(); c.fill(); c.save(); path(); c.clip(); for (let k = 0; k < 9; k++) { c.strokeStyle = k % 3 === 1 ? shade(hcol, 1.3) : shade(hcol, .72); c.lineWidth = 1.1; c.beginPath(); const xx = cx - hw + 2 + k * (hw * 2 - 4) / 8; c.moveTo(xx, cy - hh - 6); c.quadraticCurveTo(xx + (k % 2 ? 3 : -3), cy - hh * .8, xx + (k - 4) * 1.2, cy - hh * .5 + 3); c.stroke(); } c.fillStyle = 'rgba(255,255,255,.14)'; E(c, cx - 6, cy - hh - 1, 10, 2.6, .2); c.fill(); c.restore(); };
+            const front = (path) => {
+                const fg = c.createLinearGradient(0, cy - hh - 6, 0, cy - hh * .3); fg.addColorStop(0, shade(hcol, 1.12)); fg.addColorStop(1, shade(hcol, .78));
+                c.fillStyle = fg; path(); c.fill(); c.save(); path(); c.clip(); c.lineCap = 'round';
+                for (let k = 0; k < 30; k++) { const xx = cx - hw - 1 + (k + seed(k + 50)) * (hw * 2 + 2) / 30, bend = (xx - cx) * .18; c.strokeStyle = grey(k, k % 4 === 1 ? shade(hcol, 1.35) : shade(hcol, .55 + seed(k + 21) * .45)); c.lineWidth = .45 + seed(k + 33) * .75; c.beginPath(); c.moveTo(cx + (xx - cx) * .3, cy - hh - 7); c.quadraticCurveTo(xx + bend, cy - hh * .85, xx + bend * 1.6 + (seed(k + 8) - .5) * 2, cy - hh * .45 + 3); c.stroke(); }
+                c.strokeStyle = 'rgba(255,250,235,.15)'; c.lineWidth = 1.6; c.beginPath(); c.ellipse(cx - 3, cy - hh * .55, hw * .75, hh * .38, -.08, Math.PI * 1.12, Math.PI * 1.62); c.stroke();   // lesk vlasov
+                c.restore();
+            };
             if (hair === 'short' || hair === 'tied' || hair === 'long' || hair === 'lank' || hair === 'wavy') front(() => { c.beginPath(); c.moveTo(cx - hw - 1, cy - 6); c.quadraticCurveTo(cx - hw, cy - hh - 5, cx, cy - hh - 5); c.quadraticCurveTo(cx + hw, cy - hh - 5, cx + hw + 1, cy - 6); c.quadraticCurveTo(cx + hw * .7, cy - hh * .7, cx + 4, cy - hh * .75); c.quadraticCurveTo(cx - 6, cy - hh * .85, cx - hw * .8, cy - hh * .5); });
             if (hair === 'wavy') { c.fillStyle = hcol; for (let k = 0; k < 5; k++) { E(c, cx - hw - 2 + k * 3, cy + 20 + k * 3, 4, 7); c.fill(); E(c, cx + hw + 2 - k * 3, cy + 20 + k * 3, 4, 7); c.fill(); } }
             if (hair === 'curly') { for (let k = 0; k < 11; k++) { const a = Math.PI + k * Math.PI / 10; c.fillStyle = k % 2 ? shade(hcol, 1.2) : hcol; E(c, cx + Math.cos(a) * (hw - 1), cy - 6 + Math.sin(a) * (hh - 2), 6, 6); c.fill(); } for (let k = 0; k < 4; k++) { c.fillStyle = shade(hcol, .85); E(c, cx - 12 + k * 8, cy - hh + 2, 5, 5); c.fill(); } }
@@ -137,6 +176,13 @@ const Portraits = (() => {
         if (L.turban) { const tc = L.turban === true ? '#c84a2a' : L.turban; c.fillStyle = tc; c.beginPath(); c.moveTo(cx - hw - 3, cy - 8); c.quadraticCurveTo(cx - hw - 2, cy - hh - 12, cx, cy - hh - 12); c.quadraticCurveTo(cx + hw + 2, cy - hh - 12, cx + hw + 3, cy - 8); c.lineTo(cx + hw, cy - 4); c.quadraticCurveTo(cx, cy - hh + 2, cx - hw, cy - 4); c.fill(); for (let k = 0; k < 3; k++) { c.strokeStyle = k % 2 ? shade(tc, .7) : shade(tc, 1.2); c.lineWidth = 1.5; c.beginPath(); c.moveTo(cx - hw - 1, cy - 10 - k * 6); c.quadraticCurveTo(cx + (k % 2 ? 10 : -10), cy - hh - 4 - k * 2, cx + hw + 1, cy - 10 - k * 6); c.stroke(); } c.strokeStyle = '#d9a441'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(cx - hw, cy - 12); c.quadraticCurveTo(cx, cy - 20, cx + hw, cy - 12); c.stroke(); c.fillStyle = '#d8402a'; c.beginPath(); c.arc(cx, cy - hh - 2, 2.2, 0, 7); c.fill(); }
         if (L.helm) { const col = typeof L.helm === 'string' ? L.helm : '#8a8c92', hg = c.createLinearGradient(cx - hw, 0, cx + hw, 0); hg.addColorStop(0, shade(col, 1.3)); hg.addColorStop(.5, col); hg.addColorStop(1, shade(col, .6)); c.fillStyle = hg; c.beginPath(); c.moveTo(cx - hw - 2, cy - 2); c.quadraticCurveTo(cx - hw - 2, cy - hh - 8, cx, cy - hh - 8); c.quadraticCurveTo(cx + hw + 2, cy - hh - 8, cx + hw + 2, cy - 2); c.lineTo(cx + hw, cy - 8); c.quadraticCurveTo(cx, cy - hh + 4, cx - hw, cy - 8); c.fill(); c.fillStyle = shade(col, 1.25); c.fillRect(cx - 1.5, cy - hh - 6, 3, 14); c.strokeStyle = shade(col, .5); c.lineWidth = .8; c.beginPath(); c.moveTo(cx - hw, cy - 8); c.quadraticCurveTo(cx, cy - hh + 4, cx + hw, cy - 8); c.stroke(); if (L.wings) { c.fillStyle = '#eef0f4'; for (const s of [-1, 1]) { P(c, [[cx + s * hw, cy - 10], [cx + s * (hw + 16), cy - 26], [cx + s * (hw - 2), cy - 20]]); c.fill(); c.strokeStyle = '#c8ccd4'; c.lineWidth = .6; for (let k = 1; k < 4; k++) { c.beginPath(); c.moveTo(cx + s * hw, cy - 10 - k * 2.5); c.lineTo(cx + s * (hw + 12 - k * 2), cy - 22 - k * 1.2); c.stroke(); } } } }
         if (L.crown) { c.fillStyle = '#ffd24a'; P(c, [[cx - 16, cy - hh - 2], [cx - 16, cy - hh - 14], [cx - 8, cy - hh - 6], [cx, cy - hh - 17], [cx + 8, cy - hh - 6], [cx + 16, cy - hh - 14], [cx + 16, cy - hh - 2]]); c.fill(); c.fillStyle = '#b08020'; c.fillRect(cx - 16, cy - hh - 4, 32, 2); for (const [px, col] of [[-16, '#3a8ae0'], [0, '#d8402a'], [16, '#3a8ae0']]) { c.fillStyle = col; c.beginPath(); c.arc(cx + px, cy - hh - (px ? 14 : 8), 2, 0, 7); c.fill(); } }
+        // svetlo: teplé zľava hore, tieň vpravo dole, jemná vinetácia
+        if (race !== 'wraith') {
+            c.save(); E(c, cx, cy - 2, hw + 6, hh + 8); c.clip();
+            const lg = c.createLinearGradient(cx - hw, cy - hh, cx + hw, cy + hh); lg.addColorStop(0, 'rgba(255,225,180,.14)'); lg.addColorStop(.5, 'rgba(0,0,0,0)'); lg.addColorStop(1, 'rgba(20,10,30,.24)');
+            c.fillStyle = lg; c.fillRect(0, 0, 96, 96); c.restore();
+        }
+        const vg = c.createRadialGradient(48, 46, 34, 48, 48, 70); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.45)'); c.fillStyle = vg; c.fillRect(0, 0, 96, 96);
         // rám
         c.strokeStyle = '#d9a441'; c.lineWidth = 2; c.strokeRect(1, 1, 94, 94);
         c.strokeStyle = 'rgba(255,230,160,.35)'; c.lineWidth = .8; c.strokeRect(4, 4, 88, 88);
@@ -169,6 +215,9 @@ const Portraits = (() => {
         if (e.nz) L = { race: 'wraith', hood: '#0a0a10' };
         if (e.kr && e.f !== 2 && e.f !== 3) L.crown = 1;
         L.cloth = ['#2a3a6a', '#3a6a2a', '#2a1010', '#1a1a1a', '#a03020', '#3a4a7a', '#4a3a2a', '#5a1f4a', '#9ab07a', '#4a3a2a'][e.f] || '#4a3a2a';
+        L.armor = { 0: 'plate', 1: 'mail', 2: 'mail', 3: 'plate', 5: 'plate', 7: 'plate' }[e.f] || null;
+        L.armorCol = { 2: '#4a4842', 3: '#3a3a40', 5: '#a08a60', 7: '#b08a3a' }[e.f];
+        if (typeof FC !== 'undefined' && FC[e.f]) L.bg = shade(FC[e.f], .32);
         return L;
     }
     /** Portrét hrdinu z G.look (predvolený, ak chýba). */
@@ -176,6 +225,8 @@ const Portraits = (() => {
         const L = { race: 'human', sex: 'm', skin: 0, hair: 'short', hcol: '#4a3020', beard: 'stubble', eyes: '#4a6a8a', ...(G && G.look || {}) };
         if (G && G.king) L.crown = 1;
         L.cloth = G && heroSide() === 1 ? '#2a1414' : '#6a2a2a';
+        if (G && G.eq && typeof it === 'function') { const av = it('a').v; L.armor = av >= .4 ? 'plate' : av > 0 ? 'mail' : null; L.armorCol = heroSide() === 1 ? '#4a4646' : null; }
+        if (G && typeof FC !== 'undefined') L.bg = shade(FC[G.fac] || '#3a2c20', .32);
         return L;
     }
     return { draw, canvas, forLord, hero, SKIN, hashOf };

@@ -25,7 +25,7 @@ const CRE_OPT = {
     nose: [['straight', 'rovný'], ['hooked', 'orlí'], ['wide', 'široký'], ['small', 'malý'], ['flat', 'plochý']],
     mouth: [['neutral', 'pokojné'], ['smile', 'úsmev'], ['stern', 'prísne'], ['thin', 'úzke']],
     brows: [['flat', 'rovné'], ['arched', 'klenuté'], ['thick', 'husté'], ['angry', 'zamračené']],
-    extra: [['none', 'nič'], ['scar', 'jazva'], ['warpaint', 'bojové maľovanie'], ['tattoo', 'tetovanie'], ['earring', 'náušnica'], ['eyepatch', 'páska cez oko'], ['paint', 'biela ruka']],
+    extra: [['none', 'nič'], ['scar', 'jazva'], ['warpaint', 'bojové maľovanie'], ['tattoo', 'tetovanie'], ['earring', 'náušnica'], ['eyepatch', 'páska cez oko'], ['paint', 'biela ruka'], ['freckles', 'pehy']],
     age: [[0, 'mladý'], [.5, 'zrelý'], [.8, 'starý']]
 };
 const SKIN_N = { 0: 'svetlá', 1: 'opálená', 2: 'tmavá', 3: 'bledá', '#5f7a4a': 'zelená', '#6a6a52': 'sivozelená', '#4a5a3a': 'tmavozelená', '#3e4a34': 'tmavá uruk', '#4a3a30': 'hnedočierna', '#7a4a2e': 'tmavá', '#5a3a22': 'veľmi tmavá' };
