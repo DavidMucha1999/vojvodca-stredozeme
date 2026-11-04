@@ -32,6 +32,16 @@ function optItems() {
         [() => 'Obťažnosť: ' + DIFF_N[OPT.diff], () => set('diff', { easy: 'normal', normal: 'hard', hard: 'easy' }[OPT.diff] || 'normal')]
     ];
 }
+/** Ovládanie: priradenie kláves k akciám (klik → stlač nový kláves). */
+function ctlItems() { const K = KB(); return Object.keys(KEYS_DEF).map(a => [() => KEY_N[a] + ': ' + keyName(K[a]) + (CAPTURE && CAPTURE.a === a ? ' … stlač kláves (Esc zruší)' : ''), a]); }
+const PAD_TXT = 'Ovládač: ľavá páčka pohyb (aj na mape), pravá mierenie, A alebo RT sek, X bod, RB alebo LT kryt, Y výstrel, B pokrik, LB hradby; kríž: hore Útok, dole Ústup, vľavo Držať, vpravo Šík; Select Za mnou, Start ďalšia skupina.';
+function controls(back) {
+    mode = 'town';
+    show('Ovládanie', 'Klikni na akciu a stlač nový kláves. Pohyb ostáva na WASD a šípkach, skupiny na 1–4. ' + PAD_TXT);
+    ctlItems().forEach(([lab, a]) => btn(lab(), () => { CAPTURE = { a, done: () => controls(back) }; controls(back); }, 0, 'key'));
+    btn('Obnoviť predvolené klávesy', () => { OPT.keys = {}; saveOpt(); controls(back); }, 0, 'back');
+    btn('Späť', back, 0, 'back');
+}
 /** Okno nastavení počas hry. */
 function gameSettings(back) {
     const fromMap = !back;
@@ -39,6 +49,7 @@ function gameSettings(back) {
     mode = 'town';
     show('Nastavenia hry', 'Kliknutím na položku ju zmeníš. Obťažnosť mení zranenia, ktoré dostáva tvoja strana (ľahká −25 %, ťažká +25 %). Nízka kvalita grafiky vypne prach, dym a časť častíc. Zvuk úplne vypne tlačidlo Zvuk.');
     optItems().forEach(([lab, fn]) => btn(lab(), () => { fn(); gameSettings(fromMap ? null : back); }, 0, 'gear'));
+    btn('Ovládanie (klávesy a ovládač)', () => controls(() => gameSettings(fromMap ? null : back)), 0, 'key');
     btn(fromMap ? 'Zavrieť' : 'Späť', back, 0, 'back');
 }
 // hlavné menu: rovnaké položky v paneli Nastavenia (js/ui/menu.js)
@@ -47,10 +58,18 @@ if (typeof mnSettings === 'function') {
         mnPanel('Nastavenia', '<p>Kliknutím na položku ju zmeníš. Obťažnosť mení zranenia tvojej strany (ľahká −25 %, ťažká +25 %); nízka kvalita grafiky pomôže slabšiemu počítaču.' + (DESKTOP ? ' Celá obrazovka: aj F11 alebo Alt+Enter.' : '') + '</p>', [
             ['Zvuk: ' + (mu ? 'vypnutý' : 'zapnutý'), b => { mu = !mu; b.textContent = 'Zvuk: ' + (mu ? 'vypnutý' : 'zapnutý'); }],
             ...optItems().map(([lab, fn]) => [lab(), b => { fn(); b.textContent = lab(); }]),
+            ['Ovládanie', () => mnControls()],
             ['Celá obrazovka', () => fsc()],
             ['Späť', () => mnShow('mn')]]);
     };
     const sb = document.getElementById && document.getElementById('mnSet'); if (sb) sb.onclick = () => { uiSnd('click'); mnSettings(); };
+}
+/** Ovládanie v hlavnom menu (panel). */
+function mnControls() {
+    mnPanel('Ovládanie', '<p>Klikni na akciu a stlač nový kláves (Esc zruší). Pohyb ostáva na WASD a šípkach, skupiny na 1–4.</p><p>' + PAD_TXT + '</p>', [
+        ...ctlItems().map(([lab, a]) => [lab(), b => { CAPTURE = { a, done: () => { b.textContent = lab(); } }; b.textContent = lab(); }]),
+        ['Obnoviť predvolené', () => { OPT.keys = {}; saveOpt(); mnControls(); }],
+        ['Späť', () => mnSettings()]]);
 }
 /** Pred dennou automatickou pozíciou sa staršie posunú: vsauto → vsauto2 → vsauto3. */
 function rotateAutosaves() {

@@ -185,7 +185,7 @@ const Art = {
     isArcher(u) { const F = FU[u.uk]; return ['a', 'e'].includes(u.k) || (F && (F.b === 'a' || F.b === 'e')); },
 
     unitKey(u) {
-        if (u.h) return 'hero_' + [G.eq.w, G.eq.a, G.eq.s, G.eq.h, G.eq.m, G.fac, G.king ? 1 : 0, G.ke ?? ''].join('_');
+        if (u.h) return 'hero_' + [G.eq.w, G.eq.a, typeof twoHand === 'function' && twoHand() ? 0 : G.eq.s, G.eq.h, G.eq.m, G.fac, G.king ? 1 : 0, G.ke ?? ''].join('_');
         if (u.cp) { const c = compDef(u.cp); return c.eq ? 'hero_cp_' + u.cp + '_' + G.fac + '_' + (u.mnt || 0) : 'u_' + c.art + '_0_' + G.fac; }
         return 'u_' + (u.uk || u.k) + '_' + (u.t ? 1 : 0) + '_' + (u.t ? u.fc : G.fac) + (u.bn ? '_b' : '');
     },
@@ -195,7 +195,7 @@ const Art = {
         const key = Art.unitKey(u), kind = Art.unitArt(u), base = Art.img['unit_' + kind];
         // hrdina sa kreslí podľa výbavy: každá zbraň, brnenie, štít, prilba a kôň vyzerá inak
         if ((u.h || (u.cp && compDef(u.cp).eq)) && !scene.textures.exists(key) && typeof Soldiers !== 'undefined') {
-            const sp = Soldiers.heroSpec(u.h ? G.eq : { ...compDef(u.cp).eq, m: u.mnt || compDef(u.cp).eq.m || 0 });
+            const sp = Soldiers.heroSpec(u.h ? (typeof twoHand === 'function' && twoHand() ? { ...G.eq, s: 0 } : G.eq) : { ...compDef(u.cp).eq, m: u.mnt || compDef(u.cp).eq.m || 0 });
             Art.register(scene, key, Art.tinted(Soldiers.sheet(sp, 'base'), Soldiers.sheet(sp, 'team'), FC[G.fac]));
             Art.anims(scene, key);
             return key;
@@ -232,7 +232,7 @@ const Art = {
     },
     heroFigure(scene) {
         const evil = heroSide() === 1;
-        return Art.figure(scene, G.eq, { flag: G.fac, king: !!G.king, cape: evil ? '#2a1414' : '#6a2a2a', ...Figures.lookOpts(Portraits.hero()) });
+        return Art.figure(scene, typeof twoHand === 'function' && twoHand() ? { ...G.eq, s: 0 } : G.eq, { flag: G.fac, king: !!G.king, cape: evil ? '#2a1414' : '#6a2a2a', ...Figures.lookOpts(Portraits.hero()) });
     },
 
     banner(scene, f) { return Art.ensure(scene, 'banner_' + f, () => [() => { tm = 0; bnr(0, 0, f, 20, 26); }]); },

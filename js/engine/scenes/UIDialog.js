@@ -38,7 +38,16 @@ Object.assign(UIScene.prototype, {
             // portrét (plátno .por) vľavo od nadpisu a prvého odseku
             const por = ov.querySelector('canvas.por'), pk = por && por.dataset.key;
             let px0 = 16, pw0 = IW, py0 = y, pimg = null;
-            if (por && pk) { if (!this.textures.exists(pk)) this.textures.addCanvas(pk, por); pimg = this.add.image(16, y, pk).setOrigin(0).setDisplaySize(78, 78); items.push(pimg); px0 = 16 + 86; pw0 = IW - 86; }
+            if (por && pk) { if (!this.textures.exists(pk)) this.textures.addCanvas(pk, por); pimg = this.add.image(16, y, pk).setOrigin(0).setDisplaySize(78, 78); items.push(pimg); px0 = 16 + 86; pw0 = IW - 86;
+                try {   // živý portrét: občas žmurkne
+                    const L = JSON.parse(pk.slice(4)), bk = pk + '_b', im = pimg;
+                    if (L && L.race !== 'wraith') {
+                        if (!this.textures.exists(bk)) this.textures.addCanvas(bk, Portraits.canvas({ ...L, blink: 1 }));
+                        const blink = () => { if (!im.active) return; im.setTexture(bk).setDisplaySize(78, 78); this.time.delayedCall(130, () => { if (im.active) im.setTexture(pk).setDisplaySize(78, 78); }); this.time.delayedCall(2200 + Math.random() * 3200, blink); };
+                        this.time.delayedCall(1200 + Math.random() * 2000, blink);
+                    }
+                } catch (e) { }
+            }
             if (title) { const t = this.add.text(pimg ? px0 : PW / 2, y, title, txtStyle(19, LC.gold, { fontFamily: TITLE_FONT, align: pimg ? 'left' : 'center', wordWrap: { width: pw0 } })).setOrigin(pimg ? 0 : .5, 0); items.push(t); y += t.height + 5; }
             ov.querySelectorAll(':scope > p').forEach(p => {
                 if (!p.textContent.trim()) return;

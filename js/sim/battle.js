@@ -130,6 +130,7 @@ function hit(b, d, from) {
     if (from && onHill(from) && !onHill(b)) d *= 1.15;   // útok z kopca
     if (from && !from.t && !from.h && perk('taktik')) d *= 1.1;   // perk Taktik
     if (!b.t) d *= DIFF_MUL();   // obťažnosť (js/ui/settings.js)
+    if (b.h && CMB.horse > 0 && !b.dis) { const hd = d * .35; CMB.horse -= hd; d -= hd; if (CMB.horse <= 0) horseDown(b); }   // časť úderov schytá kôň
     b.hp -= d * (b.h ? red() : !b.t && temple() ? .9 : 1);
     if (from) { from.dmg = (from.dmg || 0) + d; if (was && b.hp <= 0) from.kills = (from.kills || 0) + 1; }
     if (was && b.hp <= 0) cmbDeath(b);
@@ -170,7 +171,15 @@ function startBattle(en, al) {
     }
     if (en.siege) {
         const sg = en.t.sg || {};
-        SGB = { gate: 60 + (en.t.wl || 0) * 30, mg: 60 + (en.t.wl || 0) * 30, lad: sg.lad, ram: sg.ram, tow: sg.tow };
+        SGB = { gate: 60 + (en.t.wl || 0) * 30, mg: 60 + (en.t.wl || 0) * 30, lad: sg.lad, ram: sg.ram, tow: sg.tow, att: 0 };
+    }
+    else if (en.def != null && TW[en.def] && TW[en.def].sg) {   // obrana hradu: ty a posádka na hradbách, nepriateľ útočí zľava
+        const t = TW[en.def], sg = t.sg;
+        SGB = { gate: 60 + (t.wl || 0) * 30, mg: 60 + (t.wl || 0) * 30, lad: sg.lad || (!sg.ram && !sg.tow ? 1 : 0), ram: sg.ram, tow: sg.tow, att: 1 };
+        for (const u of U) u.x = BW - u.x;   // strany sa vymenia: obrancovia vpravo za hradbami
+        let wi = 0; for (const u of U) if (!u.t && (u.k === 'a' || u.k === 'e')) { u.x = 1018 + (wi % 2) * 14; u.y = 120 + (wi * 47) % (BH - 240); u.hx = u.x; u.hy = u.y; wi++; }   // lukostrelci na hradby
+        U[0].x = 1080; U[0].y = BH / 2; U[0].f = Math.PI;
+        U.forEach(u => { u.f = u.t ? 0 : Math.PI; });
     }
     else
         SGB = null;
@@ -182,6 +191,7 @@ function endBattle(win) {
     SGB = null;
     const L = LB;
     if (!L.ar) { sideLosses(win, L); if (!win) siegeLost(L); }
+    horseAfter();   // padnutý kôň sa nemusí vrátiť
     if (L.duel) { compAfterBattle(); return duelEnd(win, L); }   // súboj veliteľov (js/sim/bosses.js)
     if (L.ar) {   // turnaj v aréne
         mode = 'over';
@@ -390,6 +400,7 @@ function afterBattleFlags(win, L) {
         b.addEventListener('click', () => { G.hon = (G.hon || 0) + 5; lg('Tvoja česť rastie.'); upd(); }); });
 }
 function updBattle(dt) {
+    pollPad();   // ovládač (js/sim/combat.js)
     {
         if (Math.random() < .06 * dt)
             snd('cl');
@@ -413,6 +424,8 @@ function updBattle(dt) {
             for (const v of U)
                 if (v.hp > 0 && v.t !== a.t && Math.abs(v.x - a.x) < 7 && Math.abs(v.y - a.y) < 7) {
                     if (arrowBlocked(v, a)) { a.l = 0; break; }
+                    if (SGB && v.t !== (SGB.att ?? 0) && v.x >= 1000 && v.x <= 1050 && Math.random() < .4) { a.l = 0; break; }   // cimburie kryje obrancov na hradbách
+                    if (SGB && a.by && a.by.t !== (SGB.att ?? 0) && a.by.x >= 1000 && a.by.x <= 1050) a.d = (a.d || 4.5) * 1.3;   // výstrel z hradieb
                     hit(v, (a.d || 4.5) + (a.t ? 0 : G.s.ls), a.by);
                     a.l = 0;
                     break;
@@ -432,6 +445,7 @@ function updBattle(dt) {
             if (u.boss) { let bt = null, bd2 = 1e9; for (const v of U) if (v.t !== u.t && v.hp > 0) { const d = Math.hypot(v.x - u.x, v.y - u.y) * (v.h ? .8 : 1); if (d < bd2) { bd2 = d; bt = v; } } bossAI(u, bt, dt); continue; }
             if (u.h) {
                 let mx = 0, my = 0;
+                if (GP && Math.hypot(GP.mx, GP.my) > .25) { mx = GP.mx; my = GP.my; CMB.km = 1; }   // ľavá páčka ovládača
                 if (keys.ArrowLeft || keys.a)
                     mx--;
                 if (keys.ArrowRight || keys.d)
@@ -449,7 +463,7 @@ function updBattle(dt) {
                 }
                 let mv = null;
                 if (mx || my) {
-                    const m = Math.hypot(mx, my), k = CMB.blk && !G.eq.m ? .6 : 1;   // v kryte pešo pomalšie
+                    const m = Math.hypot(mx, my), k = CMB.blk && !heroMounted() ? .6 : 1;   // v kryte pešo pomalšie
                     mv = Math.atan2(my, mx);
                     if (!CMB.km) u.f = mv;
                     u.x = Math.max(8, Math.min(BW - 8, u.x + mx / m * u.sp * k * dt));
@@ -529,24 +543,26 @@ function updBattle(dt) {
     }
     if (!SGB || mode !== 'battle')
         return;
-    const LY = [250, 710];
+    // útočníci (SGB.att: 0 = tvoja strana útočí, 1 = bránisz hrad) prechádzajú len bránou, rebríkmi a vežou;
+    // obrancovia môžu stáť aj na hradbách (x 1000–1050) a odtiaľ bojovať, strieľať a zhadzovať rebríky
+    const LY = [250, 710], att = SGB.att ?? 0, off = SGB.ladOff || [0, 0];
     for (const u of U) {
         if (u.hp <= 0)
             continue;
-        const gate = SGB.gate <= 0 && u.y > 440 && u.y < 520, lad = SGB.lad && !u.t && LY.some(l => Math.abs(u.y - l) < 22), tow = SGB.tow && !u.t && Math.abs(u.y - 610) < 34;   // veža: široký prechod
-        if (u.x > 990 && u.x < 1050 && !gate && !lad && !tow)
-            u.x = u.x < 1020 ? 990 : 1050;
-        if (!u.t && !u.h && u.x >= 980 && u.x <= 992) {
-            const py = [480, ...(SGB.lad ? LY : []), ...(SGB.tow ? [610] : [])].reduce((a, b) => Math.abs(b - u.y) < Math.abs(a - u.y) ? b : a);
+        const A = u.t === att, gate = SGB.gate <= 0 && u.y > 440 && u.y < 520, lad = SGB.lad && A && LY.some((l, i) => Math.abs(u.y - l) < 22 && !(off[i] > 0)), tow = SGB.tow && A && Math.abs(u.y - 610) < 34;   // veža: široký prechod
+        if (A) { if (u.x > 990 && u.x < 1050 && !gate && !lad && !tow) u.x = u.x < 1020 ? 990 : 1050; }
+        else if (u.x < 1000 && u.x > 980 && !gate) u.x = 1000;   // obrancovia nevyjdú von inak než bránou
+        if (A && !u.h && u.x >= 980 && u.x <= 992) {
+            const py = [480, ...(SGB.lad ? LY.filter((l, i) => !(off[i] > 0)) : []), ...(SGB.tow ? [610] : [])].reduce((a, b) => Math.abs(b - u.y) < Math.abs(a - u.y) ? b : a);
             u.y += Math.sign(py - u.y) * Math.min(Math.abs(py - u.y), u.sp * dt * 1.2);
         }
-        if (u.t && u.x >= 1048 && u.x <= 1056 && SGB.gate <= 0)
+        if (!A && u.x >= 1048 && u.x <= 1056 && SGB.gate <= 0)
             u.y += Math.sign(480 - u.y) * Math.min(Math.abs(480 - u.y), u.sp * dt);
     }
     if (SGB.gate > 0) {
         let n = 0;
         for (const u of U)
-            if (!u.t && u.hp > 0 && u.x > 950 && u.x < 995 && u.y > 425 && u.y < 535)
+            if (u.t === att && u.hp > 0 && u.x > 950 && u.x < 995 && u.y > 425 && u.y < 535)
                 n++;
         SGB.gate -= n * dt * (SGB.ram ? .06 : .015) + (SGB.ram && n ? dt * .05 : 0);
         if (n && Math.random() < .05 * dt)

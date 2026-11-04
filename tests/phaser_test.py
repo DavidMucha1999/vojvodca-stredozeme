@@ -49,7 +49,7 @@ with sync_playwright() as p:
     check('Podmenu hradu bez chýb', not errs, errs[:2])
     E("tsub(0, 'e')"); pg.wait_for_timeout(200)
     waitfor("game.scene.getScene('UI').dlg && game.scene.getScene('UI').dlg.title === 'Kováč a zbrojnica'")
-    check('Ikonky výbavy u kováča', E("document.querySelectorAll('#bt button canvas.ico').length") == 5 and E("game.textures.list && Object.keys(game.textures.list).filter(k => k.startsWith('ico_')).length") >= 5)
+    check('Ikonky výbavy u kováča', E("document.querySelectorAll('#bt button canvas.ico').length") == 6 and E("game.textures.list && Object.keys(game.textures.list).filter(k => k.startsWith('ico_')).length") >= 5)
     E("for (let i = 0; i < 60; i++) LOG.unshift('Deň ' + i + ': dlhý záznam v denníku, ktorý sa určite nezmestí na jednu obrazovku, keď ich je veľa.'); ov.classList.add('hide'); mode = 'map'; dnk()")
     waitfor("game.scene.getScene('UI').dlg && game.scene.getScene('UI').dlg.title === 'Denník udalostí'")
     check('Dlhý denník: Zavrieť je vždy viditeľné', E("(() => { const d = game.scene.getScene('UI').dlg; return d.CH > d.maxH && d.root.list.some(o => o.text === 'Zavrieť'); })()"))

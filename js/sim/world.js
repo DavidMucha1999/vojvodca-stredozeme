@@ -142,6 +142,8 @@ const waiting = () => !!G && (G.camp || G.besiege >= 0 || G.defend >= 0 || !!G.c
 let HOLD_FAST = false;
 const timeMul = () => waiting() ? (HOLD_FAST ? 8 : (G.tmul || 1)) : 1;
 function updMap(dt) {
+    pollPad();   // ovládač: ľavá páčka vedie družinu po mape
+    if (GP && mode === 'map' && Math.hypot(GP.mx, GP.my) > .3) { G.tx = G.x + GP.mx * 160; G.ty = G.y + GP.my * 160; G.dest = -1; G.vd = -1; G.pd = -1; }
     const idle = Math.hypot(G.tx - G.x, G.ty - G.y) <= 3 && G.dest < 0 && !(G.vd >= 0) && !G.chase && !G.talk && !G.qd;
     if (idle && !waiting()) {
         PAUSE = 1;

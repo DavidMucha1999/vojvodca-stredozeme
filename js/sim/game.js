@@ -43,6 +43,7 @@ function save(slot) {
 function migrateSave(s) {
     const G0 = s.G;
     if (!G0.fd) Object.assign(G0, { fd: { bread: 30 }, pm: 60, pmv: 0, wd: {}, pp: Math.max(0, (G0.lv || 1) - 1), perk: {} });   // staršie uloženie: zásoby a body perkov za doterajšie úrovne
+    if (G0.eq && G0.eq.r == null) { G0.eq.r = 0; if (G0.own) G0.own.r = [0]; }   // strelná výbava (v39)
     if (!G0.own) G0.own = Object.fromEntries(Object.keys(G0.eq).map(k => [k, Array.from({ length: G0.eq[k] + 1 }, (_, i) => i)]));
     const q = s.K ? K / s.K : K / 4.5;
     if (q !== 1) { const sc = o => { o.x *= q; o.y *= q; if (o.tx != null) { o.tx *= q; o.ty *= q; } }; sc(G0); s.E.forEach(sc); (s.VL || []).forEach(sc); G0.sg = null; }
@@ -65,7 +66,7 @@ function newGame() {
         AL = mkAL();
         CP = {};
         MW = { n: 'clear', l: 0 };
-        G = { name: nm, king: 0, arc: 0, elf: 0, roh: 0, pri: [], sk: 0, q: 0, qc: 0, qs: 0, qd: 0, cap: 0, vet: 0, txp: 0, wed: -1, heir: 0, s: { st: 0, od: 0, ob: 0, pr: 0, ls: 0 }, gold: 150, inf: 6, cav: 0, hp: 100, lv: 1, xp: 0, ren: 0, day: 1, x: 160 * K, y: 900 * K, tx: 160 * K, ty: 900 * K, dest: -1, pd: -1, fac: 6, chase: null, eq: { w: 0, a: 0, s: 0, m: 0, h: 0 }, own: { w: [0], a: [0], s: [0], m: [0], h: [0] } };
+        G = { name: nm, king: 0, arc: 0, elf: 0, roh: 0, pri: [], sk: 0, q: 0, qc: 0, qs: 0, qd: 0, cap: 0, vet: 0, txp: 0, wed: -1, heir: 0, s: { st: 0, od: 0, ob: 0, pr: 0, ls: 0 }, gold: 150, inf: 6, cav: 0, hp: 100, lv: 1, xp: 0, ren: 0, day: 1, x: 160 * K, y: 900 * K, tx: 160 * K, ty: 900 * K, dest: -1, pd: -1, fac: 6, chase: null, eq: { w: 0, a: 0, s: 0, m: 0, h: 0, r: 0 }, own: { w: [0], a: [0], s: [0], m: [0], h: [0], r: [0] } };
         E = [];
         sp = 150;
         QS = bloc(f0) ? QE : QG;

@@ -18,10 +18,11 @@ const Portraits = (() => {
         const skin = typeof L.skin === 'string' ? L.skin : race === 'orc' ? '#5f7a4a' : race === 'uruk' ? '#3e4a34' : race === 'wraith' ? '#111' : race === 'dark' ? '#7a4a2e' : SKIN[L.skin | 0] || SKIN[0];
         const hcol = L.hcol || '#4a3020', eyes = L.eyes || (orcish ? '#e8c040' : '#4a6a8a');
         const cx = 48, cy = 50, hw = race === 'dwarf' ? 25 : race === 'elf' ? 20 : race === 'hobbit' ? 23.5 : race === 'uruk' ? 23.5 : f ? 20.5 : 22.5, hh = race === 'elf' ? 29 : race === 'hobbit' ? 25 : race === 'dwarf' ? 26 : 27;
-        const eyeShape = L.eyeShape || (race === 'east' ? 'narrow' : race === 'hobbit' ? 'round' : race === 'elf' ? 'almond' : orcish ? 'deep' : 'almond');
+        const mood = L.mood;   // mimika: angry (hnev), happy (úsmev), scared (strach)
+        const eyeShape = mood === 'scared' ? 'round' : L.eyeShape || (race === 'east' ? 'narrow' : race === 'hobbit' ? 'round' : race === 'elf' ? 'almond' : orcish ? 'deep' : 'almond');
         const nose = L.nose || (race === 'dwarf' ? 'wide' : race === 'hobbit' ? 'small' : orcish ? 'flat' : 'straight');
-        const mouth = L.mouth || (L.smile ? 'smile' : L.angry || orcish ? 'stern' : 'neutral');
-        const brows = L.brows || (L.angry || orcish ? 'angry' : race === 'dwarf' ? 'thick' : f ? 'arched' : 'flat');
+        const mouth = mood === 'happy' ? 'smile' : mood === 'angry' ? 'stern' : mood === 'scared' ? 'thin' : L.mouth || (L.smile ? 'smile' : L.angry || orcish ? 'stern' : 'neutral');
+        const brows = mood === 'angry' ? 'angry' : mood === 'happy' || mood === 'scared' ? 'arched' : L.brows || (L.angry || orcish ? 'angry' : race === 'dwarf' ? 'thick' : f ? 'arched' : 'flat');
         // pozadie, ramená a golier v farbe frakcie
         const bg = c.createRadialGradient(cx, cy, 10, cx, cy, 62); bg.addColorStop(0, L.bg || '#3a2c20'); bg.addColorStop(1, '#0e0a08');
         c.fillStyle = bg; c.fillRect(0, 0, 96, 96);
@@ -105,6 +106,8 @@ const Portraits = (() => {
             const by = ey - 6.5, tilt = brows === 'angry' ? 3 : brows === 'arched' ? -1 : 0;
             c.beginPath(); c.moveTo(x - s * (erx + 1.5), by - (brows === 'angry' ? 1 : 0) - (brows === 'arched' ? 0 : 0)); c.quadraticCurveTo(x, by - 2.5 + (brows === 'arched' ? -1.5 : 0) + (brows === 'angry' ? 2 : 0), x + s * (erx - .5), by + tilt); c.stroke();
         }
+        // žmurknutie: zatvorené viečka (UIDialog strieda s otvorenými očami)
+        if (L.blink && race !== 'wraith') for (const s of [-1, 1]) { const x = cx + s * (race === 'dwarf' ? 9 : 8.5); c.fillStyle = shade(skin, .92); E(c, x, ey, erx + .8, ery + 1); c.fill(); c.strokeStyle = shade(skin, .45); c.lineWidth = 1.1; c.beginPath(); c.ellipse(x, ey + .4, erx, ery * .55, 0, .15, Math.PI - .15); c.stroke(); }
         // nos
         if (race !== 'wraith') {
             c.strokeStyle = shade(skin, .68); c.lineWidth = 1.3; c.lineCap = 'round';
@@ -213,6 +216,7 @@ const Portraits = (() => {
             default: L = { ...base.human };
         }
         if (e.nz) L = { race: 'wraith', hood: '#0a0a10' };
+        if (G && e.rl != null) L.mood = (e.rl || 0) < -15 || hos(e.f, G.fac) ? 'angry' : (e.rl || 0) > 25 ? 'happy' : (G.fear || 0) > 20 && e.n < pw() / 2 ? 'scared' : undefined;   // nálada lorda v rozhovore
         if (e.kr && e.f !== 2 && e.f !== 3) L.crown = 1;
         L.cloth = ['#2a3a6a', '#3a6a2a', '#2a1010', '#1a1a1a', '#a03020', '#3a4a7a', '#4a3a2a', '#5a1f4a', '#9ab07a', '#4a3a2a'][e.f] || '#4a3a2a';
         L.armor = { 0: 'plate', 1: 'mail', 2: 'mail', 3: 'plate', 5: 'plate', 7: 'plate' }[e.f] || null;

@@ -49,3 +49,13 @@ const sideName = z => z ? 'zla' : 'dobra';
 function startGear(z) {
     for (const k of ['w', 'a', 'h']) { const i = shOf(k).findIndex(x => !x.p && !x.z === !z); G.eq[k] = i; G.own[k] = [i]; }
 }
+// --- „Bojisko“ update: obojručné zbrane (t2: bez štítu, širší sek) a strelná výbava (nová časť výbavy 'r': luk, kuša, vrhacie oštepy) ---
+shOf('w').push({ n: 'Gondorský obojručný meč', v: 44, p: 760, t2: 1 }, { n: 'Uruk-haiská obojručná sekera', v: 46, p: 760, t2: 1, z: 1 });
+SH.push({ k: 'r', l: 'Strelná zbraň', it: [{ n: 'Bez strelnej zbrane', v: 0, p: 0 },
+    { n: 'Krátky luk', v: 6, p: 60, rt: 'bow', ammo: 16, cd: 42 }, { n: 'Elfský dlhý luk', v: 9, p: 280, rt: 'bow', ammo: 22, cd: 38 },
+    { n: 'Kuša', v: 15, p: 240, rt: 'xbow', ammo: 10, cd: 80 }, { n: 'Vrhacie oštepy', v: 17, p: 90, rt: 'jav', ammo: 5, cd: 55 },
+    { n: 'Orkský luk', v: 6, p: 60, rt: 'bow', ammo: 16, cd: 42, z: 1 }, { n: 'Haradský luk', v: 9, p: 280, rt: 'bow', ammo: 22, cd: 38, z: 1 },
+    { n: 'Kuša z Rhûnu', v: 15, p: 240, rt: 'xbow', ammo: 10, cd: 80, z: 1 }, { n: 'Haradské vrhacie oštepy', v: 17, p: 90, rt: 'jav', ammo: 5, cd: 55, z: 1 }] });
+/** Obojručná zbraň v ruke: štít sa v boji nepoužije. */
+const twoHand = () => !!(G && G.eq && SH.find(s => s.k === 'w').it[G.eq.w] && SH.find(s => s.k === 'w').it[G.eq.w].t2);
+

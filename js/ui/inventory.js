@@ -5,9 +5,9 @@
  * ktorú si si vybral pri korunovácii. Kúpené veci ostávajú v inventári
  * (G.own) a dajú sa kedykoľvek vymeniť – tlačidlom Inventár na mape alebo u kováča.
  */
-const eqStat = (k, x) => k === 'w' ? 'útok ' + x.v + (x.r ? ', dlhý dosah' : '') : k === 'm' ? 'rýchlosť ' + x.v : x.v ? 'ochrana ' + Math.round(x.v * 100) + ' %' : 'bez ochrany';
+const eqStat = (k, x) => k === 'r' ? (x.rt ? 'zranenie ' + x.v + ', ' + x.ammo + ' strel' + (x.rt === 'xbow' ? ', nie z koňa' : '') : 'nič') : k === 'w' ? 'útok ' + x.v + (x.r ? ', dlhý dosah' : '') + (x.t2 ? ', obojručná – bez štítu' : '') : k === 'm' ? 'rýchlosť ' + x.v : x.v ? 'ochrana ' + Math.round(x.v * 100) + ' %' : 'bez ochrany';
 /** Krátky údaj o sile veci (do inventára). */
-const eqShort = (k, x) => k === 'w' ? 'útok ' + x.v : k === 'm' ? 'rýchl. ' + x.v : x.v ? Math.round(x.v * 100) + ' %' : '–';
+const eqShort = (k, x) => k === 'r' ? (x.rt ? 'zran. ' + x.v + ' · ' + x.ammo + '×' : '–') : k === 'w' ? 'útok ' + x.v + (x.t2 ? ' · obojručná' : '') : k === 'm' ? 'rýchl. ' + x.v : x.v ? Math.round(x.v * 100) + ' %' : '–';
 const eqSum = () => 'Útok ' + Math.round(dmg()) + ', ochrana ' + Math.round((1 - red()) * 100) + ' %, rýchlosť ' + it('m').v + '.';
 const owns = (k, i) => G.own[k].includes(i);
 function wear(k, i) { G.eq[k] = i; upd(); }

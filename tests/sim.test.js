@@ -247,10 +247,10 @@ try {
     check('Staršie uloženie dostane zásoby a body perkov', run('mg.G.fd && mg.G.fd.bread > 0 && mg.G.pp === 0 && mg.G.pm === 60'));
     // svet (chronicle.js, settings.js): udalosti sveta, kronika, konce, zálohy uložení, obťažnosť, tipy
     run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
-    run(`G.wev = null; G.ent = 0; G.ren = 10; var g3 = TW.filter(t => t.f === 3).reduce((s, t) => s + t.g, 0); startWorldEvent("ents"); var g3b = TW.filter(t => t.f === 3).reduce((s, t) => s + t.g, 0);
+    run(`G.wev = null; G.ent = 0; G.ren = 10; if (!TW.some(t => t.f === 3)) TW[castleIdx("Isengard")].f = 3; TW.filter(t => t.f === 3).forEach(t => t.g = Math.max(t.g, 10)); var g3 = TW.filter(t => t.f === 3).reduce((s, t) => s + t.g, 0); startWorldEvent("ents"); var g3b = TW.filter(t => t.f === 3).reduce((s, t) => s + t.g, 0);
         var entsOk = worldEv("ents") && g3b < g3 && (heroSide() !== 0 || G.ent === 1) && G.chron.some(c => /Pochod entov/.test(c.s)); ov.classList.add("hide"); mode = "map";
         G.wev = { k: "winter", end: G.day + 3 }; var fw = foodNeed(); G.wev = null; var fn0 = foodNeed();
-        G.wev = { k: "gondor", end: G.day + 5 }; worldDaily(); var cpG = CP[2] != null && hos(TW[CP[2]].f, 2); G.wev = null;`);
+        TW[castleIdx("Osgiliath")].f = 0; WR[0][2] = WR[2][0] = true; G.wev = { k: "gondor", end: G.day + 5 }; worldDaily(); var cpG = CP[2] != null && hos(TW[CP[2]].f, 2); G.wev = null;`);
     check('Udalosti sveta: pochod entov, krutá zima, vojna o Gondor', run('entsOk && fw > fn0 && cpG'), run('"zima " + fw + " vs " + fn0'));
     run(`lg("Dobyl si hrad Testov aj s okolitými dedinami."); var chOk = G.chron.some(c => /Testov/.test(c.s)); G.ring = 0; G.fac = 0; G.king = 0; G.hon = 15; ending("story"); var endT = G.ending; chronicle(); var chRows = document.getElementById("bt").children.length;`);
     check('Kronika zapisuje skutky, koniec podľa cti', run('chOk && endT === "Mierový vládca" && chRows > 3'), run('endT'));
@@ -291,8 +291,8 @@ try {
         run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
     }
     run(`var de = E.find(e => hos(e.f, G.fac) && !e.nz && e.f !== 9 && e.nm) || E.find(e => !e.nz && e.f !== 9); de.f = [0,1,2,3,4,5,7,8].find(f => hos(f, G.fac)) ?? de.f; meetFoe(de, null); var meetDlg = document.getElementById("bt").children.some(b => /na súboj/.test(b.textContent));
-        ov.classList.add("hide"); duelLord(de); var duelU = U.filter(u => u.t).length === 1 && U.find(u => u.t).duelist; for (const u of U) if (u.t) u.hp = 0; var kd = 0; while (mode === "battle" && kd < 50) { U[0].hp = 999; updBattle(1); kd++; } var dWin = G.duel && G.duel.win === 1;
-        ov.classList.add("hide"); mode = "map"; startBattle(de); var mBroken = CMB.M[1] < CMB.M0[1] || CMB.M[1] <= 35; for (const u of U) if (u.t) u.hp = 0; kd = 0; while (mode === "battle" && kd < 50) { U[0].hp = 999; updBattle(1); kd++; }`);
+        ov.classList.add("hide"); duelLord(de); var duelU = U.filter(u => u.t).length === 1 && U.find(u => u.t).duelist; for (const u of U) if (u.t) u.hp = 0; var kdz = 0; while (mode === "battle" && kdz < 50) { U[0].hp = 999; updBattle(1); kdz++; } var dWin = G.duel && G.duel.win === 1;
+        ov.classList.add("hide"); mode = "map"; startBattle(de); var mBroken = CMB.M[1] < CMB.M0[1] || CMB.M[1] <= 35; for (const u of U) if (u.t) u.hp = 0; kdz = 0; while (mode === "battle" && kdz < 50) { U[0].hp = 999; updBattle(1); kdz++; }`);
     check('Stretnutie a súboj veliteľov zlomí morálku nepriateľa', run('meetDlg && duelU && dWin && mBroken'));
     run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
     run(`var pi = portIdx("Pelargir"), oi = portIdx("Osgiliath"); var hasPorts = portsFrom(pi).includes(oi) && !portsFrom(oi).includes(portIdx("Umbar")); G.gold = 2000; var d0 = G.day, g0 = G.gold; var sr = sail(pi, oi); var sOk = G.day > d0 && G.gold < g0 && Math.hypot(G.x - TW[oi].x, G.y - TW[oi].y) < 200;`);
@@ -301,6 +301,29 @@ try {
         var ch = document.getElementById("bt").children.find(b => /Naverbovať odvážnych hobitov/.test(b.textContent)); var i0 = G.inf; ch.onclick(); var sDone = G.sq.kraj.done && G.inf === i0 + 8;`);
     check('Vedľajšia výprava: Tiene nad Krajom', run('s0 && s1 && sDone'));
     run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
+    // bojisko (časť C): strelná výbava, obojručné zbrane, kone, šík kopijníkov, obrana hradieb, klávesy, portréty
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide"); for (const k in keys) keys[k] = false;');
+    run(`G.eq.r = 3; G.own.r = [0, 3]; G.eq.m = 0; G.inf = 5; startBattle({ n: 6, f: 9, nm: "T" }); var ammo0 = CMB.ammo; keys.q = true; CMB.bowC = 0; U[0].c = 0; cmbHero(U[0], 1, null); keys.q = false; var bolt = AR.some(a => a.bolt) && CMB.ammo === ammo0 - 1 && ammo0 >= 10;
+        for (const u of U) if (u.t) u.hp = 0; var kk = 0; while (mode === "battle" && kk < 50) { U[0].hp = 999; updBattle(1); kk++; }`);
+    check('Kuša ako strelná zbraň', run('bolt'));
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
+    run(`var tw = SH.find(s => s.k === "w").it.findIndex(x => x.t2 && !x.z); G.eq.w = tw; G.eq.s = 2; var t2ok = twoHand() && !heroShield() && Math.abs(red() - (1 - it("a").v - it("h").v) * (G.ring === 1 ? .7 : 1) * (relic("dragon") ? .92 : 1)) < 1e-9; G.eq.w = 0;
+        var geq = Soldiers.GEAR.w.length === SH.find(s => s.k === "w").it.length && Soldiers.GEAR.r.length === SH.find(s => s.k === "r").it.length; Soldiers.icon("r", 3); Soldiers.icon("w", tw);`);
+    check('Obojručná zbraň vypne štít, výbava má vzhľad aj ikonky', run('t2ok && geq'));
+    run(`G.eq.m = 2; G.own.m = [0, 2]; startBattle({ n: 6, f: 9, nm: "T" }); var h0 = CMB.horse; for (let k = 0; k < 20 && !U[0].dis; k++) hit(U[0], 40); var dis = U[0].dis && CMB.horse <= 0 && U[0].bs < 3;
+        var spear = U.find(u => u.t); spear.uk = "uG1"; spear.f = 0; spear.x = 500; spear.y = 300; spear.stun = 0; spear.rout = 0; var cav = U.find(u => !u.t && !u.h) || U[0]; cav.x = 512; cav.y = 300; cav.stun = 0; var chp = cav.hp; meleeHit(cav, spear, 50, "charge"); var braceOk = cav.hp < chp;
+        for (const u of U) if (u.t) u.hp = 0; var kk2 = 0; while (mode === "battle" && kk2 < 50) { U[0].hp = 999; updBattle(1); kk2++; }`);
+    check('Kôň padne a hrdina bojuje pešo; šík kopijníkov zastaví nápor', run('h0 > 0 && dis && braceOk'));
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide"); G.eq.m = 0;');
+    run(`var dx = TW.findIndex(t => t.f !== 9 && !hos(t.f, G.fac)); var ef2 = [0,1,2,3,4,5,7,8].find(f => f !== TW[dx].f && f !== G.fac && hos(f, G.fac)) ?? 2; TW[dx].sg = { f: ef2, d0: G.day, lead: null, w: {}, lad: 1, ram: 0, tow: 0, food: 5 };
+        G.arc = 4; startBattle({ nm: "Obliehatelia", n: 10, f: ef2, def: dx, foes: [], t: TW[dx] }); var defOk = SGB && SGB.att === 1 && U[0].x > 1000 && U.filter(u => u.t).every(u => u.x < 400) && U.some(u => !u.t && u.k === "a" && u.x >= 1000 && u.x <= 1050);
+        U[0].x = 1020; U[0].y = 250; keys.b = true; cmbHero(U[0], 1, null); keys.b = false; var ladOff = SGB.ladOff && SGB.ladOff[0] > 0;
+        var atk = U.find(u => u.t); atk.x = 990; atk.y = 400; var dfn = U.find(u => !u.t && !u.h); dfn.x = 1004; dfn.y = 400; var blk = wallBlocked(atk, dfn);
+        for (const u of U) if (u.t) u.hp = 0; var kk3 = 0; while (mode === "battle" && kk3 < 50) { U[0].hp = 999; updBattle(1); kk3++; } TW[dx].sg = null; G.defend = -1;`);
+    check('Obrana hradieb: obrancovia na hradbách, zhodený rebrík, útočník pod hradbami nedosiahne', run('defOk && ladOff && blk'));
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
+    run(`OPT.keys = { atk: "j" }; keys.j = true; var kOk = kd("atk") && !kd("thrust"); keys.j = false; OPT.keys = {}; Portraits.canvas({ race: "human", blink: 1, mood: "angry" }); Portraits.canvas({ race: "elf", mood: "scared" }); var pOk = true;`);
+    check('Zmena kláves a živé portréty', run('kOk && pOk'));
 } catch (e) { fails++; console.log('CHYBA výnimka: ' + e.stack); }
 console.log(fails ? '\n' + fails + ' testov zlyhalo.' : '\nVšetky testy prešli.');
 process.exit(fails ? 1 : 0);

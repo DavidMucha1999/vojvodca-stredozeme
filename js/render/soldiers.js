@@ -65,6 +65,8 @@ const Soldiers = (() => {
 
     /* ---------- výbava hrdinu (poradie = poradie vecí u kováča v js/data/equipment.js) ---------- */
     const GEAR = {
+        // strelná výbava (len ikonky): luk, kuša, vrhacie oštepy
+        r: [null, { t: 'bow', col: '#8a5a30' }, { t: 'bow', col: '#d8c890', long: 1 }, { t: 'xbow', col: '#6a4a2a' }, { t: 'jav', col: '#8a6238' }, { t: 'bow', col: '#3a2a1a' }, { t: 'bow', col: '#a8742a', long: 1 }, { t: 'xbow', col: '#4a3a2a' }, { t: 'jav', col: '#6a4a20' }],
         // zbrane
         w: [
             { t: 'sword', L: 2.0, w: .12, blade: '#9ba0a6', guard: '#5a5048', grip: '#4a3020', pommel: '#6a6058', shine: .2, gw: .9 },          // Železný meč
@@ -85,7 +87,9 @@ const Soldiers = (() => {
             { t: 'mace', L: 2.4, head: '#2a2a2e', spike: '#8a8e96', haft: '#3a2a1a', core: '#ff7a1a', glow: '#ff5a10' },                              // Gothmogov ohnivý palcát
             { t: 'mace', L: 2.7, head: '#141418', spike: '#4a4a56', haft: '#1a1a1e', core: '#c060ff', glow: '#8a2ad0', big: 1.3 },                     // Sauronov palcát
             { t: 'scimitar', L: 1.6, w: .13, blade: '#7a7068', guard: '#2a1a10', grip: '#3a2a1a', pommel: '#3a2a1a', shine: .1, gw: .6, notch: 1 },  // Orkský nôž (základná výbava zla)
-            { t: 'scimitar', L: 2.5, w: .15, blade: '#d8c890', guard: '#8a1a10', grip: '#3a1a10', pommel: '#d9a441', shine: .5, gw: .9 }   // Haradský zahnutý meč
+            { t: 'scimitar', L: 2.5, w: .15, blade: '#d8c890', guard: '#8a1a10', grip: '#3a1a10', pommel: '#d9a441', shine: .5, gw: .9 },// Haradský zahnutý meč
+            { t: 'broad', L: 3.4, w: .2, grad: ['#e4eaf0', '#a8b0ba'], edgeCol: '#d8dee6', guard: '#5a5048', grip: '#3a2412', pommel: '#9a8a6a', shine: .6, gw: 1.7, longGrip: 1 },   // Gondorský obojručný meč
+            { t: 'axe', L: 3.1, head: '#5a5a60', rim: '#2a2a2e', haft: '#2a1a10' }   // Uruk-haiská obojručná sekera
         ],
         // brnenie
         a: [
@@ -722,6 +726,7 @@ const Soldiers = (() => {
         if (k === 's') { if (G) { shieldFace(c, G, G.shape === 'round' ? 22 : 18, G.shape === 'round' ? 22 : 27, 'base'); if (G.paint) tintedLayer(c, team, cc => shieldFace(cc, G, 22, 22, 'team')); } else iconNone(c); }
         if (k === 'h') iconHelm(c, G, team);
         if (k === 'm') { if (G) iconHorse(c, G, team); else iconBoots(c); }
+        if (k === 'r') { if (G) iconRanged(c, G); else iconNone(c); }
         return cv;
     }
     /** Ikonka vojaka (ako vyzerá v boji): druh kind z UNITS alebo hotový popis, farba frakcie color. */
@@ -743,6 +748,13 @@ const Soldiers = (() => {
         tc.setTransform(1, 0, 0, 1, 0, 0);
         tc.globalCompositeOperation = 'source-in'; tc.fillStyle = color; tc.fillRect(0, 0, sz, sz);
         c.drawImage(t, -sz / 2, -sz / 2);
+    }
+    /** Ikonka strelnej zbrane: luk s tetivou, kuša alebo zväzok oštepov. */
+    function iconRanged(c, R) {
+        c.lineCap = 'round';
+        if (R.t === 'bow') { c.strokeStyle = R.col; c.lineWidth = R.long ? 3.6 : 3.2; c.beginPath(); c.arc(-6, 0, R.long ? 24 : 20, -1.2, 1.2); c.stroke(); c.strokeStyle = '#e8e0c8'; c.lineWidth = 1; c.beginPath(); c.moveTo(-6 + Math.cos(1.2) * (R.long ? 24 : 20), Math.sin(1.2) * (R.long ? 24 : 20)); c.lineTo(-6 + Math.cos(-1.2) * (R.long ? 24 : 20), Math.sin(-1.2) * (R.long ? 24 : 20)); c.stroke(); c.strokeStyle = '#c8b890'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(-14, 0); c.lineTo(20, 0); c.stroke(); c.fillStyle = '#c8ccd4'; c.beginPath(); c.moveTo(24, 0); c.lineTo(18, -3); c.lineTo(18, 3); c.fill(); }
+        if (R.t === 'xbow') { c.rotate(-Math.PI / 4); c.fillStyle = R.col; c.fillRect(-18, -3, 34, 6); c.strokeStyle = '#7a7e86'; c.lineWidth = 3; c.beginPath(); c.arc(14, 0, 14, Math.PI * .62, Math.PI * 1.38, false); c.stroke(); c.strokeStyle = '#e8e0c8'; c.lineWidth = 1; c.beginPath(); c.moveTo(14 + Math.cos(Math.PI * .62) * 14, Math.sin(Math.PI * .62) * 14); c.lineTo(4, 0); c.lineTo(14 + Math.cos(Math.PI * 1.38) * 14, Math.sin(Math.PI * 1.38) * 14); c.stroke(); }
+        if (R.t === 'jav') { c.rotate(-Math.PI / 4); for (const d of [-6, 0, 6]) { c.strokeStyle = R.col; c.lineWidth = 2.4; c.beginPath(); c.moveTo(-24, d); c.lineTo(18, d); c.stroke(); c.fillStyle = '#c8ccd4'; c.beginPath(); c.moveTo(27, d); c.lineTo(18, d - 3); c.lineTo(18, d + 3); c.fill(); } }
     }
     function iconNone(c) { c.strokeStyle = 'rgba(80,60,40,.6)'; c.lineWidth = 3; c.beginPath(); c.arc(0, 0, 16, 0, 7); c.moveTo(-11, 11); c.lineTo(11, -11); c.stroke(); }
     function iconArmor(c, A, team) {
