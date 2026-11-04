@@ -106,21 +106,26 @@ const B3G = (() => {
         sh.fragmentShader = 'uniform float uDirt; uniform vec3 uTint; uniform vec3 uMud; uniform float uWet; uniform float uSnow; varying float vMat; varying vec3 vOP; varying vec3 vON;\n' + NOISE3 + '\n' + sh.fragmentShader
             .replace('#include <color_fragment>', `#include <color_fragment>
                 float fwd = length(fwidth(vOP)); float dk = 1.0 - smoothstep(0.3, 1.2, fwd);
-                int mt = int(vMat + 0.5); float mR = 1.0, mM = 1.0; vec3 dc = diffuseColor.rgb;
+                int mt = int(vMat + 0.5); float mR = 1.0, mM = 1.0, bh = 0.0; vec3 dc = diffuseColor.rgb;
                 if (mt == 1) { vec2 g = vec2((vOP.x + vOP.z) * 2.4, vOP.y * 2.4); g.x += step(0.5, fract(g.y * 0.5)) * 0.5;
-                    float rg = 1.0 - smoothstep(0.06, 0.16, abs(length(fract(g) - 0.5) - 0.3)); dc *= mix(1.0, 0.55 + 0.6 * rg, dk); mR = mix(1.0, mix(1.5, 0.75, rg), dk); }
-                else if (mt == 2) { float w = sin((vOP.x + vOP.z) * 9.0) * sin(vOP.y * 9.0); dc *= 1.0 + (0.07 * w - 0.05 * n3(vOP * 3.0)) * dk; mR = 1.05; }
-                else if (mt == 3) { float n = n3(vOP * 1.4) * 0.6 + n3(vOP * 5.0) * 0.4; dc *= 0.82 + 0.3 * n; mR = 0.75 + 0.35 * n; }
-                else if (mt == 4) { float sc = smoothstep(0.8, 0.95, n3(vec3((vOP.x + vOP.z) * 0.5, vOP.y * 10.0, vOP.z * 0.3))) * dk; float dn = n3(vOP * 0.9); dc *= 0.9 + 0.18 * dn + sc * 0.45; mR = 0.8 + 0.5 * dn - sc * 0.45; }
+                    float rg = 1.0 - smoothstep(0.06, 0.16, abs(length(fract(g) - 0.5) - 0.3)); dc *= mix(1.0, 0.55 + 0.6 * rg, dk); mR = mix(1.0, mix(1.5, 0.75, rg), dk); bh = rg * 0.5 * dk; }
+                else if (mt == 2) { float w = sin((vOP.x + vOP.z) * 9.0) * sin(vOP.y * 9.0); dc *= 1.0 + (0.07 * w - 0.05 * n3(vOP * 3.0)) * dk; mR = 1.05; bh = w * 0.15 * dk; }
+                else if (mt == 3) { float n = n3(vOP * 1.4) * 0.6 + n3(vOP * 5.0) * 0.4; float stc = step(0.55, fract(vOP.y * 2.6)) * (1.0 - smoothstep(0.0, 0.07, abs(fract((vOP.z + vOP.x) * 0.7) - 0.5))) * dk; dc *= (0.82 + 0.3 * n) * (1.0 - stc * 0.35); mR = 0.75 + 0.35 * n; bh = n * 0.4 - stc * 0.3; }   // koža so švami
+                else if (mt == 4) { float sc = smoothstep(0.8, 0.95, n3(vec3((vOP.x + vOP.z) * 0.5, vOP.y * 10.0, vOP.z * 0.3))) * dk; float dn = n3(vOP * 0.9); float eng = (1.0 - smoothstep(0.0, 0.09, abs(sin(vOP.y * 2.2 + sin(vOP.z * 3.1 + vOP.x) * 1.3)))) * dk * step(0.55, n3(vOP * 0.35)); dc *= (0.9 + 0.18 * dn + sc * 0.45) * (1.0 - eng * 0.3); mR = 0.8 + 0.5 * dn - sc * 0.45; bh = sc * 0.3 - eng * 0.5 + dn * 0.2; }   // plát s rytinami
                 else if (mt == 5) { float r = smoothstep(0.4, 0.62, n3(vOP * 0.8) * 0.7 + n3(vOP * 3.1) * 0.3); dc = mix(dc * 0.85, vec3(0.3, 0.14, 0.06), r * 0.8); mR = mix(1.1, 2.4, r); mM = 1.0 - r * 0.8; }
-                else if (mt == 6) { float f = 1.0 - smoothstep(0.0, 0.2, abs(sin(vOP.y * 3.0 + sin((vOP.x + vOP.z) * 4.0) * 1.6))); dc *= 1.0 + f * 0.5 * dk; mR = 0.6 - f * 0.3; }
+                else if (mt == 6) { float f = 1.0 - smoothstep(0.0, 0.2, abs(sin(vOP.y * 3.0 + sin((vOP.x + vOP.z) * 4.0) * 1.6))); dc *= 1.0 + f * 0.5 * dk; mR = 0.6 - f * 0.3; bh = f * 0.5 * dk; }
+                else if (mt == 7) { float pl = abs(fract(vOP.z * 0.42 + 0.5) - 0.5), seam = 1.0 - smoothstep(0.0, 0.05, pl); vec2 sg = fract(vec2(vOP.y * 0.32, vOP.z * 0.42 + 0.5)) - 0.5; float nail = 1.0 - smoothstep(0.08, 0.12, length(sg * vec2(1.0, 1.0)));
+                    float gr = n3(vec3(vOP.y * 0.4, vOP.z * 6.0, vOP.x)); dc *= (0.82 + 0.3 * gr) * (1.0 - seam * 0.45 * dk); dc = mix(dc, vec3(0.32, 0.32, 0.34), nail * dk); mR = mix(0.9, 0.35, nail); mM = mix(1.0, 4.0, nail * dk); bh = gr * 0.3 - seam * 0.6 + nail * 0.8; }   // štít z dosiek s kovanými klincami
                 float dm = clamp(uDirt * ((1.0 - smoothstep(2.0, 15.0, vOP.y)) * 0.85 + 0.22) * (0.5 + 0.8 * n3(vOP * 0.45)), 0.0, 0.85);
                 dc = mix(dc, uMud * (0.8 + 0.4 * n3(vOP * 2.0)), dm); mR = mix(mR, 1.7, dm); mM *= 1.0 - dm * 0.7;
                 float rs = uWet > 0.05 ? smoothstep(0.62, 0.95, n3(vec3(vOP.x * 4.0, vOP.y * 0.35, vOP.z * 4.0))) * uWet : 0.0; mR *= 1.0 - rs * 0.55; dc *= 1.0 - rs * 0.18;   // stružky dažďa
                 float snw = uSnow > 0.01 ? smoothstep(0.45, 0.85, normalize(vON).y) * uSnow * (0.55 + 0.45 * n3(vOP * 1.6)) : 0.0;
                 diffuseColor.rgb = mix(dc * uTint * (1.0 - uWet * 0.12), vec3(0.9, 0.93, 0.97), snw); mR = mix(mR, 1.4, snw); mM *= 1.0 - snw;`)
             .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n roughnessFactor = clamp(roughnessFactor * mR * (1.0 - uWet * 0.35), 0.05, 1.0);')
-            .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\n metalnessFactor *= mM;');
+            .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\n metalnessFactor = clamp(metalnessFactor * mM, 0.0, 1.0);')
+            .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+                { vec3 dpx = dFdx(-vViewPosition), dpy = dFdy(-vViewPosition); float hx = dFdx(bh), hy = dFdy(bh); vec3 r1 = cross(dpy, normal), r2 = cross(normal, dpx); float det = dot(dpx, r1);   // reliéf: krúžky, švy, rytiny, dosky
+                  if (abs(det) > 1e-8) normal = normalize(abs(det) * normal - sign(det) * (hx * r1 + hy * r2) * 0.9); }`);
     }
     /** Materiál postáv: m = 'c' látka a koža, 'm' kov (lesk a odraz oblohy). own = vlastná špina a odtieň vojaka (inak spoločný materiál pre vzdialené zástupy).
      *  Na nízkej kvalite jednoduché ploché tieňovanie. */
@@ -303,14 +308,14 @@ const B3G = (() => {
         const t = T(), g = new t.PlaneGeometry(x1 - x0, BH, 24, 160); g.rotateX(-Math.PI / 2); g.translate((x0 + x1) / 2, level, BH / 2);
         const mt = new t.ShaderMaterial({
             transparent: true, fog: true, depthWrite: false,
-            uniforms: t.UniformsUtils.merge([t.UniformsLib.fog, { hTex: { value: hTex }, uSize: { value: new t.Vector2(BW, BH) }, uLevel: { value: level }, uSky: { value: new t.Color(sky.hor) }, uZen: { value: new t.Color(sky.zen) }, uDeep: { value: new t.Color(sky.deep || '#2e5a68') }, uSunDir: { value: new t.Vector3(0, 1, 0) }, uSunC: { value: new t.Color(1, 1, 1) }, uRefl: { value: null }, uTM: { value: new t.Matrix4() }, uUseR: { value: 0 } }]),
+            uniforms: t.UniformsUtils.merge([t.UniformsLib.fog, { hTex: { value: hTex }, uSize: { value: new t.Vector2(BW, BH) }, uLevel: { value: level }, uSky: { value: new t.Color(sky.hor) }, uZen: { value: new t.Color(sky.zen) }, uDeep: { value: new t.Color(sky.deep || '#2e5a68') }, uSunDir: { value: new t.Vector3(0, 1, 0) }, uSunC: { value: new t.Color(1, 1, 1) }, uRefl: { value: null }, uTM: { value: new t.Matrix4() }, uUseR: { value: 0 }, uFoam: { value: Array.from({ length: 8 }, () => new t.Vector3(-999, -999, 0)) } }]),
             vertexShader: `uniform float uTime; varying vec3 vW;
                 #include <fog_pars_vertex>
                 void main() { vec3 p = position; p.y += sin(p.z * 0.09 + uTime * 1.6) * 0.25 + sin(p.x * 0.21 + p.z * 0.05 + uTime * 2.2) * 0.15; vW = p;
                     vec4 mvPosition = viewMatrix * vec4(p, 1.0); gl_Position = projectionMatrix * mvPosition;
                     #include <fog_vertex>
                 }`,
-            fragmentShader: `uniform sampler2D hTex; uniform vec2 uSize; uniform float uLevel; uniform float uTime; uniform vec3 uSky; uniform vec3 uZen; uniform vec3 uDeep; uniform vec3 uSunDir; uniform vec3 uSunC; uniform float uRain; uniform sampler2D uRefl; uniform mat4 uTM; uniform float uUseR; varying vec3 vW;
+            fragmentShader: `uniform sampler2D hTex; uniform vec2 uSize; uniform float uLevel; uniform float uTime; uniform vec3 uSky; uniform vec3 uZen; uniform vec3 uDeep; uniform vec3 uSunDir; uniform vec3 uSunC; uniform float uRain; uniform sampler2D uRefl; uniform mat4 uTM; uniform float uUseR; uniform vec3 uFoam[8]; varying vec3 vW;
                 float ripple(vec2 p, float t) { vec2 rp = p * 0.3; vec2 ci = floor(rp); float r = 0.0;
                     for (int k = 0; k < 4; k++) { vec2 cc = ci + vec2(mod(float(k), 2.0), floor(float(k) / 2.0)); float h = fract(sin(dot(cc, vec2(12.9898, 78.233))) * 43758.5453);
                         float tt = fract(t * 0.9 + h); vec2 cp = cc + vec2(fract(h * 13.7), fract(h * 7.3)); float d = length(rp - cp); r += (1.0 - tt) * smoothstep(0.07, 0.0, abs(d - tt * 0.7)); }
@@ -323,6 +328,7 @@ const B3G = (() => {
                     if (depth < -0.3) discard;
                     vec2 q = vW.xz; float t = uTime;
                     float rip = uRain > 0.01 ? ripple(q, t) * uRain : 0.0;   // krúžky od kvapiek dažďa
+                    q.y -= t * 3.2;   // prúd vody
                     vec3 n = normalize(vec3(cos(q.x * 0.21 + q.y * 0.05 + t * 2.2) * 0.04 + cos(q.x * 0.7 - t * 3.0) * 0.02 + rip * 0.12, 1.0, cos(q.y * 0.09 + t * 1.6) * 0.03 + sin(q.y * 0.43 + q.x * 0.3 + t * 2.7) * 0.02 + rip * 0.1));
                     vec3 v = normalize(cameraPosition - vW);
                     float fr = 0.22 + 0.78 * pow(1.0 - max(dot(n, v), 0.0), 3.0);
@@ -332,6 +338,7 @@ const B3G = (() => {
                     float sp = pow(max(dot(r, normalize(uSunDir)), 0.0), 220.0) * 6.0;
                     vec3 c = mix(uDeep, sky, fr) + uSunC * sp + vec3(rip * 0.12);
                     float foam = (1.0 - smoothstep(0.0, 1.6, depth)) * (0.55 + 0.45 * sin(q.y * 0.6 + t * 2.0 + q.x * 0.4));
+                    for (int i = 0; i < 8; i++) { vec3 F = uFoam[i]; if (F.z > 0.0) { vec2 dd = vW.xz - F.xy; dd.y *= 0.6; float L = length(dd); foam += (1.0 - smoothstep(F.z * 0.5, F.z * 1.7, L)) * (0.55 + 0.45 * sin(L * 1.6 - t * 7.0)) * 0.8; } }   // pena a vlny okolo nôh a koní
                     c = mix(c, vec3(0.86, 0.9, 0.92), clamp(foam, 0.0, 1.0) * 0.75);
                     float a = clamp(0.38 + depth * 0.09 + fr * 0.4 + foam * 0.4, 0.0, 0.93) * smoothstep(-0.3, 0.25, depth);
                     gl_FragColor = vec4(c, a);
@@ -350,9 +357,9 @@ const B3G = (() => {
         const t = T(), g = new t.SphereGeometry(2400, 32, 16);
         const mt = new t.ShaderMaterial({
             side: t.BackSide, depthWrite: false, fog: false,
-            uniforms: { uZen: { value: new t.Color(o.zen) }, uHor: { value: new t.Color(o.hor) }, uGnd: { value: new t.Color(o.gnd) }, uSunDir: { value: o.sunDir.clone() }, uSunC: { value: new t.Color(o.sunC) }, uCloud: { value: o.cloud }, uCloudC: { value: new t.Color(o.cloudC) }, uNight: { value: o.night }, uTime: U_TIME },
+            uniforms: { uZen: { value: new t.Color(o.zen) }, uHor: { value: new t.Color(o.hor) }, uGnd: { value: new t.Color(o.gnd) }, uSunDir: { value: o.sunDir.clone() }, uSunC: { value: new t.Color(o.sunC) }, uCloud: { value: o.cloud }, uCloudC: { value: new t.Color(o.cloudC) }, uNight: { value: o.night }, uTime: U_TIME, uVol: { value: o.vol ? 1 : 0 } },
             vertexShader: 'varying vec3 vD; void main(){ vD = normalize(position); vec4 p = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * p; gl_Position.z = gl_Position.w; }',
-            fragmentShader: `uniform vec3 uZen; uniform vec3 uHor; uniform vec3 uGnd; uniform vec3 uSunDir; uniform vec3 uSunC; uniform float uCloud; uniform vec3 uCloudC; uniform float uNight; uniform float uTime; varying vec3 vD;
+            fragmentShader: `uniform vec3 uZen; uniform vec3 uHor; uniform vec3 uGnd; uniform vec3 uSunDir; uniform vec3 uSunC; uniform float uCloud; uniform vec3 uCloudC; uniform float uNight; uniform float uTime; uniform float uVol; varying vec3 vD;
                 float h2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
                 float n2(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h2(i), h2(i + vec2(1, 0)), f.x), mix(h2(i + vec2(0, 1)), h2(i + vec2(1, 1)), f.x), f.y); }
                 float fbm(vec2 p) { float s = 0.0, a = 0.5; for (int i = 0; i < 5; i++) { s += a * n2(p); p *= 2.03; a *= 0.5; } return s; }
@@ -367,7 +374,13 @@ const B3G = (() => {
                         vec3 md = normalize(vec3(-sd.x, abs(sd.y) * 0.6 + 0.35, -sd.z)); float m = max(dot(d, md), 0.0);
                         c += vec3(0.85, 0.9, 1.0) * (smoothstep(0.9993, 0.9996, m) * 1.6 + pow(m, 40.0) * 0.12) * uNight;
                     }
-                    if (e > 0.0 && uCloud > 0.0) {   // mraky
+                    if (e > 0.0 && uCloud > 0.0 && uVol > 0.5) {   // objemové mraky: pochod lúča vrstvou mrakov, tieň vnútri mraku, presvetlenie od slnka
+                        float t0 = 1.0 / max(e, 0.05), t1 = 1.75 / max(e, 0.05), st = (t1 - t0) / 10.0, Tr = 1.0; vec3 acc = vec3(0.0);
+                        for (int i = 0; i < 10; i++) { vec3 p = d * (t0 + st * (float(i) + 0.5)); float hg = clamp((p.y - 1.0) / 0.75, 0.0, 1.0); vec2 uv = p.xz * 1.2 + vec2(uTime * 0.012, uTime * 0.004);
+                            float den = clamp((fbm(uv) * (1.0 - abs(hg * 2.0 - 1.0) * 0.8) - (1.0 - uCloud) * 0.85) * 2.6, 0.0, 1.0);
+                            if (den > 0.01) { float sh = fbm(uv + sd.xz * 0.22); float lit = mix(1.05, 0.42, clamp(sh * 1.5 - 0.25, 0.0, 1.0)) * (0.72 + 0.5 * pow(sdot, 5.0)) + hg * 0.22; float a = clamp(den * st * 2.4, 0.0, 1.0); acc += Tr * a * uCloudC * lit; Tr *= 1.0 - a; if (Tr < 0.03) break; } }
+                        float fe = smoothstep(0.0, 0.16, e); c = mix(c, c * Tr + acc, fe);
+                    } else if (e > 0.0 && uCloud > 0.0) {   // mraky
                         vec2 p = d.xz / (e + 0.12) * 1.6 + vec2(uTime * 0.012, uTime * 0.004);
                         float cl = smoothstep(1.0 - uCloud, 1.0 - uCloud + 0.35, fbm(p));
                         float lit = 0.75 + 0.35 * pow(sdot, 4.0);
@@ -446,6 +459,7 @@ const B3G = (() => {
                 if (uFogA > 0.0) {   // prízemná hmla, ktorú presvetľuje slnko
                     float k = rd.y * uFogB, e = uFogA * exp(-max(uCam.y, 0.0) * uFogB);
                     float fam = abs(k) < 1e-4 ? e * dist : e * (1.0 - exp(-dist * k)) / k;
+                    if (!sky) fam *= 0.55 + 0.9 * n2(W.xz * 0.006 + uCO * 2.5) * (0.6 + 0.4 * n2(W.xz * 0.02 - uCO * 4.0));   // hmla v chuchvalcoch, ktoré sa pohybujú
                     vec3 fc = uFogC + uSunC * pow(max(dot(rd, uSunDir), 0.0), 6.0) * 0.7;
                     c = mix(c, fc, clamp(1.0 - exp(-fam), 0.0, sky ? 0.45 : 0.92));
                 }
@@ -470,7 +484,7 @@ const B3G = (() => {
         const mLum = mk('uniform sampler2D tex; varying vec2 vUv; void main(){ float s = 0.0; for (int i = 0; i < 6; i++) for (int j = 0; j < 6; j++) { vec3 c = texture2D(tex, vec2((float(i) + 0.5) / 6.0, (float(j) + 0.5) / 6.0)).rgb; s += log(dot(c, vec3(0.2126, 0.7152, 0.0722)) + 0.001); } gl_FragColor = vec4(vec3(exp(s / 36.0)), 1.0); }', { tex: { value: null } });
         const mAd = mk('uniform sampler2D tPrev; uniform sampler2D tNow; uniform float k; varying vec2 vUv; void main(){ gl_FragColor = vec4(mix(texture2D(tPrev, vec2(0.5)).rgb, texture2D(tNow, vec2(0.5)).rgb, k), 1.0); }', { tPrev: { value: null }, tNow: { value: null }, k: { value: 1 } });
         const mCopy = mk('uniform sampler2D tex; varying vec2 vUv; void main(){ gl_FragColor = texture2D(tex, vec2(0.5)); }', { tex: { value: null } });
-        const mFin = mk(`uniform sampler2D tex; uniform sampler2D b0; uniform sampler2D b1; uniform sampler2D b2; uniform sampler2D tAd; uniform sampler2D tBase; uniform float uAdapt; uniform float bloom; uniform float expo; uniform vec3 lift; uniform vec3 gain; uniform float sat; uniform float vig; uniform vec2 sunUv; uniform float rays; uniform float con; uniform float uGrain; uniform float uTime; uniform vec3 uShT; uniform vec3 uHiT; varying vec2 vUv;
+        const mFin = mk(`uniform sampler2D tex; uniform sampler2D b0; uniform sampler2D b1; uniform sampler2D b2; uniform sampler2D tAd; uniform sampler2D tBase; uniform float uAdapt; uniform float bloom; uniform float expo; uniform vec3 lift; uniform vec3 gain; uniform float sat; uniform float vig; uniform vec2 sunUv; uniform float rays; uniform float con; uniform float uGrain; uniform float uTime; uniform vec3 uShT; uniform vec3 uHiT; uniform float uBars; varying vec2 vUv;
             vec3 aces(vec3 x) { x *= 0.6; return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); }
             vec3 toS(vec3 c) { return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c)); }
             void main() {
@@ -486,8 +500,9 @@ const B3G = (() => {
                 c = (c - 0.5) * con + 0.5;
                 vec2 v = vUv - 0.5; c *= 1.0 - dot(v, v) * vig;
                 if (uGrain > 0.0) { float g = fract(sin(dot(gl_FragCoord.xy + fract(uTime * 7.13) * 91.7, vec2(12.9898, 78.233))) * 43758.5453) - 0.5; c += g * uGrain * (0.35 + 0.65 * (1.0 - l)); }
+                if (uBars > 0.0 && abs(vUv.y - 0.5) > 0.5 - 0.11 * uBars) c = vec3(0.0);   // širokouhlé filmové pásy
                 gl_FragColor = vec4(toS(clamp(c, 0.0, 1.0)), 1.0);
-            }`, { tex: { value: null }, b0: { value: null }, b1: { value: null }, b2: { value: null }, tAd: { value: null }, tBase: { value: null }, uAdapt: { value: 0 }, bloom: { value: .5 }, expo: { value: 1 }, lift: { value: new t.Vector3() }, gain: { value: new t.Vector3(1, 1, 1) }, sat: { value: 1 }, vig: { value: .9 }, sunUv: { value: new t.Vector2(.5, .5) }, rays: { value: 0 }, con: { value: 1 }, uGrain: { value: 0 }, uTime: U_TIME, uShT: { value: new t.Vector3() }, uHiT: { value: new t.Vector3() } });
+            }`, { tex: { value: null }, b0: { value: null }, b1: { value: null }, b2: { value: null }, tAd: { value: null }, tBase: { value: null }, uAdapt: { value: 0 }, bloom: { value: .5 }, expo: { value: 1 }, lift: { value: new t.Vector3() }, gain: { value: new t.Vector3(1, 1, 1) }, sat: { value: 1 }, vig: { value: .9 }, sunUv: { value: new t.Vector2(.5, .5) }, rays: { value: 0 }, con: { value: 1 }, uGrain: { value: 0 }, uTime: U_TIME, uShT: { value: new t.Vector3() }, uHiT: { value: new t.Vector3() }, uBars: { value: 0 } });
         function size(W2, H2) {
             if (W2 === w && H2 === h) return; w = W2; h = H2;
             [main, comb, aoA, aoB, bright, ...blurA, ...blurB].forEach(r => r && r.dispose());
@@ -535,7 +550,7 @@ const B3G = (() => {
                 mAd.uniforms.tPrev.value = adA.texture; mAd.uniforms.tNow.value = lumNow.texture; mAd.uniforms.k.value = fN < 3 ? 1 : .035; pass(mAd, adB); [adA, adB] = [adB, adA];
                 if (fN === 25) { mCopy.uniforms.tex.value = adA.texture; pass(mCopy, base); }
                 fN++;
-                const F = mFin.uniforms; F.tex.value = cur.texture; F.uShT.value.copy(opt.shT || V3); F.uHiT.value.copy(opt.hiT || V3); F.b0.value = blurB[0].texture; F.b1.value = blurB[1].texture; F.b2.value = blurB[2].texture; F.tAd.value = adA.texture; F.tBase.value = base.texture; F.uAdapt.value = fN > 26 ? opt.adapt : 0; F.uGrain.value = opt.grain;
+                const F = mFin.uniforms; F.tex.value = cur.texture; F.uShT.value.copy(opt.shT || V3); F.uHiT.value.copy(opt.hiT || V3); F.uBars.value = opt.bars || 0; F.b0.value = blurB[0].texture; F.b1.value = blurB[1].texture; F.b2.value = blurB[2].texture; F.tAd.value = adA.texture; F.tBase.value = base.texture; F.uAdapt.value = fN > 26 ? opt.adapt : 0; F.uGrain.value = opt.grain;
                 pass(mFin, null);
             },
             dispose() { [taaA, taaB, main, comb, aoA, aoB, bright, ...blurA, ...blurB, lumNow, adA, adB, base].forEach(r => r && r.dispose()); w = h = 0; lumNow = null; }

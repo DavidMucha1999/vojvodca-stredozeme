@@ -81,6 +81,12 @@ function noi(t, d, v, ty, fq, out, q) {
     s.start(t);
     return f;
 }
+/** Signál trúbky pri rozkaze: tri krátke tóny. */
+function trumpetCall() {
+    if (!ac || mu) return;
+    bus(); const t = ac.currentTime;
+    [[523, 0], [659, .14], [784, .28]].forEach(([f, d]) => { osc(f, t + d, .22, 'sawtooth', .07, SB, .02, 0, 1800); osc(f * 2, t + d, .18, 'square', .015, SB, .02, 0, 2400); });
+}
 /** Vojnový bubon (k = sila): hlboký úder s dozvukom. */
 function warDrum(k) {
     if (!ac || mu) return;

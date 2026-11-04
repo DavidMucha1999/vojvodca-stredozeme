@@ -68,7 +68,7 @@ const B3 = (() => {
                 const CH = BN ? { lgR: [0, 0], knR: [0, 1], lgL: [1, 0], knL: [1, 1], shR: [2, 0], elR: [2, 1], hR: [2, 1], wp: [2, 1], shL: [3, 0], elL: [3, 1], hL: [3, 1], shd: [3, 1], FR: [4, 0], FRk: [4, 1], FL: [5, 0], FLk: [5, 1], BR: [6, 0], BRk: [6, 1], BL: [7, 0], BLk: [7, 1] } : null;
                 const CR = [['lgR', 'knR'], ['lgL', 'knL'], ['shR', 'elR'], ['shL', 'elL'], ['FR', 'FRk'], ['FL', 'FLk'], ['BR', 'BRk'], ['BL', 'BLk']], jp = b => { const e = BN.rest[b] && BN.rest[b].elements; return e ? [e[12], e[13], e[14]] : [0, 0, 0]; };
                 const p1 = BN ? new Float32Array(n * 3) : null, p2 = BN ? new Float32Array(n * 3) : null, cls = BN ? new Float32Array(n) : null;
-                let o0 = 0, nm = 0;
+                let o0 = 0, nm = 0, PV = null;
                 // plynulé kĺby: vrcholy pri kĺbe (lakeť, koleno, bedrá, krk koňa) sa delia medzi dve kosti, aby sa ohyb nelámal
                 const J = BN && BN.blend ? BN.blend.map(([c, p, r]) => { const e = BN.rest[c].elements; return [BN.idx[c], BN.idx[p], e[12], e[13], e[14], r, c, p]; }) : null;
                 for (const [g, c, o] of gs) {
@@ -77,6 +77,14 @@ const B3 = (() => {
                     const mc = o.t ?? (o.m ? mdef : 0);
                     if (BN && o.b) { const M = BN.rest[o.b]; g.applyMatrix4(M); }
                     pos.set(g.attributes.position.array, o0 * 3); nor.set(g.attributes.normal.array, o0 * 3);
+                    if (o.pre && BN) {   // hotová tvarovaná sieť (telo zo SDF): farby, materiál a váhy kostí už má
+                        const Cc = g.attributes.color, Am = g.attributes.aMat, SI = g.attributes.skinIndex, SW = g.attributes.skinWeight;
+                        if (!PV) PV = CR.map(c => BN.rest[c[0]] ? [jp(c[0]), jp(c[1])] : null);
+                        for (let i = 0; i < cnt; i++) { const v = o0 + i; col[v * 3] = Cc.getX(i); col[v * 3 + 1] = Cc.getY(i); col[v * 3 + 2] = Cc.getZ(i); mt[v] = Am.getX(i);
+                            for (let k = 0; k < 4; k++) { si[v * 4 + k] = SI.getComponent(i, k); sw[v * 4 + k] = SW.getComponent(i, k); }
+                            const ch2 = CH[BN.list[si[v * 4]][0]]; if (ch2 && PV[ch2[0]]) { cls[v] = ch2[0] * 2 + ch2[1] + 1; p1.set(PV[ch2[0]][0], v * 3); p2.set(PV[ch2[0]][1], v * 3); } }
+                        if (o.m) nm += cnt; o0 += cnt; g.dispose(); continue;
+                    }
                     const bi = BN ? BN.idx[o.b || BN.root] : 0, bn = o.b || (BN && BN.root), chn = CH && CH[bn] && BN.rest[CR[CH[bn][0]][0]] ? CH[bn] : null, P1 = chn ? jp(CR[chn[0]][0]) : null, P2 = chn ? jp(CR[chn[0]][1]) : null;
                     for (let i = 0; i < cnt; i++) {
                         const v = o0 + i; col[v * 3] = c.r; col[v * 3 + 1] = c.g; col[v * 3 + 2] = c.b; mt[v] = mc;
@@ -99,6 +107,97 @@ const B3 = (() => {
             }
         };
     }
+    // ---------- tvarované telá: SDF (hladko zliate elipsoidy a kužeľové valce) → povrch metódou surface nets ----------
+    const SDF = {
+        sm(a, b, k) { const h = Math.max(k - Math.abs(a - b), 0) / k; return Math.min(a, b) - h * h * k * .25; },
+        cap(px, py, pz, a, b, ra, rb) { const bx = b[0] - a[0], by = b[1] - a[1], bz = b[2] - a[2], L = bx * bx + by * by + bz * bz || 1, t = Math.max(0, Math.min(1, ((px - a[0]) * bx + (py - a[1]) * by + (pz - a[2]) * bz) / L)); return Math.hypot(px - a[0] - bx * t, py - a[1] - by * t, pz - a[2] - bz * t) - (ra + (rb - ra) * t); },
+        ell(px, py, pz, c, r) { const x = (px - c[0]) / r[0], y = (py - c[1]) / r[1], z = (pz - c[2]) / r[2], k0 = Math.hypot(x, y, z), k1 = Math.hypot(x / r[0], y / r[1], z / r[2]) || 1e-6; return k0 * (k0 - 1) / k1; }
+    };
+    /** Surface nets: povrch z poľa vzdialeností f v mriežke s krokom st. Vráti indexovanú geometriu s normálami z gradientu. */
+    function surfNets(f, mn, mx, st) {
+        const nx = Math.ceil((mx[0] - mn[0]) / st), ny = Math.ceil((mx[1] - mn[1]) / st), nz = Math.ceil((mx[2] - mn[2]) / st), X = nx + 1, Y = ny + 1;
+        const V = new Float32Array(X * Y * (nz + 1)); for (let k = 0; k <= nz; k++) for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) V[i + X * (j + Y * k)] = f(mn[0] + i * st, mn[1] + j * st, mn[2] + k * st);
+        const cid = new Int32Array(nx * ny * nz).fill(-1), P = [], E = [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7], [0, 4], [1, 5], [2, 6], [3, 7]], cv = new Float32Array(8);
+        for (let k = 0; k < nz; k++) for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+            let m = 0; for (let c = 0; c < 8; c++) { cv[c] = V[(i + (c & 1)) + X * ((j + (c >> 1 & 1)) + Y * (k + (c >> 2 & 1)))]; if (cv[c] < 0) m |= 1 << c; }
+            if (m === 0 || m === 255) continue;
+            let sx = 0, sy = 0, sz = 0, n = 0;
+            for (const [a, b] of E) { const va = cv[a], vb = cv[b]; if ((va < 0) === (vb < 0)) continue; const t = va / (va - vb); sx += (a & 1) + ((b & 1) - (a & 1)) * t; sy += (a >> 1 & 1) + ((b >> 1 & 1) - (a >> 1 & 1)) * t; sz += (a >> 2 & 1) + ((b >> 2 & 1) - (a >> 2 & 1)) * t; n++; }
+            cid[i + nx * (j + ny * k)] = P.length / 3; P.push(mn[0] + (i + sx / n) * st, mn[1] + (j + sy / n) * st, mn[2] + (k + sz / n) * st);
+        }
+        const I = [], C = (i, j, k) => cid[i + nx * (j + ny * k)];
+        for (let k = 0; k < nz; k++) for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+            const v0 = V[i + X * (j + Y * k)] < 0;
+            const quad = (a, b, c, d, flip) => { if (a < 0 || b < 0 || c < 0 || d < 0) return; if (flip) I.push(a, c, b, a, d, c); else I.push(a, b, c, a, c, d); };
+            if (j > 0 && k > 0 && (V[(i + 1) + X * (j + Y * k)] < 0) !== v0) quad(C(i, j, k), C(i, j - 1, k), C(i, j - 1, k - 1), C(i, j, k - 1), !v0);
+            if (i > 0 && k > 0 && (V[i + X * ((j + 1) + Y * k)] < 0) !== v0) quad(C(i, j, k), C(i, j, k - 1), C(i - 1, j, k - 1), C(i - 1, j, k), !v0);
+            if (i > 0 && j > 0 && (V[i + X * (j + Y * (k + 1))] < 0) !== v0) quad(C(i, j, k), C(i - 1, j, k), C(i - 1, j - 1, k), C(i, j - 1, k), !v0);
+        }
+        const N = new Float32Array(P.length), e = st * .5;
+        for (let v = 0; v < P.length; v += 3) { const x = P[v], y = P[v + 1], z = P[v + 2], gx = f(x + e, y, z) - f(x - e, y, z), gy = f(x, y + e, z) - f(x, y - e, z), gz = f(x, y, z + e) - f(x, y, z - e), l = Math.hypot(gx, gy, gz) || 1; N[v] = gx / l; N[v + 1] = gy / l; N[v + 2] = gz / l; }
+        let agree = 0; for (let i = 0; i < Math.min(I.length, 900); i += 3) { const a = I[i] * 3, b = I[i + 1] * 3, c = I[i + 2] * 3, ux = P[b] - P[a], uy = P[b + 1] - P[a + 1], uz = P[b + 2] - P[a + 2], vx = P[c] - P[a], vy = P[c + 1] - P[a + 1], vz = P[c + 2] - P[a + 2]; agree += Math.sign((uy * vz - uz * vy) * N[a] + (uz * vx - ux * vz) * N[a + 1] + (ux * vy - uy * vx) * N[a + 2]); }
+        if (agree < 0) for (let i = 0; i < I.length; i += 3) { const tmp = I[i + 1]; I[i + 1] = I[i + 2]; I[i + 2] = tmp; }   // trojuholníky otočené von
+        return { P, N, I };
+    }
+    /** Telo z SDF podľa kostry: segmenty [kosť, začiatok, koniec, polomer a, polomer b]; váhy kostí z dvoch najbližších segmentov (plynulé kĺby). */
+    function sdfMesh(segs, extra, mn, mx, st, BN) {
+        const t = T(), f = (x, y, z) => { let d = 1e9; for (const g of segs) d = SDF.sm(d, SDF.cap(x, y, z, g[1], g[2], g[3], g[4]), g[5] || .8); for (const e of extra) d = SDF.sm(d, SDF.ell(x, y, z, e[1], e[2]), e[3] || .8); return d; };
+        const { P, N, I } = surfNets(f, mn, mx, st), n = P.length / 3, si = new Uint16Array(n * 4), sw = new Float32Array(n * 4), main = new Array(n);
+        for (let v = 0; v < n; v++) {
+            const x = P[v * 3], y = P[v * 3 + 1], z = P[v * 3 + 2]; let b1 = -1, d1 = 1e9, b2 = -1, d2 = 1e9;
+            for (const g of segs) { const d = Math.max(.05, SDF.cap(x, y, z, g[1], g[2], 0, 0)), bi = BN.idx[g[0]]; if (d < d1) { if (bi !== b1) { b2 = b1; d2 = d1; } b1 = bi; d1 = d; } else if (d < d2 && bi !== b1) { b2 = bi; d2 = d; } }
+            const w1 = 1 / Math.pow(d1, 4), w2 = b2 >= 0 ? 1 / Math.pow(d2, 4) : 0, s = w1 + w2; si[v * 4] = b1; sw[v * 4] = w1 / s; if (b2 >= 0) { si[v * 4 + 1] = b2; sw[v * 4 + 1] = w2 / s; }
+            main[v] = BN.list[b1][0];
+        }
+        return { P, N, I, si, sw, main, n };
+    }
+    /** Z tvarovaného tela poskladá geometriu pre Part (farba a materiál podľa oblasti); kov a látka zvlášť kvôli dvom materiálom. */
+    function sdfGeos(M, colorOf) {
+        const t = T(), out = [];
+        for (const metal of [false, true]) {
+            const tri = []; for (let i = 0; i < M.I.length; i += 3) { const a = M.I[i], r = colorOf(M.main[a], M.P[a * 3 + 1], M.P[a * 3 + 2]); if (!!r[2] === metal) tri.push(M.I[i], M.I[i + 1], M.I[i + 2]); }
+            if (!tri.length) continue;
+            const n = tri.length, pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3), mt = new Float32Array(n), si = new Uint16Array(n * 4), sw = new Float32Array(n * 4), c = new t.Color();
+            tri.forEach((v, k) => { pos.set([M.P[v * 3], M.P[v * 3 + 1], M.P[v * 3 + 2]], k * 3); nor.set([M.N[v * 3], M.N[v * 3 + 1], M.N[v * 3 + 2]], k * 3); const r = colorOf(M.main[v], M.P[v * 3 + 1], M.P[v * 3 + 2]); c.set(r[0]); col.set([c.r, c.g, c.b], k * 3); mt[k] = r[1]; si.set(M.si.subarray(v * 4, v * 4 + 4), k * 4); sw.set(M.sw.subarray(v * 4, v * 4 + 4), k * 4); });
+            const g = new t.BufferGeometry(); g.setAttribute('position', new t.BufferAttribute(pos, 3)); g.setAttribute('normal', new t.BufferAttribute(nor, 3)); g.setAttribute('color', new t.BufferAttribute(col, 3)); g.setAttribute('aMat', new t.BufferAttribute(mt, 1)); g.setAttribute('skinIndex', new t.Uint16BufferAttribute(si, 4)); g.setAttribute('skinWeight', new t.BufferAttribute(sw, 4));
+            out.push([g, metal]);
+        }
+        return out;
+    }
+    const SDFC = new Map();
+    /** Ľudské (elfské, orkské, trolie…) telo zo SDF v pokojovej póze; vrátené z vyrovnávacej pamäte podľa rasy. */
+    function bodySDF(race, rc, BN) {
+        if (SDFC.has(race)) return SDFC.get(race);
+        const { W, D, H, lt, ls, a1, a2 } = rc, bk = { orc: 1.12, uruk: 1.14, troll: 1.28, dwarf: 1.14, elf: .88, hobbit: .95, wraith: .9 }[race] || 1;
+        const J = b => { const e = BN.rest[b].elements; return [e[12], e[13], e[14]]; }, add = (a, d) => [a[0] + d[0], a[1] + d[1], a[2] + d[2]];
+        const hip = J('hip'), ch = J('ch'), segs = [], ex = [];
+        segs.push(['hip', add(hip, [0, -.6, 0]), add(ch, [0, .4, 0]), W * .36 * bk, W * .38 * bk, 1.2]);
+        segs.push(['ch', add(ch, [0, .5, 0]), add(ch, [0, H - 1.6, 0]), W * .4 * bk, W * .46 * bk, 1.2]);
+        segs.push(['ch', add(ch, [0, H - 1.4, 0]), add(ch, [0, H + .9, 0]), .95 * bk, .85 * bk, .9]);   // krk
+        ex.push(['ch', add(ch, [.15, H * .62, 0]), [D * .55 * bk, H * .36, W * .5 * bk], 1.3], ['ch', add(ch, [.35, H * .62, W * .2]), [D * .3, H * .2, W * .18], .9], ['ch', add(ch, [.35, H * .62, -W * .2]), [D * .3, H * .2, W * .18], .9]);   // hruď a prsné svaly
+        ex.push(['hip', add(hip, [0, -.4, 0]), [D * .5 * bk, 1.9, W * .42 * bk], 1]);
+        for (const [sd, sh, el, hd, lg, kn] of [[1, 'shR', 'elR', 'hR', 'lgR', 'knR'], [-1, 'shL', 'elL', 'hL', 'lgL', 'knL']]) {
+            const S = J(sh), E = J(el), Hh = J(hd), L = J(lg), K = J(kn), F = add(K, [.2, -ls + .9, 0]);
+            segs.push([sh, S, E, 1.2 * bk, 1.0 * bk, .6], [el, E, add(Hh, [0, .3, 0]), 1.0 * bk, .72 * bk, .5]);
+            ex.push([sh, add(S, [0, -.2, 0]), [1.35 * bk, 1.4 * bk, 1.35 * bk], .7], [sh, add(S, [.3, -a1 * .5, 0]), [1.0 * bk, a1 * .32, .95 * bk], .5]);   // ramenný sval a biceps
+            segs.push([lg, add(L, [0, .4, 0]), K, 1.6 * bk, 1.15 * bk, .8], [kn, K, F, 1.15 * bk, .78 * bk, .5]);
+            ex.push([kn, add(K, [-.35, -ls * .32, 0]), [1.0 * bk, ls * .3, .95 * bk], .5]);   // lýtko
+        }
+        const R = Math.max(D, W) * .8 + 3.2, M = sdfMesh(segs, ex, [-R, 0, -R], [R, hip[1] + .8 + H + 1.4, R], .42, BN);
+        SDFC.set(race, M); return M;
+    }
+    /** Telo koňa zo SDF: trup, hruď, zadok, krk, hlava s nozdrami, nohy s kĺbmi. */
+    function horseSDF(key, BN, up, lo) {
+        if (SDFC.has(key)) return SDFC.get(key);
+        const J = b => { const e = BN.rest[b].elements; return [e[12], e[13], e[14]]; }, add = (a, d) => [a[0] + d[0], a[1] + d[1], a[2] + d[2]];
+        const mb = J('mb'), nk = J('nk'), hd = J('hd'), tl = J('tl'), segs = [], ex = [];
+        ex.push(['mb', mb, [11.2, 4.8, 4.2], 1.6], ['mb', add(mb, [6.4, .4, 0]), [4.8, 5, 4.2], 1.4], ['mb', add(mb, [-6.8, .7, 0]), [5, 5.1, 4.4], 1.4], ['mb', add(mb, [0, -2.3, 0]), [8.4, 2.8, 3.4], 1.2]);
+        segs.push(['nk', add(nk, [-1.2, -.6, 0]), add(hd, [-.2, .2, 0]), 2.6, 1.6, 1.4], ['hd', add(hd, [-.2, .4, 0]), add(hd, [4.6, -2.8, 0]), 1.6, 1.05, .8], ['tl', add(tl, [1.6, 0, 0]), tl, 1.1, .6, .6]);
+        ex.push(['hd', add(hd, [4.9, -2.7, 0]), [1.2, .95, 1.15], .6]);
+        for (const L of ['FR', 'FL', 'BR', 'BL']) { const A = J(L), K = J(L + 'k'), Ft = add(K, [0, -lo + .6, 0]); segs.push([L, add(A, [0, 1.4, 0]), K, 1.75, 1.0, 1.0], [L + 'k', K, Ft, .82, .66, .4]); ex.push([L + 'k', add(K, [0, -.2, 0]), [.95, 1.1, .95], .4]); }
+        const M = sdfMesh(segs, ex, [-20, 0, -7], [23, mb[1] + 21, 7], .45, BN);
+        SDFC.set(key, M); return M;
+    }
     /** Materiál prostredia (hradby, skaly, trosky): Standard s plochým tieňovaním, na nízkej kvalite Lambert. */
     const mat = k => MAT[k + QN()] || (MAT[k + QN()] = k === 'glow' ? new (T().MeshBasicMaterial)({ vertexColors: true })
         : QN() === 0 ? new (T().MeshLambertMaterial)({ vertexColors: true, flatShading: true, side: k === 'vs' ? T().DoubleSide : T().FrontSide })
@@ -120,11 +219,17 @@ const B3 = (() => {
     const metalish = hex => { if (!hex) return false; const c = C(hex), hsl = {}; c.getHSL(hsl); return hsl.s < .2 && hsl.l > .2 && hsl.l < .85; };
 
     // ---------- výška terénu (hradby a rebríky sú tiež „terén“, aby obrancovia stáli hore) ----------
+    let CREEK = 0, creekM = null; const creekX = y => 330 + Math.sin(y * .008) * 80 + y * .22;
+    const creekD = (x, y) => CREEK ? Math.abs(x - creekX(y)) : 1e9;
+    /** Ročné obdobie z hry (0 jar, 1 leto, 2 jeseň, 3 zima). */
+    const seas = () => (typeof season === 'function' && G ? season() : 1);
     function heightAt(x, y, mesh) {
         const F = FIELD || {};
         let h = Math.sin(x * .011) * 2.2 + Math.cos(y * .013 + x * .004) * 2 + Math.sin((x + y) * .027) * .8;
         if (F.hill) h += 46 * Math.exp(-Math.pow((x - BW * .62) / 170, 2) - Math.pow((y - BH * .5) / 120, 2)) * (F.mountain ? 1.3 : 1);
         if (F.river) { const d = Math.abs(x - 720); if (d < 46) h -= (y > 440 && y < 520 ? 4 : 11) * Math.cos(d / 46 * Math.PI / 2); }
+        if (!SGB || x < 900) h += (Math.abs(Math.sin(x * .029 + Math.sin(y * .017) * 2.1)) - .55) * 1.6 + (Math.abs(Math.sin(y * .041 - x * .013)) - .5) * .9;   // ryhy a zvlnenie (erózia)
+        if (CREEK) { const d = Math.abs(x - creekX(y)); if (d < 22) h = h + (-8 - Math.cos(d / 22 * Math.PI / 2) * 1.2 - h) * Math.pow(Math.cos(d / 22 * Math.PI / 2), .7); }   // koryto potoka
         if (SGB) {
             if (x > 990) h = Math.min(h, 2) * .2;   // pred hradbami a na nádvorí je rovina
             const WALL = 40, gate = y > 440 && y < 520;
@@ -140,6 +245,15 @@ const B3 = (() => {
 
     // ---------- kraj, denná doba, farby ----------
     function biome() {
+        const b = biome0(), se = seas();
+        if ((BI || 'g') === 'g') {
+            if (se === 0) { b.g1 = '#4e7a2e'; b.g2 = '#76a040'; b.tip = '#b8d070'; b.flowers = [...b.flowers, '#ffd0e0', '#f8f080', '#a0c0ff']; }
+            if (se === 2) { b.g1 = '#6a6a30'; b.g2 = '#8a7a3a'; b.grass = ['#6a6a2c', '#7a7030', '#8a7a34', '#5e6428']; b.tip = '#d0a858'; b.flowers = []; }
+            if (se === 3) { b.g1 = '#5a6650'; b.g2 = '#6e7a62'; b.grass = ['#5a6450', '#66705a', '#4e5848']; b.tip = '#e4ecee'; b.flowers = []; }   // zima: námraza na končekoch
+        }
+        return b;
+    }
+    function biome0() {
         return {
             g: { g1: '#4a6a2c', g2: '#6a8a3a', dirt: '#6a5a3e', mud: '#3e3020', rock: '#7a7468', grass: ['#3e5a26', '#4a662c', '#566e30', '#5e7434', '#46602a'], tip: '#98a858', flowers: ['#f0e060', '#ffffff', '#c070e0', '#e04040', '#f0a030'], gd: 1, sky: { zen: '#3a6ab0', hor: '#b8d0e4', gnd: '#5a6a4a' } },
             a: { g1: '#4e423a', g2: '#62514a', dirt: '#3a2e28', mud: '#2a201a', rock: '#55504c', grass: ['#3a3428'], tip: '#4a4030', flowers: [], gd: 0, sky: { zen: '#5a3428', hor: '#b87050', gnd: '#3a2a22' } },
@@ -168,13 +282,15 @@ const B3 = (() => {
 
     // ---------- svet ----------
     function buildWorld() {
-        const t = T(), B = biome(), DL = dayLight(), night = DL.night, q = QN(), storm = WX.n === 'storm' || WX.n === 'rain', fog = WX.n === 'fog';
+        const t = T(), DL = dayLight(), night = DL.night, q = QN(), storm = WX.n === 'storm' || WX.n === 'rain', fog = WX.n === 'fog';
+        CREEK = !(FIELD && FIELD.river) && !SGB && (BI || 'g') === 'g' && ((((G && G.x) || 0) * 7 + ((G && G.y) || 0) * 3) | 0) % 5 < 3 ? 1 : 0;   // potok cez bojisko (nie vždy)
+        const B = biome();
         scene = new t.Scene(); sunDir = DL.dir;
         // obloha: farby podľa kraja, dennej doby a počasia
         const zen = C(night ? '#050914' : B.sky.zen).lerp(C('#3a3040'), DL.low * .5), hor = C(night ? '#141c30' : B.sky.hor).lerp(C('#f0a060'), DL.low * .7), zen0 = zen.clone(), hor0 = hor.clone();
         if (storm) { zen.lerp(C('#3a4048'), .75); hor.lerp(C('#6a7078'), .7); } if (fog) { zen.lerp(C('#a8b0b4'), .7); hor.lerp(C('#c8ccd0'), .8); }
         const sunC = night ? C('#9aaad8') : C('#fff2d8').lerp(C('#ff9a50'), DL.low);
-        skyM = B3G.sky({ zen, hor, gnd: B.sky.gnd, sunDir: DL.dir, sunC, cloud: storm ? .85 : fog ? .9 : BI === 'a' ? .7 : .42, cloudC: night ? '#1a2030' : storm ? '#5a6068' : BI === 'a' ? '#4a2a22' : '#f4f2ee', night: night ? 1 : 0 });
+        skyM = B3G.sky({ zen, hor, gnd: B.sky.gnd, sunDir: DL.dir, sunC, cloud: storm ? .85 : fog ? .9 : BI === 'a' ? .7 : .42, cloudC: night ? '#1a2030' : storm ? '#5a6068' : BI === 'a' ? '#4a2a22' : '#f4f2ee', night: night ? 1 : 0, vol: q >= 2 });
         if (q >= 1) scene.add(skyM); else scene.background = hor.clone();
         const fogC = hor.clone().lerp(zen, .15);
         scene.fog = new t.Fog(fogC, fog ? 50 : night ? 130 : 420, fog ? 430 : night ? 700 : 1700);
@@ -183,14 +299,14 @@ const B3 = (() => {
         wxB = { zen: zen0, hor: hor0, sZen: C(night ? '#0a0c12' : '#3a4048'), sHor: C(night ? '#1a1e26' : '#6a7078'), fZen: C(night ? '#20242c' : '#a8b0b4'), fHor: C(night ? '#2a2e36' : '#c8ccd0'), cloud: cloud0, cloudC: C(night ? '#1a2030' : BI === 'a' ? '#4a2a22' : '#f4f2ee'), sCloud: C(night ? '#1a2030' : '#5a6068'),
             sunI: night ? 1.5 : 1.35 + (1 - DL.low) * .4, hemiI: night ? 2.4 : .85, fogN: night ? 130 : 420, fogF: night ? 700 : 1700, fogC: hor0.clone().lerp(zen0, .15), wet: 0 };
         wxS = null; bolt = null; nextBolt = 200;
-        hemi = new t.HemisphereLight(night ? C('#5a6aa0') : hor.clone().lerp(C('#ffffff'), .5), C(night ? '#202030' : B.dirt).lerp(C('#808080'), .3), night ? 2.4 : storm ? 1.1 : .85); scene.add(hemi);
+        hemi = new t.HemisphereLight(night ? C('#5a6aa0') : hor.clone().lerp(C('#ffffff'), .5), C(night ? '#202030' : BI === 's' ? '#d8e0e6' : BI === 'd' ? '#c8a878' : BI === 'a' ? '#4a3a32' : B.g2).lerp(C('#808080'), BI === 's' ? .05 : .2), night ? 2.4 : storm ? 1.1 : BI === 's' ? 1.05 : .85); scene.add(hemi);   // svetlo odrazené od zeme: v tráve zelenkasté, v snehu jasné, na púšti piesočné
         sun = new t.DirectionalLight(sunC, night ? 1.5 : storm ? .6 : fog ? .65 : 1.35 + (1 - DL.low) * .4);
         sun.castShadow = shadowsOn();
         if (sun.castShadow) { const s = sun.shadow, ms = [1024, 1024, 2048, 4096][q]; s.mapSize.set(ms, ms); const sx = [280, 280, 400, 560][q]; s.camera.left = -sx; s.camera.right = sx; s.camera.top = sx; s.camera.bottom = -sx; /* na vysokej a ultra tiene pokryjú veľkú časť bojiska */ s.camera.near = 10; s.camera.far = 1200; s.bias = -.0012; s.normalBias = 1.1; }
         scene.add(sun); scene.add(sun.target);
         B3G.U_WET.value = storm ? 1 : 0; B3G.U_SNOW.value = WX.n === 'snow' ? .25 : 0;
         B3G.U_MUD().set(BI === 's' ? '#6a6660' : BI === 'd' ? '#9a8058' : B.mud); DIRT_K = BI === 's' ? .7 : BI === 'd' ? .85 : 1;
-        FAR = new Map(); REG = new Map(); M0 = new t.Matrix4(); M1 = new t.Matrix4(); arTr = null; puddleM = null; roofs = []; roofL = []; loose = []; pano = null; AQ.lvl = 0; AQ.t0 = 0; AQ.n = 0;
+        FAR = new Map(); REG = new Map(); RAGS = []; smokeSh = null; fireL = null; ORDK = null; CINE = 0; M0 = new t.Matrix4(); M1 = new t.Matrix4(); arTr = null; puddleM = null; roofs = []; roofL = []; loose = []; pano = null; AQ.lvl = 0; AQ.t0 = 0; AQ.n = 0;
         grade = gradeFor();
         // cesta: krivka cez bojisko (pri obliehaní k bráne)
         const road = []; for (let i = 0; i <= 40; i++) { const x = i / 40 * (SGB ? 1000 : BW); road.push([x, SGB ? 480 + Math.sin(x * .006) * 30 * (1 - x / 1000) : BH * .8 + Math.sin(x * .005 + 1) * 40]); }
@@ -224,6 +340,7 @@ const B3 = (() => {
             HD[k] = heightAt(x, y, 1);
             let gd = B.gd * Math.min(1, Math.max(0, (rd - 12) / 8));
             if (FIELD && FIELD.river && Math.abs(x - 720) < 60) gd = 0;
+            if (creekD(x, y) < 16) gd = 0;
             if (SGB && x > 940) gd = 0;
             if (HD[k] > 25) gd *= .3;
             HD[k + 1] = gd * (.75 + .5 * Math.sin(x * .03 + y * .021) * Math.cos(y * .04));
@@ -232,6 +349,7 @@ const B3 = (() => {
         terrain = new t.Mesh(g, B3G.terrainMat(trTex, B)); terrain.receiveShadow = true; scene.add(terrain);
         const fs = new t.Shape([new t.Vector2(-2500, -2500), new t.Vector2(BW + 2500, -2500), new t.Vector2(BW + 2500, BH + 2500), new t.Vector2(-2500, BH + 2500)]); fs.holes.push(new t.Path([new t.Vector2(4, 4), new t.Vector2(4, BH - 4), new t.Vector2(BW - 4, BH - 4), new t.Vector2(BW - 4, 4)]));
         const far = new t.Mesh(new t.ShapeGeometry(fs).rotateX(Math.PI / 2), new t.MeshLambertMaterial({ color: C(B.g1).multiplyScalar(.85), side: t.DoubleSide })); far.position.y = -1; scene.add(far);   // okolie bojiska až po hmlu (s otvorom pre terén)
+        if (CREEK) { creekM = B3G.water(hTex, 180, 760, -6.6, { hor: hor.getStyle(), zen: zen.getStyle(), deep: '#3a5a52' }); creekM.material.uniforms.uSunDir.value.copy(DL.dir); creekM.material.uniforms.uSunC.value.copy(sunC); scene.add(creekM); } else creekM = null;
         if (FIELD && FIELD.river) { waterM = B3G.water(hTex, 660, 780, -4.5, { hor: hor.getStyle(), zen: zen.getStyle() }); waterM.material.uniforms.uSunDir.value.copy(DL.dir); waterM.material.uniforms.uSunC.value.copy(sunC); scene.add(waterM); }
         if (q >= 1 && B.gd > 0) { grassM = B3G.grass(hTex, B, [0, 9000, 20000, 42000][q]); grassM.material.uniforms.uSunC.value.copy(sunC).multiplyScalar(night ? .35 : .9); grassM.material.uniforms.uAmb.value.copy(hemi.color).multiplyScalar(night ? .3 : .55); grassM.userData.n0 = grassM.geometry.instanceCount; grassM.material.uniforms.tTr.value = trTex; scene.add(grassM); }
         buildFlora(rnd, B, spots, road, roadD); buildProps(rnd, B, roadD);
@@ -263,6 +381,7 @@ const B3 = (() => {
         flashL = [0, 1].map(() => { const l = new t.PointLight(C('#ffd080'), 0, 120, 1); scene.add(l); return l; });
         torches = [];
         if (night) for (let i = 0; i < 5; i++) { const l = new t.PointLight(C('#ffa040'), 14, 220, 1); scene.add(l); torches.push(l); }
+        if (q >= 3) { fireL = new t.PointLight(C('#ff9a40'), 0, 220, 1); fireL.castShadow = true; fireL.shadow.mapSize.set(256, 256); fireL.shadow.bias = -.004; fireL.shadow.autoUpdate = false; scene.add(fireL); }   // svetlo ohňa s tieňom (vytvorené vopred, aby sa shadery neprekladali v boji)
     }
     // ---------- predmety na bojisku: tábory, ohne, barikády, kolíky, vozy, zrúcaniny, útesy; rozbitné ----------
     let props = [], campF = [];
@@ -342,12 +461,12 @@ const B3 = (() => {
         // druhy stromov: dub (koruna z viacerých gúľ), breza (biely kmeň), smrek (poschodia kužeľov), mŕtvy strom, krík
         const oak = (sd) => { const P = Part(); let r = sd; const rr = () => (r = r * 16807 % 2147483647) / 2147483647;
             P.add('taperU', '#4a3420', [0, 9, 0], [0, 0, (rr() - .5) * .15], [3.2, 18, 3.2]).add('cyl6', '#4a3420', [3, 16, 1], [.3, 0, -.7], [1.2, 9, 1.2]).add('cyl6', '#4a3420', [-2.5, 15, -1.5], [-.4, 0, .8], [1.1, 8, 1.1]);
-            const leaf = ['#3e6a2a', '#4a7a30', '#36602a', '#56823a'];
+            const se = seas(), leaf = se === 2 ? ['#c8742a', '#d8a030', '#a84a22', '#b89a2a'] : se === 3 ? ['#6a5a48', '#5a4e40', '#7a6a58', '#4a4238'] : se === 0 ? ['#5a9a3a', '#6aa840', '#4e8a34', '#7ab048'] : ['#3e6a2a', '#4a7a30', '#36602a', '#56823a'];   // farba lístia podľa ročného obdobia
             for (let i = 0; i < 7; i++) { const a = rr() * 6.28, d = rr() * 7; P.add('sph2', snow ? '#e8eef2' : leaf[i % 4], [Math.cos(a) * d, 22 + rr() * 9, Math.sin(a) * d], [0, 0, 0], [11 + rr() * 7, 9 + rr() * 5, 11 + rr() * 7]); }
             return P.build(); };
         const birch = (sd) => { const P = Part(); let r = sd; const rr = () => (r = r * 16807 % 2147483647) / 2147483647;
             P.add('cyl6', '#e8e4dc', [0, 12, 0], [0, 0, 0], [1.8, 24, 1.8]); for (let i = 0; i < 6; i++) P.add('box', '#2a2622', [.9, 4 + i * 3.6, 0], [0, rr() * 3, 0], [.3, .5, 1.4]);
-            for (let i = 0; i < 5; i++) { const a = rr() * 6.28; P.add('sph', snow ? '#eef2f4' : i % 2 ? '#8aa848' : '#7a9a3a', [Math.cos(a) * 3, 24 + rr() * 8, Math.sin(a) * 3], [0, 0, 0], [7, 8 + rr() * 4, 7]); }
+            for (let i = 0; i < 5; i++) { const a = rr() * 6.28; P.add('sph', snow ? '#eef2f4' : seas() === 2 ? (i % 2 ? '#e0b030' : '#d89a28') : i % 2 ? '#8aa848' : '#7a9a3a', [Math.cos(a) * 3, 24 + rr() * 8, Math.sin(a) * 3], [0, 0, 0], [7, 8 + rr() * 4, 7]); }
             return P.build(); };
         const spruce = () => { const P = Part(); P.add('cyl6', '#4a3424', [0, 6, 0], [0, 0, 0], [2.2, 12, 2.2]);
             for (let i = 0; i < 5; i++) { const y = 10 + i * 6.4, r = 17 - i * 3; P.add('cone', '#2e4a2a', [0, y, 0], [0, 0, 0], [r, 11, r]); if (snow) P.add('cone', '#eef2f4', [0, y + 3, 0], [0, 0, 0], [r * .8, 5.4, r * .8]); }
@@ -361,6 +480,15 @@ const B3 = (() => {
         for (const sp of spots) { let r = sp[3], k = kinds[kinds.length - 1][0]; for (const [n, w] of kinds) { if (r < w) { k = n; break; } r -= w; } (groups[k] = groups[k] || []).push(sp); }
         const mk = { oak: () => [oak(17), oak(9311), oak(4471)], birch: () => [birch(77), birch(3113)], spruce: () => [spruce()], dead: () => [deadT(5), deadT(919)], bush: () => [bush()] };
         for (const k in groups) { const geos = mk[k](); geos.forEach((gm, vi) => inst(gm, groups[k].filter((p, i) => i % geos.length === vi), ([x, y, sc]) => at(x, y, k === 'bush' ? sc * .9 : sc, k === 'spruce' ? 1 + (sc - 1) * .5 : 1))); }
+        // padnuté kmene a podrast (paprade) pri lesoch
+        if (BI !== 'a' && BI !== 'd') {
+            const logs = spots.filter((p, i) => i % 9 === 4).map(([x, y]) => [x + (rnd() - .5) * 30, y + (rnd() - .5) * 30, rnd() * 6.28, .7 + rnd() * .6]).filter(([x, y]) => x > 5 && y > 5 && x < BW - 5 && y < BH - 5 && roadD(x, y) > 22 && !(SGB && x > 800) && creekD(x, y) > 20);
+            const lg = Part().add('cyl12', '#4a3622', [0, 2, 0], [0, 0, Math.PI / 2], [3.6, 34, 3.6]).add('cyl12', '#6a5032', [17, 2, 0], [0, 0, Math.PI / 2], [3.2, .4, 3.2]).add('cyl6', '#4a3622', [-6, 4, 2], [.6, 0, .4], [1, 8, 1]).add('sph', snow ? '#e8eef2' : '#4a6a2a', [4, 3.6, 0], [0, 0, 0], [6, 1.6, 4]).build();
+            inst(lg, logs, ([x, y, a, k]) => { M.compose(v.set(x, heightAt(x, y) - .6, y), q.setFromEuler(e.set(0, a, 0)), s.set(k, k, k)); }, mat('v'));
+            const fern = Part(); for (let i = 0; i < 7; i++) { const a = i * .9; fern.add('cone6', snow ? '#c8d0cc' : seas() === 2 ? '#8a6a2a' : '#3e6a2c', [Math.cos(a) * 1.6, 1.6, Math.sin(a) * 1.6], [Math.sin(a) * .9, 0, -Math.cos(a) * .9], [1.2, 5, .4]); }
+            const fg2 = fern.build(), ferns = []; for (const [x, y] of spots) for (let j = 0; j < 3; j++) { const fx = x + (rnd() - .5) * 46, fy = y + (rnd() - .5) * 46; if (fx > 0 && fy > 0 && fx < BW && fy < BH && roadD(fx, fy) > 18 && creekD(fx, fy) > 14 && !(SGB && fx > 800)) ferns.push([fx, fy, .7 + rnd() * .7]); }
+            inst(fg2, ferns.slice(0, 900), ([x, y, k]) => at(x, y, k));
+        }
         // kríky navyše po bojisku
         const extra = []; if (BI !== 'a') for (let i = 0; i < 40; i++) { const x = rnd() * BW, y = rnd() * BH; if (Math.abs(x - BW * .5) < 300 && Math.abs(y - BH * .5) < 260) continue; if ((F.river && Math.abs(x - 720) < 70) || (SGB && x > 800) || roadD(x, y) < 20) continue; extra.push([x, y, .6 + rnd() * .5]); }
         inst(bush(), extra, ([x, y, sc]) => at(x, y, sc));
@@ -527,11 +655,15 @@ const B3 = (() => {
         const WP = { add(sh_, c, p, r, sc, o) { P.add(sh_, c, p, r, sc, { ...o, b: 'wp', rigid: 1 }); W2.add(sh_, c, p, r, sc, { m: o && o.m }); return WP; } };
         const SP = { add(sh_, c, p, r, sc, o) { P.add(sh_, c, p, r, sc, { ...o, b: 'shd', rigid: 1 }); S2.add(sh_, c, p, r, sc, { m: o && o.m }); return SP; } };
         // trup, pás, kabátec vo farbe frakcie, náplecníky, krk, hlava
-        P.add('taperU', armor, [0, (H - .8) / 2 + .1, 0], [0, 0, 0], [D, H - .6, W], bt('ch', fab(armor), mA))
-            .add('rbox', team, [D * .47, H * .44, 0], [0, 0, 0], [.5, H * .82, W * .44], bt('ch', 2)).add('rbox', team, [-D * .47, H * .44, 0], [0, 0, 0], [.5, H * .82, W * .44], bt('ch', 2))
+        // tvarované telo zo SDF (trup s hruďou, krk, ramená so svalmi, stehná, lýtka) – farba podľa oblasti: brnenie, rukávy, nohavice, čižmy, koža
+        const sleeve0 = mA ? armor : sh(armor, .9), fore0 = mA ? armor : s.race === 'orc' || s.race === 'troll' ? skin : sh(armor, .85), chY = BN.rest.ch.elements[13], knY = BN.rest.knR.elements[13];
+        const regionOf = (bn, y) => bn === 'ch' ? (y > chY + H - .4 ? [skin, 0, false] : [armor, fab(armor), mA]) : bn === 'hip' ? (y > hipY - .7 ? [sh(armor, .85), fab(armor), mA] : [pants, 2, false])
+            : bn[0] === 's' ? [sleeve0, fab(sleeve0), mA] : bn[0] === 'e' ? [fore0, fore0 === skin ? 0 : fab(fore0), mA && fore0 === armor] : bn[0] === 'l' ? [pants, 2, false] : y < knY - ls * .38 ? [boots, 3, false] : [pants, 2, false];
+        for (const [g, metal] of sdfGeos(bodySDF(s.race || 'human', rc, BN), regionOf)) P.add(g, '#ffffff', [0, 0, 0], [0, 0, 0], [1, 1, 1], { pre: 1, m: metal });
+        P.add('rbox', team, [D * .56, H * .44, 0], [0, 0, 0], [.5, H * .82, W * .44], bt('ch', 2)).add('rbox', team, [-D * .56, H * .44, 0], [0, 0, 0], [.5, H * .82, W * .44], bt('ch', 2))
             .add('cyl12', leather, [0, .35, 0], [0, 0, 0], [D * .98, 1.2, W * .8], bt('ch', 3)).add('box', '#c8a040', [D * .49, .35, 0], [0, 0, 0], [.35, 1, 1], bm('ch', 1))
             .add('sph2', rim, [-.1, H - 1.6, W / 2 - .2], [0, 0, -.1], [D * .95, 2.8, 3.4], bm('ch', mR)).add('sph2', rim, [-.1, H - 1.6, -W / 2 + .2], [0, 0, -.1], [D * .95, 2.8, 3.4], bm('ch', mR))
-            .add('cyl12', skin, [0, H - .2, 0], [0, 0, 0], [1.9, 2, 1.9], b('ch'))
+
             .add('sph2', skin, hc, [0, 0, 0], [4.1 * hs, 4.9 * hs, 3.9 * hs], b('hdc'));
         P.add('taper', mA ? sh(armor, .85) : sh(armor, .8), [0, -1.4, 0], [0, 0, 0], [D * 1.12, 3.4, W * .9], bt('hip', fab(armor), mA));
         // vrstvená výstroj: chlopne kabátca vejú pri behu, mešec a dýka na opasku, druhá lamela náplecníkov
@@ -599,8 +731,7 @@ const B3 = (() => {
         if (s.cape || s.hero) P.add('capeBox', s.cape || team, [0, 0, 0], [0, 0, 0], [.5, H + 3.5, W * .95], { b: 'cape', cl: [0, H + 3.5, 1], t: 2, rigid: 1 });
         // pravá ruka so zbraňou
         const sleeve = mA ? armor : sh(armor, .9), fore = mA ? armor : s.race === 'orc' || s.race === 'troll' ? skin : sh(armor, .85), sT = fab(sleeve), fT = fore === skin ? 0 : fab(fore);
-        P.add('taperU', sleeve, [0, -a1 / 2 + .2, 0], [0, 0, 0], [2.5, a1 + .5, 2.5], bt('shR', sT, mA)).add('sph2', sleeve, [0, 0, 0], [0, 0, 0], [1.9, 1.9, 1.9], bm('elR', mA))
-            .add('taperU', fore, [0, -a2 / 2, 0], [0, 0, 0], [2.1, a2, 2.1], bt('elR', fT, mA)).add('cyl12', leather, [0, -a2 + 1.3, 0], [0, 0, 0], [2.4, 2, 2.4], bt('elR', 3))
+        P.add('cyl12', leather, [0, -a2 + 1.3, 0], [0, 0, 0], [2.4, 2, 2.4], bt('elR', 3))
             .add('rbox', mA ? sh(armor, .9) : skin, [.1, -.6, 0], [0, 0, 0], [1.5, 1.7, 1.4], { b: 'hR', m: mA });
         for (let i = 0; i < 4; i++) P.add('cyl6', mA ? sh(armor, .9) : skin, [.62, -.25 - i * .42, 0], [Math.PI / 2, 0, 0], [.42, 1.35, .42], { b: 'hR', m: mA });   // prsty okolo rukoväte
         P.add('cyl6', mA ? sh(armor, .9) : skin, [.35, -.15, .65], [.5, 0, -.6], [.42, 1, .42], { b: 'hR', m: mA });   // palec
@@ -619,28 +750,26 @@ const B3 = (() => {
             tipY = py;
         }
         // ľavá ruka so štítom alebo lukom
-        P.add('taperU', sleeve, [0, -a1 / 2 + .2, 0], [0, 0, 0], [2.5, a1 + .5, 2.5], bt('shL', sT, mA)).add('sph2', sleeve, [0, 0, 0], [0, 0, 0], [1.9, 1.9, 1.9], bm('elL', mA))
-            .add('taperU', fore, [0, -a2 / 2, 0], [0, 0, 0], [2.1, a2, 2.1], bt('elL', fT, mA)).add('cyl12', leather, [0, -a2 + 1.3, 0], [0, 0, 0], [2.4, 2, 2.4], bt('elL', 3))
+        P.add('cyl12', leather, [0, -a2 + 1.3, 0], [0, 0, 0], [2.4, 2, 2.4], bt('elL', 3))
             .add('rbox', mA ? sh(armor, .9) : skin, [.1, -.6, 0], [0, 0, 0], [1.5, 1.7, 1.4], { b: 'hL', m: mA });
         for (let i = 0; i < 4; i++) P.add('cyl6', mA ? sh(armor, .9) : skin, [.62, -.25 - i * .42, 0], [Math.PI / 2, 0, 0], [.42, 1.35, .42], { b: 'hL', m: mA });   // prsty okolo rukoväte
         P.add('cyl6', mA ? sh(armor, .9) : skin, [.35, -.15, .65], [.5, 0, -.6], [.42, 1, .42], { b: 'hL', m: mA });   // palec
         const SG = s.shieldG, shape = SG ? SG.shape : s.shield;
         if (shape) {
             const scol = SG ? SG.col : team, srim = SG ? SG.rim : sh(team, .55);
-            if (shape === 'kite') SP.add('box', srim, [1.6, 0, -.3], [0, 0, 0], [.8, 12, 7.6], bm('shd', metalish(srim))).add('box', srim, [1.6, -6.4, -.3], [Math.PI / 4, 0, 0], [.8, 5.4, 5.4], bm('shd', metalish(srim))).add('box', scol, [1.95, 0, -.3], [0, 0, 0], [.6, 11, 6.6], b('shd')).add('box', scol, [1.95, -6.2, -.3], [Math.PI / 4, 0, 0], [.6, 4.7, 4.7], b('shd'));
-            else SP.add('disc', srim, [1.6, 0, -.3], [0, 0, Math.PI / 2], [9.6, .8, 9.6], bm('shd', metalish(srim))).add('disc', scol, [1.95, 0, -.3], [0, 0, Math.PI / 2], [8.6, .6, 8.6], b('shd')).add('sph2', '#c8b060', [2.4, 0, -.3], [0, 0, 0], [1.6, 1.6, 1.6], bm('shd', 1));
+            if (shape === 'kite') SP.add('box', srim, [1.6, 0, -.3], [0, 0, 0], [.8, 12, 7.6], bm('shd', metalish(srim))).add('box', srim, [1.6, -6.4, -.3], [Math.PI / 4, 0, 0], [.8, 5.4, 5.4], bm('shd', metalish(srim))).add('box', scol, [1.95, 0, -.3], [0, 0, 0], [.6, 11, 6.6], bt('shd', 7)).add('box', scol, [1.95, -6.2, -.3], [Math.PI / 4, 0, 0], [.6, 4.7, 4.7], bt('shd', 7));
+            else SP.add('disc', srim, [1.6, 0, -.3], [0, 0, Math.PI / 2], [9.6, .8, 9.6], bm('shd', metalish(srim))).add('disc', scol, [1.95, 0, -.3], [0, 0, Math.PI / 2], [8.6, .6, 8.6], bt('shd', 7)).add('sph2', '#c8b060', [2.4, 0, -.3], [0, 0, 0], [1.6, 1.6, 1.6], bm('shd', 1));
         }
         if (wt === 'bow') { const Rb = 8.5; for (let i = 0; i < 9; i++) { const th = -1.05 + i * .2625, x = Rb * Math.sin(th), y = Rb * (1 - Math.cos(th)) * .55; P.add('cyl6', '#6a4a2a', [x, y - .6, 0], [0, 0, -th * .55 + Math.PI / 2], [.65, 2.4, .65], b('hL')); } P.add('box', '#e8e4d0', [0, Rb * (1 - Math.cos(1.05)) * .55 - .6, 0], [0, 0, 0], [Rb * 2 * Math.sin(1.05), .12, .12], b('hL')); }
         if (wt === 'xbow') P.add('box', '#5a3a1a', [0, -3.5, 0], [0, 0, 0], [1, 9, 1.2], b('hL')).add('box', '#7a7e86', [0, -7.4, 0], [0, 0, 0], [11, .6, .6], bm('hL', 1));
         // nohy s kolenami a čižmami
         const greave = mA ? armor : null;
         for (const [lg, kn] of [['lgR', 'knR'], ['lgL', 'knL']]) {
-            P.add('taperU', pants, [0, -lt / 2, 0], [0, 0, 0], [2.9, lt + .3, 2.9], bt(lg, 2)).add('taperU', pants, [0, -ls / 2, 0], [0, 0, 0], [2.3, ls, 2.3], bt(kn, 2))
-                .add('cyl12', boots, [0, -ls * .68, 0], [0, 0, 0], [2.6, ls * .64, 2.6], bt(kn, 3)).add('rbox', boots, [.9, -ls - .45, 0], [0, 0, 0], [4, 1.3, 2.4], bt(kn, 3));
+            P.add('cyl12', boots, [0, -ls * .68, 0], [0, 0, 0], [2.6, ls * .64, 2.6], bt(kn, 3)).add('rbox', boots, [.9, -ls - .45, 0], [0, 0, 0], [4, 1.3, 2.4], bt(kn, 3));
             if (greave) P.add('sph2', greave, [.7, 0, 0], [0, 0, 0], [1.6, 1.6, 1.6], bm(kn, 1)).add('box', greave, [.85, -ls * .4, 0], [0, 0, 0], [.4, ls * .55, 1.8], bm(kn, 1));
         }
         const geo = P.build(BN, mdef);
-        return { geo, BN, wGeo: W2.n ? W2.build(null, mdef) : null, sGeo: S2.n ? S2.build(null, mdef) : null, lz: W * .2, hipY, scale: s.scale || 1, race: s.race, bow: wt === 'bow' || wt === 'xbow', spear: wt === 'spear', hunch: rc.hunch, shield: shape, tipY, fac: s.fac, emblem: !!shape && !(SG && SG.plain) };
+        return { lens: { lt, ls, a1, a2 }, two: !shape && (wt === 'spear' || !!(Wg && Wg.t === 'broad')), twoY: wt === 'spear' ? 7 : 1.3, tabX: D * .56 + .27, tabY: H * .5, geo, BN, wGeo: W2.n ? W2.build(null, mdef) : null, sGeo: S2.n ? S2.build(null, mdef) : null, lz: W * .2, hipY, scale: s.scale || 1, race: s.race, bow: wt === 'bow' || wt === 'xbow', spear: wt === 'spear', hunch: rc.hunch, shield: shape, tipY, fac: s.fac, emblem: !!shape && !(SG && SG.plain) };
     }
     /** Kôň, varg alebo čierny kôň ako kostrová sieť: telo, krk, hlava, chvost, nohy s kĺbmi (koleno vpredu, hlezno vzadu). */
     function mountParts(kind, s) {
@@ -651,7 +780,11 @@ const B3 = (() => {
         BN.blend = [['FRk', 'FR', 1.8], ['FLk', 'FL', 1.8], ['BRk', 'BR', 1.8], ['BLk', 'BL', 1.8], ['nk', 'mb', 3.2], ['hd', 'nk', 2.2], ['FR', 'mb', 2.4], ['FL', 'mb', 2.4], ['BR', 'mb', 2.4], ['BL', 'mb', 2.4]];
         const P = Part(), b = n => ({ b: n });
         const back = H.back || sh(c, .8);
-        P.add('sph2', c, [0, 0, 0], [0, 0, 0], wolf ? [20, 8.4, 7.4] : [22, 9.6, 8.2], b('mb')).add('sph2', c, [6.6, .5, 0], [0, 0, 0], wolf ? [9, 9.4, 7.8] : [9.4, 9.8, 8.2], b('mb')).add('sph2', wolf ? back : c, [-7, .7, 0], [0, 0, 0], wolf ? [8.6, 8.4, 7.4] : [9.8, 10, 8.6], b('mb')).add('sph2', sh(c, .82), [0, -2.4, 0], [0, 0, 0], [16, 5, 6.6], b('mb'));
+        if (wolf) P.add('sph2', c, [0, 0, 0], [0, 0, 0], [20, 8.4, 7.4], b('mb')).add('sph2', c, [6.6, .5, 0], [0, 0, 0], [9, 9.4, 7.8], b('mb')).add('sph2', back, [-7, .7, 0], [0, 0, 0], [8.6, 8.4, 7.4], b('mb')).add('sph2', sh(c, .82), [0, -2.4, 0], [0, 0, 0], [16, 5, 6.6], b('mb'));
+        else {   // kôň s tvarovaným telom zo SDF (krk, hlava, svalnaté nohy s kĺbmi); svetlejšie brucho, tmavšie spodné nohy
+            const M = horseSDF('horse', BN, up, lo), mbY = BN.rest.mb.elements[13];
+            for (const [g] of sdfGeos(M, (bn, y) => [bn.endsWith('k') ? sh(c, .82) : bn === 'mb' && y < mbY - 3.4 ? sh(c, 1.08) : c, 0, false])) P.add(g, '#ffffff', [0, 0, 0], [0, 0, 0], [1, 1, 1], { pre: 1 });
+        }
         if (wolf) for (let i = 0; i < 6; i++) P.add('cone6', back, [5 - i * 2.6, 3.8, 0], [0, 0, -.6], [1.6, 3.4, 2.4], b('mb'));
         if (!wolf) {
             P.add('box', '#5a3a1e', [-.8, 4.8, 0], [0, 0, 0], [6.4, 1.4, 6.8], b('mb')).add('box', '#4a2e18', [2.2, 6, 0], [0, 0, .3], [1.2, 2, 2.6], b('mb')).add('box', s.team || '#6a2a2a', [-.8, 4, 0], [0, 0, 0], [10, .6, 9.4], b('mb'));
@@ -660,10 +793,9 @@ const B3 = (() => {
                 if (H.barding) P.add('sph2', H.barding, [.4, .3, 0], [0, 0, 0], [23.6, 10.4, 8.9], { b: 'mb', m: metalish(H.barding) }).add('taperU', H.barding, [2.4, 3.6, 0], [0, 0, -.62], [4.9, 8.4, 4.1], { b: 'nk', m: metalish(H.barding) }).add('box', H.barding, [2.4, -1.2, 0], [0, 0, 1.0], [3.1, 4.2, 2.7], { b: 'hd', m: metalish(H.barding) });
                 P.add('taper', s.team || '#6a2a2a', [0, -3.6, 0], [0, 0, 0], [24, 6, 9.6], { b: 'mb', cl: [-1, 6, .25] });
             }
-            P.add('taperU', c, [2.4, 3.6, 0], [0, 0, -.62], [4.6, 9.6, 3.8], b('nk'));
+
             for (let i = 0; i < 6; i++) P.add('rbox', mane, [.6 + i * 1.05, 4.2 + i * 1.25, 0], [0, 0, -.62], [1.4, 2.8, .9], { b: 'nk', cl: [20, 1, .22] });   // hriva veje
-            for (const z of [-1, 1]) P.add('box', '#2a1a10', [5.2, -.2, z * 1.3], [0, 0, .9], [.2, 5.2, .2], b('hd'));   // uzda
-            P.add('box', c, [.6, .4, 0], [0, 0, -.25], [4.4, 3.8, 3.2], b('hd')).add('taperU', c, [3.2, -1.4, 0], [0, 0, 1.0], [2.8, 4.6, 2.4], b('hd')).add('sph2', sh(c, .7), [4.9, -2.6, 0], [0, 0, 0], [2.2, 1.8, 2.2], b('hd'));
+            P.add('sph2', sh(c, .55), [5.6, -2.7, .55], [0, 0, 0], [.5, .4, .4], b('hd')).add('sph2', sh(c, .55), [5.6, -2.7, -.55], [0, 0, 0], [.5, .4, .4], b('hd'));   // nozdry
             for (const z of [-1, 1]) P.add('cone', c, [-.6, 2.6, z * 1], [z * .2, 0, -.2], [.7, 2, .7], b('hd')).add('box', kind === 'dark' || H.redEye ? '#ff3010' : '#0a0806', [1.9, .9, z * 1.62], [0, 0, 0], [.7, .6, .2], b('hd')).add('box', '#2a1a10', [2.6, -.4, z * 1.25], [0, 0, 1], [.25, 4.6, .25], b('hd'));
             P.add('box', mane, [-.8, 2.4, 0], [0, 0, .5], [1.2, 2.2, 1.6], b('hd'));
             if (H.plume) P.add('cone', H.plume, [-.6, 4.4, 0], [0, 0, .3], [1.2, 3.6, 1.2], b('hd'));
@@ -673,7 +805,7 @@ const B3 = (() => {
             for (const z of [-1, 1]) P.add('cone', c, [-.4, 2.4, z * 1.2], [z * .2, 0, -.2], [1, 2.2, .8], b('hd')).add('box', H.eye || '#e8c040', [1.9, .9, z * 1.25], [0, 0, 0], [.3, .45, .4], b('hd')).add('cone6', '#e8e0c8', [4.4, -1.4, z * .5], [Math.PI, 0, 0], [.35, .9, .35], b('hd'));
             P.add('sph2', back, [-3, -1, 0], [0, 0, .9], [3.2, 9, 3.2], b('tl'));
         }
-        for (const L of ['FR', 'FL', 'BR', 'BL']) P.add('taperU', c, [0, -up / 2 + .4, 0], [0, 0, 0], [wolf ? 2.4 : 3.2, up + 1.2, wolf ? 2.2 : 3], b(L)).add('cyl12', c, [0, -lo / 2, 0], [0, 0, 0], [wolf ? 1.3 : 1.6, lo, wolf ? 1.3 : 1.6], b(L + 'k'))
+        for (const L of ['FR', 'FL', 'BR', 'BL']) (wolf ? P.add('taperU', c, [0, -up / 2 + .4, 0], [0, 0, 0], [2.4, up + 1.2, 2.2], b(L)).add('cyl12', c, [0, -lo / 2, 0], [0, 0, 0], [1.3, lo, 1.3], b(L + 'k')) : P)
             .add('box', wolf ? sh(c, .7) : H.hoof || '#1a1410', [wolf ? .6 : .2, -lo - .5, 0], [0, 0, 0], wolf ? [2.2, 1, 1.6] : [2, 1.2, 2], b(L + 'k'));
         return { geo: P.build(BN), BN, k, h, wolf, seat: (h + (wolf ? 3.6 : 5.2)) * k };
     }
@@ -760,6 +892,7 @@ const B3 = (() => {
         const t = T(), k = skinned(H, o && o.own); k.sm.scale.setScalar(H.scale * (o && o.vs || 1)); root.add(k.sm);
         if (seat) k.sm.position.y = seat - (H.hipY - .5) * H.scale;
         if (H.emblem && QN() >= 1) { const e = new t.Mesh(H.shield === 'kite' ? new t.PlaneGeometry(5.6, 8) : new t.CircleGeometry(3.6, 20), B3G.emblemMat(H.fac ?? 9)); e.rotation.y = Math.PI / 2; e.position.set(2.32, H.shield === 'kite' ? -.6 : 0, -.3); k.B.shd.add(e); }
+        if (QN() >= 1 && H.tabX && !H.bow && H.race !== 'wraith') { const e = new t.Mesh(new t.PlaneGeometry(2.4, 2.8), B3G.emblemMat(H.fac ?? 9)); e.rotation.y = Math.PI / 2; e.position.set(H.tabX, H.tabY, 0); e.renderOrder = 1; k.B.ch.add(e); }   // vyšitý erb na kabátci
         const tip = new t.Object3D(); tip.position.set(0, H.tipY, 0); k.B.hR.add(tip); const mid = new t.Object3D(); mid.position.set(0, -2.6, 0); k.B.hR.add(mid);
         return { sm: k.sm, B: k.B, H, tip, mid, scaleH: H.scale * (o && o.vs || 1) };
     }
@@ -783,6 +916,7 @@ const B3 = (() => {
         if (u.hp <= 0) return poseDead(o, u, dt);
         const yawT = -u.f; let d = yawT - r.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); r.rotation.y += d * Math.min(1, .35 * dt);
         r.rotation.z = u.stun > 0 ? Math.sin(clock * 9) * .12 : 0; r.rotation.x = 0;
+        if (o.lance > 0 && (o.lance -= dt) <= 0 && o.B) o.B.wp.scale.setScalar(1);
         if (o.far) { o.ph += o.sp * dt * .2; if (o.mount) o.mph += o.sp * dt * (o.sp >= 2.1 ? .085 : .11); o.rout = u.rout; return; }   // vzdialený vojak: hromadná sieť, animuje ho grafická karta
         if (o.B) return poseHuman(o, u, dt);
         // bossovia a zvieratá z dielov
@@ -821,7 +955,9 @@ const B3 = (() => {
             const rr = Math.random(); o.dtype = u.lz === 'legs' ? 'kneel' : u.lz === 'head' ? 'back' : rr < .25 ? 'fwd' : rr < .45 ? 'collapse' : rr < .6 ? 'spin' : 'side';
             if (o.dtype === 'fwd') o.rel += Math.PI; if (o.dtype === 'collapse') o.kneel = .7; o.spinV = o.dtype === 'spin' ? (Math.random() < .5 ? -1 : 1) * .035 : 0;
             if (o.mount && o.MB && !o.tp.beast && !u.boss && !u.h && QN() >= 1 && Math.random() < .65) unhorse(o, u);
+            if (!o.mount && !u.h) ragStart(o, u);
         }
+        if (o.rag) { if (!DOWN) DOWN = new (T().Vector3)(0, -1, 0); ragStep(o, dt); ragApply(o); if (o.B.ey) { o.B.ey.scale.y = .12; o.B.mo.scale.y = 1.6; } return; }
         const base = r.position.y - heightAt(u.x, u.y);
         o.fall = Math.min(1, o.fall + dt * .05);
         const f = o.fall, kn = o.kneel ?? .2;
@@ -944,6 +1080,7 @@ const B3 = (() => {
             else B.hd.rotation.y = Math.sin(clock * .6 + o.id) * .45;
         }
         if (!idle || o.sp >= .3) B.hd.rotation.y *= .9;
+        if (o.point > 0) { o.point -= dt; if (idle || u.h && !C2.rd && !(C2.swing && C2.swing.t > 0) && !C2.blk && !(C2.draw > 0)) { const k = Math.min(1, o.point / 15); aR = 1.6 * k + aR * (1 - k); eR = .05; aRy = .25; shout = 1; } }   // veliteľ ukazuje mečom smer
         // spätný ráz: zbraň odskočí od krytu
         const rc = (u.rc || 0) > 0 ? u.rc / 14 : 0; if (rc) { aR += .6 * rc; eR += .5 * rc; aRy *= 1 - rc * .5; u.rc -= dt; }
         // plynulé prechody medzi pózami
@@ -958,6 +1095,8 @@ const B3 = (() => {
         B.shL.rotation.set(0, 0, aL); B.elL.rotation.z = Math.max(0, eL);
         B.shL.rotation.x = H.bow ? .15 : -.12; B.shR.rotation.x = .12;
         B.shd.rotation.z = -(aL + eL) * .92 + raise * 1.45;   // štít ostáva zvislo čelom vpred (pod šípmi nad hlavou)
+        if (H.shield && !u.h && u.tg && (u.bd ?? 99) < 45) { let ra = Math.atan2(u.tg.y - u.y, u.tg.x - u.x) - u.f; ra = Math.atan2(Math.sin(ra), Math.cos(ra)); B.shd.rotation.y = Math.max(-.6, Math.min(.6, -ra)) * .6; } else B.shd.rotation.y *= .9;   // štít sa natočí k súperovi
+        if (!u.h && !o.mount && (u.bd ?? 99) < 26 && !(o.atk > 0)) { B.ch.rotation.z -= .14; if (H.shield) { B.shL.rotation.z = Math.max(B.shL.rotation.z, .95); B.elL.rotation.z = Math.max(B.elL.rotation.z, 1); } if (o.sp < .3) { B.lgL.rotation.z += .3; B.lgR.rotation.z -= .22; B.knR.rotation.z -= .2; } }   // tlačenica v šíku: predklon, štít vpred, nohy zapreté
         B.ch.rotation.y = aRy * .3;   // trup sa otáča so švihom
         // plášť a zástava na pružine: vejú v behu, rozhojdajú sa pri otočke, dobiehajú pri zastavení
         const ry = o.root.rotation.y, dy = Math.atan2(Math.sin(ry - o.ry0), Math.cos(ry - o.ry0)); o.ry0 = ry;
@@ -965,9 +1104,60 @@ const B3 = (() => {
         o.cv += ((ct - o.cz) * .1 - o.cv * .16) * dd; o.cz += o.cv * dd; o.cxv += -dy * .35 + (-o.cx * .08 - o.cxv * .14) * dd; o.cx += o.cxv * dd;
         B.cape.rotation.z = Math.max(-1.3, Math.min(.3, o.cz)); B.cape.rotation.x = Math.max(-.6, Math.min(.6, o.cx));
         if (o.flag) { o.flag.rotation.x = Math.sin(clock * 2 + o.ph) * .04 + o.cx * .3; o.flag.rotation.z = (o.cz + .12) * .25; }
+        // obojručná zbraň a kopija: ľavá ruka drží rukoväť (inverzná kinematika ramena a lakťa)
+        if (H.two && !u.rout && QN() >= 1 && !(H.bow) && Math.hypot(cam ? cam.position.x - u.x : 0, cam ? cam.position.z - u.y : 0) < 380) armIK(o, H.twoY);
         // detail tváre a prilby sa na diaľku skryje
         const far = cam && Math.hypot(cam.position.x - u.x, cam.position.z - u.y) > [0, 300, 420, 650][QN()];
         B.det.scale.setScalar(far ? .001 : 1);
+    }
+    // ---------- kosti podľa bodov: mierenie kosti, inverzná kinematika ramena, handrová bábka ----------
+    const IKV = { t: null, a: null, b: null, c: null, q: null, q2: null };
+    function aimBone(bone, target, rest) {
+        const t = T(); if (!IKV.a) { IKV.a = new t.Vector3(); IKV.b = new t.Vector3(); IKV.q = new t.Quaternion(); IKV.q2 = new t.Quaternion(); }
+        bone.parent.updateWorldMatrix(true, false); bone.updateWorldMatrix(false, false);
+        const p = bone.getWorldPosition(IKV.a), d = IKV.b.copy(target).sub(p); if (d.lengthSq() < 1e-6) return; d.normalize();
+        bone.parent.getWorldQuaternion(IKV.q).invert(); d.applyQuaternion(IKV.q).normalize();
+        bone.quaternion.setFromUnitVectors(rest || DOWN, d); bone.updateWorldMatrix(false, false);
+    }
+    let DOWN = null;
+    function armIK(o, gy) {
+        const t = T(); if (!DOWN) DOWN = new t.Vector3(0, -1, 0); const B = o.B, L = o.H.lens, k = o.scaleH || 1, a1 = L.a1 * k, a2 = L.a2 * k;
+        o.root.updateMatrixWorld(true); const S = B.shL.getWorldPosition(new t.Vector3()), T1 = B.hR.localToWorld(new t.Vector3(0, gy, 0)), dir = T1.clone().sub(S); let d = dir.length(); if (d < .01) return; dir.divideScalar(d); d = Math.min(d, a1 + a2 - .05);
+        const x = (a1 * a1 - a2 * a2 + d * d) / (2 * d), h = Math.sqrt(Math.max(0, a1 * a1 - x * x)), pole = new t.Vector3(0, -1, 0); pole.addScaledVector(dir, -pole.dot(dir)).normalize();
+        const E = S.clone().addScaledVector(dir, x).addScaledVector(pole, h); aimBone(B.shL, E); aimBone(B.elL, T1);
+    }
+    /** Handrová bábka (Verlet): 13 bodov tela s väzbami, gravitácia, zem, odrážanie od iných padlých; podľa bodov sa natočí telo a končatiny. */
+    let RAGS = [];
+    function ragStart(o, u) {
+        if (!o.B || o.mount || o.tp.boss || QN() < 1 || !o.inS || !o.H.lens || RAGS.filter(r => !r.rag.done).length >= 24) return false;
+        const t = T(), B = o.B, L = o.H.lens, k = o.scaleH || 1; o.root.updateMatrixWorld(true);
+        const w = (b, y = 0) => b.localToWorld(new t.Vector3(0, y, 0)), P = { Lp: w(B.lgL), Rp: w(B.lgR), Ls: w(B.shL), Rs: w(B.shR), Hd: w(B.hd), Lk: w(B.knL), Rk: w(B.knR), Lf: w(B.knL, -L.ls), Rf: w(B.knR, -L.ls), Le: w(B.elL), Re: w(B.elR), Lh: w(B.hL), Rh: w(B.hR) };
+        const ka = u.lhA != null ? u.lhA : -o.root.rotation.y + Math.PI, kv = .35 + o.hit * .5 + (o.kbx || o.kbz ? .4 : 0), V = {};
+        for (const n in P) { const up = n === 'Hd' || n[1] === 's' || n[1] === 'e' || n[1] === 'h' ? 1 : .35; V[n] = P[n].clone().sub(new t.Vector3(Math.cos(ka) * kv * up, .15 * up, Math.sin(ka) * kv * up)); }
+        const pairs = [['Lp', 'Rp'], ['Ls', 'Rs'], ['Lp', 'Ls'], ['Rp', 'Rs'], ['Lp', 'Rs'], ['Rp', 'Ls'], ['Hd', 'Ls'], ['Hd', 'Rs'], ['Hd', 'Lp'], ['Hd', 'Rp'], ['Lp', 'Lk'], ['Lk', 'Lf'], ['Rp', 'Rk'], ['Rk', 'Rf'], ['Ls', 'Le'], ['Le', 'Lh'], ['Rs', 'Re'], ['Re', 'Rh']];
+        const C2 = pairs.map(([a, b]) => [a, b, P[a].distanceTo(P[b]), 0]); C2.push(['Lp', 'Lf', (L.lt + L.ls) * k * .55, 1], ['Rp', 'Rf', (L.lt + L.ls) * k * .55, 1], ['Ls', 'Lh', (L.a1 + L.a2) * k * .4, 1], ['Rs', 'Rh', (L.a1 + L.a2) * k * .4, 1]);
+        o.rag = { P, V, C: C2, still: 0, done: 0, sm0: o.sm.position.clone(), k, hipY: o.H.hipY }; RAGS.push(o); if (RAGS.length > 40) { const i = RAGS.findIndex(r => r.rag.done); RAGS.splice(i >= 0 ? i : 0, 1); }
+        B.hip.position.set(0, o.H.hipY, 0); B.hip.rotation.set(0, 0, 0); B.ch.rotation.set(0, 0, 0); B.ch.scale.set(1, 1, 1);
+        return true;
+    }
+    function ragStep(o, dt) {
+        const R2 = o.rag; if (R2.done) return;
+        const h = Math.max(.02, Math.min(2, dt)), g = .05 * h * h, ih = .985 / (R2.hp || 1); let mv = 0; R2.hp = h;   // rýchlosť z posunu za predošlý krok (premenlivý krok aj v spomalení)
+        for (const n in R2.P) { const p = R2.P[n], q = R2.V[n], vx = (p.x - q.x) * ih, vy = (p.y - q.y) * ih, vz = (p.z - q.z) * ih; q.copy(p); p.x += vx * h; p.y += vy * h - g; p.z += vz * h; mv = Math.max(mv, Math.abs(vx) + Math.abs(vy) + Math.abs(vz)); }
+        for (let it = 0; it < 5; it++) {
+            for (const [a, b, L, min] of R2.C) { const A = R2.P[a], Bp = R2.P[b], dx = Bp.x - A.x, dy = Bp.y - A.y, dz = Bp.z - A.z, d = Math.hypot(dx, dy, dz) || 1e-4; if (min && d >= L) continue; const f = (d - L) / d * .5; A.x += dx * f; A.y += dy * f; A.z += dz * f; Bp.x -= dx * f; Bp.y -= dy * f; Bp.z -= dz * f; }
+            for (const n in R2.P) { const p = R2.P[n], gy = heightAt(p.x, p.z) + .7 * R2.k; if (p.y < gy) { p.y = gy; const q = R2.V[n]; q.x += (p.x - q.x) * .45; q.z += (p.z - q.z) * .45; } }
+            for (const r of RAGS) { if (r === o || !r.rag) continue; const O = r.rag.P; if (Math.abs(O.Lp.x - R2.P.Lp.x) > 30 || Math.abs(O.Lp.z - R2.P.Lp.z) > 30) continue;   // padlí sa navzájom nepretínajú
+                for (const n of ['Lp', 'Rp', 'Ls', 'Rs', 'Hd']) for (const m of ['Lp', 'Rp', 'Ls', 'Rs', 'Hd']) { const A = R2.P[n], Bq = O[m], dx = A.x - Bq.x, dy = A.y - Bq.y, dz = A.z - Bq.z, d = Math.hypot(dx, dy, dz), rr = 2.4 * R2.k; if (d < rr && d > 1e-4) { const f = (rr - d) / d * (r.rag.done ? 1 : .5); A.x += dx * f; A.y += dy * f + (rr - d) * .3; A.z += dz * f; } } }
+        }
+        R2.still = mv < .02 ? R2.still + 1 : 0; if (R2.still > 45) R2.done = 1;
+    }
+    function ragApply(o) {
+        const t = T(), R2 = o.rag, P = R2.P, B = o.B, r = o.root;
+        const hm = P.Lp.clone().add(P.Rp).multiplyScalar(.5), sm2 = P.Ls.clone().add(P.Rs).multiplyScalar(.5), Y = sm2.sub(hm).normalize(), Z = P.Rp.clone().sub(P.Lp); Z.addScaledVector(Y, -Z.dot(Y)).normalize(); const X = new t.Vector3().crossVectors(Y, Z);
+        const M = new t.Matrix4().makeBasis(X, Y, Z); r.quaternion.setFromRotationMatrix(M);
+        const off = R2.sm0.clone().add(new t.Vector3(0, (R2.hipY - .3) * (o.sm.scale.y), 0)).applyQuaternion(r.quaternion); r.position.copy(hm).sub(off); r.updateMatrixWorld(true);
+        aimBone(B.lgR, P.Rk); aimBone(B.knR, P.Rf); aimBone(B.lgL, P.Lk); aimBone(B.knL, P.Lf); aimBone(B.shR, P.Re); aimBone(B.elR, P.Rh); aimBone(B.shL, P.Le); aimBone(B.elL, P.Lh);
     }
     /** Kôň a varg: krok (štvortakt), klus (diagonálne páry), cval (s hojdaním tela); hlava, krk a chvost. */
     function poseMount(o, u, dt) {
@@ -1082,7 +1272,7 @@ const B3 = (() => {
         for (const p of PT) {
             if (p.ring) { if (!p.s3 && DUST) { p.s3 = 1; const oa = p.att && units.get(p.att), od = p.def && units.get(p.def); let at = null;
                 if (oa && oa.tip && oa.inS && od && od.inS) { const t = T(), a = new t.Vector3(), d = new t.Vector3(); oa.tip.getWorldPosition(a); (od.B && od.B.shd && p.c === '#c8d8ff' ? od.B.shd : od.root).getWorldPosition(d); if (!(od.B && p.c === '#c8d8ff')) d.y += 14 * (od.scaleH || 1); at = a.lerp(d, .55); }
-                sparks(p.x, p.y, p.c, at); if (p.c === '#c8d8ff') splinters(p.x, p.y, 7, at); } continue; }   // kryt: iskry v mieste stretu zbraní   // kryt alebo pokrik: iskry a záblesk
+                sparks(p.x, p.y, p.c, at); if (p.c === '#c8d8ff') { splinters(p.x, p.y, 7, at); if (od && od.B && od.inS && QN() >= 1 && (od.shN = (od.shN || 0) + 1) <= 6) { const t = T(), m = new t.Mesh(new t.CircleGeometry(.5 + Math.random() * .5, 6), MAT.notch || (MAT.notch = new t.MeshStandardMaterial({ color: C('#2a1a10'), roughness: .9, polygonOffset: true, polygonOffsetFactor: -3 }))); m.rotation.y = Math.PI / 2; const a = Math.random() * 6.283, rr = Math.random() * 3.2; m.position.set(2.32, Math.sin(a) * rr, -.3 + Math.cos(a) * rr); od.B.shd.add(m); } } } continue; }   // zárezy a diery v štíte   // kryt: iskry v mieste stretu zbraní   // kryt alebo pokrik: iskry a záblesk
             if (n >= 900) continue;
             if (p.y0 == null) { p.y0 = p.y; p.x0 = p.x; }
             const up = Math.max(0, (p.y0 - p.y)) + (p.bl ? 2 : 10), cc = CC(p.c || '#ffffff');
@@ -1128,7 +1318,7 @@ const B3 = (() => {
     /** Triesky zo štítu (drevo). */
     function splinters(x, y, n, at) { const h = at ? at.y : heightAt(x, y) + 14; if (at) { x = at.x; y = at.z; } for (let i = 0; i < n; i++) { const a = Math.random() * 6.283; DUST.add({ x, y: h, z: y, vx: Math.cos(a) * 1.2, vy: .8 + Math.random() * 1.4, vz: Math.sin(a) * 1.2, g: .12, l: 26 + Math.random() * 14, c: '#8a6038', s0: 1.8, s1: 1.2, a0: 1 }); } }
     /** Špliechanie vody (brodenie, šíp do rieky). */
-    function splash(x, y, n) { for (let i = 0; i < n; i++) { const a = Math.random() * 6.283; DUST.add({ x, y: -4.3, z: y, vx: Math.cos(a) * .6, vy: .8 + Math.random() * 1.1, vz: Math.sin(a) * .6, g: .1, l: 22 + Math.random() * 10, c: '#dbe8f0', s0: 3, s1: 5, a0: .8 }); } }
+    function splash(x, y, n) { const wy = creekD(x, y) < 12 ? -6.4 : -4.3; for (let i = 0; i < n; i++) { const a = Math.random() * 6.283; DUST.add({ x, y: wy, z: y, vx: Math.cos(a) * .6, vy: .8 + Math.random() * 1.1, vz: Math.sin(a) * .6, g: .1, l: 22 + Math.random() * 10, c: '#dbe8f0', s0: 3, s1: 5, a0: .8 }); } }
     function ring(x, y, r, c = '#ffd0a0') {
         const t = T(), m = new t.Mesh(new t.RingGeometry(.8, 1, 40), new t.MeshBasicMaterial({ color: C(c), transparent: true, opacity: .8, side: t.DoubleSide, depthWrite: false, blending: t.AdditiveBlending }));
         m.rotation.x = -Math.PI / 2; m.position.set(x, heightAt(x, y) + 1.5, y); scene.add(m); debris.push({ ring: m, r, l: 24, l0: 24 });
@@ -1187,7 +1377,8 @@ const B3 = (() => {
             if (e.k === 'charge') {   // náraz jazdy: pešiak odletí, z kopije lietajú triesky, prach; pri kamere krátke spomalenie
                 const o = units.get(e.u); if (o) { o.kbx = (o.kbx || 0) + Math.cos(e.a) * 9; o.kbz = (o.kbz || 0) + Math.sin(e.a) * 9; o.hit = 1; o.hz = 'torso'; }
                 splinters(e.x, e.y, 12); dust(e.x, e.y, 6, 10);
-                if (!slow && cam && Math.hypot(cam.position.x - e.x, cam.position.z - e.y) < 380 && (e.by && e.by.h || Math.random() < .35) && clock - (fxState.chT ?? -99) > 15) { fxState.chT = clock; slow = { t: 42, k: .4, u: e.u }; }
+                const ob = e.by && units.get(e.by); if (ob && ob.B && ob.H.spear && !ob.lance && Math.random() < .6) { ob.lance = 600; ob.B.wp.scale.setScalar(.001); for (let i = 0; i < 3; i++) chunk(e.x, heightAt(e.x, e.y) + 16, e.y, '#7a5a34', .5, 1.2); }   // kopija sa zlomí (nová o chvíľu)
+                if (!slow && cam && Math.hypot(cam.position.x - e.x, cam.position.z - e.y) < 380 && (e.by && e.by.h || Math.random() < .35) && clock - (fxState.chT ?? -99) > 15) { fxState.chT = clock; slow = { t: 42, t0: 42, k: .4, u: e.u, by: e.by }; }
             }
             if (e.k === 'chamber') { sparks(e.x, e.y, '#fff4c0'); sparks(e.x, e.y, '#ffd080'); }
             if (e.k === 'bounce') sparks(e.x, e.y, '#ffffff');
@@ -1227,7 +1418,7 @@ const B3 = (() => {
                 continue;
             }
             if (u.hp <= 0) continue;
-            const dc = Math.hypot(u.x - cx, u.y - cz), mov = o.sp > .4, inRiver = FIELD && FIELD.river && Math.abs(u.x - 720) < 44;
+            const dc = Math.hypot(u.x - cx, u.y - cz), mov = o.sp > .4, inRiver = FIELD && FIELD.river && Math.abs(u.x - 720) < 44 || creekD(u.x, u.y) < 9;
             if (mov && (frameN + o.id) % 6 === 0) trample(u.x, u.y, o.mount ? 6 : 3.5, o.mount ? 16 : 6);
             else if (u.c > 0 && (frameN + o.id) % 20 === 0) trample(u.x, u.y, 4, 5);
             if (dc > 520) continue;
@@ -1590,7 +1781,45 @@ const B3 = (() => {
         b.an.array[b.n * 4] = a0; b.an.array[b.n * 4 + 1] = a1; b.an.array[b.n * 4 + 2] = a2; b.an.array[b.n * 4 + 3] = a3;
         b.im.setMatrixAt(b.n++, M);
     }
-    let M0 = null, M1 = null, frameDt = 1, TV2 = null;
+    let M0 = null, M1 = null, frameDt = 1, TV2 = null, CINE = 0, ORDK = null;
+    /** Rozkazy viditeľné v boji: pri zmene rozkazu zatrúbi trúbka, zástavy plukov zamávajú a velitelia ukážu mečom smer. */
+    function stepOrders() {
+        if (typeof CMB === 'undefined' || !CMB.og) return;
+        const k = JSON.stringify([CMB.og, CMB.fm]); if (ORDK === null) { ORDK = k; return; } if (k === ORDK) return; ORDK = k;
+        if (typeof trumpetCall === 'function') trumpetCall(); else if (typeof snd === 'function') snd('horn');
+        for (const [key, r] of REG) if (key[0] === '0') r.wave = 70;
+        for (const u of U) if (!u.t && (u.cmd || u.h || u.bn) && u.hp > 0) { const o = units.get(u); if (o) o.point = 80; }
+    }
+    /** Tiene dymu: tmavé mäkké škvrny na zemi pod dymom z požiarov (po vetre). */
+    let smokeSh = null;
+    function stepSmokeShade() {
+        if (QN() < 2) return; const t = T();
+        if (!smokeSh) { smokeSh = new t.InstancedMesh(new t.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new t.MeshBasicMaterial({ color: 0x000000, alphaMap: B3G.softTex(), transparent: true, opacity: .22, depthWrite: false }), 24); smokeSh.renderOrder = 3; smokeSh.frustumCulled = false; scene.add(smokeSh); }
+        const src = []; for (const f of fires) src.push([f.x, f.y, 1]); for (const r of roofs) if (r.on) src.push([r.x, r.z, 1.6 * r.k]); if (siege.burn) src.push([siege.tower.position.x, siege.tower.position.z, 1.5]); for (const c of campF) src.push([c.x, c.y, .5]);
+        const M = new t.Matrix4(); let n = 0; for (const [x, y, k] of src) { if (n >= 24) break; for (const d of [26, 52]) { if (n >= 24) break; const px = x + d * .8, pz = y + d * .3; M.makeScale(34 * k + d * .5, 1, 26 * k + d * .4); M.setPosition(px, heightAt(px, pz) + .5, pz); smokeSh.setMatrixAt(n++, M); } }
+        smokeSh.count = n; smokeSh.instanceMatrix.needsUpdate = true;
+    }
+    /** Odrazy okolia v brnení (ultra): malá kocková kamera pri hrdinovi raz za chvíľu nasníma okolie (oheň, vojaci, obloha). */
+    let cubeRT = null, cubeCam = null;
+    function stepEnv(force) {
+        if (QN() < 3 || !force && (AQ.lvl >= 1 || photo || frameN % 45 !== 7)) return;
+        const t = T(); if (!cubeRT) { cubeRT = new t.WebGLCubeRenderTarget(64, { type: t.HalfFloatType }); cubeCam = new t.CubeCamera(4, 1200, cubeRT); }
+        const h = U[0]; cubeCam.position.set(h.x, heightAt(h.x, h.y) + 22, h.y);
+        const hide = [grassM, overlay, wx, arTr, blobs].filter(Boolean), was = hide.map(m => m.visible); hide.forEach(m => m.visible = false);
+        const o = units.get(h); if (o) o.root.visible = false;
+        const au = R.shadowMap.autoUpdate; R.shadowMap.autoUpdate = false; cubeCam.update(R, scene); R.shadowMap.autoUpdate = au; cubeRT.texture.needsPMREMUpdate = true; scene.environment = cubeRT.texture;
+        hide.forEach((m, i) => m.visible = was[i]); if (o) o.root.visible = true;
+    }
+    /** Ohne vrhajú tiene (ultra): jedno bodové svetlo s tieňom pri najbližšom ohni. */
+    let fireL = null;
+    function stepFireLight() {
+        if (QN() < 3) return; const t = T();
+        const src = []; for (const f of fires) src.push([f.x, heightAt(f.x, f.y) + 10, f.y, 1]); for (const r of roofs) if (r.on) src.push([r.x, r.y + 12, r.z, r.k]); for (const c of campF) src.push([c.x, heightAt(c.x, c.y) + 8, c.y, .6]);
+        if (!src.length || !cam) { if (fireL) fireL.intensity = 0; return; }
+        src.sort((a, b) => Math.hypot(a[0] - cam.position.x, a[2] - cam.position.z) - Math.hypot(b[0] - cam.position.x, b[2] - cam.position.z));
+        if (!fireL) return;
+        const [x, y, z, k] = src[0]; fireL.position.set(x, y, z); fireL.intensity = (WX.night ? 260 : 120) * k * (.85 + Math.sin(clock * 13) * .15); if (frameN % 4 === 0) fireL.shadow.needsUpdate = true;
+    }
     const HALTON = [[.5, .333], [.25, .667], [.75, .111], [.125, .444], [.625, .778], [.375, .222], [.875, .556], [.0625, .889]];
     /** Ohne pri kamere pre chvenie horúceho vzduchu: [x, y obrazovky, polomer, sila]. */
     function hazeSpots() {
@@ -1607,7 +1836,7 @@ const B3 = (() => {
     /** Zástavy plukov: nad každou skupinou (pechota, lukostrelci, jazda každej strany) sa vznáša veľká zástava frakcie, aby bolo vidieť šíky aj z diaľky. */
     let REG = new Map();
     function stepRegiments() {
-        if (frameN % 10 !== 0 && REG.size) { for (const r of REG.values()) if (r.g.visible) { r.g.position.x += (r.x - r.g.position.x) * .25; r.g.position.z += (r.y - r.g.position.z) * .25; r.g.position.y += (heightAt(r.g.position.x, r.g.position.z) + r.h - r.g.position.y) * .25; } return; }
+        if (frameN % 10 !== 0 && REG.size) { for (const r of REG.values()) if (r.g.visible) { if (r.wave > 0) r.g.rotation.z = Math.sin(clock * 9) * .35 * Math.min(1, r.wave / 30); r.g.position.x += (r.x - r.g.position.x) * .25; r.g.position.z += (r.y - r.g.position.z) * .25; r.g.position.y += (heightAt(r.g.position.x, r.g.position.z) + r.h - r.g.position.y) * .25; } return; }
         const acc = new Map();
         for (const u of U) { if (u.hp <= 0 || u.fled || u.h || u.boss) continue; const o = units.get(u); if (!o || !o.tp.humanoid) continue;
             const k = (u.t ? 1 : 0) + (o.mount ? 'j' : o.tp.humanoid.bow ? 'l' : 'p'), a = acc.get(k) || acc.set(k, { x: 0, y: 0, n: 0, f: u.t ? (u.fc ?? 9) : G.fac, big: 0 }).get(k); a.x += u.x; a.y += u.y; a.n++; a.big = Math.max(a.big, o.mount ? 1 : 0); }
@@ -1616,6 +1845,7 @@ const B3 = (() => {
             if (!r) { const t = T(), g = new t.Group(), pole = mesh(Part().add('cyl6', '#3a2a1a', [0, -6, 0], [0, 0, 0], [.9, 30, .9]).add('cone6', '#c8a040', [0, 10, 0], [0, 0, 0], [1.6, 3, 1.6], { m: 1 }).build()); pole.castShadow = false; g.add(pole); const f = bannerMesh(a.f, 16, 12); f.position.set(0, 3, 0); g.add(f); scene.add(g); r = { g, x: a.x / a.n, y: a.y / a.n, h: 58 }; r.g.position.set(r.x, heightAt(r.x, r.y) + r.h, r.y); REG.set(k, r); }
             r.x = a.x / a.n; r.y = a.y / a.n; r.h = a.big ? 72 : 58; r.g.visible = a.n >= 6 && (!cam || Math.hypot(cam.position.x - r.x, cam.position.z - r.y) > 170);   // pri kamere by zakrývala výhľad
             if (cam) r.g.rotation.y = Math.atan2(cam.position.x - r.x, cam.position.z - r.y) + Math.PI / 2;   // zástava natočená ku kamere
+            if (r.wave > 0) { r.wave -= 10; r.g.rotation.z = Math.sin(clock * 9) * .35 * Math.min(1, r.wave / 30); } else r.g.rotation.z = 0;   // signál zástavou
         }
         for (const [k, r] of REG) if (!acc.has(k)) r.g.visible = false;
     }
@@ -1720,7 +1950,7 @@ const B3 = (() => {
             if (u.fled) { if (o.inS) { scene.remove(o.root); o.inS = 0; } continue; }
             if (u.h && heroKey(u) !== o.hk) { const ph = o.ph; scene.remove(o.root); o = rig(u); o.ph = ph; scene.add(o.root); o.inS = 1; units.set(u, o); }   // hrdina zosadol, zmenil zbraň alebo prišiel o štít
             // vzdialený vojak: bez kostí, v hromadnej sieti so zástupom rovnakého vzhľadu
-            const far = !photo && LD > 0 && !u.h && !u.boss && o.B && !o.tp.boss && !o.tp.beast && !o.unh && Math.hypot(u.x - cx, u.y - cz) > LD && !(u.hp <= 0 && !o.dead);
+            const far = !photo && LD > 0 && !o.rag && !u.h && !u.boss && o.B && !o.tp.boss && !o.tp.beast && !o.unh && Math.hypot(u.x - cx, u.y - cz) > LD && !(u.hp <= 0 && !o.dead);
             if (far !== !!o.far) { o.far = far; if (far && o.inS) { scene.remove(o.root); o.inS = 0; } else if (!far && !o.inS) { scene.add(o.root); o.inS = 1; } }
             if (o.B && u.hp > 0 && o.H.shield && (frameN + o.id) % 6 === 0) { let th = 0; for (const a of fly) if (a.t !== u.t && Math.abs(a.x - u.x) < 130 && Math.abs(a.y - u.y) < 130 && (u.x - a.x) * a.vx + (u.y - a.y) * a.vy > 0) { th = 1; break; } o.raise = th ? 40 : Math.max(0, (o.raise || 0) - 6); }
             else if (o.raise > 0) o.raise -= sdt;
@@ -1730,7 +1960,11 @@ const B3 = (() => {
         }
         for (const b of FAR.values()) { b.im.count = b.n; b.im.instanceMatrix.needsUpdate = true; if (b.an) b.an.needsUpdate = true; }
         B3G.U_DIRT.value = dN ? dSum / dN * DIRT_K : 0;
-        updSiege(); stepRegiments(); if (!photo) stepProps(sdt); syncArrows(); syncParticles(); if (!photo) { runFx(sdt); stepWeather(sdt); stepPanorama(sdt); stepLeaves(sdt); stepRoofs(sdt); } stepBirds(); stepArrowTrails(); drawOverlay(); camUpdate(dt); computeAim(); stepBlobs();
+        if (waterM || creekM) { let n = 0; const F = (waterM || creekM).material.uniforms.uFoam.value; for (const u of U) { if (n >= 8 || u.hp <= 0 || u.fled) continue; const o = units.get(u); if (!o || !o.inS) continue; if (!(FIELD && FIELD.river && Math.abs(u.x - 720) < 44) && creekD(u.x, u.y) > 9) continue; F[n++].set(u.x, u.y, (o.mount ? 6 : 3.4) * (o.sp > .3 ? 1.3 : .8)); } for (let i = n; i < 8; i++) F[i].set(-999, -999, 0); if (waterM && creekM) creekM.material.uniforms.uFoam.value = F; }   // pena okolo brodiacich sa
+        updSiege(); stepRegiments(); if (!photo) stepProps(sdt); syncArrows(); syncParticles(); if (!photo) { runFx(sdt); stepWeather(sdt); stepPanorama(sdt); stepLeaves(sdt); stepRoofs(sdt); stepOrders(); } stepBirds(); stepArrowTrails(); drawOverlay(); camUpdate(dt); computeAim(); stepBlobs(); stepSmokeShade(); stepEnv(); stepFireLight();
+        // filmová kamera: v spomalení a pri nástupe jemné chvenie z ruky a širokouhlé pásy
+        const cine = !photo && (intro || (slow && slow.u)) ? 1 : 0; CINE += (cine - CINE) * Math.min(1, .08 * dt);
+        if (CINE > .01 && cam) { const hh = CINE * (intro ? .5 : 1); cam.position.x += Math.sin(clock * 1.7) * .5 * hh + Math.sin(clock * 4.3) * .15 * hh; cam.position.y += Math.sin(clock * 2.3 + 1) * .35 * hh; cam.rotation.z += Math.sin(clock * 1.1) * .006 * hh; }
         if (comp) {
             const F = comp.fin, Gd = grade, q = QN(), O = comp.opt, opt = typeof OPT !== 'undefined' ? OPT : {};
             F.bloom.value = Gd.bloom; F.sat.value = Gd.sat * (1 - (wxS ? wxS.dark * .12 : 0)); F.con.value = Gd.con; F.lift.value.set(...Gd.lift); F.gain.value.set(...Gd.gain); F.vig.value = photo ? .6 : .95; F.expo.value = WX.night ? 1.9 : WX.n === 'storm' || WX.n === 'rain' ? 1.25 : 1.12;
@@ -1742,7 +1976,7 @@ const B3 = (() => {
             O.fogA = (WX.night ? .0016 : .0007 + (dayLight().low) * .0016) + wS.rain * .0022 + wS.fog * .006; O.fogB = .028;
             const CU = comp.comb; CU.uFogC.value.copy(scene.fog ? scene.fog.color : C('#888')); CU.uSunDir.value.copy(sunDir); CU.uSunC.value.copy(sun.color).multiplyScalar(WX.night ? .15 : .9 * (1 - wS.dark));
             O.mb = opt.mblur ? .9 : 0;
-            const ft = photo ? null : slow ? slow.u : null;
+            const ft = photo ? null : slow ? (slow.by && slow.t0 && slow.t > slow.t0 * .55 ? slow.by : slow.u) : null;   // presun ostrenia z útočníka na zasiahnutého
             O.dof = opt.dof !== false && (photo || slow) && AQ.lvl < 3 ? 1 : 0; O.focus = ft ? cam.position.distanceTo(new (T().Vector3)(ft.x, heightAt(ft.x, ft.y) + 14, ft.y)) : -1;
             O.grain = opt.grain ? .045 : 0; O.adapt = 1;
             // tiene mrakov putujú po krajine, odraz na mokrej zemi, horúci vzduch nad ohňom, ladenie podľa dennej doby, časové vyhladenie
@@ -1751,6 +1985,7 @@ const B3 = (() => {
             O.hz = hazeSpots(); const lo = dayLight().low;
             O.shT = O.shT || new (T().Vector3)(); O.hiT = O.hiT || new (T().Vector3)();
             if (WX.night) { O.shT.set(-.01, 0, .025); O.hiT.set(0, 0, .01); } else { O.shT.set(-.012 * lo, 0, .02 * lo); O.hiT.set(.03 * lo, .012 * lo, -.02 * lo); }
+            O.bars = CINE;
             O.taa = (opt.taa === true || (opt.taa == null && q === 3)) && q >= 2 && AQ.lvl < 2 && !photo;
             renderRefl();
             if (O.taa) { const j = HALTON[frameN % 8], e = cam.projectionMatrix.elements, s0 = R.getDrawingBufferSize(TV2 || (TV2 = new (T().Vector2)())); e[8] += (j[0] - .5) * 2 / s0.x; e[9] += (j[1] - .5) * 2 / s0.y; cam.projectionMatrixInverse.copy(cam.projectionMatrix).invert(); }
@@ -1778,6 +2013,7 @@ const B3 = (() => {
             at(new t.LineSegments(tg, new t.LineBasicMaterial({ color: C('#f0f4ff'), fog: false })));
             at(new t.Mesh(new t.CircleGeometry(1, 8), new t.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .35, depthWrite: false })));
             at(arrowMesh(0, 0)); at(arrowMesh(1, 0));
+            stepEnv(true);
             if (R.compileAsync) await R.compileAsync(scene, cam); else R.compile(scene, cam);
         } catch (e) { try { R.compile(scene, cam); } catch (e2) { } }
         if (!on) return;
@@ -1791,7 +2027,7 @@ const B3 = (() => {
         if (canvas) canvas.style.display = 'none';
         if (scene) scene.traverse(o => { if (o.geometry && !TPLgeo(o.geometry)) o.geometry.dispose(); });
         if (comp) { comp.dispose(); comp = null; }
-        if (reflRT) { reflRT.dispose(); reflRT = null; } FAR = new Map(); pano = null; birds = null; prints = null; arTr = null; bolt = null; wxS = null; roofs = []; roofL = []; loose = []; panoSmoke = []; volcano = null;
+        if (reflRT) { reflRT.dispose(); reflRT = null; } if (cubeRT) { cubeRT.dispose(); cubeRT = null; } creekM = null; FAR = new Map(); pano = null; birds = null; prints = null; arTr = null; bolt = null; wxS = null; roofs = []; roofL = []; loose = []; panoSmoke = []; volcano = null;
         FIRE = DUST = null; debris = []; rocks = []; fires = []; trails = []; braziers = []; scene = null; units = new Map(); arrowPool = []; stuck = []; decals = []; terrain = null; wx = null; torches = []; grassM = waterM = blobs = null;
         if (hTex) { hTex.dispose(); hTex = null; } if (trTex) { trTex.dispose(); trTex = null; }
         if (R) R.renderLists.dispose();
