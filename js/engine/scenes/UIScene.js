@@ -133,7 +133,7 @@ class UIScene extends Phaser.Scene {
         // hlásenia ako vo Warbande (zásahy, zabitia) vľavo dole
         if (!this.msgT) this.msgT = Array.from({ length: 7 }, () => this.add.text(10, 0, '', txtStyle(10, '#e8d8a8', { stroke: '#000', strokeThickness: 3 })).setOrigin(0, 1).setDepth(5));
         const M = (C.msgs || []).filter(m => (m.t -= 1) > 0); C.msgs = M;
-        this.msgT.forEach((t, i) => { const m = M[M.length - 1 - i]; if (!m) { t.setVisible(false); return; } t.setText(m.s).setColor(m.c).setAlpha(Math.min(1, m.t / 60)).setPosition(10, H - 2 * 26 - 14 - i * 13).setVisible(true); });
+        this.msgT.forEach((t, i) => { const m = M[M.length - 1 - i]; if (!m) { t.setVisible(false); return; } t.setText(m.s); if (t._c !== m.c) { t._c = m.c; t.setColor(m.c); } t.setAlpha(Math.min(1, m.t / 60)).setPosition(10, H - 2 * 26 - 14 - i * 13).setVisible(true); });
         // zameriavač v strede (mierenie ako vo Warbande)
         if (typeof B3 !== 'undefined' && B3.isOn() && B3.look && !B3.photo) {
             const cx = W / 2, cy = H / 2, dr = C.draw > 0 ? Math.min(1, C.draw / 26) : 0, bow = C.wpn === 'r' || C.draw > 0;

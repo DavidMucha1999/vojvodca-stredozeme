@@ -18,6 +18,7 @@ with sync_playwright() as p:
     pg.goto('file://' + os.path.join(ROOT, 'Vojvodca Stredozeme.html')); pg.wait_for_timeout(4000)
     try: pg.wait_for_function("typeof game !== 'undefined' && game.scene.getScenes(true).some(s => s.sys.settings.key === 'Intro')", timeout=30000)
     except Exception: pass
+    pg.evaluate("OPT.loadScr = false")   # načítavaciu obrazovku pred bitkou skúša len 3D časť nižšie
     pg.evaluate("window.__played = 0; { const p0 = SoundFX.play; SoundFX.play = k => { const r = p0(k); if (r) __played++; return r; }; }")
     E = pg.evaluate
     def waitfor(cond, ms=3000):
@@ -63,8 +64,12 @@ with sync_playwright() as p:
     waitfor("game.scene.getScene('UI').legLayer.list.length > 20")
     check('Legenda v Phaseri', E("game.scene.getScene('UI').legLayer.list.length") > 20)
     # 3D bitka (js/engine/b3d.js): bojisko a vojaci v Three.js pod priehľadným Phaserom
-    E("LEG = false; OPT.b3d = true; OPT.gfx = 'med'; OPT.intro3d = true; startBattle(E.find(e => hos(e.f, G.fac) && !e.nz))"); pg.wait_for_timeout(1500)
-    waitfor("game.scene.getScene('Battle').d3 === true", 60000)
+    E("LEG = false; OPT.b3d = true; OPT.gfx = 'med'; OPT.intro3d = true; OPT.loadScr = true; startBattle(E.find(e => hos(e.f, G.fac) && !e.nz))")
+    waitfor("LoadScr.on", 20000)
+    check('Načítavacia obrazovka pred bitkou (kreslená, s prsteňom a vojskami)', E("LoadScr.on && !!document.querySelector('#loadScr canvas')"), E("[LoadScr.on, mode, game.scene.isActive('Battle'), game.scene.getScene('Battle').ready]"))
+    waitfor("game.scene.getScene('Battle').d3 === true && !LoadScr.on", 60000)
+    check('Po načítaní zmizne a boj začne', E("!LoadScr.on && game.scene.getScene('Battle').ready === true"))
+    E("OPT.loadScr = false")
     check('3D bitka beží', E("game.scene.getScene('Battle').d3 === true && B3.isOn() && document.getElementById('b3d').style.display === 'block'"), E("[game.scene.getScene('Battle').d3, typeof THREE, B3.want()]"))
     pg.wait_for_timeout(1500)
     check('3D: každý vojak má model', E("U.filter(u => !u.fled).every(u => !!B3.rigOf(u))"))

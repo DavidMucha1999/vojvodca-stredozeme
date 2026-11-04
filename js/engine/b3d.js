@@ -254,7 +254,7 @@ const B3 = (() => {
         if (q >= 1) { blobs = new t.InstancedMesh(new t.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new t.MeshBasicMaterial({ color: 0x000000, alphaMap: B3G.softTex(), transparent: true, opacity: .42, depthWrite: false }), 700); blobs.count = 0; blobs.renderOrder = 3; blobs.frustumCulled = false; scene.add(blobs); }
         FIRE = Psys(2400, true); DUST = Psys(1600, false); debris = []; rocks = []; fxState = {}; fires = []; trails = []; braziers = [];
         // záblesky svetla (kryt, údery) a fakle v noci
-        flashL = [0, 1, 2].map(() => { const l = new t.PointLight(C('#ffd080'), 0, 120, 1); scene.add(l); return l; });
+        flashL = [0, 1].map(() => { const l = new t.PointLight(C('#ffd080'), 0, 120, 1); scene.add(l); return l; });
         torches = [];
         if (night) for (let i = 0; i < 5; i++) { const l = new t.PointLight(C('#ffa040'), 14, 220, 1); scene.add(l); torches.push(l); }
     }
@@ -602,7 +602,7 @@ const B3 = (() => {
         const t = T(), bones = {}, list = H.BN.list.map(([n, p, o]) => { const bn = new t.Bone(); bn.name = n; bn.position.set(...o); bones[n] = bn; return bn; });
         H.BN.list.forEach(([n, p]) => { if (p) bones[p].add(bones[n]); });
         if (bones.shR) { bones.shR.rotation.order = 'YZX'; bones.shL.rotation.order = 'YZX'; }
-        const sm = new t.SkinnedMesh(H.geo, own ? [B3G.chrMat('c', own), B3G.chrMat('m', own)] : chrMats()); sm.add(bones[H.BN.root]); sm.updateMatrixWorld(true); sm.bind(new t.Skeleton(list));
+        const sm = new t.SkinnedMesh(H.geo, chrMats()); /* spoločné materiály (menej prepínania stavu GPU) */ sm.add(bones[H.BN.root]); sm.updateMatrixWorld(true); sm.bind(new t.Skeleton(list)); sm.boundingSphere = H.geo.boundingSphere.clone();   // guľa zo šablóny: three.js by ju inak počítal cez kosti z každého vrcholu (sekanie pri novom vojakovi)
         sm.castShadow = sm.receiveShadow = shadowsOn();
         return { sm, B: bones };
     }
@@ -902,7 +902,7 @@ const B3 = (() => {
             j: Part().add('cyl6', '#8a6238', [0, 0, 0], [0, 0, Math.PI / 2], [.9, 26, .9]).add('cone', '#a8acb4', [14, 0, 0], [0, 0, -Math.PI / 2], [1.8, 4, 1.8]).build(),
             b: Part().add('cyl6', '#5a4a3a', [0, 0, 0], [0, 0, Math.PI / 2], [.7, 9, .7]).add('cone', '#8a8e96', [5, 0, 0], [0, 0, -Math.PI / 2], [1.2, 2, 1.2]).build()
         };
-        return mesh(jav ? AGEO.j : bolt ? AGEO.b : AGEO.a);
+        const m = mesh(jav ? AGEO.j : bolt ? AGEO.b : AGEO.a); m.castShadow = false; return m;
     }
     function syncArrows() {
         const seen = new Set(), t = T(), ev = (x, y) => typeof elevSim === 'function' ? elevSim(x, y) : 0;
@@ -936,7 +936,7 @@ const B3 = (() => {
             if (p.ring) { if (!p.s3 && DUST) { p.s3 = 1; sparks(p.x, p.y, p.c); if (p.c === '#c8d8ff') splinters(p.x, p.y, 7); } continue; }   // kryt alebo pokrik: iskry a záblesk
             if (n >= 900) continue;
             if (p.y0 == null) { p.y0 = p.y; p.x0 = p.x; }
-            const up = Math.max(0, (p.y0 - p.y)) + (p.bl ? 2 : 10), cc = C(p.c || '#ffffff');
+            const up = Math.max(0, (p.y0 - p.y)) + (p.bl ? 2 : 10), cc = CC(p.c || '#ffffff');
             ptsPos[n * 3] = p.x; ptsPos[n * 3 + 1] = heightAt(p.x, p.y0) + up; ptsPos[n * 3 + 2] = p.y0;
             ptsCol[n * 3] = cc.r; ptsCol[n * 3 + 1] = cc.g; ptsCol[n * 3 + 2] = cc.b; n++;
         }
@@ -949,21 +949,22 @@ const B3 = (() => {
         const t = T(), pos = new Float32Array(max * 3), col = new Float32Array(max * 3), al = new Float32Array(max), sz = new Float32Array(max), P = [];
         const g = new t.BufferGeometry(); g.setAttribute('position', new t.BufferAttribute(pos, 3)); g.setAttribute('color', new t.BufferAttribute(col, 3)); g.setAttribute('a', new t.BufferAttribute(al, 1)); g.setAttribute('s', new t.BufferAttribute(sz, 1));
         const m = new t.ShaderMaterial({ transparent: true, depthWrite: false, blending: additive ? t.AdditiveBlending : t.NormalBlending, vertexColors: true,
-            vertexShader: 'attribute float a; attribute float s; varying float vA; varying vec3 vC; void main(){ vA = a; vC = color; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = s * 320.0 / max(1.0, -mv.z); gl_Position = projectionMatrix * mv; }',
+            vertexShader: 'attribute float a; attribute float s; varying float vA; varying vec3 vC; void main(){ vA = a * smoothstep(6.0, 40.0, -(modelViewMatrix * vec4(position, 1.0)).z); vC = color; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = min(s * 320.0 / max(1.0, -mv.z), 150.0); gl_Position = projectionMatrix * mv; }',
             fragmentShader: 'varying float vA; varying vec3 vC; void main(){ float d = length(gl_PointCoord - 0.5); if (d > 0.5) discard; gl_FragColor = vec4(vC * ' + (additive ? '2.2' : '1.0') + ', vA * smoothstep(0.5, 0.1, d)); }' });
-        const pts3 = new t.Points(g, m); pts3.frustumCulled = false; pts3.renderOrder = 6; scene.add(pts3);
+        const pts3 = new t.Points(g, m); pts3.frustumCulled = false; pts3.renderOrder = 6; scene.add(pts3); const TC = new t.Color();
         return {
-            add(o) { if (P.length < max) P.push({ vx: 0, vy: 0, vz: 0, g: 0, s0: 8, s1: 8, a0: 1, ...o, l0: o.l, c: C(o.c || '#ffffff'), c1: o.c1 ? C(o.c1) : null }); },
+            add(o) { if (P.length < max) P.push({ vx: 0, vy: 0, vz: 0, g: 0, s0: 8, s1: 8, a0: 1, ...o, l0: o.l, c: CC(o.c || '#ffffff'), c1: o.c1 ? CC(o.c1) : null }); },
             get n() { return P.length; },
             step(dt) {
                 let n = 0;
                 for (let i = P.length - 1; i >= 0; i--) { const q = P[i]; q.l -= dt; if (q.l <= 0) { P.splice(i, 1); continue; } q.x += q.vx * dt; q.y += q.vy * dt; q.z += q.vz * dt; q.vy -= q.g * dt; const fl = heightAt(q.x, q.z) + .5; if (q.y < fl) { q.y = fl; q.vy = 0; q.vx *= .8; q.vz *= .8; } }
-                for (const q of P) { const k = q.l / q.l0, c = q.c1 ? q.c.clone().lerp(q.c1, 1 - k) : q.c; pos[n * 3] = q.x; pos[n * 3 + 1] = q.y; pos[n * 3 + 2] = q.z; col[n * 3] = c.r; col[n * 3 + 1] = c.g; col[n * 3 + 2] = c.b; al[n] = q.a0 * Math.min(1, k * 2.2); sz[n] = q.s0 + (q.s1 - q.s0) * (1 - k); n++; }
+                for (const q of P) { const k = q.l / q.l0, c = q.c1 ? TC.copy(q.c).lerp(q.c1, 1 - k) : q.c; pos[n * 3] = q.x; pos[n * 3 + 1] = q.y; pos[n * 3 + 2] = q.z; col[n * 3] = c.r; col[n * 3 + 1] = c.g; col[n * 3 + 2] = c.b; al[n] = q.a0 * Math.min(1, k * 2.2); sz[n] = q.s0 + (q.s1 - q.s0) * (1 - k); n++; }
                 g.setDrawRange(0, n); for (const k of ['position', 'color', 'a', 's']) g.attributes[k].needsUpdate = true;
             }
         };
     }
     let FIRE = null, DUST = null, debris = [], rocks = [], fxState = {};
+    const CCM = new Map(), CC = c => { let v = CCM.get(c); if (!v) { v = C(c); CCM.set(c, v); } return v; };   // farby častíc sa parsujú raz (žiadne smetisko v boji)
     const flame = (x, y, z, k = 1) => FIRE.add({ x, y, z, vx: (Math.random() - .5) * .5, vy: .5 + Math.random() * .9, vz: (Math.random() - .5) * .5, l: 26 + Math.random() * 22, c: '#ffe08a', c1: '#a01a04', s0: 6 * k, s1: 15 * k, a0: .85 });
     const smoke = (x, y, z, k = 1, c = '#3a3430') => DUST.add({ x, y, z, vx: (Math.random() - .5) * .4, vy: .25 + Math.random() * .4, vz: (Math.random() - .5) * .4, l: 60 + Math.random() * 40, c, s0: 12 * k, s1: 34 * k, a0: .45 });
     const dust = (x, y, n, r = 10, c) => { const cc = c || (BI === 's' ? '#e8eef2' : BI === 'a' ? '#6a5a52' : BI === 'd' ? '#e0c890' : '#b8a888'); for (let i = 0; i < n; i++) { const a = Math.random() * 6.283, v = .6 + Math.random() * 1.6; DUST.add({ x: x + Math.cos(a) * r * Math.random(), y: heightAt(x, y) + 2, z: y + Math.sin(a) * r * Math.random(), vx: Math.cos(a) * v, vy: .2 + Math.random() * .5, vz: Math.sin(a) * v, l: 40 + Math.random() * 30, c: cc, s0: 7, s1: 26, a0: .32 }); } };
@@ -1063,10 +1064,10 @@ const B3 = (() => {
             if (dc > 520) continue;
             if (inRiver && mov && Math.random() < .3) splash(u.x, u.y, o.mount ? 3 : 1);
             else if (o.mount && o.sp > 1.6 && Math.random() < .35 * QN()) { const a = -o.root.rotation.y; dust(u.x - Math.cos(a) * 10, u.y - Math.sin(a) * 10, 1, 6); }   // prach za jazdou
-            if (o.mount && o.sp > 2.2 && QN() >= 1 && Math.random() < .5) {   // nápor jazdy: valiace sa mračno prachu, v daždi blato, v snehu prašan
+            if (o.mount && o.sp > 2.2 && QN() >= 1 && dc < 420 && Math.random() < (U.length > 150 ? .12 : .25)) {   // nápor jazdy: valiace sa mračno prachu, v daždi blato, v snehu prašan
                 const a = -o.root.rotation.y, wet = WX.n === 'rain' || WX.n === 'storm', x = u.x - Math.cos(a) * 16 + (Math.random() - .5) * 8, z = u.y - Math.sin(a) * 16 + (Math.random() - .5) * 8;
                 if (wet && BI !== 's') DUST.add({ x, y: heightAt(x, z) + 2, z, vx: -Math.cos(a) * .8 + (Math.random() - .5), vy: 1 + Math.random(), vz: -Math.sin(a) * .8 + (Math.random() - .5), g: .1, l: 26, c: '#3a2e20', s0: 2, s1: 1.4, a0: .9 });
-                else DUST.add({ x, y: heightAt(x, z) + 4, z, vx: -Math.cos(a) * .3 + (Math.random() - .5) * .3, vy: .2 + Math.random() * .3, vz: -Math.sin(a) * .3 + (Math.random() - .5) * .3, l: 110 + Math.random() * 60, c: BI === 's' ? '#eef2f6' : BI === 'a' ? '#5a4a42' : BI === 'd' ? '#d8c08a' : '#b0a080', s0: 14, s1: 60, a0: .2 });
+                else DUST.add({ x, y: heightAt(x, z) + 4, z, vx: -Math.cos(a) * .3 + (Math.random() - .5) * .3, vy: .2 + Math.random() * .3, vz: -Math.sin(a) * .3 + (Math.random() - .5) * .3, l: 90 + Math.random() * 50, c: BI === 's' ? '#eef2f6' : BI === 'a' ? '#5a4a42' : BI === 'd' ? '#d8c08a' : '#b0a080', s0: 14, s1: 44, a0: .22 });
             }
             stepPrint(o, u, dt);
             if (o.mount && (BI === 's' || WX.night) && (frameN + o.id) % 45 === 0) { const a = -o.root.rotation.y; DUST.add({ x: u.x + Math.cos(a) * 15 * o.mk.k, y: heightAt(u.x, u.y) + 19 * o.mk.k, z: u.y + Math.sin(a) * 15 * o.mk.k, vx: Math.cos(a) * .3, vy: .15, vz: Math.sin(a) * .3, l: 40, c: '#f0f4f8', s0: 3, s1: 9, a0: .35 }); }   // para z nozdier
@@ -1095,13 +1096,14 @@ const B3 = (() => {
         }
     }
     /** Mäkké tiene pod vojakmi a tlačenie trávy (hrdina a vojaci pri kamere). */
+    const BLM = {};
     function stepBlobs() {
         if (!blobs && !grassM) return;
-        const t = T(), M = new t.Matrix4(); let n = 0; const cx = cam.position.x, cz = cam.position.z, near = [];
+        const t = T(), M = BLM.M || (BLM.M = new t.Matrix4()), Ry = BLM.R || (BLM.R = new t.Matrix4()); let n = 0; const cx = cam.position.x, cz = cam.position.z, near = [];
         for (const u of U) {
             if (u.fled) continue; const o = units.get(u); if (!o || o.tp.boss) continue;
             const r = (u.r || 6) * (o.mount ? 2.4 : 1.7) * (u.hp <= 0 ? 1.5 : 1);
-            if (blobs && n < 700) { M.makeScale(r, 1, r * (o.mount && u.hp > 0 ? 1.6 : 1)); M.premultiply(new t.Matrix4().makeRotationY(o.root.rotation.y)); M.setPosition(u.x, heightAt(u.x, u.y) + .45, u.y); blobs.setMatrixAt(n++, M); }
+            if (blobs && n < 700) { M.makeScale(r, 1, r * (o.mount && u.hp > 0 ? 1.6 : 1)); M.premultiply(Ry.makeRotationY(o.root.rotation.y)); M.setPosition(u.x, heightAt(u.x, u.y) + .45, u.y); blobs.setMatrixAt(n++, M); }
             if (u.hp > 0) near.push([Math.hypot(u.x - cx, u.y - cz), u, o.mount ? 9 : 5]);
         }
         if (blobs) { blobs.count = n; blobs.instanceMatrix.needsUpdate = true; }
@@ -1155,12 +1157,27 @@ const B3 = (() => {
         lightsFollow(h.x, h.y, dt);
     }
     /** Mierenie: bod pod zameriavačom (stred obrazovky) → smer a náklon výstrelu z ramena hrdinu, bod na zemi pre simuláciu. */
+    /** Lúč proti terénu: kroky po výškovej funkcii a spresnenie polením (rýchle aj pri 500 vojakoch, bez prechádzania trojuholníkov). */
+    const RG = { p: null };
+    function rayGround(o, d, max) {
+        const t = T(); if (!RG.p) RG.p = new t.Vector3();
+        let prev = 0, step = 6;
+        for (let s = step; s <= max; s += step) {
+            const x = o.x + d.x * s, y = o.y + d.y * s, z = o.z + d.z * s;
+            if (x >= -50 && z >= -50 && x <= BW + 50 && z <= BH + 50 && y <= heightAt(x, z)) {
+                let a = prev, b = s; for (let i = 0; i < 10; i++) { const m = (a + b) / 2; if (o.y + d.y * m <= heightAt(o.x + d.x * m, o.z + d.z * m)) b = m; else a = m; }
+                return new t.Vector3(o.x + d.x * b, o.y + d.y * b, o.z + d.z * b);
+            }
+            prev = s; if (s > 300) step = 12;
+        }
+        return null;
+    }
     function computeAim() {
         if (typeof CMB === 'undefined') return;
         if (!lookOn() || photo) { CMB.aim3 = null; return; }
         const t = T(), h = U[0], dir = new t.Vector3(); cam.getWorldDirection(dir);
-        const rc = new t.Raycaster(cam.position.clone(), dir.clone(), 1, 1800), hitT = rc.intersectObject(terrain, false)[0];
-        const P = hitT ? hitT.point : cam.position.clone().addScaledVector(dir, 1800);
+        const hitT = rayGround(cam.position, dir, 1800);
+        const P = hitT || cam.position.clone().addScaledVector(dir, 1800);
         const sY = heightAt(h.x, h.y) + (typeof seatH === 'function' ? seatH(h) + bodyH(h) * .72 : 19);
         CMB.aim3 = { yaw: Math.atan2(P.z - h.y, P.x - h.x), pitch: Math.atan2(P.y - sY, Math.max(1, Math.hypot(P.x - h.x, P.z - h.y))) };
         if (hitT) { ptr.x = P.x - bc.x; ptr.y = P.z - bc.y; } else { ptr.x = h.x + Math.cos(yaw) * 200 - bc.x; ptr.y = h.y + Math.sin(yaw) * 200 - bc.y; }
@@ -1202,8 +1219,8 @@ const B3 = (() => {
         if (!cam || !terrain) return null;
         const t = T(), rc = new t.Raycaster(), v = new t.Vector2(px / (W * RES) * 2 - 1, -(py / (H * RES)) * 2 + 1);
         rc.setFromCamera(v, cam);
-        const hit = rc.intersectObject(terrain, false)[0];
-        if (hit) return { x: hit.point.x, y: hit.point.z };
+        const hit = rayGround(rc.ray.origin, rc.ray.direction, 2600);
+        if (hit) return { x: hit.x, y: hit.z };
         const o = rc.ray.origin, d = rc.ray.direction; if (d.y >= 0) return null; const k = -o.y / d.y; return { x: o.x + d.x * k, y: o.z + d.z * k };
     }
     function wheel(dy) { if (photo) { photo.pos.y += dy * .05; return; } zoom = Math.max(55, Math.min(320, zoom + dy * .12)); }
@@ -1404,13 +1421,12 @@ const B3 = (() => {
         if (now - AQ.t0 < 1500) return;
         AQ.fps = AQ.n * 1000 / (now - AQ.t0); AQ.t0 = now; AQ.n = 0; AQ.cool--;
         if (typeof OPT !== 'undefined' && OPT.autoQ === false) { if (AQ.lvl) { AQ.lvl = 0; applyAQ(); } return; }
-        if (AQ.fps < 27 && AQ.lvl < 4) { AQ.lvl++; AQ.cool = 4; applyAQ(); }
-        else if (AQ.fps > 52 && AQ.lvl > 0 && AQ.cool <= 0) { AQ.lvl--; AQ.cool = 4; applyAQ(); }
+        if (AQ.fps < 28 && AQ.lvl < 4 && AQ.cool <= 2) { AQ.lvl++; AQ.cool = 6; applyAQ(); }
+        else if (AQ.fps > 56 && AQ.lvl > 0 && AQ.cool <= 0) { AQ.lvl--; AQ.cool = 10; applyAQ(); }
     }
     function applyAQ() {
         const q = QN(), base = Math.min(window.devicePixelRatio || 1, [1, 1.25, 1.5, 2][q]);
         R.setPixelRatio(base * [1, .85, .75, .65, .5][AQ.lvl]); fit.w = 0;
-        if (sun && sun.castShadow) { sun.shadow.autoUpdate = AQ.lvl < 3; sun.shadow.needsUpdate = true; }
         if (grassM) grassM.geometry.instanceCount = Math.round(grassM.userData.n0 * (AQ.lvl >= 4 ? .5 : 1));
     }
     const lodD = () => { const n = U.length; return [220, 320, 430, 560][QN()] * (n > 350 ? .7 : n > 200 ? .82 : 1) * [1, .9, .75, .65, .55][AQ.lvl]; };
@@ -1482,6 +1498,7 @@ const B3 = (() => {
         clock += (photo ? 0 : dt * (slow ? slow.k : 1)) / 60; B3G.U_TIME.value = clock;
         if (slow && (slow.t -= dt) <= 0) slow = null;
         fit(); stepAQ();
+        if (sun && sun.castShadow) { const ev = AQ.lvl >= 3 ? 3 : U.length > 120 ? 2 : 1; sun.shadow.autoUpdate = ev === 1; if (ev > 1 && frameN % ev === 0) sun.shadow.needsUpdate = true; }   // veľká bitka: tiene sa prepočítajú každú druhú snímku
         // stav bitky pre zástup: víťazný jasot, šípy vo vzduchu (štíty nad hlavu)
         FRX.win0 = !U.some(v => v.t && v.hp > 0 && !v.rout && !v.fled); FRX.win1 = U[0].hp <= 0 || !U.some(v => !v.t && v.hp > 0 && !v.fled);
         const fly = AR.filter(a => a.l > 0 && !a.land);
@@ -1522,6 +1539,33 @@ const B3 = (() => {
             comp.render(scene, cam);
         } else { R.setRenderTarget(null); R.render(scene, cam); }
     }
+    /** Príprava počas načítavacej obrazovky: modely všetkých vojakov a šablóny pre výmenu zbrane hrdinu (aby sa nestavali uprostred boja). */
+    function prep() {
+        if (!on) return;
+        for (const u of U) { if (u.fled || units.get(u)) continue; const o = rig(u); scene.add(o.root); o.inS = 1; units.set(u, o); pose(o, u, 1); }
+        try { const C2 = CMB, w0 = C2.wpn; for (const w of ['m', 'r']) { C2.wpn = w; template(specOf(U[0])); } C2.wpn = w0; } catch (e) { }
+        if (QN() >= 1) stepArrowTrails();
+    }
+    /** Predkompilácia shaderov: na chvíľu pridá do scény po jednom z efektov, ktoré sa inak objavia až v boji (vzdialený zástup, padnutá zbraň,
+     *  stopa čepele, kruh nárazu, blesk, šíp), skompiluje všetko (paralelne, ak to prehliadač vie) a raz vykreslí aj s tieňmi a odrazom. */
+    async function warm() {
+        if (!on) return;
+        const t = T(), h = U[0], o0 = units.get(h), tmp = [], at = (m, dx = 30) => { m.position.set(h.x + dx, heightAt(h.x, h.y) + 5, h.y); scene.add(m); tmp.push(m); };
+        try {
+            const H = o0 && o0.H; if (H) { const im = new t.InstancedMesh(H.geo, chrMats(), 1); im.castShadow = QN() >= 2; im.setMatrixAt(0, new t.Matrix4().makeTranslation(h.x + 30, heightAt(h.x, h.y), h.y)); scene.add(im); tmp.push(im); if (H.wGeo) at(new t.Mesh(H.wGeo, chrMats())); }
+            const tg = new t.BufferGeometry(); tg.setAttribute('position', new t.BufferAttribute(new Float32Array(9), 3)); tg.setAttribute('color', new t.BufferAttribute(new Float32Array(9), 3));
+            at(new t.Mesh(tg, MAT.trail || (MAT.trail = new t.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: t.AdditiveBlending, depthWrite: false, side: t.DoubleSide }))));
+            at(new t.Mesh(new t.RingGeometry(.8, 1, 8), new t.MeshBasicMaterial({ color: C('#ffd0a0'), transparent: true, opacity: .8, side: t.DoubleSide, depthWrite: false, blending: t.AdditiveBlending })));
+            at(new t.LineSegments(tg, new t.LineBasicMaterial({ color: C('#f0f4ff'), fog: false })));
+            at(new t.Mesh(new t.CircleGeometry(1, 8), new t.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .35, depthWrite: false })));
+            at(arrowMesh(0, 0)); at(arrowMesh(1, 0));
+            if (R.compileAsync) await R.compileAsync(scene, cam); else R.compile(scene, cam);
+        } catch (e) { try { R.compile(scene, cam); } catch (e2) { } }
+        if (!on) return;
+        const fN = frameN; frameN = 0; frame(0); frameN = fN;   // prvé vykreslenie (tiene, odraz, skladač) ešte pod načítavacou obrazovkou
+        for (const m of tmp) scene.remove(m);
+        if (comp) comp.render(scene, cam);
+    }
     function stop() {
         on = false; intro = null; slow = null;
         if (photo) photoToggle();
@@ -1534,5 +1578,5 @@ const B3 = (() => {
         if (R) R.renderLists.dispose();
     }
     const TPLgeo = g => { for (const tp of TPL.values()) for (const v of Object.values(tp)) { if (v === g) return true; if (v && typeof v === 'object') { if (v.geo === g) return true; for (const w of Object.values(v)) if (w === g) return true; } } return (PR && Object.values(PR).includes(g)) || (AGEO && Object.values(AGEO).includes(g)); };
-    return { specOf, rigOf: u => units.get(u), want, start, frame, stop, pick, rel, wheel, dragStart, dragMove, dragEnd, isOn, heightAt, skipIntro, timeK, photoToggle, get photo() { return !!photo; }, get scene() { return scene; }, photoAt(x, y, z, yw, pt) { if (!photo) photoToggle(); photo.pos.set(x, y, z); photo.yaw = yw; photo.pitch = pt; }, get renderer() { return R; }, get intro() { return !!intro; }, get yaw() { return yaw; }, get look() { return lookOn(); }, get fp() { return fpv; }, lookMove, toggleFP, get pitch() { return lp; }, get aq() { return AQ.lvl; }, get fps() { return AQ.fps; } };
+    return { specOf, rigOf: u => units.get(u), want, start, prep, warm, frame, stop, pick, rel, wheel, dragStart, dragMove, dragEnd, isOn, heightAt, skipIntro, timeK, photoToggle, get photo() { return !!photo; }, get scene() { return scene; }, photoAt(x, y, z, yw, pt) { if (!photo) photoToggle(); photo.pos.set(x, y, z); photo.yaw = yw; photo.pitch = pt; }, get renderer() { return R; }, get intro() { return !!intro; }, get yaw() { return yaw; }, get look() { return lookOn(); }, get fp() { return fpv; }, lookMove, toggleFP, get pitch() { return lp; }, get aq() { return AQ.lvl; }, get fps() { return AQ.fps; } };
 })();

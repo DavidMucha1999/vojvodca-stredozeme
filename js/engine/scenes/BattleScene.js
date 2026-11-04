@@ -13,19 +13,41 @@ class BattleScene extends Phaser.Scene {
     constructor() { super('Battle'); }
 
     create() {
-        this.ready = false;
+        this.ready = false; this.d3 = false;
+        const fast = OPT.loadScr === false;
+        if (!fast) LoadScr.show(loadInfo());   // načítavacia obrazovka (js/ui/loading.js): kým je hore, stavia sa bojisko a kompilujú shadery
+        this.events.once('shutdown', () => { if (!this.ready) LoadScr.kill(); });
         if (!Art.loaded.battle && !B3.want()) {   // textúry bojiska sa ešte dočítavajú na pozadí (alebo sa ešte nezačali)
             this.cameras.main.setBackgroundColor('#0b0806');
-            const t = this.add.text(W * RES / 2, H * RES / 2, 'Vojská sa zoraďujú…', { fontFamily: '"IM Fell English", Georgia, serif', fontSize: 16 * RES + 'px', color: '#d9a441' }).setOrigin(.5).setScrollFactor(0);
-            (Art.loading.battle || Art.loadTextures(this, 'battle')).then(() => { if (this.scene.isActive('Battle')) { t.destroy(); this.build(); } });
+            (Art.loading.battle || Art.loadTextures(this, 'battle')).then(() => { if (this.scene.isActive('Battle')) this.prepBattle(fast); });
             return;
         }
-        this.build();
+        this.prepBattle(fast);
     }
 
-    build() {
+    /** Postupná príprava bitky po snímkach, aby sa načítavacia obrazovka hýbala; potom plynulý prechod do boja. */
+    async prepBattle(fast) {
+        const alive = () => mode === 'battle' && this.sys && this.sys.isActive();
+        const step = (p, txt) => { LoadScr.set(p, txt); return new Promise(r => requestAnimationFrame(() => setTimeout(r, 0))); };
+        await step(.08, 'Zem sa chveje pod krokmi vojsk…'); if (!alive()) return;
+        const d3 = B3.want() && B3.start();
+        if (d3) {
+            await step(.38, 'Kováči dokúvajú zbroj a vojaci si navliekajú brnenie…'); if (!alive()) return B3.stop();
+            B3.prep();
+            await step(.66, 'Zástavy sa dvíhajú nad šíkmi…'); if (!alive()) return B3.stop();
+            await B3.warm(); if (!alive()) return B3.stop();
+        }
+        await step(.94, 'Rohy zvolávajú do boja…'); if (!alive()) { if (d3) B3.stop(); return; }
+        const wait = fast ? 0 : Math.max(0, 2200 - LoadScr.elapsed);
+        if (wait) await new Promise(r => setTimeout(r, wait));
+        if (!alive()) { if (d3) B3.stop(); LoadScr.kill(); return; }
+        this.build(d3);
+        LoadScr.hide();
+    }
+
+    build(d3) {
         this.ready = true;
-        if (B3.want() && B3.start()) return this.build3d();   // 3D bojisko (js/engine/b3d.js); 2D ostáva ako voľba v Nastaveniach
+        if (d3) return this.build3d();   // 3D bojisko (js/engine/b3d.js); 2D ostáva ako voľba v Nastaveniach
         this.d3 = false;
         this.buildField();
 
@@ -162,7 +184,7 @@ class BattleScene extends Phaser.Scene {
 
     update(time, delta) {
         if (!this.ready) { if (mode !== 'battle') this.scene.start('Map'); return; }
-        if (mode === 'battle') { const k = this.d3 ? B3.timeK() : 1; if (HITSTOP > 0) HITSTOP -= delta / 16.67; else if (k > 0) updBattle(Math.min(2, delta / 16.67) * k); }   // zastavenie obrazu pri ťažkom údere; 3D: spomalenie, fotorežim   // 3D: spomalenie pri páde bossa, fotorežim zastaví hru
+        if (mode === 'battle') { const k = this.d3 ? B3.timeK() : 1; if (HITSTOP > 0 && !OPT.hitstop) HITSTOP = 0; if (HITSTOP > 0) HITSTOP -= delta / 16.67; else if (k > 0) updBattle(Math.min(2, delta / 16.67) * k); }   // zastavenie obrazu pri ťažkom údere; 3D: spomalenie, fotorežim   // 3D: spomalenie pri páde bossa, fotorežim zastaví hru
         if (mode !== 'battle') { if (this.input.mouse && this.input.mouse.locked) this.input.mouse.releasePointerLock(); fpsBox(null); this.scene.start('Map'); return; }
         fpsBox(this.game.loop.actualFps);
         if (this.d3) { if (!B3.look) this.repick(); B3.frame(Math.min(3, delta / 16.67)); return; }

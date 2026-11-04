@@ -199,6 +199,17 @@ Všetko je kreslené kódom, bez cudzích modelov a obrázkov (`js/engine/b3d.js
 - **Kamera:** **nálet nad bojiskom** na začiatku bitky (od nepriateľského vojska až za hrdinu; preskočí ho klik alebo kláves, vypína sa v Nastaveniach), **spomalenie** pri páde bossa alebo nepriateľského veliteľa s pohľadom na padlého, rozšírenie záberu v cvale a pri nápore, **fotorežim (P)**: hra stojí, rozhranie zmizne, kamera voľne lieta (WASD, Q/E výška, Shift rýchlo, ťahanie myšou), P alebo Esc ho ukončí.
 - **Výkon a kvalita:** Nastavenia → **Grafika 3D bitky: nízka / stredná / vysoká / ultra**. Nízka = jednoduché ploché tieňovanie bez trávy a dodatočného spracovania (pre slabé počítače), stredná = tráva (9 000 trsov), žiara a tiene, vysoká (predvolená) = vyhladenie hrán, ostrejšie tiene, lúče slnka, 20 000 trsov trávy, ultra = 42 000 trsov a najostrejšie tiene. Detail tvárí a prilieb sa na diaľku skryje.
 
+## Plynulý boj a načítavacia obrazovka (verzia 45)
+
+- **Načítavacia obrazovka pred bitkou** (`js/ui/loading.js`, kreslená kódom): súmrak nad horami (v Mordore sopka s dymom), pevnosť na kopci, dve vojská so zástavami vo farbách frakcií proti sebe, salva šípov a iskry, **zlatý prsteň** nad nadpisom; ukáže druh bitky, miesto, nepriateľa, počty vojsk, počasie, radu do boja a priebeh príprav. Kým je hore, postaví sa bojisko, všetci vojaci a **vopred sa skompilujú shadery** všetkých efektov (vzdialené zástupy, padnuté zbrane, stopy čepele, blesky, šípy, tiene, odraz), takže sa už nekompilujú uprostred boja. Ukazuje aj autora hry.
+- **Odstránené sekanie v boji:**
+  - zastavenie obrazu pri ťažkom údere je predvolene vypnuté (Nastavenia → Zastavenie obrazu pri ťažkom údere); spomalenie ostáva,
+  - všetci vojaci zdieľajú materiály (menej prepínania stavu grafickej karty), guľa pre orezanie sa berie zo šablóny (three.js ju inak počítal z každého vrcholu cez kosti),
+  - mierenie a klik na zem idú krokovaním po výške terénu namiesto prechádzania tisícok trojuholníkov každú snímku,
+  - častice (iskry, prach, dym) už v každej snímke nevytvárajú nové farby (menej upratovania pamäte), veľkosť pri kamere je obmedzená a pri kamere sa strácajú; menej prachu pri nápore jazdy,
+  - hlásenia vľavo dole sa neprekresľujú každú snímku, šípy nevrhajú tiene, tiene sa vo veľkej bitke počítajú každú druhú snímku, automatická kvalita mení stupeň pokojnejšie.
+- Blato na postavách je teraz spoločné pre celé bojisko (pribúda počas bitky).
+
 ## Veľké bitky a druhý grafický update 3D boja (verzia 44)
 
 - **Veľké bitky:** Nastavenia → **Veľkosť bitiek**: normálna (do ~150 vojakov), **veľká** (predvolená, do ~350) a **obrovská** (500 a viac). Násobia sa limity tvojich oddielov, spojencov, posádky aj nepriateľov, ktorí sa pridajú. Vzdialení vojaci sa kreslia **v jednej spoločnej sieti** pre každý vzhľad (bez kostí), blízki majú plné kostrové animácie, takže aj 500 vojakov ide plynulo. V obrovskej bitke vojaci hľadajú najbližšieho nepriateľa len občas (rozložené v čase).
