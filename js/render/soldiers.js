@@ -60,6 +60,7 @@ const Soldiers = (() => {
         uE2: { r: 6, armor: '#2a4a7a', skin: 'dwarf', helm: 'dwarf', weapon: 'xbow', beard: 1 },
         uN1: { r: 7, armor: '#6a2a4a', skin: 'human', helm: 'easterling', weapon: 'spear', shield: 'kite' },
         uN2: { r: 9, armor: '#5a1f4a', skin: 'human', helm: 'easterling', weapon: 'spear', mount: 'horse' },
+        uN3: { r: 9, armor: '#7a3a2a', skin: 'human', helm: 'easterling', weapon: 'bow', mount: 'horse' },
         uL2: { r: 7, armor: '#5a7a5a', skin: 'elf', helm: 'elf', weapon: 'elfblade' }
     };
 

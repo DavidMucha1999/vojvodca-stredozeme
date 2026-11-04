@@ -339,7 +339,7 @@ try {
         e.stun = 0; e.c = 0; e.wu = 0; Math.random = R0; e.x = h.x + 10; aiMelee(e, h, 10, 1); var aiDir = ["l", "r", "u", "t"].includes(e.wd);`);
     check('Kryt do smeru (Nastavenia: myšou): zlý smer neubráni, správny áno; vojaci volia smer úderu', run('wrongDir && rightDir && aiDir'), run('[wrongDir, rightDir, aiDir].join(" ")'));
     run(`e.wu = 0; e.stun = 999; var far = U.filter(u => u.t)[1]; far.x = h.x + 1000; CMB.ammo = 20; CMB.bowC = 0; AR.length = 0; ptr.x = h.x + 200 - bc.x; ptr.y = h.y - bc.y; e.x = h.x + 400; e.y = h.y + 300;
-        keys.q = true; tick(3); var early = CMB.aim && CMB.aim.r; tick(30); var full = CMB.aim && CMB.aim.r; keys.q = false; tick(1); var arw = AR[AR.length - 1]; var land = arw && Math.hypot(arw.x + arw.vx * arw.l - (h.x + 200), arw.y + arw.vy * arw.l - h.y);`);
+        keys.q = true; tick(3); var early = CMB.aim && CMB.aim.r; tick(30); var full = CMB.aim && CMB.aim.r; keys.q = false; tick(1); var arw = AR[AR.length - 1]; for (const v of U) if (v !== h) v.x += 5000; for (let k = 0; k < 400 && AR.includes(arw); k++) stepArrows(1); var land = arw && arw.land && Math.hypot(arw.x - (h.x + 200), arw.y - h.y);`);
     check('Luk: držaním sa napína, zameriavač sa zúži, šíp dopadne k bodu pod kurzorom', run('early > full && arw && land < 30'), run('[early, full, land].join(" ")'));
     run(`for (const u of U) if (u.t) u.hp = 0; var kq = 0; while (mode === "battle" && kq < 50) { U[0].hp = 999; updBattle(1); kq++; }`);
     run(closeMenus + '; mode = "map"; ov.classList.add("hide"); for (const k in keys) keys[k] = false;');
@@ -360,6 +360,31 @@ try {
     run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
     run(`bossBattle("trollking"); var bo = U.find(u => u.boss); FX3.length = 0; bossStrike(bo, { k: "circle", x: bo.x, y: bo.y, r: 80, t: 0, t0: 30, dmg: 1 }); var bossFx = FX3.some(e => e.k === "boss" && e.b === "trollking"); for (const u of U) if (u.t) u.hp = 0; var kb3 = 0; while (mode === "battle" && kb3 < 60) { U[0].hp = 999; updBattle(1); kb3++; }`);
     check('Údery bossov posielajú udalosti pre 3D efekty', run('bossFx'));
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
+    // Warband: miesto zásahu, smrteľný zásah do hlavy, typy poškodenia, kopnutie, kryt útokom, koliesko, zbieranie šípov, kôň, jazdecký lukostrelec, kuša
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide"); for (const k in keys) keys[k] = false; G.eq.w = 0; G.eq.m = 0; G.eq.r = 0; G.eq.s = 1; G.s.ls = 1;');
+    run(`startBattle({ n: 6, f: 2, nm: "T" }); CMB.km = 1; var h = U[0]; h.x = 300; h.y = 400; h.f = 0; var fq = U.filter(u => u.t && !u.cmd); fq.forEach((u, i) => { u.x = 2000 + i * 40; u.y = 2000; u.stun = 1e9; });
+        var R0 = Math.random; Math.random = () => .999;
+        var e = fq.find(u => !heavy(u) && !onMount(u)); e.x = 420; e.y = 400; e.hp = e.mh = 9999; var z0 = elevSim(h.x, h.y) + seatH(h) + bodyH(h) * .72;
+        var shot = (zt) => { AR.length = 0; const a = fireArrow(h, 0, ballistic(120, zt - z0, 10), 10, { t: 0, d: 6 }); for (let k = 0; k < 200 && AR.includes(a); k++) stepArrows(1); return a; };
+        var aT = shot(bodyH(e) * .6); var torsoOk = e.lz === 'torso' && e.hp < 9999 && e.hp > 0 && aT.hitU === e;
+        var aH = shot(bodyH(e) * .93); var headOk = e.lz === 'head' && e.hp <= 0;
+        Math.random = R0;
+        var hp0 = h.hp = 500; hitZ(h, 10, fq[1], { zone: 'torso', type: 'c' }); var dT = hp0 - h.hp; h.hp = 500; hitZ(h, 10, fq[1], { zone: 'head', type: 'c' }); var dH = 500 - h.hp; h.hp = h.mh;
+        var e3 = fq.filter(u => !heavy(u))[1]; e3.hp = 5; Math.random = () => .1; hitZ(e3, 50, h, { zone: 'torso', type: 'b' }); Math.random = R0; var koOk = e3.ko === 1 && e3.hp <= 0;`);
+    check('Šíp v 3D: zásah do trupu zraní, zásah do hlavy obyčajného vojaka zabije; hrdina dostane do hlavy viac; tupá zbraň omráči', run('torsoOk && headOk && dH > dT * 1.5 && koOk'), run('[torsoOk, headOk, dT, dH, koOk].join(" ")'));
+    run(`var e4 = fq.filter(u => !heavy(u))[2] || fq[3]; e4.x = h.x + 14; e4.y = h.y; e4.stun = 0; e4.hp = e4.mh = 999; ptr.x = e4.x - bc.x; ptr.y = e4.y - bc.y; CMB.aim3 = null; CMB.kick = 0; CMB.st = 100; keys.y = true; cmbHero(h, 1, null); keys.y = false; var kickOk = e4.stun > 20;
+        e4.stun = 0; e4.lwd = "l"; CMB.swing = { t: 9, d: "l", k: "s", a: 0, r: 30 }; var hpC = h.hp; var chOk = meleeHit(e4, h, 30, "ai") === false && e4.stun > 20 && h.hp === hpC; CMB.swing = null;
+        CMB.ammo0 = 10; CMB.ammo = 5; CMB.wpn = "m"; wpnSwitch(); var wOk = CMB.wpn === "r"; wpnSwitch(); wOk = wOk && CMB.wpn === "m";
+        GA.length = 0; GA.push({ x: h.x + 3, y: h.y, k: "arrow" }); pickups(h); var pkOk = CMB.ammo === 6 && GA.length === 0;`);
+    check('Kopnutie zapotáca, kryt útokom odrazí úder, koliesko mení zbraň, šípy sa zbierajú zo zeme', run('kickOk && chOk && wOk && pkOk'), run('[kickOk, chOk, wOk, pkOk].join(" ")'));
+    run(`for (const u of U) if (u.t) u.hp = 0; var kw = 0; while (mode === "battle" && kw < 60) { U[0].hp = 999; updBattle(1); kw++; }`);
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide"); for (const k in keys) keys[k] = false;');
+    run(`G.eq.m = 2; G.own.m = [0, 2]; G.eq.r = 3; G.own.r = [0, 3]; startBattle({ n: 6, f: 7, nm: "T" }); var h = U[0]; CMB.mvA = 0; CMB.mvS = 0; var x0 = h.x; horseMove(h, 1, 0, 1, 1); var step1 = h.x - x0; for (let i = 0; i < 60; i++) horseMove(h, 1, 0, 1, 1); var x1 = h.x; horseMove(h, 1, 0, 1, 1); var stepN = h.x - x1; var horseOk = step1 < stepN * .5 && stepN > 0;
+        G.eq.m = 0; CMB.bowC = 30; cmbHero(h, 1, 0); var b1 = CMB.bowC; cmbHero(h, 1, null); var xbOk = b1 === 30 && CMB.bowC < 30;
+        var ha = mk(1, "uN3"); ha.x = 600; ha.y = 400; U.push(ha); var tgtU = U[0]; tgtU.x = 600; tgtU.y = 500; ha.c = 0; AR.length = 0; for (let i = 0; i < 40; i++) haAI(ha, tgtU, Math.hypot(tgtU.x - ha.x, tgtU.y - ha.y), 1); var haOk = isHA(ha) && AR.some(a => a.by === ha);
+        for (const u of U) if (u.t) u.hp = 0; var kh = 0; while (mode === "battle" && kh < 60) { U[0].hp = 999; updBattle(1); kh++; } G.eq.r = 0; G.eq.m = 0;`);
+    check('Kôň má zotrvačnosť, kuša sa nabíja len postojačky, jazdecký lukostrelec strieľa', run('horseOk && xbOk && haOk'), run('[horseOk, xbOk, haOk].join(" ")'));
     run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
 } catch (e) { fails++; console.log('CHYBA výnimka: ' + e.stack); }
 console.log(fails ? '\n' + fails + ' testov zlyhalo.' : '\nVšetky testy prešli.');

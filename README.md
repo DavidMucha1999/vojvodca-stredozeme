@@ -173,6 +173,20 @@ Plátno Three.js leží pod priehľadným plátnom Phaseru, takže lišty, rozka
 - **Bossovia:** pred ohnivým útokom šľahajú drakovi a Balrogovi plamene z papule, ohnivý útok zaplaví ohlásené miesto ohňom a dymom a nechá spálenú zem, údery bez ohňa (dopad draka, kyjak Kráľa trollov) pošlú tlakovú vlnu, prach a kamene. Letiaci drak a šelma vrhajú na zem tieň, aby bolo vidno, kam dopadnú. Kráľ trollov dvíha kyjak pred úderom. Padlý boss sa zrúti v oblaku prachu a jeho oheň zhasne.
 - Efekty idú cez frontu udalostí `FX3` zo simulácie (`fx3` v `js/sim/combat.js`), takže logika nezávisí od 3D; v 2D sa udalosti len zahodia.
 
+## Boj ako vo Warbande – miesto zásahu, luk, prvá osoba (`js/sim/warband.js`)
+
+- **Mierenie ako vo Warbande** (Nastavenia → Mierenie v 3D): prvý klik do bitky zamkne kurzor, **myš potom otáča hrdinu a kameru**, v strede obrazovky je **zameriavač** (pri luku sa pri napínaní zužuje, plne napnutý zažiari a po chvíli sa začne triasť). Esc kurzor uvoľní. Pôvodné mierenie kurzorom na zem ostáva ako voľba.
+- **Prvá / tretia osoba: kláves Tab** (dá sa zmeniť v Ovládaní). V prvej osobe vidíš vlastné ruky, zbraň a štít (na koni aj krk a hlavu koňa), obraz sa pri chôdzi jemne hojdá; tretia osoba je za plecom ako vo Warbande. Kamera sa približuje klávesmi **+ / −** (PageUp / PageDown).
+- **Koliesko myši mení zbraň**: zbraň na blízko ↔ strelná zbraň (luk, kuša, oštepy). So strelnou zbraňou strieľa ľavé tlačidlo (drž a pusť), Q funguje stále. Keď dôjdu strely, hrdina sám prejde na zbraň na blízko.
+- **Šípy v 3D**: letia z ramena strelca v oblúku s **gravitáciou** (na diaľku treba mieriť vyššie), rýchlejšia strela zraní viac. Zasiahnu tú časť tela, do ktorej trafia – **hlava, trup, ruka, noha**, u jazdca aj **kôň**. Prelet nad hlavou alebo popri vojakovi netrafí. Šípy ostávajú **zapichnuté v telách, v štítoch, v zemi aj v hradbách**; šípy zo zeme sa **zbierajú prechodom** cez ne. Strelci AI mieria v oblúku a predbiehajú bežiaci cieľ. Kuša sa **nabíja len postojačky**.
+- **Zásah do hlavy**: obyčajný vojak padne na mieste – **prilba dá šancu prežiť** (lepšia prilba väčšiu, pri údere na blízko ešte väčšiu). Hrdina, spoločníci, bossovia a obri (trollovia, olifanty, enti, Nazgûl) dostanú do hlavy **trojnásobné zranenie** (prilba hrdinu ho znižuje). Ruka −25 %, noha −20 %.
+- **Miesto zásahu na blízko**: úder zhora mieri skôr na hlavu, bod podľa výšky mierenia (hore hlava, dole nohy), sek zboku trup a ruky; jazdec trafí pešiaka do hlavy ľahšie, pešiak jazdca skôr do nôh alebo do koňa.
+- **Typy poškodenia**: sečné (meče, sekery) – +15 % proti nechráneným, −25 % proti plátu; bodné (kopije, šípy, bod) – prejde brnením; tupé (kyjaky, palcáty, kopnutie) – +8 % proti plátu a vojaka často len **omráči**: omráčení nepriatelia sú po víťazstve tvoji **zajatci**.
+- **Techniky**: **kopnutie (Y)** zapotáca nepriateľa a prerazí mu kryt (troll sa ani nepohne); **kryt útokom** – keď začneš úder v rovnakom smere, odkiaľ ide úder nepriateľa (červená šípka), v pravú chvíľu ho odrazíš a tvoj úder prejde; **príliš blízko** zasiahne zbraň len rúčkou (kopija bodom vôbec), obojručné zbrane a kopije potrebujú odstup; **sek zboku sa zarazí** o hradby alebo o vlastného vojaka v ceste.
+- **Kôň**: má **zotrvačnosť** (rozbeh a dobeh) a **obratnosť podľa plemena** (poník je obratný, bojový kôň ťažkopádnejší); pred šíkom kopijníkov sa **vzopne**. Nový **jazdecký lukostrelec z Rhûnu** krúži okolo nepriateľa vo vzdialenosti streľby a strieľa z koňa.
+- **Hlásenia ako vo Warbande** vľavo dole: „Zásah do hlavy: 54 zranenia“, „Zabil si: Uruk“, „Omráčil si: Ork“, „Dostal si zásah do nohy: 12“, pád spoločníka.
+- **Grafika boja**: pri ťažkom údere, zásahu do hlavy a zabití sa obraz **na okamih zastaví**; pri zabití šípom do hlavy sa hra krátko **spomalí**; vojak sa **zapotáca v smere úderu** a padne podľa zásahu (do nohy najprv na koleno, do hlavy hneď dozadu); zo štítov lietajú **triesky**, pri zlomení štítu sa rozletí na kusy; kov o kov iskrí a zvoní, zásah do tela znie tupo; pri **málo zdravia** sa okraj obrazovky farbí do červena.
+
 ## Grafika 3D bitky (veľký grafický update)
 
 Všetko je kreslené kódom, bez cudzích modelov a obrázkov (`js/engine/b3d.js`, pomocník `js/engine/b3dgfx.js`):
@@ -219,6 +233,7 @@ js/
     bosses.js         bossovia a súboj veliteľov;  voyage.js = plavba;  sidequests.js = vedľajšie výpravy
     chronicle.js      udalosti sveta, kronika hrdinu a konce hry
     supply.js         jedlo, morálka družiny, dezercie, ranení, zajatci;  perks.js = strom perkov
+    warband.js        Warband: miesto zásahu, šípy v 3D s gravitáciou, smrteľný zásah do hlavy, typy poškodenia, kopnutie, kryt útokom, koliesko, kone, jazdeckí lukostrelci, hlásenia
     combat.js         boj: smerové údery a kryty z pohybu myši, držaný nápriah, klam, sklopená kopija, luk so zameriavačom, nápor, morálka a útek, skupiny a rozkazy
     battle.js         bitka: jednotky, začiatok a koniec (tabuľka výsledkov), boj, šípy, rozkazy, hradby
     armies.js, diplomacy.js, hero.js, trade.js, weather.js, quests.js, companions.js, siege.js, politics.js, story.js, achievements.js

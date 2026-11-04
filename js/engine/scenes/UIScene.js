@@ -88,7 +88,7 @@ class UIScene extends Phaser.Scene {
                 g.fillStyle(0xfff4d0, Math.min(.95, (nn - .3) * 1.4)).fillCircle(mx, my, 11); g.fillStyle(0x080e28, Math.min(.9, (nn - .3) * 1.4) * .8).fillCircle(mx + 5, my - 3, 9); g.fillStyle(0xfff4d0, (nn - .3) * .12).fillCircle(mx, my, 26); }
         }
         this.gateTxt.setVisible(false);
-        if (this.cmbT) this.cmbT.forEach(t => t.setVisible(false));
+        if (this.cmbT) this.cmbT.forEach(t => t.setVisible(false)); if (this.msgT) this.msgT.forEach(t => t.setVisible(false));
         if (scene === 'battle' && U && U[0]) {
             if (!(typeof B3 !== 'undefined' && B3.isOn() && !lowFx())) this.drawWeather(g, WX.n, lowFx() ? .6 : 1.3);   // v 3D padá dážď a sneh priamo v scéne
             const h = U[0];
@@ -128,8 +128,24 @@ class UIScene extends Phaser.Scene {
         for (const u of U) if (u.t && u.hp > 0 && u.wu > 0 && u.wt === h0 && u.wd) { const dd = Math.hypot(u.x - h0.x, u.y - h0.y); if (dd < id) { id = dd; inc = u; } }
         if (inc) chev(inc.wd, 0xff3020, .9 + .3 * (1 - inc.wu / inc.wu0));
         if (C.blk && OPT.blkDir === 'manual' && !(C.shp > 0)) chev(C.bd, 0xc8d8ff, .7);
-        const st = [C.charging ? 'NÁPOR!' : '', C.couch ? 'Sklopená kopija!' : '', C.rd ? 'Nápriah ' + DIR_N[C.rd.d] + (C.rd.t > C.rd.ready + 4 ? ' ' + Math.round(100 + 45 * Math.min(1, (C.rd.t - C.rd.ready) / 30)) + ' %' : '') : '', C.draw > 0 ? 'Napínaš: ' + Math.round(Math.min(1, C.draw / 26) * 100) + ' %' : '', C.gb > 0 ? 'Kryt prelomený' : '', C.ammo0 ? 'Šípy: ' + C.ammo : '', C.cry > 0 ? '' : 'Pokrik (V) pripravený', 'Skupina: ' + GRP_N[C.sel]].filter(Boolean).join('   ');
+        const st = [C.charging ? 'NÁPOR!' : '', C.couch ? 'Sklopená kopija!' : '', C.rd ? 'Nápriah ' + DIR_N[C.rd.d] + (C.rd.t > C.rd.ready + 4 ? ' ' + Math.round(100 + 45 * Math.min(1, (C.rd.t - C.rd.ready) / 30)) + ' %' : '') : '', C.draw > 0 ? 'Napínaš: ' + Math.round(Math.min(1, C.draw / 26) * 100) + ' %' : '', C.gb > 0 ? 'Kryt prelomený' : '', C.ammo0 ? 'Šípy: ' + C.ammo : '', C.ammo0 && C.km ? (C.wpn === 'r' ? 'V ruke: strelná zbraň' : 'V ruke: zbraň na blízko') : '', C.cry > 0 ? '' : 'Pokrik (V) pripravený', 'Skupina: ' + GRP_N[C.sel]].filter(Boolean).join('   ');
         this.cmbT[2].setPosition(W / 2, 90).setText(st).setVisible(true);
+        // hlásenia ako vo Warbande (zásahy, zabitia) vľavo dole
+        if (!this.msgT) this.msgT = Array.from({ length: 7 }, () => this.add.text(10, 0, '', txtStyle(10, '#e8d8a8', { stroke: '#000', strokeThickness: 3 })).setOrigin(0, 1).setDepth(5));
+        const M = (C.msgs || []).filter(m => (m.t -= 1) > 0); C.msgs = M;
+        this.msgT.forEach((t, i) => { const m = M[M.length - 1 - i]; if (!m) { t.setVisible(false); return; } t.setText(m.s).setColor(m.c).setAlpha(Math.min(1, m.t / 60)).setPosition(10, H - 2 * 26 - 14 - i * 13).setVisible(true); });
+        // zameriavač v strede (mierenie ako vo Warbande)
+        if (typeof B3 !== 'undefined' && B3.isOn() && B3.look && !B3.photo) {
+            const cx = W / 2, cy = H / 2, dr = C.draw > 0 ? Math.min(1, C.draw / 26) : 0, bow = C.wpn === 'r' || C.draw > 0;
+            const gap = bow ? 3 + (1 - dr) * 13 + (C.draw > 110 ? Math.sin(tm * 1.7) * 2 + 2 : 0) : 2.5, L = bow ? 6 : 4;
+            g.lineStyle(1.4, 0x000000, .55); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) g.lineBetween(cx + dx * gap, cy + dy * gap, cx + dx * (gap + L), cy + dy * (gap + L));
+            g.lineStyle(1, bow && dr >= 1 ? 0xffd24a : 0xf4ead0, .95); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) g.lineBetween(cx + dx * gap, cy + dy * gap, cx + dx * (gap + L), cy + dy * (gap + L));
+        }
+        // málo zdravia: červený okraj obrazovky
+        const hp = U[0] ? U[0].hp / U[0].mh : 1;
+        if (hp < .35 && U[0].hp > 0) { const a = (.35 - hp) / .35 * (.55 + .15 * Math.sin(tm / 5)), w = 70, c = 0x8a0000;
+            g.fillGradientStyle(c, c, c, c, a, a, 0, 0).fillRect(0, 0, W, w); g.fillGradientStyle(c, c, c, c, 0, 0, a, a).fillRect(0, H - w, W, w);
+            g.fillGradientStyle(c, c, c, c, a, 0, a, 0).fillRect(0, 0, w, H); g.fillGradientStyle(c, c, c, c, 0, a, 0, a).fillRect(W - w, 0, w, H); }
     }
 
     /** Počasie cez celú obrazovku: dážď, búrka s bleskom, hmla, sneh, popolový dážď Mordoru. k = hustota. */

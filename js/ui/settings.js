@@ -31,6 +31,7 @@ function optItems() {
         [() => 'Bitka: ' + (OPT.b3d === false ? '2D (pohľad zhora)' : '3D (pohľad za hrdinom)'), () => set('b3d', OPT.b3d === false)],
         [() => 'Grafika 3D bitky: ' + ({ low: 'nízka (najrýchlejšia)', med: 'stredná', high: 'vysoká', ultra: 'ultra (silný počítač)' }[OPT.gfx] || 'vysoká'), () => set('gfx', { low: 'med', med: 'high', high: 'ultra', ultra: 'low' }[OPT.gfx] || 'ultra')],
         [() => 'Nálet kamery na začiatku bitky: ' + (OPT.intro3d === false ? 'nie' : 'áno'), () => set('intro3d', OPT.intro3d === false)],
+        [() => 'Mierenie v 3D: ' + (OPT.aimMode === 'ground' ? 'kurzorom na zem' : 'ako vo Warbande (myš otáča kameru, zameriavač v strede)'), () => set('aimMode', OPT.aimMode === 'ground' ? 'look' : 'ground')],
         [() => 'Smer krytu: ' + (OPT.blkDir === 'manual' ? 'myšou (ako Warband – pohni myšou k úderu)' : 'automatický'), () => set('blkDir', OPT.blkDir === 'manual' ? 'auto' : 'manual')],
         [() => 'Kvalita grafiky: ' + (lowFx() ? 'nízka (rýchlejšia)' : 'vysoká'), () => set('fx', lowFx() ? 'high' : 'low')],
         [() => 'Obťažnosť: ' + DIFF_N[OPT.diff], () => set('diff', { easy: 'normal', normal: 'hard', hard: 'easy' }[OPT.diff] || 'normal')]

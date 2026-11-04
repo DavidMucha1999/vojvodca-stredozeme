@@ -25,8 +25,8 @@ const fx3 = o => { if (FX3.length < 60) FX3.push(o); };
 const CMB = { km: 0, blk: 0, blkT: 99, gb: 0, st: 100, shp: 0, shMax: 0, run: 0, lastA: null, chg: 0, charging: 0, ammo: 0, ammo0: 0, bowC: 0, cry: 0, swing: null,
     sel: 'all', og: { p: 'a', l: 'a', j: 'a' }, M: [60, 60], M0: [60, 60], n0: [1, 1], endT: 0, noRout: 0, lmb: 0, rmb: 0, said: {} };
 /** Klávesy akcií (dajú sa zmeniť v Nastaveniach → Ovládanie; OPT.keys) a stav ovládača (GP, js/sim/combat.js pollPad). */
-const KEYS_DEF = { atk: ' ', thrust: 'e', block: 'Shift', shoot: 'q', cry: 'v', wall: 'b', fm: 'x', o_a: 't', o_h: 'h', o_f: 'f', o_l: 'g', o_r: 'r' };
-const KEY_N = { atk: 'Sek (útok)', thrust: 'Bod', block: 'Kryt', shoot: 'Výstrel / hod', cry: 'Bojový pokrik', wall: 'Na hradbách: rebrík, olej, kameň', fm: 'Útvar (riadky, štítový val, voľný)', o_a: 'Rozkaz Útok', o_h: 'Rozkaz Držať', o_f: 'Rozkaz Za mnou', o_l: 'Rozkaz Šík', o_r: 'Rozkaz Ústup' };
+const KEYS_DEF = { atk: ' ', thrust: 'e', block: 'Shift', shoot: 'q', cry: 'v', wall: 'b', fm: 'x', kick: 'y', cam: 'Tab', o_a: 't', o_h: 'h', o_f: 'f', o_l: 'g', o_r: 'r' };
+const KEY_N = { atk: 'Sek (útok)', thrust: 'Bod', block: 'Kryt', shoot: 'Výstrel / hod', cry: 'Bojový pokrik', wall: 'Na hradbách: rebrík, olej, kameň', fm: 'Útvar (riadky, štítový val, voľný)', kick: 'Kopnutie', cam: 'Kamera: prvá / tretia osoba (3D)', o_a: 'Rozkaz Útok', o_h: 'Rozkaz Držať', o_f: 'Rozkaz Za mnou', o_l: 'Rozkaz Šík', o_r: 'Rozkaz Ústup' };
 const KB = () => Object.assign({}, KEYS_DEF, (typeof OPT !== 'undefined' && OPT.keys) || {});
 let GP = null;
 const kd = a => !!keys[KB()[a]] || !!(GP && GP[a]);
@@ -77,7 +77,7 @@ const cmbSay = (id, s, l = 180) => { if (CMB.said[id]) return; CMB.said[id] = 1;
 /** Začiatok bitky: morálka podľa síl, veliteľ nepriateľa, výdrž, štít a šípy hrdinu. */
 function cmbStart(en) {
     const C = CMB;
-    Object.assign(C, { blk: 0, blkT: 99, gb: 0, st: 100, run: 0, lastA: null, chg: 0, charging: 0, bowC: 0, cry: 0, swing: null, rd: null, draw: 0, aim: null, couch: 0, fm: { p: 'line', l: 'line', j: 'line' }, at: {}, place: null, prev: null, mkT: 0, hist: [], bd: 't', mdx: 0, mdy: 0, px: null, py: null, vx: 0, vy: 0, sel: 'all', endT: 0, lmb: 0, rmb: 0, said: {}, noRout: en && en.ar ? 1 : 0 });
+    Object.assign(C, { blk: 0, blkT: 99, gb: 0, st: 100, run: 0, lastA: null, chg: 0, charging: 0, bowC: 0, cry: 0, swing: null, rd: null, draw: 0, aim: null, couch: 0, wpn: 'm', msgs: [], kick: 0, kickT: 0, rear: 0, mvA: null, mvS: 0, aim3: null, fm: { p: 'line', l: 'line', j: 'line' }, at: {}, place: null, prev: null, mkT: 0, hist: [], bd: 't', mdx: 0, mdy: 0, px: null, py: null, vx: 0, vy: 0, sel: 'all', endT: 0, lmb: 0, rmb: 0, said: {}, noRout: en && en.ar ? 1 : 0 });
     const mine = U.filter(u => !u.t), foe = U.filter(u => u.t), pw = s => s.reduce((a, u) => a + u.mh * (u.d || 5), 0) + 1, r = pw(mine) / pw(foe);
     const cl = v => Math.max(-18, Math.min(18, v));
     const m0 = 62 + cl((r - 1) * 12) + Math.min(12, G.lv || 1) + (G.king ? 5 : 0) + Math.min(6, (G.ren || 0) / 3) + ((G.pm ?? 60) - 50) * .3 + (perk('vodca') ? 8 : 0) + (hasRole('velitel') ? 6 : 0);   // morálka družiny, Charizma, spoločník veliteľ
@@ -88,16 +88,17 @@ function cmbStart(en) {
     const RW = rangedW();   // strelná výbava (luk, kuša, oštepy), inak lovecký luk podľa lukostreľby
     C.ammo = C.ammo0 = RW ? RW.ammo + G.s.ls * 2 + (perk('konilu') ? 6 : 0) : G.s.ls >= 1 || G.race === 'elf' || perk('konilu') ? 6 + 4 * G.s.ls + (G.race === 'elf' ? 4 : 0) + (perk('konilu') ? 6 : 0) : 0;
     C.horse = C.horse0 = heroMounted() ? Math.round(70 + it('m').v * 25) : 0;   // zdravie koňa hrdinu
-    const o0 = G.ord0 || 'a'; C.og = { p: o0, l: o0, j: o0 }; FX3 = [];
+    const o0 = G.ord0 || 'a'; C.og = { p: o0, l: o0, j: o0 }; FX3 = []; GA = []; HITSTOP = 0;
     // veliteľ nepriateľa: najsilnejší vojak hlavnej armády nesie zástavu; jeho pád zlomí morálku
     if (en && en.nm && !en.ar && !en.nz) { const c = foe.filter(u => !u.src && !heavy(u)).sort((a, b) => b.mh - a.mh)[0]; if (c) { c.cmd = 1; c.bn = 1; c.hp = c.mh = c.mh * 1.6; c.d *= 1.2; } }
-    if (G && !G.cmbTip) { G.cmbTip = 1; const K = KB(), n = a => keyName(K[a]); TS = { s: 'Myšou zvoľ smer, drž ľavé tl./' + n('atk') + ' a pusť = úder · ' + n('thrust') + ' bod · pravé tl./' + n('block') + ' kryt · drž ' + n('shoot') + ' luk · ' + n('cry') + ' pokrik · ' + ['o_a', 'o_h', 'o_f', 'o_l', 'o_r'].map(n).join(' ') + ' rozkazy', l: 720 }; }
+    if (G && !G.cmbTip) { G.cmbTip = 1; const K = KB(), n = a => keyName(K[a]); TS = { s: 'Klik zamkne myš · smer pohybom myši · drž ľavé a pusť = úder · pravé = kryt · koliesko = zbraň · ' + n('kick') + ' kop · ' + n('cam') + ' 1./3. osoba', l: 720 }; }
 }
 
 /** Hrdina: mierenie, kryt, výdrž, sek a bod, luk, pokrik, nápor na koni. mv = smer pohybu (alebo null). */
 function cmbHero(u, dt, mv) {
     const C = CMB;
-    if (C.km && (!ptr.down || C.lmb)) { const ax = ptr.x + bc.x - u.x, ay = ptr.y + bc.y - u.y; if (Math.hypot(ax, ay) > 8) u.f = Math.atan2(ay, ax); }
+    if (C.km && C.aim3) u.f = C.aim3.yaw;   // mierenie ako vo Warbande: hrdina hľadí smerom kamery
+    else if (C.km && (!ptr.down || C.lmb)) { const ax = ptr.x + bc.x - u.x, ay = ptr.y + bc.y - u.y; if (Math.hypot(ax, ay) > 8) u.f = Math.atan2(ay, ax); }
     if (C.gb > 0) C.gb -= dt;
     if (C.mkT > 0) C.mkT -= dt;
     placeTick();
@@ -108,7 +109,11 @@ function cmbHero(u, dt, mv) {
     C.blkT += dt;
     C.st = Math.min(100, C.st + dt * (C.blk ? .1 : mv != null && !G.eq.m ? .22 : .38) * (perk('neunavny') ? 1.4 : 1));
     const cost = perk('neunavny') ? .75 : 1;   // perk Neúnavný
-    if (C.bowC > 0) C.bowC -= dt;
+    const RW0 = rangedW(), xb = RW0 && RW0.rt === 'xbow';
+    if (C.bowC > 0) { if (xb && (mv != null || heroMounted())) { if (C.bowC < (RW0.cd || 60) - 2) cmbSay('xbreload', 'Kušu nabíjaš len postojačky – zastav sa.', 140); } else C.bowC -= dt; }   // kuša sa nabíja len postojačky
+    if (C.kick > 0) C.kick -= dt; if (C.kickT > 0) C.kickT -= dt;
+    heroKick(u); pickups(u);
+    if (C.wpn === 'r' && !C.ammo) { C.wpn = 'm'; wbMsg('Došli strely – zbraň na blízko.', '#ff9a80'); }
     if (C.cry > 0) C.cry -= dt;
     if (C.swing && (C.swing.t -= dt) <= 0) C.swing = null;
     const slow = C.st < 15 ? 1.6 : 1, rg = it('w').r || 34;
@@ -150,14 +155,15 @@ function cmbHero(u, dt, mv) {
     // strelná zbraň: s myšou sa luk napína držaním klávesu a pustením vystrelí (zameriavač, dolet po bod pod kurzorom); kuša strieľa hneď
     const RW = rangedW(), rt = RW ? RW.rt : 'bow';
     C.aim = null;
+    const shootKey = kd('shoot') || (C.wpn === 'r' && (kd('atk') || C.lmb));
     if (C.km && rt !== 'xbow') {
-        if (kd('shoot') && C.ammo > 0 && C.bowC <= 0 && !C.blk) {
+        if (shootKey && C.ammo > 0 && C.bowC <= 0 && !C.blk) {
             C.draw = (C.draw || 0) + dt;
             C.aim = aimInfo(u, mv, rt);
         } else if (C.draw > 0) {
             if (C.draw >= (rt === 'jav' ? 6 : 8)) heroShoot(u, mv, RW, rt); else C.draw = 0;
         }
-    } else if (kd('shoot') && C.ammo > 0 && C.bowC <= 0 && !C.blk) {
+    } else if (shootKey && C.ammo > 0 && C.bowC <= 0 && !C.blk) {
         if (RW && RW.rt === 'xbow' && heroMounted()) cmbSay('xbow', 'Kušu na koni nenabiješ – zosadni, alebo použi luk či oštepy.');
         else { if (!C.km) { const t = U.filter(v => v.t && v.hp > 0).sort((a, b) => Math.hypot(a.x - u.x, a.y - u.y) - Math.hypot(b.x - u.x, b.y - u.y))[0]; if (t) u.f = dirTo(u, t); } C.draw = 30; heroShoot(u, mv, RW, rt); }
     }
@@ -200,6 +206,7 @@ function heroDirectional(u, dt, mv, slow, cost, rg) {
         return;
     }
     C.couch = 0;
+    if (C.wpn === 'r') { C.rd = null; return; }   // v ruke je strelná zbraň (ľavé tlačidlo strieľa)
     if (C.rd) {
         const R = C.rd; R.t += dt;
         if (C.blk) { C.rd = null; C.st = Math.max(0, C.st - 3); cmbSay('feint', 'Klam: kryt počas nápriahu zruší úder.', 120); return; }
@@ -222,9 +229,13 @@ function heroStrike(u, R, slow, cost, rg) {
     const tg = U.filter(v => v.t && v.hp > 0 && Math.hypot(v.x - u.x, v.y - u.y) < reach + v.r * .5 && !wallBlocked(u, v) && Math.abs(sa(v)) < P.arc)
         .sort((a, b) => d === 'l' ? sa(a) - sa(b) : d === 'r' ? sa(b) - sa(a) : Math.hypot(a.x - u.x, a.y - u.y) - Math.hypot(b.x - u.x, b.y - u.y)).slice(0, P.n);
     C.hist = (C.hist || []).concat(d).slice(-4);
+    const bl = tg.length ? swingBlocked(u, d, reach) : null;
+    if (bl) { tg.length = 0; C.st = Math.max(0, C.st - 6); fx3({ k: 'bounce', x: u.x + Math.cos(u.f) * 12, y: u.y + Math.sin(u.f) * 12 }); wbMsg('Zbraň sa zarazila o ' + bl + '!', '#ff9a80'); snd('sh'); }   // sek zboku v tesnom priestore
     tg.forEach((v, i) => {
         const a = dirTo(u, v), close = Math.max(-.5, Math.min(1.2, ((C.vx || 0) * Math.cos(a) + (C.vy || 0) * Math.sin(a)) / Math.max(1, u.bs || u.sp || 2)));
-        meleeHit(u, v, dmg() * P.m * pow * (1 + close * (heroMounted() ? .5 : .2)) * (i ? .75 : 1), d === 't' ? 'thrust' : 'swing', { d, pow });
+        const dist = Math.hypot(v.x - u.x, v.y - u.y) - (v.r || 6) * .5, handle = dist < reach * (WT.spear || WT.t2 ? .42 : .26);   // príliš blízko: zasiahne len rúčka
+        if (handle && !i) wbMsg(WT.spear && d === 't' ? 'Príliš blízko – kopija nemá odstup.' : 'Príliš blízko – zasiahla len rúčka.', '#ff9a80');
+        meleeHit(u, v, dmg() * P.m * pow * (1 + close * (heroMounted() ? .5 : .2)) * (i ? .75 : 1) * (handle ? (WT.spear && d === 't' ? 0 : .2) : 1), d === 't' ? 'thrust' : 'swing', { d, pow, pitch: C.aim3 ? C.aim3.pitch : null });
     });
     u.c = WT.rec * slow * (d === 't' ? .85 : 1); C.st -= (d === 't' ? 7 : WT.t2 ? 13 : 10) * cost * (pow > 1.2 ? 1.2 : 1); if (C.st < 0) C.st = 0;
     fx = 10; C.swing = { t: 10, a: u.f, k: d === 't' ? 't' : 's', d, r: reach, w: P.arc, pow };
@@ -245,22 +256,28 @@ function aimInfo(u, mv, rt) {
 }
 /** Výstrel: šíp letí k bodu pod kurzorom (dolet podľa napnutia), sila podľa napnutia. */
 function heroShoot(u, mv, RW, rt) {
-    const C = CMB, A = C.km ? aimInfo(u, mv, rt) : null;
-    let an = A ? Math.atan2(A.y - u.y, A.x - u.x) : u.f;
-    if (A) u.f = an;
-    const p = A ? A.p : 1, base = rt === 'xbow' ? 10 : rt === 'jav' ? 6.5 : 8, sp = base * (.55 + .45 * p), lmax = (rt === 'jav' ? 30 : 48) * (.6 + .4 * p);
-    an += (Math.random() - .5) * 2 * (A ? A.sp : rt === 'xbow' ? (mv != null ? .025 : .005) : rt === 'jav' ? .03 : mv != null ? (heroMounted() && (G.s.ls >= 2 || perk('konilu')) ? .02 : .08) : .015);
-    const l = A ? Math.max(4, Math.min(lmax, A.dist / sp + 1.5)) : lmax;
-    AR.push({ x: u.x, y: u.y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp, l, t: 0, d: ((RW ? RW.v : 6) + G.s.ls * (rt === 'xbow' ? .5 : 1.5)) * (.5 + .5 * p), by: u, jav: rt === 'jav', bolt: rt === 'xbow' });
+    const C = CMB, A = C.km ? aimInfo(u, mv, rt) : null, look = !!(C.km && C.aim3);
+    const p = A ? A.p : 1, base = rt === 'xbow' ? 10 : rt === 'jav' ? 6.5 : 8, sp = base * (.55 + .45 * p);
+    const spr = A ? A.sp : rt === 'xbow' ? (mv != null ? .025 : .005) : rt === 'jav' ? .03 : mv != null ? (heroMounted() && (G.s.ls >= 2 || perk('konilu')) ? .02 : .08) : .015;
+    const z0 = elevSim(u.x, u.y) + seatH(u) + bodyH(u) * .72;
+    let an, pitch, tl = 0;
+    if (look) { an = C.aim3.yaw; pitch = C.aim3.pitch; }   // mierenie ako vo Warbande: šíp letí smerom zameriavača, gravitácia ho stiahne
+    else if (A) { an = Math.atan2(A.y - u.y, A.x - u.x); pitch = ballistic(A.dist, elevSim(A.x, A.y) - z0, sp); }   // mierenie na zem: šíp dopadne k bodu pod kurzorom
+    else { an = u.f; const t = U.filter(v => v.t && v.hp > 0).sort((a, b) => Math.hypot(a.x - u.x, a.y - u.y) - Math.hypot(b.x - u.x, b.y - u.y))[0]; pitch = t ? ballistic(Math.hypot(t.x - u.x, t.y - u.y), elevSim(t.x, t.y) + seatH(t) + bodyH(t) * .6 - z0, sp) : .1; }
+    u.f = an;
+    an += (Math.random() - .5) * 2 * spr; pitch += (Math.random() - .5) * 1.6 * spr;
+    const a = fireArrow(u, an, pitch, sp, { t: 0, d: ((RW ? RW.v : 6) + G.s.ls * (rt === 'xbow' ? .5 : 1.5)) * (.5 + .5 * p), jav: rt === 'jav', bolt: rt === 'xbow' });
+    if (!look && A) { const vz = a.vz; tl = (vz + Math.sqrt(Math.max(0, vz * vz + 2 * ARG * (a.z - elevSim(A.x, A.y))))) / ARG; a.l = tl + 1.5; }
     C.ammo--; C.bowC = RW ? RW.cd : 42; C.draw = 0; snd('ar');
     if (!C.ammo) cmbSay('ammo', 'Došli ti strely.');
-    else if (C.km && rt === 'bow') cmbSay('bow', 'Luk: drž ' + keyName(KB().shoot) + ' – zameriavač sa zúži, keď je luk napnutý. Šíp dopadne k bodu pod kurzorom.', 200);
+    else if (C.km && rt === 'bow') cmbSay('bow', look ? 'Luk: drž ľavé tlačidlo (koliesko prepne na luk) alebo ' + keyName(KB().shoot) + '. Šíp padá – na diaľku mier vyššie. Zásah do hlavy zabije.' : 'Luk: drž ' + keyName(KB().shoot) + ' – zameriavač sa zúži, keď je luk napnutý. Šíp dopadne k bodu pod kurzorom.', 220);
 }
 /** Úder na blízko: kryt hrdinu, štít vojaka, úder zboku a zozadu. Vráti true, ak úder prešiel. kind: swing, thrust, charge, ai. */
 function meleeHit(att, def, d, kind, info) {
     const C = CMB, from = dirTo(def, att), rel = angD(def.f, from);
+    if (kind === 'ai' && def.h && typeof chamber === 'function' && chamber(att, def)) return false;   // kryt útokom
     if (kind === 'charge' && braced(def, att)) {   // šík kopijníkov zastaví nápor jazdy
-        hit(att, def.d * 2.5, def); if (!att.h) att.stun = 35; else C.run = 0;
+        hit(att, def.d * 2.5, def); if (!att.h) { att.stun = 35; att.rear = 45; } else { C.run = 0; C.rear = 45; C.mvS = 0; wbMsg('Kôň sa vzopol pred kopijami!', '#ff9a80'); }
         blockFx(def, from, 0); cmbSay('brace', 'Šík kopijníkov zastavil nápor jazdy!', 150); return false;
     }
     if (def.h && C.blk && C.st > 0) {
@@ -285,7 +302,10 @@ function meleeHit(att, def, d, kind, info) {
     }
     if (!def.h && kind !== 'charge' && rel < 1.1 && Math.random() < bc0) { blockFx(def, from, 1); if (att.h) C.st = Math.max(0, C.st - 4); return false; }
     const mult = rel > 2.1 ? 1.5 : rel > 1.2 ? 1.25 : 1;
-    hit(def, d * mult, att);
+    if (info || kind === 'ai') {   // miesto zásahu a typ poškodenia (js/sim/warband.js)
+        const dir = info ? info.d : att.lwd ? ({ l: 'r', r: 'l', u: 'u', t: 't' })[att.lwd] : 'r';
+        hitZ(def, d * mult, att, { zone: meleeZone(att, def, dir, info ? info.pitch : null), type: dmgType(att, kind, dir), pow: info ? info.pow : 1 });
+    } else hit(def, d * mult, att);
     if (mult > 1 && att.h) cmbSay('flank', rel > 2.1 ? 'Úder zozadu: +50 % zranenia.' : 'Úder zboku: +25 % zranenia.', 120);
     return true;
 }
@@ -339,7 +359,7 @@ function wallAction(u) {
 /** Šíp: štít hrdinu (pri kryte) alebo štít vojaka spredu ho zachytí. */
 function arrowBlocked(v, a) {
     const rel = angD(v.f, Math.atan2(-a.vy, -a.vx));
-    if (v.h) { if (CMB.blk && CMB.shp > 0 && rel < 1.4) { CMB.shp = Math.max(0, CMB.shp - 4); blockFx(v, Math.atan2(-a.vy, -a.vx), 1); return true; } return false; }
+    if (v.h) { if (CMB.blk && CMB.shp > 0 && rel < 1.4) { CMB.shp = Math.max(0, CMB.shp - 4 - (a.bolt ? 4 : 0)); blockFx(v, Math.atan2(-a.vy, -a.vx), 1); if (CMB.shp <= 0) { fx3({ k: 'shieldBreak', x: v.x, y: v.y }); wbMsg('Štít sa rozbil!', '#ff9a80'); } return true; } return false; }
     if (rel < 1.1 && Math.random() < blockChance(v) * .8) { blockFx(v, Math.atan2(-a.vy, -a.vx), 1); return true; }
     return false;
 }
@@ -420,6 +440,7 @@ function cmbFlee(u, dt) {
 /** Padlý vojak znižuje morálku svojej strany (veliteľ a spoločník viac) a dvíha morálku druhej. */
 function cmbDeath(b) {
     if (b.h || b.fled) return;
+    if (typeof dropOnDeath === 'function') dropOnDeath(b);
     const s = b.t ? 1 : 0, C = CMB, loss = 85 / Math.max(8, C.n0[s]) * (b.uk || b.cp ? 1.3 : 1) * (heavy(b) ? 2 : 1);
     C.M[s] = Math.max(0, C.M[s] - loss); C.M[1 - s] = Math.min(100, C.M[1 - s] + loss * .3);
     if (b.boss) C.M[1] = Math.max(0, C.M[1] - 40);
@@ -475,7 +496,7 @@ function holdSlot(u, b, bd, dt) {
     if (u.hx == null) { u.hx = u.x; u.hy = u.y; }
     const dx = u.hx - u.x, dy = u.hy - u.y, ds = Math.hypot(dx, dy), archer = u.k === 'a' || u.k === 'e';
     const sp = u.sp * (fmOf(u) === 'wall' && !u.t ? .75 : 1), step = () => { if (ds > 3) { u.x += dx / ds * Math.min(ds, sp * dt); u.y += dy / ds * Math.min(ds, sp * dt); } };
-    if (archer) { step(); u.f = dirTo(u, b); if (u.c <= 0 && bd < WX.r) { u.c = 75; const an = u.f + (Math.random() - .5) * .12; AR.push({ x: u.x, y: u.y, vx: Math.cos(an) * 7, vy: Math.sin(an) * 7, l: 40, t: u.t, d: u.k === 'e' ? 7 : 4.5, by: u }); snd('ar'); } return true; }
+    if (archer) { step(); u.f = dirTo(u, b); if (u.c <= 0 && bd < WX.r) { u.c = 75; aiShoot(u, b); } return true; }
     if (bd > 45 || ds > 70) { step(); u.f = ds > 3 ? Math.atan2(dy, dx) : dirTo(u, b); u.run = 0; return true; }
     return false;
 }

@@ -134,7 +134,7 @@ function hit(b, d, from) {
     b.hp -= d * (b.h ? red() : !b.t && temple() ? .9 : 1);
     if (from) { from.dmg = (from.dmg || 0) + d; if (was && b.hp <= 0) from.kills = (from.kills || 0) + 1; }
     if (was && b.hp <= 0) cmbDeath(b);
-    snd(b.hp <= 0 ? 'dy' : b.h ? 'sh' : Math.random() < .5 ? 'sw' : 'hb');
+    snd(b.hp <= 0 ? 'dy' : typeof WB_SND === 'string' && WB_SND ? WB_SND : b.h ? 'sh' : Math.random() < .5 ? 'sw' : 'hb');   // zvuk podľa materiálu (js/sim/warband.js)
     for (let i = 0; i < 4; i++)
         PT.push({ x: b.x, y: b.y, vx: Math.random() * 3 - 1.5, vy: Math.random() * 3 - 1.5, l: 18, c: b.t ? '#8a2a1a' : '#d9a441' });
     for (let i = 0; i < 3; i++)   // iskry kovu: letia hore a padajú
@@ -340,6 +340,8 @@ function endBattle(win) {
                 const L = LB;
                 if (!L.siege)
                     G.cap += Math.floor(L.n * .3);
+                const ko = U.filter(u => u.t && u.ko && fallen(u) && !u.boss).length;   // omráčení tupými zbraňami
+                if (ko) { G.cap += ko; lg('Omráčených nepriateľov zajatých po bitke: ' + ko + '.'); }
                 G.txp += L.n * 3;
                 if (!L.siege && !L.vil) {
                     qChk('k', L.f);
@@ -417,22 +419,7 @@ function updBattle(dt) {
         }
         if (SHAKE > 0) SHAKE -= dt * .3;
         PT = PT.filter(p => p.l > 0);
-        for (const a of AR) {
-            a.x += a.vx * dt;
-            a.y += a.vy * dt;
-            a.l -= dt;
-            for (const v of U)
-                if (v.hp > 0 && v.t !== a.t && Math.abs(v.x - a.x) < 7 && Math.abs(v.y - a.y) < 7) {
-                    if (!v.t && v.hx != null && !v.h && fmOf(v) === 'loose' && Math.random() < .35) continue;   // voľný útvar: strela preletí medzerou
-                    if (arrowBlocked(v, a)) { a.l = 0; break; }
-                    if (SGB && v.t !== (SGB.att ?? 0) && v.x >= 1000 && v.x <= 1050 && Math.random() < .4) { a.l = 0; break; }   // cimburie kryje obrancov na hradbách
-                    if (SGB && a.by && a.by.t !== (SGB.att ?? 0) && a.by.x >= 1000 && a.by.x <= 1050) a.d = (a.d || 4.5) * 1.3;   // výstrel z hradieb
-                    hit(v, (a.d || 4.5) + (a.t ? 0 : G.s.ls), a.by);
-                    a.l = 0;
-                    break;
-                }
-        }
-        AR = AR.filter(a => a.l > 0);
+        trackVel(dt); stepArrows(dt);   // šípy v 3D s gravitáciou a miestom zásahu (js/sim/warband.js)
         for (const u of U) {
             if (u.hp <= 0)
                 continue;
@@ -464,7 +451,9 @@ function updBattle(dt) {
                     }
                 }
                 let mv = null;
-                if (mx || my) {
+                if (heroMounted()) mv = horseMove(u, mx, my, 1, dt);   // kôň: zotrvačnosť a obratnosť (js/sim/warband.js)
+                if (heroMounted() && mv != null && !CMB.km) u.f = mv;
+                else if (mx || my) {
                     const m = Math.hypot(mx, my), k = CMB.blk && !heroMounted() ? .6 : 1;   // v kryte pešo pomalšie
                     mv = Math.atan2(my, mx);
                     if (!CMB.km) u.f = mv;
@@ -504,7 +493,8 @@ function updBattle(dt) {
                 }
                 if (b) {
                     u.f = Math.atan2(b.y - u.y, b.x - u.x);
-                    if ((u.k === 'a' || u.k === 'e')) {
+                    if (isHA(u)) haAI(u, b, bd, dt);   // jazdecký lukostrelec krúži a strieľa
+                    else if ((u.k === 'a' || u.k === 'e')) {
                         if (bd > 150) {
                             u.x += (b.x - u.x) / bd * u.sp * dt;
                             u.y += (b.y - u.y) / bd * u.sp * dt;
@@ -513,12 +503,7 @@ function updBattle(dt) {
                             u.x -= (b.x - u.x) / bd * u.sp * dt;
                             u.y -= (b.y - u.y) / bd * u.sp * dt;
                         }
-                        if (u.c <= 0 && bd < WX.r) {
-                            u.c = 75;
-                            const an = Math.atan2(b.y - u.y, b.x - u.x) + (Math.random() - .5) * .12;
-                            AR.push({ x: u.x, y: u.y, vx: Math.cos(an) * 7, vy: Math.sin(an) * 7, l: 40, t: u.t, d: u.k === 'e' ? 7 : 4.5, by: u });
-                            snd('ar');
-                        }
+                        if (u.c <= 0 && bd < WX.r) { u.c = 75; aiShoot(u, b); }
                     }
                     else if (aiMelee(u, b, bd, dt)) { }   // nápriah a úder, nápor jazdy (js/sim/combat.js)
                     else if (bd > 13) {
