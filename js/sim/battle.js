@@ -13,7 +13,7 @@ function startBattleBase(en, al) {
     en.n = Math.max(1, Math.round(en.n));
     PT = [];
     U = [{ h: 1, t: 0, x: 140, y: BH / 2, hp: G.hp, mh: mh(), sp: 1.2 * it('m').v * (1 + .08 * G.s.ob) * (G.eq.m && perk('jazda') ? 1.1 : 1), c: 0, r: 9, k: 'h', f: 0 }];
-    const cap = n => Math.round(n * (perk('vojvodca') ? 1.5 : 1));   // perk Vojvodca: viac vojakov v bitke
+    const cap = n => Math.round(n * (perk('vojvodca') ? 1.5 : 1) * BSZ());   // perk Vojvodca: viac vojakov v bitke
     for (let i = 0; i < Math.min(G.inf, cap(40)); i++)
         U.push(mk(0, 'i'));
     for (let i = 0; i < Math.min(G.cav, cap(20)); i++)
@@ -30,11 +30,11 @@ function startBattleBase(en, al) {
         U.push(mk(0, 'n'));
     // kto sa pridá: spojenci hráča a priatelia nepriateľa v okolí (pri obliehaní celý tábor), posádka pri obrane hradu
     BSIDES = battleSides(en, al);
-    U.push(...sideUnits(BSIDES.allies, 0, ALLY_CAP));
-    if (en.def != null) { const t = TW[en.def], gn = Math.min(30, Math.max(2, t.g)); BSIDES.gUnits = gn; for (let i = 0; i < gn; i++) { const u = mk(0, i % 3 === 2 ? 'a' : 'i', t.f); u.ally = 1; u.garrison = 1; U.push(u); } }
+    U.push(...sideUnits(BSIDES.allies, 0, Math.round(ALLY_CAP * BSZ())));
+    if (en.def != null) { const t = TW[en.def], gn = Math.min(Math.round(30 * BSZ()), Math.max(2, t.g)); BSIDES.gUnits = gn; for (let i = 0; i < gn; i++) { const u = mk(0, i % 3 === 2 ? 'a' : 'i', t.f); u.ally = 1; u.garrison = 1; U.push(u); } }
     for (let i = 0; i < en.n; i++)
         U.push(mk(1, en.nz ? 'z' : en.trolls || en.beorn ? 't' : en.spiders ? 'w' : en.kind === 'wolves' ? (i % 3 ? 'w' : 'uI2') : en.kind === 'orcs' ? (i % 7 === 6 ? 't' : i % 4 === 3 ? 'uM1' : 'o') : en.kind === 'deserters' ? (i % 3 === 2 ? 'a' : i % 5 === 4 ? 'c' : 'i') : (i % 3 === 1 && FK[en.f] && FK[en.f].length ? FK[en.f][i % 2] : ek(en.f, i)), en.f));   // miesta: trollovia, Beorn (medveď), pavúky
-    U.push(...sideUnits(BSIDES.foes, 1, Math.max(0, FOE_CAP - en.n)));
+    U.push(...sideUnits(BSIDES.foes, 1, Math.max(0, Math.round(FOE_CAP * BSZ()) - en.n)));
     if (en.siege) {
         const sg = en.t.sg || {}, k = 1.3 + (en.t.wl || 0) * .15 - (sg.tow ? .15 : 0) - (en.sgFood != null && en.sgFood <= 0 ? .1 : 0);   // veža a hlad oslabujú obrancov
         U.forEach(u => { if (u.t) u.hp = u.mh = u.mh * k; });
@@ -55,6 +55,8 @@ function startBattleBase(en, al) {
 }
 /** Okruh, z ktorého sa do bitky pridávajú ďalšie armády, a najväčší počet ich vojakov na bojisku. */
 const JOIN_R = 300, ALLY_CAP = 30, FOE_CAP = 70;
+/** Veľkosť bitiek (Nastavenia): normálna ×1 (do ~150 vojakov), veľká ×2,5 (do ~350), obrovská ×5 (500 a viac). */
+const BSZ = () => ({ n: 1, v: 2.5, o: 5 })[typeof OPT !== 'undefined' && OPT.bsize] || 2.5;
 let BSIDES = { allies: [], foes: [] };
 /** Kto sa pridá do bitky (ako vo Warbande): spojenci hráča v okolí, ktorí sú vo vojne s nepriateľom, a armády priateľské
  *  nepriateľovi. Pri útoku na hrad bojujú všetci spojenci z obliehacieho tábora; pri obrane hradu všetci obliehatelia. */
@@ -419,7 +421,7 @@ function updBattle(dt) {
         }
         if (SHAKE > 0) SHAKE -= dt * .3;
         PT = PT.filter(p => p.l > 0);
-        trackVel(dt); stepArrows(dt);   // šípy v 3D s gravitáciou a miestom zásahu (js/sim/warband.js)
+        trackVel(dt); stepArrows(dt); wxTick(dt);   // šípy v 3D s gravitáciou a miestom zásahu (js/sim/warband.js)
         for (const u of U) {
             if (u.hp <= 0)
                 continue;
@@ -464,6 +466,8 @@ function updBattle(dt) {
             }
             else {
                 let b = null, bd = 1e9;
+                if (U.length > 150 && u.tg && u.tg.hp > 0 && (u.tgT -= dt) > 0) { b = u.tg; bd = Math.hypot(b.x - u.x, b.y - u.y); }   // veľká bitka: najbližší nepriateľ sa hľadá len občas
+                else {
                 for (const v of U)
                     if (v.t !== u.t && v.hp > 0) {
                         const d = Math.hypot(v.x - u.x, v.y - u.y);
@@ -472,6 +476,9 @@ function updBattle(dt) {
                             b = v;
                         }
                     }
+                u.tg = b; u.tgT = 5 + Math.random() * 4;
+                }
+                u.bd = bd;   // vzdialenosť k nepriateľovi (3D: nečinní vojaci búchajú do štítov a pokrikujú)
                 if (!u.t && !u.ally && b) {
                     const ORD = CMB.og[grpOf(u)] || 'a';   // rozkaz skupiny vojaka (pechota, lukostrelci, jazda)
                     if (ORD === 'r') {

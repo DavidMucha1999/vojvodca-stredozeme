@@ -163,7 +163,8 @@ class BattleScene extends Phaser.Scene {
     update(time, delta) {
         if (!this.ready) { if (mode !== 'battle') this.scene.start('Map'); return; }
         if (mode === 'battle') { const k = this.d3 ? B3.timeK() : 1; if (HITSTOP > 0) HITSTOP -= delta / 16.67; else if (k > 0) updBattle(Math.min(2, delta / 16.67) * k); }   // zastavenie obrazu pri ťažkom údere; 3D: spomalenie, fotorežim   // 3D: spomalenie pri páde bossa, fotorežim zastaví hru
-        if (mode !== 'battle') { if (this.input.mouse && this.input.mouse.locked) this.input.mouse.releasePointerLock(); this.scene.start('Map'); return; }
+        if (mode !== 'battle') { if (this.input.mouse && this.input.mouse.locked) this.input.mouse.releasePointerLock(); fpsBox(null); this.scene.start('Map'); return; }
+        fpsBox(this.game.loop.actualFps);
         if (this.d3) { if (!B3.look) this.repick(); B3.frame(Math.min(3, delta / 16.67)); return; }
 
         for (const u of U) {
@@ -380,3 +381,14 @@ class BattleScene extends Phaser.Scene {
         }
     }
 }
+/** Počítadlo snímok v bitke (Nastavenia → Počítadlo snímok): FPS, počet vojakov na bojisku, zníženie kvality automatikou. */
+function fpsBox(fps) {
+    let el = document.getElementById('fpsBox');
+    if (fps == null || !OPT.fps) { if (el) el.style.display = 'none'; return; }
+    if (!el) { el = document.createElement('div'); el.id = 'fpsBox'; el.style.cssText = 'position:absolute;right:8px;top:6px;z-index:30;font:12px monospace;color:#e8e0c8;background:rgba(0,0,0,.45);padding:2px 6px;border-radius:3px;pointer-events:none'; (document.getElementById('game') || document.body).appendChild(el); }
+    el.style.display = 'block';
+    const now = performance.now(); if (fpsBox.t && now - fpsBox.t < 400) return; fpsBox.t = now;
+    const alive = U.filter(u => u.hp > 0 && !u.fled).length, aq = typeof B3 !== 'undefined' && B3.isOn() ? B3.aq : 0;
+    el.textContent = Math.round(fps) + ' FPS · ' + alive + ' vojakov' + (aq ? ' · auto −' + aq : '');
+}
+

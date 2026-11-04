@@ -5,7 +5,7 @@
  * Automatické ukladanie má tri pozície: koniec dňa, deň predtým, pred dvoma dňami (vsauto, vsauto2, vsauto3).
  * Tipy: pri prvom vstupe do hradu, dediny, krčmy, na trh, k zaujímavému miestu a k obliehaniu sa v okne ukáže krátka rada (G.tips).
  */
-Object.entries({ vMus: 1, vSfx: 1, vAmb: 1, fx: 'high', diff: 'normal', gfx: 'high' }).forEach(([k, v]) => { if (OPT[k] == null) OPT[k] = v; });
+Object.entries({ vMus: 1, vSfx: 1, vAmb: 1, fx: 'high', diff: 'normal', gfx: 'high', bsize: 'v', autoQ: true, fps: false, mblur: false, dof: true, grain: false }).forEach(([k, v]) => { if (OPT[k] == null) OPT[k] = v; });
 const DIFF_N = { easy: 'ľahká', normal: 'normálna', hard: 'ťažká' }, DIFF_MUL = () => ({ easy: .75, normal: 1, hard: 1.25 })[OPT.diff] || 1;
 const lowFx = () => OPT.fx === 'low';
 /** Hlasitosti do zvukových zberníc (syntetizátor, prostredie, hudba zo súborov). */
@@ -30,6 +30,12 @@ function optItems() {
         [() => 'Krv v bitke: ' + (OPT.blood ? 'áno' : 'nie'), () => set('blood', !OPT.blood)],
         [() => 'Bitka: ' + (OPT.b3d === false ? '2D (pohľad zhora)' : '3D (pohľad za hrdinom)'), () => set('b3d', OPT.b3d === false)],
         [() => 'Grafika 3D bitky: ' + ({ low: 'nízka (najrýchlejšia)', med: 'stredná', high: 'vysoká', ultra: 'ultra (silný počítač)' }[OPT.gfx] || 'vysoká'), () => set('gfx', { low: 'med', med: 'high', high: 'ultra', ultra: 'low' }[OPT.gfx] || 'ultra')],
+        [() => 'Veľkosť bitiek: ' + ({ n: 'normálna (do 150 vojakov)', v: 'veľká (do 350 vojakov)', o: 'obrovská (500 a viac vojakov)' }[OPT.bsize] || 'veľká'), () => set('bsize', { n: 'v', v: 'o', o: 'n' }[OPT.bsize] || 'o')],
+        [() => 'Automatická kvalita 3D (udrží plynulosť): ' + (OPT.autoQ === false ? 'nie' : 'áno'), () => set('autoQ', OPT.autoQ === false)],
+        [() => 'Počítadlo snímok (FPS): ' + (OPT.fps ? 'áno' : 'nie'), () => set('fps', !OPT.fps)],
+        [() => 'Rozmazanie pohybu: ' + (OPT.mblur ? 'áno' : 'nie'), () => set('mblur', !OPT.mblur)],
+        [() => 'Hĺbka ostrosti (foto režim a spomalenie): ' + (OPT.dof === false ? 'nie' : 'áno'), () => set('dof', OPT.dof === false)],
+        [() => 'Filmové zrno: ' + (OPT.grain ? 'áno' : 'nie'), () => set('grain', !OPT.grain)],
         [() => 'Nálet kamery na začiatku bitky: ' + (OPT.intro3d === false ? 'nie' : 'áno'), () => set('intro3d', OPT.intro3d === false)],
         [() => 'Mierenie v 3D: ' + (OPT.aimMode === 'ground' ? 'kurzorom na zem' : 'ako vo Warbande (myš otáča kameru, zameriavač v strede)'), () => set('aimMode', OPT.aimMode === 'ground' ? 'look' : 'ground')],
         [() => 'Smer krytu: ' + (OPT.blkDir === 'manual' ? 'myšou (ako Warband – pohni myšou k úderu)' : 'automatický'), () => set('blkDir', OPT.blkDir === 'manual' ? 'auto' : 'manual')],

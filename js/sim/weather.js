@@ -34,6 +34,18 @@ function dailyWeather() {
 /** Spomalenie pochodu na mape podľa počasia. */
 const weatherSlow = () => ({ clear: 1, rain: .9, storm: .75, fog: .9, snow: .7, ash: .85 })[MW.n] || 1;
 /** Počasie do bitky: podľa počasia na mape a noci. WX.r = dostrel lukostrelcov, WX.night = noc. */
+/** Počasie sa počas dlhšej bitky mení (jasno → dážď → búrka a späť); mení sa aj dostrel lukov. Sneh a popol ostávajú. */
+const WX_R = { clear: 190, rain: 130, storm: 110, fog: 120, snow: 150, ash: 125 };
+function wxTick(dt) {
+    const W = typeof WX !== 'undefined' && WX; if (!W || W.n === 'snow' || W.n === 'ash' || (typeof BI !== 'undefined' && BI === 'd')) return;
+    if (W.k0 == null) { W.k0 = W.r / (WX_R[W.n] || 190); W.wt = 0; W.nx = 2600 + Math.random() * 2600; }
+    if ((W.wt += dt) < W.nx) return;
+    W.wt = 0; W.nx = 2200 + Math.random() * 3000;
+    if (Math.random() > .55) return;
+    const nx = { clear: 'rain', rain: Math.random() < .55 ? 'storm' : 'clear', storm: 'rain', fog: 'clear' }[W.n]; if (!nx) return;
+    W.n = nx; W.r = Math.round(WX_R[nx] * W.k0); W.chg = 1;
+    if (typeof TS !== 'undefined') TS = { s: { rain: 'Počasie sa mení: začína pršať. Luky dostrelia menej ďaleko.', storm: 'Prichádza búrka! Blesky, lejak, krátky dostrel.', clear: 'Mraky sa trhajú, prestáva pršať.' }[nx], l: 200 };
+}
 function battleWeather() {
     const map = { clear: ['clear', 190], rain: ['rain', 130], storm: ['storm', 110], fog: ['fog', 120], snow: ['snow', 150], ash: ['ash', 125] }[MW.n] || ['clear', 190];
     const night = isNight();

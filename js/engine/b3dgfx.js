@@ -73,14 +73,44 @@ const B3G = (() => {
                 transformed.x -= aCloth * (0.55 + 0.45 * sin(uTime * 3.1 + position.y * 0.45 + ph)) * 1.4;
                 transformed.z += aCloth * sin(uTime * 2.3 + position.y * 0.7 + ph * 1.7) * 0.5; }`);
     }
-    /** Materiál postáv: m = 'c' látka a koža, 'm' kov (lesk a odraz oblohy). Na nízkej kvalite jednoduché ploché tieňovanie. */
-    function chrMat(m) {
-        const k = 'chr' + m + QN(); if (MATS[k]) return MATS[k];
+    /** Postupné materiály postáv: 1 krúžková košeľa, 2 tkanina, 3 koža, 4 doškrabaný plát, 5 hrdzavé orkské železo, 6 elfský ornament; špina a vlhkosť. */
+    const U_DIRT = { value: 0 }, U_TINT = { value: null }, U_MUD = { value: null };
+    const NOISE3 = `float hh3(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
+        float n3(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+            return mix(mix(mix(hh3(i), hh3(i + vec3(1, 0, 0)), f.x), mix(hh3(i + vec3(0, 1, 0)), hh3(i + vec3(1, 1, 0)), f.x), f.y), mix(mix(hh3(i + vec3(0, 0, 1)), hh3(i + vec3(1, 0, 1)), f.x), mix(hh3(i + vec3(0, 1, 1)), hh3(i + vec3(1, 1, 1)), f.x), f.y), f.z); }`;
+    function chrPatch(sh, own) {
+        clothPatch(sh);
+        if (!U_TINT.value) { U_TINT.value = new (T().Color)(1, 1, 1); U_MUD.value = new (T().Color)('#3e3020'); }
+        sh.uniforms.uDirt = own ? own.dirt : U_DIRT; sh.uniforms.uTint = own ? own.tint : U_TINT; sh.uniforms.uMud = U_MUD; sh.uniforms.uWet = U_WET;
+        sh.vertexShader = 'attribute float aMat;\nvarying float vMat;\nvarying vec3 vOP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vMat = aMat; vOP = position;');
+        sh.fragmentShader = 'uniform float uDirt; uniform vec3 uTint; uniform vec3 uMud; uniform float uWet; varying float vMat; varying vec3 vOP;\n' + NOISE3 + '\n' + sh.fragmentShader
+            .replace('#include <color_fragment>', `#include <color_fragment>
+                float fwd = length(fwidth(vOP)); float dk = 1.0 - smoothstep(0.3, 1.2, fwd);
+                int mt = int(vMat + 0.5); float mR = 1.0, mM = 1.0; vec3 dc = diffuseColor.rgb;
+                if (mt == 1) { vec2 g = vec2((vOP.x + vOP.z) * 2.4, vOP.y * 2.4); g.x += step(0.5, fract(g.y * 0.5)) * 0.5;
+                    float rg = 1.0 - smoothstep(0.06, 0.16, abs(length(fract(g) - 0.5) - 0.3)); dc *= mix(1.0, 0.55 + 0.6 * rg, dk); mR = mix(1.0, mix(1.5, 0.75, rg), dk); }
+                else if (mt == 2) { float w = sin((vOP.x + vOP.z) * 9.0) * sin(vOP.y * 9.0); dc *= 1.0 + (0.07 * w - 0.05 * n3(vOP * 3.0)) * dk; mR = 1.05; }
+                else if (mt == 3) { float n = n3(vOP * 1.4) * 0.6 + n3(vOP * 5.0) * 0.4; dc *= 0.82 + 0.3 * n; mR = 0.75 + 0.35 * n; }
+                else if (mt == 4) { float sc = smoothstep(0.8, 0.95, n3(vec3((vOP.x + vOP.z) * 0.5, vOP.y * 10.0, vOP.z * 0.3))) * dk; float dn = n3(vOP * 0.9); dc *= 0.9 + 0.18 * dn + sc * 0.45; mR = 0.8 + 0.5 * dn - sc * 0.45; }
+                else if (mt == 5) { float r = smoothstep(0.4, 0.62, n3(vOP * 0.8) * 0.7 + n3(vOP * 3.1) * 0.3); dc = mix(dc * 0.85, vec3(0.3, 0.14, 0.06), r * 0.8); mR = mix(1.1, 2.4, r); mM = 1.0 - r * 0.8; }
+                else if (mt == 6) { float f = 1.0 - smoothstep(0.0, 0.2, abs(sin(vOP.y * 3.0 + sin((vOP.x + vOP.z) * 4.0) * 1.6))); dc *= 1.0 + f * 0.5 * dk; mR = 0.6 - f * 0.3; }
+                float dm = clamp(uDirt * ((1.0 - smoothstep(2.0, 15.0, vOP.y)) * 0.85 + 0.22) * (0.5 + 0.8 * n3(vOP * 0.45)), 0.0, 0.85);
+                dc = mix(dc, uMud * (0.8 + 0.4 * n3(vOP * 2.0)), dm); mR = mix(mR, 1.7, dm); mM *= 1.0 - dm * 0.7;
+                diffuseColor.rgb = dc * uTint * (1.0 - uWet * 0.12);`)
+            .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n roughnessFactor = clamp(roughnessFactor * mR * (1.0 - uWet * 0.35), 0.05, 1.0);')
+            .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\n metalnessFactor *= mM;');
+    }
+    /** Materiál postáv: m = 'c' látka a koža, 'm' kov (lesk a odraz oblohy). own = vlastná špina a odtieň vojaka (inak spoločný materiál pre vzdialené zástupy).
+     *  Na nízkej kvalite jednoduché ploché tieňovanie. */
+    function chrMat(m, own) {
+        const k = 'chr' + m + QN(); if (!own && MATS[k]) return MATS[k];
+        if (own && QN() === 0) return chrMat(m);
         const t = T(), low = QN() === 0;
         const mt = low ? new t.MeshLambertMaterial({ vertexColors: true, flatShading: true })
             : new t.MeshStandardMaterial({ vertexColors: true, roughness: m === 'm' ? .34 : .82, metalness: m === 'm' ? .78 : 0, envMapIntensity: m === 'm' ? 1.1 : .6 });
-        mt.onBeforeCompile = clothPatch; mt.customProgramCacheKey = () => 'chr' + m;
-        return (MATS[k] = mt);
+        if (low) { mt.onBeforeCompile = clothPatch; mt.customProgramCacheKey = () => 'chr' + m; }
+        else { mt.onBeforeCompile = sh => chrPatch(sh, own); mt.customProgramCacheKey = () => 'chrP' + m; mt.extensions = { derivatives: true }; }
+        return own ? mt : (MATS[k] = mt);
     }
     /** Látka s obrázkom (zástava s erbom). */
     function bannerMat(f) {
@@ -200,19 +230,67 @@ const B3G = (() => {
         return m;
     }
 
+    // ---------- kameň hradieb ----------
+    /** Murivo: kvádre s maltou podľa svetovej polohy (striedané rady), každý kameň iný odtieň, mach a vlhko pri zemi. Farebné diely (strechy, drevo) ostávajú hladké. */
+    function stoneMat() {
+        const k = 'stone' + QN(); if (MATS[k]) return MATS[k];
+        const t = T(), mt = new t.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: .9, metalness: 0, envMapIntensity: .4 });
+        mt.onBeforeCompile = sh => {
+            sh.uniforms.uWet = U_WET;
+            sh.vertexShader = 'varying vec3 vWP; varying vec3 vWN;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal);');
+            sh.fragmentShader = 'uniform float uWet; varying vec3 vWP; varying vec3 vWN;\n' + NOISE3 + '\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+                vec3 c0 = diffuseColor.rgb; float sat = max(max(c0.r, c0.g), c0.b) - min(min(c0.r, c0.g), c0.b);
+                if (sat < 0.1) {
+                    vec3 an = abs(vWN); vec2 uv = an.x > an.z && an.x > an.y ? vWP.zy : (an.z > an.y ? vWP.xy : vWP.xz);
+                    uv /= vec2(8.0, 4.2); float row = floor(uv.y); uv.x += mod(row, 2.0) * 0.5; vec2 id = floor(uv), f = fract(uv);
+                    float mortar = smoothstep(0.0, 0.05, f.x) * smoothstep(1.0, 0.95, f.x) * smoothstep(0.0, 0.1, f.y) * smoothstep(1.0, 0.9, f.y);
+                    float h = hh3(vec3(id, 3.0)); vec3 st = c0 * (0.82 + 0.34 * h) * (0.88 + 0.24 * n3(vWP * 0.35));
+                    vec3 c = mix(c0 * 0.5, st, mortar);
+                    float low = (1.0 - smoothstep(0.0, 9.0, vWP.y)) * n3(vWP * 0.2); c = mix(c, vec3(0.2, 0.26, 0.12), low * 0.45);
+                    diffuseColor.rgb = c * (1.0 - uWet * 0.15);
+                }`);
+        };
+        mt.customProgramCacheKey = () => 'stone';
+        return (MATS[k] = mt);
+    }
+    /** Kaluž: odraz oblohy a krúžky od kvapiek; v suchu je neviditeľná (priehľadnosť podľa vlhkosti U_WET). */
+    function puddleMat(sky) {
+        const t = T();
+        return new t.ShaderMaterial({
+            transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2,
+            uniforms: { uTime: U_TIME, uWet: U_WET, uSky: { value: new t.Color(sky.hor) }, uZen: { value: new t.Color(sky.zen) } },
+            vertexShader: 'varying vec3 vW; varying vec2 vUv; void main(){ vUv = uv; vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
+            fragmentShader: `uniform float uTime; uniform float uWet; uniform vec3 uSky; uniform vec3 uZen; varying vec3 vW; varying vec2 vUv;
+                void main() {
+                    float e = length(vUv - 0.5) * 2.0; if (e > 1.0) discard;
+                    vec2 rp = vW.xz * 0.45; vec2 ci = floor(rp); float r = 0.0;
+                    for (int k = 0; k < 4; k++) { vec2 cc = ci + vec2(mod(float(k), 2.0), floor(float(k) / 2.0)); float h = fract(sin(dot(cc, vec2(12.9898, 78.233))) * 43758.5453); float tt = fract(uTime * 1.1 + h); vec2 cp = cc + vec2(fract(h * 13.7), fract(h * 7.3)); r += (1.0 - tt) * smoothstep(0.07, 0.0, abs(length(rp - cp) - tt * 0.6)); }
+                    vec3 v = normalize(cameraPosition - vW); float fr = 0.3 + 0.7 * pow(1.0 - v.y, 3.0);
+                    vec3 c = mix(uSky, uZen, 0.35) * (0.75 + fr * 0.35) + r * 0.25;
+                    gl_FragColor = vec4(c, uWet * 0.55 * smoothstep(1.0, 0.75, e));
+                    #include <tonemapping_fragment>
+                    #include <colorspace_fragment>
+                }`
+        });
+    }
+
     // ---------- voda ----------
     function water(hTex, x0, x1, level, sky) {
         const t = T(), g = new t.PlaneGeometry(x1 - x0, BH, 24, 160); g.rotateX(-Math.PI / 2); g.translate((x0 + x1) / 2, level, BH / 2);
         const mt = new t.ShaderMaterial({
             transparent: true, fog: true, depthWrite: false,
-            uniforms: t.UniformsUtils.merge([t.UniformsLib.fog, { hTex: { value: hTex }, uSize: { value: new t.Vector2(BW, BH) }, uLevel: { value: level }, uSky: { value: new t.Color(sky.hor) }, uZen: { value: new t.Color(sky.zen) }, uDeep: { value: new t.Color(sky.deep || '#2e5a68') }, uSunDir: { value: new t.Vector3(0, 1, 0) }, uSunC: { value: new t.Color(1, 1, 1) } }]),
+            uniforms: t.UniformsUtils.merge([t.UniformsLib.fog, { hTex: { value: hTex }, uSize: { value: new t.Vector2(BW, BH) }, uLevel: { value: level }, uSky: { value: new t.Color(sky.hor) }, uZen: { value: new t.Color(sky.zen) }, uDeep: { value: new t.Color(sky.deep || '#2e5a68') }, uSunDir: { value: new t.Vector3(0, 1, 0) }, uSunC: { value: new t.Color(1, 1, 1) }, uRefl: { value: null }, uTM: { value: new t.Matrix4() }, uUseR: { value: 0 } }]),
             vertexShader: `uniform float uTime; varying vec3 vW;
                 #include <fog_pars_vertex>
                 void main() { vec3 p = position; p.y += sin(p.z * 0.09 + uTime * 1.6) * 0.25 + sin(p.x * 0.21 + p.z * 0.05 + uTime * 2.2) * 0.15; vW = p;
                     vec4 mvPosition = viewMatrix * vec4(p, 1.0); gl_Position = projectionMatrix * mvPosition;
                     #include <fog_vertex>
                 }`,
-            fragmentShader: `uniform sampler2D hTex; uniform vec2 uSize; uniform float uLevel; uniform float uTime; uniform vec3 uSky; uniform vec3 uZen; uniform vec3 uDeep; uniform vec3 uSunDir; uniform vec3 uSunC; varying vec3 vW;
+            fragmentShader: `uniform sampler2D hTex; uniform vec2 uSize; uniform float uLevel; uniform float uTime; uniform vec3 uSky; uniform vec3 uZen; uniform vec3 uDeep; uniform vec3 uSunDir; uniform vec3 uSunC; uniform float uRain; uniform sampler2D uRefl; uniform mat4 uTM; uniform float uUseR; varying vec3 vW;
+                float ripple(vec2 p, float t) { vec2 rp = p * 0.3; vec2 ci = floor(rp); float r = 0.0;
+                    for (int k = 0; k < 4; k++) { vec2 cc = ci + vec2(mod(float(k), 2.0), floor(float(k) / 2.0)); float h = fract(sin(dot(cc, vec2(12.9898, 78.233))) * 43758.5453);
+                        float tt = fract(t * 0.9 + h); vec2 cp = cc + vec2(fract(h * 13.7), fract(h * 7.3)); float d = length(rp - cp); r += (1.0 - tt) * smoothstep(0.07, 0.0, abs(d - tt * 0.7)); }
+                    return r; }
                 #include <fog_pars_fragment>
                 float hb(vec2 p) { vec2 uv = p / uSize * vec2(288.0, 192.0); vec2 f = fract(uv); vec2 b = (floor(uv) + 0.5) / vec2(289.0, 193.0); vec2 e = 1.0 / vec2(289.0, 193.0);
                     return mix(mix(texture2D(hTex, b).r, texture2D(hTex, b + vec2(e.x, 0.0)).r, f.x), mix(texture2D(hTex, b + vec2(0.0, e.y)).r, texture2D(hTex, b + e).r, f.x), f.y); }
@@ -220,13 +298,15 @@ const B3G = (() => {
                     float h = hb(vW.xz), depth = uLevel - h;
                     if (depth < -0.3) discard;
                     vec2 q = vW.xz; float t = uTime;
-                    vec3 n = normalize(vec3(cos(q.x * 0.21 + q.y * 0.05 + t * 2.2) * 0.04 + cos(q.x * 0.7 - t * 3.0) * 0.02, 1.0, cos(q.y * 0.09 + t * 1.6) * 0.03 + sin(q.y * 0.43 + q.x * 0.3 + t * 2.7) * 0.02));
+                    float rip = uRain > 0.01 ? ripple(q, t) * uRain : 0.0;   // krúžky od kvapiek dažďa
+                    vec3 n = normalize(vec3(cos(q.x * 0.21 + q.y * 0.05 + t * 2.2) * 0.04 + cos(q.x * 0.7 - t * 3.0) * 0.02 + rip * 0.12, 1.0, cos(q.y * 0.09 + t * 1.6) * 0.03 + sin(q.y * 0.43 + q.x * 0.3 + t * 2.7) * 0.02 + rip * 0.1));
                     vec3 v = normalize(cameraPosition - vW);
                     float fr = 0.22 + 0.78 * pow(1.0 - max(dot(n, v), 0.0), 3.0);
                     vec3 r = reflect(-v, n);
                     vec3 sky = mix(uSky, uZen, clamp(r.y * 1.4, 0.0, 1.0));
+                    if (uUseR > 0.0) { vec4 rp = uTM * vec4(vW, 1.0); vec2 ruv = rp.xy / rp.w + n.xz * 0.35; sky = mix(sky, texture2D(uRefl, ruv).rgb, uUseR); }   // odraz brehu, vojakov a oblohy
                     float sp = pow(max(dot(r, normalize(uSunDir)), 0.0), 220.0) * 6.0;
-                    vec3 c = mix(uDeep, sky, fr) + uSunC * sp;
+                    vec3 c = mix(uDeep, sky, fr) + uSunC * sp + vec3(rip * 0.12);
                     float foam = (1.0 - smoothstep(0.0, 1.6, depth)) * (0.55 + 0.45 * sin(q.y * 0.6 + t * 2.0 + q.x * 0.4));
                     c = mix(c, vec3(0.86, 0.9, 0.92), clamp(foam, 0.0, 1.0) * 0.75);
                     float a = clamp(0.38 + depth * 0.09 + fr * 0.4 + foam * 0.4, 0.0, 0.93) * smoothstep(-0.3, 0.25, depth);
@@ -236,7 +316,7 @@ const B3G = (() => {
                     #include <fog_fragment>
                 }`
         });
-        mt.uniforms.uTime = U_TIME;
+        mt.uniforms.uTime = U_TIME; mt.uniforms.uRain = U_WET;
         const m = new t.Mesh(g, mt); m.renderOrder = 4; return m;
     }
 
@@ -277,15 +357,66 @@ const B3G = (() => {
 
     // ---------- dodatočné spracovanie obrazu ----------
     const FSQ = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
-    /** Skladač: scéna do textúry (HDR, vyhladenie), žiara z jasných miest, lúče slnka, ACES, ladenie farieb, vinetácia → obrazovka. */
+    /** Skladač: scéna do textúry (HDR, vyhladenie, hĺbka) → zatienenie v kútoch (SSAO) → prízemná hmla so svetlom slnka, rozmazanie pohybu,
+     *  hĺbka ostrosti → žiara z jasných miest, lúče slnka, prispôsobenie oka jasu, ACES, ladenie farieb, vinetácia, filmové zrno → obrazovka. */
     function Composer(R) {
         const t = T(), q = QN(), quad = new t.Mesh(new t.PlaneGeometry(2, 2)), qs = new t.Scene(), qc = new t.OrthographicCamera(-1, 1, 1, -1, 0, 1); qs.add(quad); quad.frustumCulled = false;
         const rtOpt = { type: t.HalfFloatType, depthBuffer: false };
-        let main = null, bright = null, blurA = [], blurB = [], w = 0, h = 0;
+        let main = null, comb = null, aoA = null, aoB = null, bright = null, blurA = [], blurB = [], lumNow = null, adA = null, adB = null, base = null, w = 0, h = 0, fN = 0;
         const mk = (fs, U) => new t.ShaderMaterial({ vertexShader: FSQ, fragmentShader: fs, uniforms: U, depthTest: false, depthWrite: false });
+        const VPOS = 'vec3 vpos(vec2 uv, float d) { vec4 p = uIP * vec4(uv * 2.0 - 1.0, d * 2.0 - 1.0, 1.0); return p.xyz / p.w; }';
+        const K = []; for (let i = 0; i < 12; i++) { const v = new t.Vector3(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * .9 + .1).normalize(); const k = i / 12; v.multiplyScalar(.12 + .88 * k * k); K.push(v); }
+        const mAO = mk(`uniform sampler2D tDepth; uniform mat4 uP; uniform mat4 uIP; uniform vec2 uRes; uniform vec3 uK[12]; uniform float uR; varying vec2 vUv;
+            ${VPOS}
+            void main() {
+                float d = texture2D(tDepth, vUv).x; if (d >= 0.9999) { gl_FragColor = vec4(1.0); return; }
+                vec3 P = vpos(vUv, d); vec2 px = 1.0 / uRes;
+                vec3 N = normalize(cross(vpos(vUv + vec2(px.x, 0.0), texture2D(tDepth, vUv + vec2(px.x, 0.0)).x) - P, vpos(vUv + vec2(0.0, px.y), texture2D(tDepth, vUv + vec2(0.0, px.y)).x) - P));
+                float a = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) * 6.2832; vec3 rv = vec3(cos(a), sin(a), 0.0);
+                vec3 T1 = normalize(rv - N * dot(rv, N)); vec3 B1 = cross(N, T1); mat3 TBN = mat3(T1, B1, N);
+                float occ = 0.0, R = uR * clamp(-P.z / 120.0, 0.6, 3.0);
+                for (int i = 0; i < 12; i++) {
+                    vec3 sp = P + TBN * uK[i] * R; vec4 o = uP * vec4(sp, 1.0); vec2 suv = o.xy / o.w * 0.5 + 0.5;
+                    if (suv.x < 0.0 || suv.x > 1.0 || suv.y < 0.0 || suv.y > 1.0) continue;
+                    float sz = vpos(suv, texture2D(tDepth, suv).x).z;
+                    occ += step(sp.z + 0.35, sz) * smoothstep(0.0, 1.0, R / abs(P.z - sz));
+                }
+                gl_FragColor = vec4(vec3(1.0 - occ / 12.0), 1.0);
+            }`, { tDepth: { value: null }, uP: { value: new t.Matrix4() }, uIP: { value: new t.Matrix4() }, uRes: { value: new t.Vector2() }, uK: { value: K }, uR: { value: 5 } });
+        const mBlurAO = mk('uniform sampler2D tex; uniform vec2 dir; varying vec2 vUv; void main(){ float c = texture2D(tex, vUv).r * 0.38; c += (texture2D(tex, vUv + dir).r + texture2D(tex, vUv - dir).r) * 0.22; c += (texture2D(tex, vUv + dir * 2.0).r + texture2D(tex, vUv - dir * 2.0).r) * 0.09; gl_FragColor = vec4(vec3(c), 1.0); }', { tex: { value: null }, dir: { value: new t.Vector2() } });
+        const mComb = mk(`uniform sampler2D tex; uniform sampler2D tDepth; uniform sampler2D tAO; uniform mat4 uIP; uniform mat4 uCW; uniform mat4 uPVP; uniform vec3 uCam; uniform vec2 uRes;
+            uniform float uAO; uniform float uFogA; uniform float uFogB; uniform vec3 uFogC; uniform vec3 uSunDir; uniform vec3 uSunC; uniform float uMB; uniform float uDof; uniform float uFocus; varying vec2 vUv;
+            ${VPOS}
+            void main() {
+                float d = texture2D(tDepth, vUv).x; bool sky = d >= 0.9999;
+                vec3 V = vpos(vUv, min(d, 0.99999)); vec3 W = (uCW * vec4(V, 1.0)).xyz; float dist = length(V);
+                vec3 rd = normalize(W - uCam); if (sky) { W = uCam + rd * 2400.0; dist = 2400.0; }
+                vec3 c = texture2D(tex, vUv).rgb;
+                if (uMB > 0.0) {   // rozmazanie pohybu kamery
+                    vec4 pp = uPVP * vec4(W, 1.0); vec2 vel = (vUv - (pp.xy / pp.w * 0.5 + 0.5)) * uMB; float L = length(vel); if (L > 0.035) vel *= 0.035 / L;
+                    if (L > 0.0005) { vec3 acc = c; for (int i = 1; i < 8; i++) acc += texture2D(tex, vUv - vel * (float(i) / 7.0)).rgb; c = acc / 8.0; }
+                }
+                if (uDof > 0.0) {   // hĺbka ostrosti: ostrý cieľ, rozmazané popredie a pozadie
+                    float coc = clamp(abs(dist - uFocus) / max(uFocus, 20.0) * 1.4, 0.0, 1.0) * uDof;
+                    if (coc > 0.04) { vec3 acc = c; for (int i = 0; i < 16; i++) { float a = float(i) * 2.39996; float r = sqrt(float(i) + 0.5) / 4.0; acc += texture2D(tex, vUv + vec2(cos(a), sin(a)) * r * coc * 9.0 / uRes).rgb; } c = acc / 17.0; }
+                }
+                if (uAO > 0.0 && !sky) c *= mix(1.0, texture2D(tAO, vUv).r, uAO * (1.0 - smoothstep(350.0, 800.0, dist)));
+                if (uFogA > 0.0) {   // prízemná hmla, ktorú presvetľuje slnko
+                    float k = rd.y * uFogB, e = uFogA * exp(-max(uCam.y, 0.0) * uFogB);
+                    float fam = abs(k) < 1e-4 ? e * dist : e * (1.0 - exp(-dist * k)) / k;
+                    vec3 fc = uFogC + uSunC * pow(max(dot(rd, uSunDir), 0.0), 6.0) * 0.7;
+                    c = mix(c, fc, clamp(1.0 - exp(-fam), 0.0, sky ? 0.45 : 0.92));
+                }
+                gl_FragColor = vec4(c, 1.0);
+            }`, { tex: { value: null }, tDepth: { value: null }, tAO: { value: null }, uIP: { value: new t.Matrix4() }, uCW: { value: new t.Matrix4() }, uPVP: { value: new t.Matrix4() }, uCam: { value: new t.Vector3() }, uRes: { value: new t.Vector2() },
+                uAO: { value: 0 }, uFogA: { value: 0 }, uFogB: { value: .03 }, uFogC: { value: new t.Color() }, uSunDir: { value: new t.Vector3(0, 1, 0) }, uSunC: { value: new t.Color() }, uMB: { value: 0 }, uDof: { value: 0 }, uFocus: { value: 100 } });
         const mBright = mk('uniform sampler2D tex; uniform float th; varying vec2 vUv; void main(){ vec3 c = texture2D(tex, vUv).rgb; float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); gl_FragColor = vec4(c * smoothstep(th, th + 0.6, l), 1.0); }', { tex: { value: null }, th: { value: 1.0 } });
         const mBlur = mk('uniform sampler2D tex; uniform vec2 dir; varying vec2 vUv; void main(){ vec3 c = texture2D(tex, vUv).rgb * 0.227; c += (texture2D(tex, vUv + dir * 1.385).rgb + texture2D(tex, vUv - dir * 1.385).rgb) * 0.316; c += (texture2D(tex, vUv + dir * 3.23).rgb + texture2D(tex, vUv - dir * 3.23).rgb) * 0.07; gl_FragColor = vec4(c, 1.0); }', { tex: { value: null }, dir: { value: new t.Vector2() } });
-        const mFin = mk(`uniform sampler2D tex; uniform sampler2D b0; uniform sampler2D b1; uniform sampler2D b2; uniform float bloom; uniform float expo; uniform vec3 lift; uniform vec3 gain; uniform float sat; uniform float vig; uniform vec2 sunUv; uniform float rays; uniform float con; varying vec2 vUv;
+        // prispôsobenie oka: priemerný jas (log) → plynulé dobiehanie; porovnáva sa so začiatkom bitky, takže sa ladenie kraja nezmení
+        const mLum = mk('uniform sampler2D tex; varying vec2 vUv; void main(){ float s = 0.0; for (int i = 0; i < 6; i++) for (int j = 0; j < 6; j++) { vec3 c = texture2D(tex, vec2((float(i) + 0.5) / 6.0, (float(j) + 0.5) / 6.0)).rgb; s += log(dot(c, vec3(0.2126, 0.7152, 0.0722)) + 0.001); } gl_FragColor = vec4(vec3(exp(s / 36.0)), 1.0); }', { tex: { value: null } });
+        const mAd = mk('uniform sampler2D tPrev; uniform sampler2D tNow; uniform float k; varying vec2 vUv; void main(){ gl_FragColor = vec4(mix(texture2D(tPrev, vec2(0.5)).rgb, texture2D(tNow, vec2(0.5)).rgb, k), 1.0); }', { tPrev: { value: null }, tNow: { value: null }, k: { value: 1 } });
+        const mCopy = mk('uniform sampler2D tex; varying vec2 vUv; void main(){ gl_FragColor = texture2D(tex, vec2(0.5)); }', { tex: { value: null } });
+        const mFin = mk(`uniform sampler2D tex; uniform sampler2D b0; uniform sampler2D b1; uniform sampler2D b2; uniform sampler2D tAd; uniform sampler2D tBase; uniform float uAdapt; uniform float bloom; uniform float expo; uniform vec3 lift; uniform vec3 gain; uniform float sat; uniform float vig; uniform vec2 sunUv; uniform float rays; uniform float con; uniform float uGrain; uniform float uTime; varying vec2 vUv;
             vec3 aces(vec3 x) { x *= 0.6; return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); }
             vec3 toS(vec3 c) { return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c)); }
             void main() {
@@ -293,38 +424,62 @@ const B3G = (() => {
                 vec3 bl = texture2D(b0, vUv).rgb * 0.5 + texture2D(b1, vUv).rgb * 0.8 + texture2D(b2, vUv).rgb * 1.1;
                 c += bl * bloom;
                 if (rays > 0.0) { vec2 dl = (vUv - sunUv) / 24.0; vec2 p = vUv; float il = 1.0; vec3 r = vec3(0.0); for (int i = 0; i < 24; i++) { p -= dl; r += texture2D(b1, p).rgb * il; il *= 0.93; } c += r * rays * 0.05; }
-                c = aces(c * expo);
+                float ad = uAdapt > 0.0 ? clamp(pow(texture2D(tBase, vec2(0.5)).r / max(texture2D(tAd, vec2(0.5)).r, 0.0005), 0.5), 0.72, 1.45) : 1.0;
+                c = aces(c * expo * mix(1.0, ad, uAdapt));
                 c = lift + c * gain;
                 float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); c = mix(vec3(l), c, sat);
                 c = (c - 0.5) * con + 0.5;
                 vec2 v = vUv - 0.5; c *= 1.0 - dot(v, v) * vig;
+                if (uGrain > 0.0) { float g = fract(sin(dot(gl_FragCoord.xy + fract(uTime * 7.13) * 91.7, vec2(12.9898, 78.233))) * 43758.5453) - 0.5; c += g * uGrain * (0.35 + 0.65 * (1.0 - l)); }
                 gl_FragColor = vec4(toS(clamp(c, 0.0, 1.0)), 1.0);
-            }`, { tex: { value: null }, b0: { value: null }, b1: { value: null }, b2: { value: null }, bloom: { value: .5 }, expo: { value: 1 }, lift: { value: new t.Vector3() }, gain: { value: new t.Vector3(1, 1, 1) }, sat: { value: 1 }, vig: { value: .9 }, sunUv: { value: new t.Vector2(.5, .5) }, rays: { value: 0 }, con: { value: 1 } });
+            }`, { tex: { value: null }, b0: { value: null }, b1: { value: null }, b2: { value: null }, tAd: { value: null }, tBase: { value: null }, uAdapt: { value: 0 }, bloom: { value: .5 }, expo: { value: 1 }, lift: { value: new t.Vector3() }, gain: { value: new t.Vector3(1, 1, 1) }, sat: { value: 1 }, vig: { value: .9 }, sunUv: { value: new t.Vector2(.5, .5) }, rays: { value: 0 }, con: { value: 1 }, uGrain: { value: 0 }, uTime: U_TIME });
         function size(W2, H2) {
             if (W2 === w && H2 === h) return; w = W2; h = H2;
-            [main, bright, ...blurA, ...blurB].forEach(r => r && r.dispose());
-            main = new t.WebGLRenderTarget(w, h, { type: t.HalfFloatType, samples: q >= 2 ? 4 : 0 });
+            [main, comb, aoA, aoB, bright, ...blurA, ...blurB].forEach(r => r && r.dispose());
+            main = new t.WebGLRenderTarget(w, h, { type: t.HalfFloatType, samples: q >= 2 ? 4 : 0 }); main.depthTexture = new t.DepthTexture(w, h); main.depthTexture.type = t.UnsignedIntType;
+            comb = new t.WebGLRenderTarget(w, h, rtOpt);
+            aoA = new t.WebGLRenderTarget(Math.max(1, w >> 1), Math.max(1, h >> 1), rtOpt); aoB = new t.WebGLRenderTarget(Math.max(1, w >> 1), Math.max(1, h >> 1), rtOpt);
             bright = new t.WebGLRenderTarget(w >> 1, h >> 1, rtOpt);
             blurA = [1, 2, 3].map(k => new t.WebGLRenderTarget(Math.max(1, w >> k + 1), Math.max(1, h >> k + 1), rtOpt));
             blurB = [1, 2, 3].map(k => new t.WebGLRenderTarget(Math.max(1, w >> k + 1), Math.max(1, h >> k + 1), rtOpt));
+            if (!lumNow) { lumNow = new t.WebGLRenderTarget(1, 1, rtOpt); adA = new t.WebGLRenderTarget(1, 1, rtOpt); adB = new t.WebGLRenderTarget(1, 1, rtOpt); base = new t.WebGLRenderTarget(1, 1, rtOpt); fN = 0; }
         }
         const pass = (m, target) => { quad.material = m; R.setRenderTarget(target); R.render(qs, qc); };
+        const prevVP = new t.Matrix4(), vp = new t.Matrix4();
+        /** Voľby na snímku: ao (0–1), fog {a, b, c, sun, sunC}, mb (rozmazanie), dof (0–1), focus (vzdialenosť), grain, adapt. */
+        const opt = { ao: 0, fogA: 0, fogB: .03, mb: 0, dof: 0, focus: 100, grain: 0, adapt: 1 };
         return {
-            fin: mFin.uniforms,
+            fin: mFin.uniforms, comb: mComb.uniforms, opt,
             render(scene, cam) {
                 const s = R.getDrawingBufferSize(new t.Vector2()); size(s.x, s.y);
                 R.setRenderTarget(main); R.render(scene, cam);
-                mBright.uniforms.tex.value = main.texture; pass(mBright, bright);
+                const CU = mComb.uniforms, ip = cam.projectionMatrixInverse;
+                if (opt.ao > 0) {
+                    mAO.uniforms.tDepth.value = main.depthTexture; mAO.uniforms.uP.value.copy(cam.projectionMatrix); mAO.uniforms.uIP.value.copy(ip); mAO.uniforms.uRes.value.set(aoA.width, aoA.height); pass(mAO, aoA);
+                    mBlurAO.uniforms.tex.value = aoA.texture; mBlurAO.uniforms.dir.value.set(1.5 / aoA.width, 0); pass(mBlurAO, aoB);
+                    mBlurAO.uniforms.tex.value = aoB.texture; mBlurAO.uniforms.dir.value.set(0, 1.5 / aoA.height); pass(mBlurAO, aoA);
+                }
+                vp.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
+                CU.tex.value = main.texture; CU.tDepth.value = main.depthTexture; CU.tAO.value = aoA.texture; CU.uIP.value.copy(ip); CU.uCW.value.copy(cam.matrixWorld); CU.uPVP.value.copy(fN ? prevVP : vp); CU.uCam.value.copy(cam.position); CU.uRes.value.set(w, h);
+                CU.uAO.value = opt.ao; CU.uFogA.value = opt.fogA; CU.uFogB.value = opt.fogB; CU.uMB.value = opt.mb; CU.uDof.value = opt.dof; CU.uFocus.value = opt.focus;
+                pass(mComb, comb); prevVP.copy(vp);
+                mBright.uniforms.tex.value = comb.texture; pass(mBright, bright);
                 let src = bright.texture;
                 for (let i = 0; i < 3; i++) {
                     mBlur.uniforms.tex.value = src; mBlur.uniforms.dir.value.set(1 / blurA[i].width, 0); pass(mBlur, blurA[i]);
                     mBlur.uniforms.tex.value = blurA[i].texture; mBlur.uniforms.dir.value.set(0, 1 / blurA[i].height); pass(mBlur, blurB[i]);
                     src = blurB[i].texture;
                 }
-                Object.assign(mFin.uniforms, {}); mFin.uniforms.tex.value = main.texture; mFin.uniforms.b0.value = blurB[0].texture; mFin.uniforms.b1.value = blurB[1].texture; mFin.uniforms.b2.value = blurB[2].texture;
+                // jas scény pre prispôsobenie oka (z najmenšej rozmazanej kópie celej scény, nie len jasných miest)
+                mBlur.uniforms.tex.value = comb.texture; mBlur.uniforms.dir.value.set(0, 0); pass(mBlur, blurA[2]);
+                mLum.uniforms.tex.value = blurA[2].texture; pass(mLum, lumNow);
+                mAd.uniforms.tPrev.value = adA.texture; mAd.uniforms.tNow.value = lumNow.texture; mAd.uniforms.k.value = fN < 3 ? 1 : .035; pass(mAd, adB); [adA, adB] = [adB, adA];
+                if (fN === 25) { mCopy.uniforms.tex.value = adA.texture; pass(mCopy, base); }
+                fN++;
+                const F = mFin.uniforms; F.tex.value = comb.texture; F.b0.value = blurB[0].texture; F.b1.value = blurB[1].texture; F.b2.value = blurB[2].texture; F.tAd.value = adA.texture; F.tBase.value = base.texture; F.uAdapt.value = fN > 26 ? opt.adapt : 0; F.uGrain.value = opt.grain;
                 pass(mFin, null);
             },
-            dispose() { [main, bright, ...blurA, ...blurB].forEach(r => r && r.dispose()); w = h = 0; }
+            dispose() { [main, comb, aoA, aoB, bright, ...blurA, ...blurB, lumNow, adA, adB, base].forEach(r => r && r.dispose()); w = h = 0; lumNow = null; }
         };
     }
     /** Odraz oblohy pre kovy a látky (PMREM z klenby oblohy). */
@@ -332,5 +487,5 @@ const B3G = (() => {
         const t = T(), pm = new t.PMREMGenerator(R), sc = new t.Scene(), m = skyMesh.clone(); m.scale.setScalar(.04); sc.add(m);
         const rt = pm.fromScene(sc, 0, .1, 200); pm.dispose(); return rt.texture;
     }
-    return { U_TIME, U_WET, Q, QN, noise, detailTex, emblemTex, softTex, chrMat, bannerMat, emblemMat, foliageMat, terrainMat, grass, water, sky, Composer, envFrom };
+    return { U_TIME, U_WET, U_DIRT, U_MUD: () => (U_MUD.value || (U_MUD.value = new (T().Color)('#3e3020'))), U_TINT, Q, QN, noise, detailTex, emblemTex, softTex, chrMat, bannerMat, emblemMat, foliageMat, terrainMat, grass, water, sky, Composer, envFrom, stoneMat, puddleMat };
 })();

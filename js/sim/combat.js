@@ -17,7 +17,8 @@
  * Skupiny a rozkazy: 1 Všetci, 2 Pechota, 3 Lukostrelci, 4 Jazda; T Útok, H Držať (na mieste), F Za mnou, G Šík (línia čelom k nepriateľovi), R Ústup.
  */
 /** Nastavenia hráča (Hlavné menu → Nastavenia): krv v bitke. */
-const OPT = (() => { const d = { blood: true }; try { return Object.assign(d, JSON.parse(localStorage.getItem('vsOpt') || '{}')); } catch (e) { return d; } })();
+const OPT = (() => { const d = { blood: false }; try { return Object.assign(d, JSON.parse(localStorage.getItem('vsOpt') || '{}')); } catch (e) { return d; } })();
+if (!OPT.v44) { OPT.blood = false; OPT.v44 = 1; }   // verzia 44: krv na obrazovke predvolene vypnutá (dá sa zapnúť v Nastaveniach)
 const saveOpt = () => { try { localStorage.setItem('vsOpt', JSON.stringify(OPT)); } catch (e) { } };
 /** Udalosti pre 3D efekty (kamene, olej, zásahy bossov); B3 ich spotrebuje, bez 3D sa len zahodia. */
 let FX3 = [];
@@ -288,7 +289,7 @@ function meleeHit(att, def, d, kind, info) {
             if (sh) { C.shp -= d * .6; if (C.shp <= 0) { C.shp = 0; TS = { s: 'Štít sa rozbil!', l: 120 }; } }
             if (C.blkT < (man ? 18 : 12) && !att.h) { att.stun = 40; att.wu = 0; cmbSay('perf', 'Dokonalý kryt! Útočník sa zapotácal – teraz udri.'); }
             if (kind === 'charge') { def.x -= Math.cos(from) * 10; def.y -= Math.sin(from) * 10; }
-            blockFx(def, from, sh);
+            blockFx(def, from, sh); att.rc = 14;   // spätný ráz zbrane (3D póza)
             if (C.st <= 0) { C.st = 0; C.gb = 45; hit(def, d * .5, att); cmbSay('gb', 'Kryt prelomený – došla výdrž!'); }
             return false;
         }
@@ -300,7 +301,7 @@ function meleeHit(att, def, d, kind, info) {
         if (info.d === 'u' && !(def.k === 'i' || def.k === 'v')) bc0 *= .8;
         if (twoHand() && info.pow > 1.3) bc0 *= .4;
     }
-    if (!def.h && kind !== 'charge' && rel < 1.1 && Math.random() < bc0) { blockFx(def, from, 1); if (att.h) C.st = Math.max(0, C.st - 4); return false; }
+    if (!def.h && kind !== 'charge' && rel < 1.1 && Math.random() < bc0) { blockFx(def, from, 1); att.rc = 14; if (att.h) { C.rc = 14; C.st = Math.max(0, C.st - 4); } return false; }
     const mult = rel > 2.1 ? 1.5 : rel > 1.2 ? 1.25 : 1;
     if (info || kind === 'ai') {   // miesto zásahu a typ poškodenia (js/sim/warband.js)
         const dir = info ? info.d : att.lwd ? ({ l: 'r', r: 'l', u: 'u', t: 't' })[att.lwd] : 'r';

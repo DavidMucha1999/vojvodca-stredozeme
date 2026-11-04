@@ -386,6 +386,17 @@ try {
         for (const u of U) if (u.t) u.hp = 0; var kh = 0; while (mode === "battle" && kh < 60) { U[0].hp = 999; updBattle(1); kh++; } G.eq.r = 0; G.eq.m = 0;`);
     check('Kôň má zotrvačnosť, kuša sa nabíja len postojačky, jazdecký lukostrelec strieľa', run('horseOk && xbOk && haOk'), run('[horseOk, xbOk, haOk].join(" ")'));
     run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
+    // verzia 44: veľké bitky, meniace sa počasie, spätný ráz zbrane od krytu, krv predvolene vypnutá
+    run(`var bs0 = OPT.bsize; G.inf = 300; G.cav = 0; G.arc = 0; G.vet = 0; G.elf = 0; G.roh = 0; OPT.bsize = "n"; startBattle({ n: 300, f: 2, nm: "T" }); var nN = U.filter(u => !u.t && !u.h).length; for (const u of U) if (u.t) u.hp = 0; var kb = 0; while (mode === "battle" && kb < 60) { U[0].hp = 999; updBattle(1); kb++; }`);
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
+    run(`OPT.bsize = "o"; startBattle({ n: 300, f: 2, nm: "T" }); var nO = U.filter(u => !u.t && !u.h).length, nAll = U.length;
+        var t0 = Date.now(); for (let i = 0; i < 20; i++) updBattle(1); var msO = (Date.now() - t0) / 20;
+        WX.n = "clear"; WX.r = 190; WX.k0 = null; var R1 = Math.random; Math.random = () => .1; for (let i = 0; i < 6000 && WX.n === "clear"; i++) wxTick(1); Math.random = R1; var wxOk = WX.n === "rain" && WX.r < 190;
+        var a1 = U.find(u => u.t && u.hp > 0 && !heavy(u)), d1 = U.find(u => !u.t && !u.h && u.hp > 0); a1.rc = 0; Math.random = () => 0; var blocked = meleeHit(a1, d1, 5, "ai") === false; Math.random = R1; var rcOk = blocked && a1.rc > 0;
+        for (const u of U) if (u.t) u.hp = 0; var kb2 = 0; while (mode === "battle" && kb2 < 60) { U[0].hp = 999; updBattle(1); kb2++; } OPT.bsize = bs0; G.inf = 20;`);
+    check('Veľké bitky: obrovská bitka postaví 5× viac vojakov (500+ spolu) a simulácia ostane rýchla; počasie sa mení počas bitky; zbraň odskočí od krytu; krv predvolene vypnutá',
+        run('nO >= nN * 4 && nAll >= 500 && msO < 120 && wxOk && rcOk && OPT.blood === false'), run('[nN, nO, nAll, msO, wxOk, rcOk, OPT.blood].join(" ")'));
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
 } catch (e) { fails++; console.log('CHYBA výnimka: ' + e.stack); }
 console.log(fails ? '\n' + fails + ' testov zlyhalo.' : '\nVšetky testy prešli.');
 process.exit(fails ? 1 : 0);
