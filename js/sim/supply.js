@@ -25,7 +25,7 @@ const perk = id => !!(G && G.perk && G.perk[id]);
 const men = () => G.inf + G.cav + G.arc + G.elf + G.roh + G.vet + (G.ent || 0) + uS() + (G.comp || []).length;
 const foodTotal = () => Object.values(G.fd || {}).reduce((a, b) => a + b, 0);
 /** Porcie, ktoré družina zje za deň. */
-const foodNeed = () => Math.max(1, Math.ceil((men() + 1) / 6 * (perk('zasobovac') ? .75 : 1)));
+const foodNeed = () => Math.max(1, Math.ceil((men() + 1) / 6 * (perk('zasobovac') ? .75 : 1) * (typeof worldEv === 'function' && worldEv('winter') ? 1.5 : 1)));
 /** Na koľko dní vystačia zásoby (lembas sa počíta za dvojnásobok). */
 const foodDays = () => Math.floor((foodTotal() + ((G.fd || {}).lembas || 0)) / foodNeed());
 /** Čo sa dá kúpiť na trhu miesta o: chlieb a nápoj všade, mäso a syr v hradoch a na statkoch, lembas v Lothlóriene. */
@@ -33,7 +33,7 @@ function foodsAt(o) {
     const t = o.good ? TW[o.t] : o, f = t ? t.f : 6, farm = !o.good || ['grain', 'horses', 'wool'].includes(o.good);
     return FOODS.filter(x => x.elf ? f === 8 : x.k === 'bread' || x.k === 'ale' || (x.k === 'meat' && farm) || (x.k === 'cheese' && (farm || !o.good)));
 }
-const foodPrice = (o, k) => Math.round(FOODS.find(x => x.k === k).p * (.85 + (o.pr ?? 40) / 250) * (perk('kupec') ? .92 : 1));
+const foodPrice = (o, k) => Math.round(FOODS.find(x => x.k === k).p * (.85 + (o.pr ?? 40) / 250) * (perk('kupec') ? .92 : 1) * (typeof worldEv === 'function' && worldEv('caravan') ? .6 : 1));
 function buyFood(o, k) {
     const p = foodPrice(o, k);
     if (G.gold < p) return 0;
@@ -43,6 +43,7 @@ function buyFood(o, k) {
 /** Denná spotreba jedla, morálka družiny, dezercie a hojenie ranených (volá daily2). */
 function supplyDaily() {
     G.fd = G.fd || {}; G.wd = G.wd || {};
+    G.maxArmy = Math.max(G.maxArmy || 0, men());
     if (G.pm == null) G.pm = 60;
     let need = foodNeed();
     const eaten = new Set();

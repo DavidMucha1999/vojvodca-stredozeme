@@ -20,9 +20,8 @@ function qDone() {
     G.qc = 0;
     upd();
     if (G.q >= QS.length) {
-        mode = 'town';
-        show(QS === QE ? 'Tieň zvíťazil' : 'Prsteň je zničený', (QS === QE ? 'Minas Tirith padlo a Stredozem sa skláňa pred Okom. Tvoje meno, ' + G.name + ', budú šepkať so strachom.' : 'Saurónova moc padla a Stredozem si bude pamätať tvoje meno, ' + G.name + '.') + ' Môžeš hrať ďalej a budovať svoje kráľovstvo.');
-        btn('Pokračovať', () => { ov.classList.add('hide'); mode = 'map'; });
+        chron(QS === QE ? 'Minas Tirith padlo – Tieň zvíťazil.' : 'Saurónova moc padla.');
+        ending('story');   // jeden zo šiestich koncov (js/sim/chronicle.js)
     }
     else
         qShow();

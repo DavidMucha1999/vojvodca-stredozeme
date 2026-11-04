@@ -168,7 +168,7 @@ try {
     check('Léno pre spoločníka: stane sa lordom hradu', run('!own.lord || (E.some(e => e.cp && e.home === oi) && !G.comp.includes(Object.keys(G.cfief)[0]))'));
     run(closeMenus + '; mode = "map"; G.tax = "high"; var gH = 0; TW.forEach(t => { if (t.mine) gH += Math.round(castleIncome(t) * taxMul() * fiefShare(t)); }); G.tax = "low"; var gL = 0; TW.forEach(t => { if (t.mine) gL += Math.round(castleIncome(t) * taxMul() * fiefShare(t)); });');
     check('Dane menia príjem', run('gH > gL'));
-    check('Šesť pozícií uloženia s náhľadom', run('SLOTS.length === 7 && (save(6), slotData(6) && slotData(6).text.includes("deň"))'));
+    check('Šesť ručných a tri automatické pozície s náhľadom', run('SLOTS.length === 9 && (save(6), slotData(6) && slotData(6).text.includes("deň"))'));
     run('var ft = battleTerrain(riverPoints()[50][0], riverPoints()[50][1]); var ff = battleTerrain(100, 100);');
     check('Bojisko podľa mapy: rieka pri Anduine, inde nie', run('ft.river === true && ff.river === false && Array.isArray(ft.trees)'));
     run('mode = "map"; G.ent = 2; G.uH3 = 1; startBattle(E.find(e => hos(e.f, G.fac) && !e.nz) || { n: 5, f: 2, nm: "Test" }); var hasEnt = U.some(u => !u.t && u.k === "n"), hasMum = U.some(u => !u.t && u.uk === "uH3"); for (const u of U) if (u.t) u.hp = 0; U[0].hp = 999; var kk = 0; while (mode === "battle" && kk < 2000) { updBattle(1); kk++; }');
@@ -245,6 +245,21 @@ try {
     check('Perky: poradie vo vetve, úroveň a body', run('noJump && a1 && a2 && !a3 && G.pp === 0 && perk("sermiar")'));
     run(`G.perk = {}; G.lv = 1; G.pp = 0; var sv = JSON.parse(JSON.stringify(G)); delete sv.fd; delete sv.pp; var mg = migrateSave({ G: sv, K, E: [], T: TW.map(t => ({})) });`);
     check('Staršie uloženie dostane zásoby a body perkov', run('mg.G.fd && mg.G.fd.bread > 0 && mg.G.pp === 0 && mg.G.pm === 60'));
+    // svet (chronicle.js, settings.js): udalosti sveta, kronika, konce, zálohy uložení, obťažnosť, tipy
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
+    run(`G.wev = null; G.ent = 0; G.ren = 10; var g3 = TW.filter(t => t.f === 3).reduce((s, t) => s + t.g, 0); startWorldEvent("ents"); var g3b = TW.filter(t => t.f === 3).reduce((s, t) => s + t.g, 0);
+        var entsOk = worldEv("ents") && g3b < g3 && (heroSide() !== 0 || G.ent === 1) && G.chron.some(c => /Pochod entov/.test(c.s)); ov.classList.add("hide"); mode = "map";
+        G.wev = { k: "winter", end: G.day + 3 }; var fw = foodNeed(); G.wev = null; var fn0 = foodNeed();
+        G.wev = { k: "gondor", end: G.day + 5 }; worldDaily(); var cpG = CP[2] != null && hos(TW[CP[2]].f, 2); G.wev = null;`);
+    check('Udalosti sveta: pochod entov, krutá zima, vojna o Gondor', run('entsOk && fw > fn0 && cpG'), run('"zima " + fw + " vs " + fn0'));
+    run(`lg("Dobyl si hrad Testov aj s okolitými dedinami."); var chOk = G.chron.some(c => /Testov/.test(c.s)); G.ring = 0; G.fac = 0; G.king = 0; G.hon = 15; ending("story"); var endT = G.ending; chronicle(); var chRows = document.getElementById("bt").children.length;`);
+    check('Kronika zapisuje skutky, koniec podľa cti', run('chOk && endT === "Mierový vládca" && chRows > 3'), run('endT'));
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
+    run(`localStorage._ = {}; G.day = 100; save("auto"); rotateAutosaves(); G.day = 101; save("auto"); var a2 = slotData("auto2"), a1 = slotData("auto"); OPT.diff = "hard"; var b0 = { t: 0, hp: 100, x: 0, y: 0 }; hit(b0, 10); var hd = 100 - b0.hp; OPT.diff = "normal";`);
+    check('Tri automatické uloženia a obťažnosť', run('a2 && a2.g.day === 100 && a1.g.day === 101 && Math.abs(hd - 12.5 * (temple() ? .9 : 1)) < .01'), run('hd'));
+    run(`G.tips = {}; town(0); var tipRow = document.getElementById("bt").children.some(c => /^Tip:/.test(c.textContent)); town(0); var tipOnce = document.getElementById("bt").children.filter(c => /^Tip:/.test(c.textContent)).length === 0;`);
+    check('Tip pri prvom vstupe do hradu (len raz)', run('tipRow && tipOnce'));
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
 } catch (e) { fails++; console.log('CHYBA výnimka: ' + e.stack); }
 console.log(fails ? '\n' + fails + ' testov zlyhalo.' : '\nVšetky testy prešli.');
 process.exit(fails ? 1 : 0);

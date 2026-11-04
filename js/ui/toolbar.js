@@ -29,7 +29,7 @@ wrapEl.appendChild(tb);
 [['−', () => { Z = Math.max(.45, Z - .15); }], ['+', () => { Z = Math.min(1.5, Z + .15); }], ['Prehľad', () => ovw()], ['Denník', () => dnk()], ['Úlohy', () => questLog()], ['Družina', () => party()], ['Inventár', () => inv()], ['Štatistiky', () => sts()], ['Legenda', () => { LEG = !LEG; }], ['Trofeje', () => tro()], ['Úspechy', () => achs()], ['Návod', () => {
             if (mode === 'map')
                 help();
-        }], ['Zvuk', function () {
+        }], ['Kronika hrdinu', () => chronicle()], ['Nastavenia hry', () => gameSettings()], ['Zvuk', function () {
             mu = !mu;
             if (mu)
                 roar(0);

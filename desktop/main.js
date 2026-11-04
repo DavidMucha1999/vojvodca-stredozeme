@@ -19,8 +19,8 @@ const SAVES = path.join(HOME, 'Uloženia');
 const SETTINGS = path.join(HOME, 'nastavenia.json');
 
 /** Kľúč pozície v hre (vs1 … vs6, vsauto) ↔ meno súboru (Pozícia 1.json, Automatická.json). */
-const fileOf = k => /^vs\d+$/.test(k) ? 'Pozícia ' + k.slice(2) + '.json' : k === 'vsauto' ? 'Automatická.json' : k.replace(/[^\w.-]/g, '_') + '.json';
-const keyOf = f => { let m = /^Pozícia (\d+)\.json$/.exec(f); if (m) return 'vs' + m[1]; if (f === 'Automatická.json') return 'vsauto'; m = /^(.+)\.json$/.exec(f); return m ? m[1] : null; };
+const fileOf = k => /^vs\d+$/.test(k) ? 'Pozícia ' + k.slice(2) + '.json' : k === 'vsauto' ? 'Automatická.json' : /^vsauto\d$/.test(k) ? 'Automatická ' + k.slice(6) + '.json' : k.replace(/[^\w.-]/g, '_') + '.json';
+const keyOf = f => { let m = /^Pozícia (\d+)\.json$/.exec(f); if (m) return 'vs' + m[1]; if (f === 'Automatická.json') return 'vsauto'; m = /^Automatická (\d)\.json$/.exec(f); if (m) return 'vsauto' + m[1]; m = /^(.+)\.json$/.exec(f); return m ? m[1] : null; };
 const savesList = () => { try { return fs.readdirSync(SAVES).map(keyOf).filter(Boolean); } catch (e) { return []; } };
 function writeSave(k, v) {
     fs.mkdirSync(SAVES, { recursive: true });

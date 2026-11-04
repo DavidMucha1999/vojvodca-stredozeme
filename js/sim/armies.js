@@ -29,7 +29,7 @@ function spawnX() {
         const nm = kind === 'orcs' ? ['Orkská tlupa', 'Lúpežní orkovia', 'Gundabadskí orkovia', 'Orkovia z hôr'][Math.floor(r() * 4)] : kind === 'wolves' ? ['Vargovia', 'Vlčia svorka', 'Vargovia z Hmlistých hôr'][Math.floor(r() * 3)] : kind === 'deserters' ? ['Dezertéri', 'Zbehovia', 'Žoldnieri bez pána'][Math.floor(r() * 3)] : BN[Math.floor(r() * BN.length)];
         E.push({ id: ++NID, x, y, f: 9, kind, n, vx: 0, vy: 0, w: 0, nm });
     }
-    if (G.day >= 4 && E.filter(e => e.nz).length < 2) {
+    if (G.day >= 4 && E.filter(e => e.nz).length < (worldEv('nazgul') ? 5 : 2)) {
         const t = TW.find(t => t.f === 2);
         if (t) {
             E.push({ id: ++NID, x: t.x, y: t.y + 30, f: 2, nz: 1, n: 4, vx: 0, vy: 0, w: 0, nm: 'Nazgûl' });

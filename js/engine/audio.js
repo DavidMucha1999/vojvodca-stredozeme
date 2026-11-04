@@ -44,7 +44,7 @@ const SoundFX = {
         if (s.setPan) s.setPan(pan * .8);
         sfxPlaying++;
         s.once('complete', () => { sfxPlaying--; s.destroy(); });
-        s.play({ volume: vol * (SFX_VOL[k] || .6), detune: (Math.random() - .5) * 300 });
+        s.play({ volume: vol * (SFX_VOL[k] || .6) * (typeof OPT !== 'undefined' ? OPT.vSfx : 1), detune: (Math.random() - .5) * 300 });
         return true;
     },
 
@@ -59,7 +59,7 @@ const SoundFX = {
         musicNow = sfxScene.sound.add(key, { loop: true, volume: 0 });
         musicNow.play();
         musicNow.setMute(mu);
-        sfxScene.tweens.add({ targets: musicNow, volume: .5, duration: 1500 });
+        sfxScene.tweens.add({ targets: musicNow, volume: .5 * (typeof OPT !== 'undefined' ? OPT.vMus : 1), duration: 1500 });
         return true;
     }
 };

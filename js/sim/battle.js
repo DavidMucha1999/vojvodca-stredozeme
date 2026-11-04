@@ -128,6 +128,7 @@ function hit(b, d, from) {
     const was = b.hp > 0;
     if (from && onHill(from) && !onHill(b)) d *= 1.15;   // útok z kopca
     if (from && !from.t && !from.h && perk('taktik')) d *= 1.1;   // perk Taktik
+    if (!b.t) d *= DIFF_MUL();   // obťažnosť (js/ui/settings.js)
     b.hp -= d * (b.h ? red() : !b.t && temple() ? .9 : 1);
     if (from) { from.dmg = (from.dmg || 0) + d; if (was && b.hp <= 0) from.kills = (from.kills || 0) + 1; }
     if (was && b.hp <= 0) cmbDeath(b);
@@ -312,9 +313,9 @@ function endBattle(win) {
                 G.pmv = Math.min(20, (G.pmv || 0) + 8); G.pm = Math.min(100, (G.pm ?? 60) + 4);   // víťazstvo dvíha morálku družiny
                 if (perk('slavny')) G.ren++;
                 const wnd = woundAfterBattle();
-                if (G.king && G.ren >= 30) {
-                    show('Slávny vojvodca', 'Orkské tlupy sú rozprášené a Stredozem ťa oslavuje. Dosiahol si slávu 12 za ' + G.day + ' dní.');
-                    btn('Hrať znova', newGame);
+                if (G.king && G.ren >= 30 && !G.endK) {   // kráľ so slávou 30: koniec hry (raz), potom sa dá hrať ďalej
+                    G.endK = 1;
+                    ending('king');
                     ach();
                     afterBattleFlags(win, L);
                     return;

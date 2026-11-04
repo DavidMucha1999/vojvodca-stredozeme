@@ -10,7 +10,7 @@
  * Okrem toho kreslí: oznámenia, pauzu, noc, počasie, zdravie hrdinu, bránu,
  * popisky pri myši a legendu mapy. Scéna tiež posúva herný čas (tm).
  */
-const UI_C = { ink: '#ecdfc6', gold: '#d9a441', dim: '#9a8c78', panel: 0x1c1510, panel2: 0x2c2018, line: 0xd9a441, btn: 0xd9a441, btnHover: 0xf0c060, btnOff: 0x4a4036 };
+const UI_C = { ink: '#ecdfc6', gold: '#d9a441', dim: '#9a8c78', panel: 0x1c1510, panel2: 0x2c2018, line: 0xd9a441, btn: 0x2e2012, btnHover: 0x4e3618, btnSel: 0x6a4818, btnOff: 0x241e18 };
 /** Tlačidlá, ktorými sa okno zatvára (v dlhých oknách sú vždy viditeľné dole). */
 const UI_EXIT = /^(Späť|Odísť|Zavrieť|Pokračovať|Rozumiem|Na cestu)/;
 const TITLE_FONT = '"Uncial Antiqua", Georgia, serif';
@@ -75,7 +75,7 @@ class UIScene extends Phaser.Scene {
             const se = G ? season() : 0;
             if (se === 2) g.fillStyle(0xc86e1e, .1).fillRect(0, 0, W, H);
             if (se === 3) g.fillStyle(0xdce6ff, .14).fillRect(0, 0, W, H);
-            this.drawWeather(g, MW.n, 1);
+            this.drawWeather(g, MW.n, lowFx() ? .5 : 1);
             // noc: modré stmavenie, v hlbokej noci hviezdy
             const nn = nightness(), raw = .5 - .5 * Math.cos(dayT / DAY_LEN * 6.283), ph = dayT / DAY_LEN;
             // súmrak a úsvit: teplé oranžové svetlo zhora (súmrak) alebo ružové (úsvit), potom modrá noc
@@ -90,7 +90,7 @@ class UIScene extends Phaser.Scene {
         this.gateTxt.setVisible(false);
         if (this.cmbT) this.cmbT.forEach(t => t.setVisible(false));
         if (scene === 'battle' && U && U[0]) {
-            this.drawWeather(g, WX.n, 1.3);
+            this.drawWeather(g, WX.n, lowFx() ? .6 : 1.3);
             const h = U[0];
             g.fillStyle(0x000000, .55).fillRect(W / 2 - 82, 58, 164, 10);
             g.fillStyle(0xb8402a, 1).fillRect(W / 2 - 80, 60, 160 * Math.max(0, h.hp) / h.mh, 6);
@@ -112,10 +112,10 @@ class UIScene extends Phaser.Scene {
         g.fillStyle(C.gb > 0 ? (Math.floor(tm / 4) % 2 ? 0xff5030 : 0x802010) : 0xd9b84a, 1).fillRect(x, 70, 160 * Math.max(0, C.st) / 100, 4);   // výdrž
         if (C.shMax) { g.fillStyle(0x000000, .5).fillRect(x - 2, 76, 164, 5); g.fillStyle(C.blk ? 0xd8e8ff : 0x8aa0c0, 1).fillRect(x, 77, 160 * C.shp / C.shMax, 3); }   // štít
         if (!C.noRout) {   // morálka: vľavo tvoja (zlatá), vpravo nepriateľa (červená)
-            const mw = 120, y = 60, bar = (bx, v, col) => { g.fillStyle(0x000000, .55).fillRect(bx - 2, y - 2, mw + 4, 10); g.fillStyle(col, 1).fillRect(bx, y, mw * Math.max(0, v) / 100, 6); g.fillStyle(0xffffff, .5).fillRect(bx + mw * .35, y - 2, 1, 10); };
+            const mw = 120, y = 66, bar = (bx, v, col) => { g.fillStyle(0x000000, .55).fillRect(bx - 2, y - 2, mw + 4, 10); g.fillStyle(col, 1).fillRect(bx, y, mw * Math.max(0, v) / 100, 6); g.fillStyle(0xffffff, .5).fillRect(bx + mw * .35, y - 2, 1, 10); };
             bar(18, C.M[0], C.M[0] < 35 ? 0xd07030 : 0xd9a441); bar(W - 18 - mw, C.M[1], C.M[1] < 35 ? 0xd07030 : 0xc0392b);
-            this.cmbT[0].setPosition(18, 50).setText('Morálka – tvoje vojsko').setVisible(true);
-            this.cmbT[1].setPosition(W - 18, 50).setText('Morálka – nepriateľ').setVisible(true);
+            this.cmbT[0].setPosition(18, 81).setText('Morálka – tvoje vojsko').setVisible(true);
+            this.cmbT[1].setPosition(W - 18, 81).setText('Morálka – nepriateľ').setVisible(true);
         }
         const st = [C.charging ? 'NÁPOR!' : '', C.gb > 0 ? 'Kryt prelomený' : '', C.ammo0 ? 'Šípy: ' + C.ammo : '', C.cry > 0 ? '' : 'Pokrik (V) pripravený', 'Skupina: ' + GRP_N[C.sel]].filter(Boolean).join('   ');
         this.cmbT[2].setPosition(W / 2, 90).setText(st).setVisible(true);
@@ -186,8 +186,8 @@ class UIScene extends Phaser.Scene {
     /** Skupiny tlačidiel spodného panela: [názov, ikona, texty HTML tlačidiel]. Ostatné (lupa, Tábor) sú vždy viditeľné. */
     static get GROUPS() {
         return [['Hrdina', 'helm', ['Prehľad', 'Denník', 'Úlohy', 'Družina', 'Inventár', 'Štatistiky']],
-                ['Kronika', 'book', ['Legenda', 'Trofeje', 'Úspechy', 'Encyklopédia', 'Návod']],
-                ['Nastavenia', 'gear', ['Zvuk', 'Celá obrazovka', 'Ukončiť hru']]];
+                ['Kronika', 'book', ['Kronika hrdinu', 'Legenda', 'Trofeje', 'Úspechy', 'Encyklopédia', 'Návod']],
+                ['Nastavenia', 'gear', ['Nastavenia hry', 'Zvuk', 'Celá obrazovka', 'Ukončiť hru']]];
     }
 
     syncBars() {
@@ -236,7 +236,7 @@ class UIScene extends Phaser.Scene {
             if (this.pause) this.pause.y = y - 14;
         }
         if (vis(od)) {   // dolný rad rozkazy, nad ním skupiny vojska
-            const all = [...od.children], rowOf = (bs, w, y, sz) => { const x0 = W / 2 - (bs.length * (w + 4)) / 2; bs.forEach((b, i) => { const ic = Icons.forButton(b.textContent.replace(/^\S+ /, '')); this.barLayer.add(this.button(x0 + i * (w + 4), y, w, b === bs[0] && sz ? BH - 4 : BH - (sz ? 4 : 0), b.textContent, () => b.click(), { size: sz || 11, alpha: +(b.style.opacity || 1), icon: ic ? Icons.tex(this, ic) : null })); }); };
+            const all = [...od.children], rowOf = (bs, w, y, sz) => { const x0 = W / 2 - (bs.length * (w + 4)) / 2; bs.forEach((b, i) => { const ic = Icons.forButton(b.textContent.replace(/^\S+ /, '')); this.barLayer.add(this.button(x0 + i * (w + 4), y, w, b === bs[0] && sz ? BH - 4 : BH - (sz ? 4 : 0), b.textContent, () => b.click(), { size: sz || 11, sel: +(b.style.opacity || 1) === 1, icon: ic ? Icons.tex(this, ic) : null })); }); };
             rowOf(all.filter(b => !b.dataset.g), 92, H - BH - 4);
             rowOf(all.filter(b => b.dataset.g), 96, H - 2 * BH - 6, 10);
         }
@@ -277,12 +277,16 @@ class UIScene extends Phaser.Scene {
     /** Tlačidlo v štýle hry; vráti pole objektov. */
     button(x, y, w, h, label, fn, o = {}) {
         const off = !!o.disabled, size = o.size || 14;
-        const r = this.add.rectangle(x, y, w, h, off ? UI_C.btnOff : UI_C.btn).setOrigin(0).setStrokeStyle(1, 0x5a3a12, .8).setAlpha(o.alpha ?? 1);
-        const deco = this.add.graphics().setAlpha(o.alpha ?? 1);          // svetlý horný okraj a tmavší spodok – plastické tlačidlo
-        deco.fillStyle(0xffffff, off ? .08 : .22).fillRect(x + 1, y + 1, w - 2, 1);
-        deco.fillStyle(0x3a2208, off ? .15 : .35).fillRect(x + 1, y + h - 2, w - 2, 1);
+        // jednotný štýl okien (ako hlavné menu): tmavé drevo, zlatý rám, svetlé zlaté písmo; vybrané tlačidlo svieti
+        const fill = off ? UI_C.btnOff : o.sel ? UI_C.btnSel : UI_C.btn, edge = off ? 0x5a4a3a : o.sel ? 0xffe08a : 0xb08a3a;
+        const r = this.add.rectangle(x, y, w, h, fill).setOrigin(0).setStrokeStyle(1.5, edge, 1).setAlpha(o.alpha ?? 1);
+        const deco = this.add.graphics().setAlpha(o.alpha ?? 1);
+        deco.fillStyle(0xffe0a0, off ? .05 : .16).fillRect(x + 1.5, y + 1.5, w - 3, 1);          // svetlá horná hrana
+        deco.fillStyle(0x000000, .35).fillRect(x + 1.5, y + h - 2.5, w - 3, 1);                 // tieň dole
+        if (!off && h >= 20) deco.lineStyle(.8, 0xd9a441, .28).strokeRect(x + 3, y + 3, w - 6, h - 6);   // vnútorná linka
+        if (!off && w >= 110 && !o.icon) { deco.fillStyle(0xd9a441, .75); for (const dx of [7, w - 7]) deco.fillTriangle(x + dx, y + h / 2 - 3, x + dx + 3, y + h / 2, x + dx, y + h / 2 + 3).fillTriangle(x + dx, y + h / 2 - 3, x + dx - 3, y + h / 2, x + dx, y + h / 2 + 3); }   // kosoštvorčeky
         const is = Math.min(h - 4, o.iconSize || 24), iw = o.icon ? (o.bare ? 0 : is + 6) : 0;
-        const t = this.add.text(x + iw + (w - iw) / 2, y + h / 2, label, txtStyle(size, off ? UI_C.dim : '#1a120a', { align: 'center', wordWrap: { width: Math.max(10, w - 12 - iw), useAdvancedWrap: true } })).setOrigin(.5);
+        const t = this.add.text(x + iw + (w - iw) / 2, y + h / 2, label, txtStyle(size, off ? UI_C.dim : o.sel ? '#fff4d0' : '#f3dc9a', { align: 'center', wordWrap: { width: Math.max(10, w - 12 - iw), useAdvancedWrap: true } })).setOrigin(.5);
         const out = [r, deco, t];
         if (o.icon) {
             const cx = o.bare ? x + w / 2 : x + 3 + is / 2;
@@ -291,8 +295,9 @@ class UIScene extends Phaser.Scene {
         }
         if (!off && fn) {
             r.setInteractive({ useHandCursor: true });
-            r.on('pointerover', () => r.setFillStyle(UI_C.btnHover));
-            r.on('pointerout', () => r.setFillStyle(UI_C.btn));
+            r.on('pointerover', () => { r.setFillStyle(UI_C.btnHover); r.setStrokeStyle(1.5, 0xffd890, 1); t.setColor('#fff4d0'); if (typeof uiSnd === 'function') uiSnd('hover'); });
+            r.on('pointerout', () => { r.setFillStyle(fill); r.setStrokeStyle(1.5, edge, 1); t.setColor(o.sel ? '#fff4d0' : '#f3dc9a'); });
+            r.on('pointerdown', () => { if (typeof uiSnd === 'function') uiSnd('click'); });
             r.on('pointerup', () => { if (!(this.drag && this.drag.moved)) fn(); });
         }
         return out;

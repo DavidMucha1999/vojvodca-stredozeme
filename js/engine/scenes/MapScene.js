@@ -460,9 +460,18 @@ class MapScene extends Phaser.Scene {
         { const nn = nightness(), cx = cam.x + W / Z / 2, cy = cam.y + H / Z / 2, rr = Math.max(W, H) / Z;
           for (let i = 0; i < VL.length; i++) { const v = VL[i]; if (v.st > 0 || Math.abs(v.x - cx) > rr || Math.abs(v.y - cy) > rr) continue;
             if (nn > .35) { g.fillStyle(0xffd080, .5 + .3 * Math.sin(tm / 7 + i)); for (let k = 0; k < 1 + lvl(v) / 2; k++) g.fillRect(v.x - 10 + ((k * 13 + i * 5) % 24), v.y - 6 + ((k * 7) % 8), 2.5, 2); g.fillStyle(0xffc060, .08).fillCircle(v.x, v.y, 26); }
-            else if (lvl(v) >= 2) { for (let k = 0; k < 3; k++) { const sm = (tm * .35 + k * 20 + i * 7) % 60; g.fillStyle(0xd8d0c8, .22 - sm / 300).fillCircle(v.x + 6 + Math.sin(sm * .12 + k + i) * 4, v.y - 12 - sm * .55, 2.2 + sm * .08); } } } }
+            else if (lvl(v) >= 2 && !lowFx()) { for (let k = 0; k < 3; k++) { const sm = (tm * .35 + k * 20 + i * 7) % 60; g.fillStyle(0xd8d0c8, .22 - sm / 300).fillCircle(v.x + 6 + Math.sin(sm * .12 + k + i) * 4, v.y - 12 - sm * .55, 2.2 + sm * .08); } } } }
+        // hrady v noci: svetlá v oknách, žiara nad hradbami a blikajúce fakle pri bráne; rieka sa cez deň trblieta a v noci odráža mesiac
+        { const nn = nightness(), cx = cam.x + W / Z / 2, cy = cam.y + H / Z / 2, rr = Math.max(W, H) / Z * 1.2;
+          if (nn > .3) for (let i = 0; i < this.towns.length; i++) { const o = this.towns[i], t = o.t; if (Math.abs(t.x - cx) > rr || Math.abs(t.y - cy) > rr) continue;
+            const dw = o.spr.displayWidth, dh = o.spr.displayHeight, a = Math.min(1, (nn - .3) * 2.5);
+            g.fillStyle(0xffb050, .07 * a).fillCircle(t.x, t.y - dh * .45, dw * .55);
+            for (let k = 0; k < 7; k++) { const wx = t.x + (((k * 37 + i * 11) % 100) / 100 - .5) * dw * .6, wy = t.y - dh * (.25 + ((k * 53 + i * 7) % 100) / 100 * .45), fl = .6 + .4 * Math.sin(tm / (5 + k) + i + k); g.fillStyle(0xffd27a, .85 * a * fl).fillRect(wx - 1.6, wy - 2.2, 3.2, 4.4); g.fillStyle(0xffb050, .12 * a * fl).fillCircle(wx, wy, 7); }
+            for (const s of [-1, 1]) { const fx = t.x + s * dw * .14, fy = t.y - dh * .08, f = 1 + .25 * Math.sin(tm / 2.3 + s + i); g.fillStyle(0xff8a20, .2 * a).fillCircle(fx, fy, 12 * f); g.fillStyle(0xffe08a, .9 * a).fillCircle(fx, fy, 2.2 * f); } }
+          if (!lowFx()) { const rp = riverPoints(); for (let i = 0; i < rp.length; i += 2) { const [x, y] = rp[i]; if (Math.abs(x - cx) > rr || Math.abs(y - cy) > rr) continue;
+            const sh = Math.sin(tm / 9 + i * .7); if (sh > .55) g.fillStyle(nn > .4 ? 0xdfe8ff : 0xffffff, (sh - .55) * (nn > .4 ? .9 : .7)).fillEllipse(x + Math.sin(tm / 20 + i) * 8, y, 12, 2.4); } } }
         // prach pod armádami na pochode
-        for (const e of E) if ((e.vx || e.vy) && Math.hypot(e.x - G.x, e.y - G.y) < 900) for (let k = 1; k < 3 + Math.min(3, e.n / 10); k++) g.fillStyle(regionAt(e.x, e.y) === 's' ? 0xffffff : 0xc8b48c, .16 - k * .03).fillCircle(e.x - e.vx * k * 9 + Math.sin(tm / 3 + k) * 2, e.y - e.vy * k * 9 + 8, 4 + k * .4);
+        if (!lowFx()) for (const e of E) if ((e.vx || e.vy) && Math.hypot(e.x - G.x, e.y - G.y) < 900) for (let k = 1; k < 3 + Math.min(3, e.n / 10); k++) g.fillStyle(regionAt(e.x, e.y) === 's' ? 0xffffff : 0xc8b48c, .16 - k * .03).fillCircle(e.x - e.vx * k * 9 + Math.sin(tm / 3 + k) * 2, e.y - e.vy * k * 9 + 8, 4 + k * .4);
         this.drawSieges(g);
         if (G.camp || G.besiege >= 0) {
             g.fillStyle(0xc8a870, 1).fillTriangle(G.x - 30, G.y + 6, G.x - 18, G.y - 12, G.x - 6, G.y + 6);

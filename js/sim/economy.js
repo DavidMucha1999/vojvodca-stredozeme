@@ -14,6 +14,7 @@ function daily2() {
         G.gold += Math.round((lvl(t) * 4 + (t.bd && t.bd.t ? lvl(t) * 2 : 0)) * taxMul() * fiefShare(t)); });
     if ((G.tax || 'normal') === 'high') E.forEach(e => { if (e.f === G.fac && e.vas && e.loy != null) e.loy = Math.max(0, e.loy - .1); });
     if (G.camp && G.stay) G.hp = Math.min(mh(), G.hp + 25);   // pobyt v hrade: rýchlejšie hojenie
+    worldDaily();    // veľké udalosti sveta (js/sim/chronicle.js)
     supplyDaily();   // jedlo, morálka družiny, dezercie, hojenie ranených (js/sim/supply.js)
     dailyTrade();
     dailyWeather();
@@ -21,6 +22,7 @@ function daily2() {
     prisonersDaily();
     courtDaily();
     siegeDaily();
+    if (mode === 'map') rotateAutosaves();   // tri automatické pozície (js/ui/settings.js)
     if (mode === 'map' && save('auto')) TS = TS && TS.l > 0 ? TS : { s: 'Hra automaticky uložená (deň ' + G.day + ').', l: 150 };
     if (G.comp && G.comp.length && Math.random() < .5) { const c = compDef(G.comp[Math.floor(Math.random() * G.comp.length)]); if (c) TS = { s: c.n + ': „' + compLine(c) + '“', l: 320 }; }
     VL.forEach(v => { v.pr = Math.max(0, Math.min(100, (v.pr ?? 40) + (v.st > 0 ? -2 : 1) + (TW[v.t].mine ? taxPr() : 0))); if (TW[v.t].mine)

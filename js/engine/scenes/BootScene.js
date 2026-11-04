@@ -26,7 +26,8 @@ class BootScene extends Phaser.Scene {
             'Tip: keď zaútočíš pri spojencoch, pridajú sa k tebe do bitky.', 'Tip: obliehaná posádka žije zo zásob – čakanie ju oslabí, no hrozí výpad.',
             'Tip: v krčme nájdeš spoločníkov a krčmár vie, čo sa deje vo svete.', 'Tip: zajatého veliteľa môžeš prepustiť za výkupné alebo pre česť.',
             'Tip: červený oblúk nad nepriateľom znamená nápriah – vtedy sa kry (pravé tlačidlo alebo Shift).', 'Tip: padlý veliteľ v zlatom kruhu zlomí morálku celého nepriateľského vojska.', 'Tip: na koni sa rozbehni rovno – nápor s kopijou zrazí aj ťažkého bojovníka.',
-            'Tip: hladná družina dezertuje – zásoby jedla kúpiš na trhu v hrade aj v dedine.', 'Tip: chlieb, mäso, syr a pivo spolu dvíhajú morálku viac než štyri vrecia chleba.'];
+            'Tip: hladná družina dezertuje – zásoby jedla kúpiš na trhu v hrade aj v dedine.', 'Tip: chlieb, mäso, syr a pivo spolu dvíhajú morálku viac než štyri vrecia chleba.',
+            'Tip: Kronika hrdinu zapisuje tvoje skutky – na konci príbehu ťa čaká jeden zo šiestich koncov.', 'Tip: obťažnosť, hlasitosť a kvalitu grafiky zmeníš v Nastaveniach aj počas hry.'];
         let qi = Math.floor(Math.random() * QUOTES.length);
         this.quote.setText(QUOTES[qi]);
         this.time.addEvent({ delay: 4000, loop: true, callback: () => { qi = (qi + 1 + Math.floor(Math.random() * 3)) % QUOTES.length; this.quote.setText(QUOTES[qi]); } });

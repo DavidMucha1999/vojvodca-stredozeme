@@ -5,7 +5,7 @@
  * Uložené pozície: 'vs1' = pozícia 1 (pôvodná), 'vs2', 'vs3' = ďalšie ručné, 'vsauto' = automatická (na konci každého dňa).
  * slot = 1, 2, 3 alebo 'auto'.
  */
-const SLOTS = [['1', 'Pozícia 1'], ['2', 'Pozícia 2'], ['3', 'Pozícia 3'], ['4', 'Pozícia 4'], ['5', 'Pozícia 5'], ['6', 'Pozícia 6'], ['auto', 'Automatická (koniec dňa)']];
+const SLOTS = [['1', 'Pozícia 1'], ['2', 'Pozícia 2'], ['3', 'Pozícia 3'], ['4', 'Pozícia 4'], ['5', 'Pozícia 5'], ['6', 'Pozícia 6'], ['auto', 'Automatická (koniec dňa)'], ['auto2', 'Automatická (deň predtým)'], ['auto3', 'Automatická (pred dvoma dňami)']];
 const slotKey = slot => slot === 'auto' ? 'vsauto' : 'vs' + (slot || 1);
 /** Popis uloženej pozície alebo null, ak je prázdna. */
 function slotInfo(slot) { const d = slotData(slot); return d ? d.text : null; }

@@ -163,9 +163,8 @@ Object.assign(UIScene.prototype, {
         const probe = this.add.text(0, 0, label, txtStyle(12, '#000', { wordWrap: { width: w - 12 - iw, useAdvancedWrap: true } }));
         const bh = Math.max(icon ? is + 4 : 24, probe.height + 8); probe.destroy();
         const swatch = k.style.background && k.textContent.trim() === '' ? k.style.background : null;
-        const parts = this.button(x, y, w, bh, label, () => { if (allow()) k.click(); }, { disabled: k.disabled, icon, iconSize: is, size: 12 });
+        const parts = this.button(x, y, w, bh, label, () => { if (allow()) k.click(); }, { disabled: k.disabled, icon, iconSize: is, size: 12, sel: !!(k.dataset.sel || k.style.outline) });
         if (swatch) parts[0].setFillStyle(hex(swatch));
-        if (k.dataset.sel || k.style.outline) parts[0].setStrokeStyle(3, 0xffffff, 1);
         this.dlgButtons.push(k);
         parts.h = bh;
         return parts;

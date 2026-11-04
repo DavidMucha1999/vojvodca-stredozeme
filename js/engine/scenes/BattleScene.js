@@ -109,6 +109,8 @@ class BattleScene extends Phaser.Scene {
             this.add.tileSprite(1000, 0, 40, BH, 'wall').setOrigin(0).setTileScale(.5).setDepth(-7);
             const w = this.add.graphics().setDepth(-6);
             w.fillStyle(0xa49e90, 1); for (let y = 0; y < BH; y += 20) w.fillRect(994, y, 10, 12);
+            for (let y = 0; y < BH; y += 20) { w.fillStyle(0xffffff, .22).fillRect(994, y, 10, 2); w.fillStyle(0x000000, .35).fillRect(994, y + 12, 10, 3).fillRect(1004, y + 1, 2, 11); }   // cimburie so svetlom a tieňom
+            w.lineStyle(1, 0x000000, .18); for (let y = 6; y < BH; y += 13) w.lineBetween(1006, y, 1036, y);   // rady kameňov
             w.fillStyle(0x000000, .3).fillRect(1036, 0, 6, BH);
             w.fillStyle(0x2a2018, 1).fillRect(1000, 435, 40, 90);
             for (const y of [150, 390, 570, 810]) this.add.image(982, y - 41, 'tower').setOrigin(0).setScale(.5).setDepth(-6);
@@ -238,29 +240,35 @@ class BattleScene extends Phaser.Scene {
             g.fillStyle(u.t ? 0xc0392b : 0x6fbf5a, 1).fillRect(u.x - 7, u.y - u.r - 6, 14 * u.hp / u.mh, 3);
         }
         for (const a of AR) g.lineStyle(2.2, 0xe8d8b0, .18).lineBetween(a.x, a.y, a.x - a.vx * 7, a.y - a.vy * 7);   // stopa šípu
+        if (SGB && WX.night) for (const a of AR) { g.fillStyle(0xff8a20, .25).fillCircle(a.x, a.y, 6); g.fillStyle(0xffe08a, .95).fillCircle(a.x, a.y, 1.6); g.lineStyle(2, 0xff6a10, .5).lineBetween(a.x, a.y, a.x - a.vx * 4, a.y - a.vy * 4); }   // horiace šípy pri nočnom obliehaní
         g.lineStyle(1.6, 0xe8d8b0, 1);
         for (const a of AR) { g.lineBetween(a.x, a.y, a.x - a.vx * 3, a.y - a.vy * 3); if (a.l <= 1 && !a.mk) { a.mk = 1; this.markArrow(a); } }
         for (const p of PT) if (p.ring) { const k = p.l / 22; g.lineStyle(2, hex(p.c), Math.min(1, k * 1.6)).strokeCircle(p.x, p.y, (p.rr || 10) * (1.25 - k * .6)); }   // záblesk krytu, pokrik
         for (const p of PT) { if (p.ring) continue; const a = Math.max(0, p.l / 18); if (p.sp) { g.lineStyle(1.2, 0xfff0b0, Math.min(1, a)).lineBetween(p.x, p.y, p.x - p.vx * 1.5, p.y - p.vy * 1.5); g.fillStyle(0xffffff, Math.min(1, a)).fillRect(p.x - .7, p.y - .7, 1.4, 1.4); continue; } if (p.bl) { g.fillStyle(hex(p.c), Math.min(.7, a * .7)).fillCircle(p.x, p.y, 1.6 + (30 - p.l) * .06); continue; } g.fillStyle(hex(p.c), a).fillRect(p.x, p.y, 3, 3); if (p.l > 14) g.fillStyle(0xfff0c0, a * .9).fillRect(p.x - 1, p.y - 1, 2, 2); }   // iskra pri zásahu
         // prach za jazdou a veľkými tvormi: obláčiky za kopytami, ktoré sa rozplývajú
         this.dust = this.dust || [];
-        for (const u of U) if (u.hp > 0 && (u.k === 'c' || u.k === 'r' || u.k === 'x' || u.k === 't' || u.k === 'n' || (u.h && G.eq.m) || u.uk === 'uI2' || u.uk === 'uN2' || u.uk === 'uG3')) { const o = this.units.get(u); if (o && o.state === 'walk' && Math.random() < (u.k === 'x' ? .5 : .25)) this.dust.push({ x: u.x - Math.cos(u.f) * u.r * .8 + (Math.random() - .5) * 6, y: u.y - Math.sin(u.f) * u.r * .8 + 4, l: 1, r: 3 + Math.random() * 3 }); }
+        if (!lowFx()) for (const u of U) if (u.hp > 0 && (u.k === 'c' || u.k === 'r' || u.k === 'x' || u.k === 't' || u.k === 'n' || (u.h && G.eq.m) || u.uk === 'uI2' || u.uk === 'uN2' || u.uk === 'uG3')) { const o = this.units.get(u); if (o && o.state === 'walk' && Math.random() < (u.k === 'x' ? .5 : .25)) this.dust.push({ x: u.x - Math.cos(u.f) * u.r * .8 + (Math.random() - .5) * 6, y: u.y - Math.sin(u.f) * u.r * .8 + 4, l: 1, r: 3 + Math.random() * 3 }); }
         const dc = BI === 's' ? 0xffffff : BI === 'a' ? 0x6a5a52 : BI === 'd' ? 0xe0c890 : 0xc8b48c;
         for (const d of this.dust) { d.l -= .025; d.y -= .15; d.r += .18; g.fillStyle(dc, Math.max(0, d.l) * .28).fillCircle(d.x, d.y, d.r); }
         this.dust = this.dust.filter(d => d.l > 0);
         if (typeof SHAKE !== 'undefined' && SHAKE > 0 && !this.shaking) { this.shaking = 1; this.cameras.main.shake(140, .0022 * SHAKE, false, () => { this.shaking = 0; }); }
         this.drawCombat(g);
         if (SGB) {
+            const tt = U[0].tt || 0, pl = Math.min(1, tt / 160), pt = Math.min(1, tt / 320);   // rebríky sa dvíhajú, veža sa prisúva
             if (SGB.lad) for (const l of [250, 710]) {
-                g.lineStyle(3, 0x7a5a30, 1); g.lineBetween(985, l - 10, 1045, l - 10); g.lineBetween(985, l + 10, 1045, l + 10);
-                g.lineStyle(2, 0x7a5a30, 1); for (let k = 990; k < 1045; k += 9) g.lineBetween(k, l - 10, k, l + 10);
+                const x1 = 985 + 60 * pl;
+                g.fillStyle(0x000000, .25).fillRect(985, l + 11, x1 - 985, 4);
+                g.lineStyle(3, 0x7a5a30, 1); g.lineBetween(985, l - 10, x1, l - 10); g.lineBetween(985, l + 10, x1, l + 10);
+                g.lineStyle(2, 0x7a5a30, 1); for (let k = 990; k < x1; k += 9) g.lineBetween(k, l - 10, k, l + 10);
+                if (pl < 1) g.lineStyle(1.5, 0x3a2a1a, .8).lineBetween(x1, l - 10, x1 - 20, l - 26).lineBetween(x1, l + 10, x1 - 20, l + 26);   // laná, ktorými ich dvíhajú
             }
+            const ox = -(1 - pt) * 150;
             if (SGB.tow) {   // obliehacia veža pri hradbách: drevená konštrukcia s mostíkom
-                g.fillStyle(0x000000, .25).fillEllipse(960, 652, 90, 20);
-                g.fillStyle(0x6b4a2e, 1).fillRect(925, 560, 70, 92); g.fillStyle(0x4a3220, 1).fillRect(925, 560, 12, 92).fillRect(983, 560, 12, 92);
-                g.lineStyle(2, 0x3a2a1a, 1); for (let k = 572; k < 650; k += 16) g.lineBetween(925, k, 995, k); g.lineBetween(925, 560, 995, 652); g.lineBetween(995, 560, 925, 652);
-                g.fillStyle(0x8a6a3a, 1).fillRect(990, 590, 56, 40); g.lineStyle(1.5, 0x4a3220, 1); for (let k = 996; k < 1046; k += 8) g.lineBetween(k, 590, k, 630);
-                g.fillStyle(0x3a2a1a, 1).fillCircle(935, 652, 8).fillCircle(985, 652, 8);
+                g.fillStyle(0x000000, .25).fillEllipse(960 + ox, 652, 90, 20);
+                g.fillStyle(0x6b4a2e, 1).fillRect(925 + ox, 560, 70, 92); g.fillStyle(0x4a3220, 1).fillRect(925 + ox, 560, 12, 92).fillRect(983 + ox, 560, 12, 92);
+                g.lineStyle(2, 0x3a2a1a, 1); for (let k = 572; k < 650; k += 16) g.lineBetween(925 + ox, k, 995, k); g.lineBetween(925 + ox, 560, 995, 652); g.lineBetween(995, 560, 925, 652);
+                if (pt >= 1) { g.fillStyle(0x8a6a3a, 1).fillRect(990, 590, 56, 40); g.lineStyle(1.5, 0x4a3220, 1); for (let k = 996; k < 1046; k += 8) g.lineBetween(k, 590, k, 630); }   // mostík až pri hradbách
+                g.fillStyle(0x3a2a1a, 1).fillCircle(935 + ox, 652, 8).fillCircle(985 + ox, 652, 8);
             }
             if (SGB.gate > 0) {
                 g.fillStyle(0x5a3a1a, 1).fillRect(1004, 437, 32, 86);
