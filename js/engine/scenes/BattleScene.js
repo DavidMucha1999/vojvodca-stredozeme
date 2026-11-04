@@ -284,6 +284,11 @@ class BattleScene extends Phaser.Scene {
             const arc = C.shp > 0 ? (perk('stit') ? 1.7 : 1.4) : .85;
             g.lineStyle(C.shp > 0 ? 4 : 2.5, C.shp > 0 ? 0xc8d8ff : 0xffffff, .75).beginPath().arc(h.x, h.y, h.r + 8, h.f - arc, h.f + arc).strokePath();
         }
+        if ((C.mkT > 0 || C.place) && typeof grpOf === 'function') {   // vybraná skupina, jej miesta v útvare a náhľad pri rozkaze na miesto
+            const gs = C.sel === 'all' ? ['p', 'l', 'j'] : [C.sel], GC = { p: 0x80c0ff, l: 0xa0e080, j: 0xffb060 };
+            for (const u of U) if (!u.t && !u.h && !u.ally && u.hp > 0 && !u.rout && gs.includes(grpOf(u))) { g.lineStyle(1.5, GC[grpOf(u)], .8).strokeCircle(u.x, u.y, u.r + 2); if (u.hx != null && !C.prev) g.fillStyle(GC[grpOf(u)], .7).fillRect(u.hx - 2, u.hy - 2, 4, 4); }
+            if (C.prev) for (const S of C.prev) g.fillStyle(0xffffff, .85).fillRect(S.x - 2.5, S.y - 2.5, 5, 5);
+        }
         if (C.aim) { const A = C.aim; g.lineStyle(1.5, 0xffe8a0, .8).strokeCircle(A.x, A.y, A.r); g.lineBetween(A.x - A.r - 4, A.y, A.x - A.r + 3, A.y).lineBetween(A.x + A.r - 3, A.y, A.x + A.r + 4, A.y).lineBetween(A.x, A.y - A.r - 4, A.x, A.y - A.r + 3).lineBetween(A.x, A.y + A.r - 3, A.x, A.y + A.r + 4); }   // zameriavač luku
         for (const u of U) if (u.boss && u.hp > 0) this.drawBoss(g, u);
         for (const u of U) {

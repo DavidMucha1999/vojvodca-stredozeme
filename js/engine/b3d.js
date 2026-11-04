@@ -152,6 +152,7 @@ const B3 = (() => {
         ovPos = new Float32Array(12000 * 3); ovCol = new Float32Array(12000 * 3);
         const og = new t.BufferGeometry(); og.setAttribute('position', new t.BufferAttribute(ovPos, 3)); og.setAttribute('color', new t.BufferAttribute(ovCol, 3));
         overlay = new t.Mesh(og, new t.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: .5, depthWrite: false, side: t.DoubleSide })); overlay.frustumCulled = false; overlay.renderOrder = 5; scene.add(overlay);
+        FIRE = Psys(1400, true); DUST = Psys(900, false); debris = []; rocks = []; fxState = {};
         // fakle v noci: pár svetiel, ktoré sa presúvajú k nosičom fakieľ pri kamere
         torches = [];
         if (night) for (let i = 0; i < 5; i++) { const l = new t.PointLight(C('#ffa040'), 1.6, 170, 1.6); scene.add(l); torches.push(l); }
@@ -159,7 +160,7 @@ const B3 = (() => {
     function buildFlora(rnd, B) {
         const t = T(), F = FIELD || { trees: [] }, kind = BI === 'a' ? 'dead' : BI === 'd' ? null : BI === 's' ? 'pine' : 'mix';
         const spots = [], rocks = [];
-        const place = (x, y) => { if (F.river && x > 670 && x < 770) return; if (SGB && x > 940) return; if (x < 0 || x > BW || y < 0 || y > BH) return; spots.push([x, y, .75 + rnd() * .6]); };
+        const place = (x, y) => { if (F.river && x > 670 && x < 770) return; if (SGB && x > 800) return; if (x < 0 || x > BW || y < 0 || y > BH) return; spots.push([x, y, .75 + rnd() * .6]); };
         const dens = .6 + (F.forest || 0) * 1.4;
         for (const tr of F.trees || []) { const n = Math.round(tr.r * tr.r / 420 * dens); for (let j = 0; j < n; j++) { const a = rnd() * 6.283, d = Math.sqrt(rnd()) * tr.r; place(tr.x + Math.cos(a) * d, tr.y + Math.sin(a) * d * .8); } }
         for (let i = 0; i < 40; i++) { place(rnd() * BW, 20 + rnd() * 50); place(rnd() * BW, BH - 6 - rnd() * 40); }
@@ -197,6 +198,10 @@ const B3 = (() => {
         const lg = lad.build(); siege.lad = [250, 710].map(l => { const m = mesh(lg); m.position.set(982, 20, l); m.rotation.z = Math.atan2(40, 36); scene.add(m); return m; });
         siege.tower = mesh(Part().add('box', '#6b4a2e', [0, 34, 0], [0, 0, 0], [60, 68, 60]).add('box', '#4a3220', [0, 70, 0], [0, 0, 0], [64, 6, 64]).add('cyl', '#3a2a1a', [-22, 6, 32], [Math.PI / 2, 0, 0], [12, 4, 12]).add('cyl', '#3a2a1a', [22, 6, 32], [Math.PI / 2, 0, 0], [12, 4, 12]).add('cyl', '#3a2a1a', [-22, 6, -32], [Math.PI / 2, 0, 0], [12, 4, 12]).add('cyl', '#3a2a1a', [22, 6, -32], [Math.PI / 2, 0, 0], [12, 4, 12]).build());
         siege.tower.visible = !!SGB.tow; scene.add(siege.tower);
+        siege.bridge = mesh(Part().add('box', '#8a6a3a', [28, 0, 0], [0, 0, 0], [56, 2, 40]).add('box', '#4a3220', [28, 1.2, 0], [0, 0, 0], [56, .6, 2]).build()); siege.bridge.position.set(30, 42, 0); siege.bridge.rotation.z = Math.PI / 2; siege.tower.add(siege.bridge);   // mostík padne na hradby
+        const dc = (U.find(u => u.t !== (SGB.att ?? 0) && !u.h && u.fc != null) || {}).fc, bcol = FC[dc != null ? dc : (SGB.att ?? 0) ? G.fac : 2] || '#8a2a2a';
+        const flag = Part().add('cyl', '#3a2a1a', [0, 16, 0], [0, 0, 0], [.8, 32, .8]).add('box', bcol, [-6, 26, 0], [0, 0, 0], [12, 10, .5]).add('box', '#d9a441', [-6, 31.4, 0], [0, 0, 0], [12.4, .8, .7]).build();
+        siege.flags = [150, 390, 570, 810, 380].map((y, i) => { const m = mesh(flag); m.position.set(i === 4 ? 1350 : 1024, i === 4 ? 165 : 88, y); scene.add(m); return m; });
         siege.ram = mesh(Part().add('cyl', '#6b4a2e', [0, 9, 0], [0, 0, Math.PI / 2], [10, 60, 10]).add('cone', '#4a4a4a', [33, 9, 0], [0, 0, -Math.PI / 2], [11, 8, 11]).add('box', '#3a2a1a', [0, 20, 0], [0, 0, 0], [50, 3, 26]).build());
         siege.ram.visible = !!SGB.ram; scene.add(siege.ram);
     }
@@ -205,7 +210,9 @@ const B3 = (() => {
         const tt = U[0].tt || 0, pl = Math.min(1, tt / 160), pt = Math.min(1, tt / 320), off = SGB.ladOff || [0, 0], def = (SGB.att ?? 0) === 1;
         siege.gate.visible = SGB.gate > 0;
         siege.lad.forEach((m, i) => { m.visible = !!SGB.lad; if ((off[i] || 0) > 0) { m.rotation.z = .08; m.position.x = 950; m.position.y = 2; } else { m.rotation.z = Math.atan2(40, 36) * pl; m.position.x = 982 - (1 - pl) * 12; m.position.y = 2 + 18 * pl; } });
-        siege.tower.position.set(960 - (1 - pt) * 150, heightAt(900, 610) * 0, 610);
+        siege.tower.position.set(960 - (1 - pt) * 150, 0, 610);
+        const br = siege.bridge; if (pt < 1) br.rotation.z = Math.PI / 2; else if (br.rotation.z > 0) { br.rotation.z = Math.max(0, br.rotation.z - .05); if (br.rotation.z === 0) { dust(1010, 610, 16, 20, '#8a8478'); SHAKE = Math.max(SHAKE, 1.5); } }   // mostík padne na hradby
+        if (siege.flags) siege.flags.forEach((f, i) => { f.rotation.y = Math.sin(clock * 1.7 + i) * .25; });
         siege.ram.position.set(965 + Math.sin(clock * 3) * 5, 0, 480); siege.ram.visible = !!SGB.ram && SGB.gate > 0 && !def || (!!SGB.ram && SGB.gate > 0);
     }
 
@@ -273,15 +280,17 @@ const B3 = (() => {
         // ľavá ruka so štítom alebo lukom
         const armL = Part().add('box', armor, [0, -3.8, 0], [0, 0, 0], [2.2, 7.6, 2.2]).add('sph', skin, [0, -8, 0], [0, 0, 0], [2.2, 2.2, 2.2]);
         const SG = s.shieldG, shape = SG ? SG.shape : s.shield;
+        let shield = null;   // štít je samostatný diel na predlaktí: ostáva zvislo čelom vpred, nech je ruka hocikde
         if (shape) {
-            const scol = SG ? SG.col : team, srim = SG ? SG.rim : sh(team, .6);
-            if (shape === 'kite') armL.add('box', srim, [1.6, -6, -.3], [0, 0, 0], [.8, 12.6, 7.6]).add('box', scol, [1.9, -6, -.3], [0, 0, 0], [.6, 11.4, 6.6]);
-            else armL.add('disc', srim, [1.6, -6.2, -.3], [0, 0, Math.PI / 2], [9.6, .8, 9.6]).add('disc', scol, [1.9, -6.2, -.3], [0, 0, Math.PI / 2], [8.6, .6, 8.6]).add('sph', '#c8b060', [2.4, -6.2, -.3], [0, 0, 0], [1.4, 1.4, 1.4]);
+            const scol = SG ? SG.col : team, srim = SG ? SG.rim : sh(team, .6), S2 = Part();
+            if (shape === 'kite') S2.add('box', srim, [1.6, 0, -.3], [0, 0, 0], [.8, 12.6, 7.6]).add('box', scol, [1.9, 0, -.3], [0, 0, 0], [.6, 11.4, 6.6]);
+            else S2.add('disc', srim, [1.6, 0, -.3], [0, 0, Math.PI / 2], [9.6, .8, 9.6]).add('disc', scol, [1.9, 0, -.3], [0, 0, Math.PI / 2], [8.6, .6, 8.6]).add('sph', '#c8b060', [2.4, 0, -.3], [0, 0, 0], [1.4, 1.4, 1.4]);
+            shield = S2.build();
         }
         if (wt === 'bow') for (let k = 0; k < 5; k++) { const a = -.9 + k * .45; armL.add('box', '#6a4a2a', [Math.cos(a) * 6 - 4, -8 + Math.sin(a) * 7, 0], [0, 0, a + Math.PI / 2], [.7, 3.4, .7]); }
         if (wt === 'xbow') armL.add('box', '#5a3a1a', [2, -8, 0], [0, 0, 0], [8, 1.2, 1.2]).add('box', '#7a7e86', [5, -8, 0], [0, 0, 0], [1, 1, 9]);
         const leg = c => Part().add('box', c, [0, -4.6, 0], [0, 0, 0], [2.6, 9.2, 2.6]).add('box', '#2a2018', [.6, -9, 0], [0, 0, 0], [3.6, 1.2, 2.8]).build();
-        return { torso: torso.build(), cape, armR: armR.build(), armL: armL.build(), leg: leg(sh(armor, .75)), bow: wt === 'bow' || wt === 'xbow', spear: wt === 'spear', scale: s.scale || 1, orc: s.orc };
+        return { torso: torso.build(), cape, armR: armR.build(), armL: armL.build(), shield, leg: leg(sh(armor, .75)), bow: wt === 'bow' || wt === 'xbow', spear: wt === 'spear', scale: s.scale || 1, orc: s.orc };
     }
     /** Kôň, varg alebo čierny kôň: telo, krk s hlavou, štyri nohy, chvost. */
     function mountParts(kind, s) {
@@ -366,8 +375,9 @@ const B3 = (() => {
         let cape = null; if (H.cape) { cape = mesh(H.cape); cape.position.set(-2.4, 9, 0); body.add(cape); }
         const armR = new t.Group(); armR.rotation.order = 'YZX'; armR.position.set(0, 8.6, 4.6); armR.add(mesh(H.armR)); body.add(armR);
         const armL = new t.Group(); armL.position.set(0, 8.6, -4.6); armL.add(mesh(H.armL)); body.add(armL);
+        let shield = null; if (H.shield) { shield = new t.Group(); shield.position.set(0, -6.2, 0); shield.add(mesh(H.shield)); armL.add(shield); }
         const legs = [1.8, -1.8].map(z => { const g = new t.Group(); g.position.set(0, .2, z); g.add(mesh(H.leg)); body.add(g); return g; });
-        return { body, torso, cape, armR, armL, legs, bow: H.bow, spear: H.spear, orc: H.orc, scaleH: H.scale };
+        return { body, torso, cape, armR, armL, shield, legs, bow: H.bow, spear: H.spear, orc: H.orc, scaleH: H.scale };
     }
     /** Póza jednotky podľa simulácie: chôdza/beh, nápriah, úder, kryt, streľba, zapotácanie, útek, pád; jazda. */
     function pose(o, u, dt) {
@@ -386,6 +396,13 @@ const B3 = (() => {
             return;
         }
         r.rotation.z = u.stun > 0 ? Math.sin(clock * 9) * .12 : 0;
+        const climb = SGB && SGB.lad && u.x > 962 && u.x < 1000 && [250, 710].some((l, i) => Math.abs(u.y - l) < 18 && !((SGB.ladOff || [])[i] > 0)) && !o.mount && !o.tp.boss;
+        if (climb && o.armR) {   // lezenie po rebríku: telom k hradbám, ruky striedavo hore
+            r.rotation.y = 0; const c = Math.sin(clock * 9 + o.ph);
+            o.armR.rotation.z = 2.6 + c * .4; o.armR.rotation.y = 0; o.armL.rotation.z = 2.6 - c * .4; o.armL.rotation.x = 0;
+            if (o.legs) o.legs.forEach((l, i) => { l.rotation.z = (i ? c : -c) * .5 + .3; });
+            return;
+        }
         o.ph += o.sp * dt * .18;
         const sw = Math.sin(o.ph) * Math.min(1, o.sp / 1.4), run = u.rout ? 1.4 : 1;
         if (o.legs && !o.mount) o.legs.forEach((l, i) => { if (o.tp && o.tp.beast === 'ent') l.rotation.z = (i ? -sw : sw) * .35; else l.rotation.z = (i ? -sw : sw) * .7 * run; });
@@ -413,9 +430,12 @@ const B3 = (() => {
                 if (C2.draw > 0) { aL = 1.55; aR = 1.5 - Math.min(1, C2.draw / 26) * .5; aRx = .3; }
                 else if (C2.bowC > 30 && o.bow) { aL = 1.5; aR = 1.4; }
             }
+            if (!u.t && !u.h && u.hx != null && typeof fmOf === 'function' && fmOf(u) === 'wall' && !(o.atk > 0) && !(u.wu > 0)) aL = 1.45;   // štítový val: štíty vpred
+            if (u.boss && u.atk) { const p = 1 - u.atk.t / u.atk.t0; wind('u', Math.min(1, p * 1.3)); }   // Kráľ trollov dvíha kyjak
             if (u.rout) { aR = -.4 + sw; aL = -.4 - sw; }
             o.armR.rotation.z = aR; o.armR.rotation.y = aRx;   // poradie YZX: najprv zdvih ruky, potom vodorovný švih
             o.armL.rotation.z = aL; o.armL.rotation.x = o.bow ? .2 : 0;
+            if (o.shield) o.shield.rotation.z = -aL * .85;
         }
         if (o.wings) { const lift = (fly || u.boss === 'fell' ? .1 : .45) + Math.sin(clock * (u.boss === 'fell' || fly ? 5 : 1.6)) * (fly || u.boss === 'fell' ? .6 : .15); o.wings.forEach(w => { w.rotation.x = -w.userData.sd * lift; }); }
         if (o.fire) { const s = 1 + Math.sin(clock * 7) * .06; o.fire.scale.set(s, s * (1 + Math.sin(clock * 5) * .05), s); o.light.intensity = 2 + Math.sin(clock * 11) * .5; }
@@ -447,6 +467,13 @@ const B3 = (() => {
                 else if (A.k === 'cone') { ovSector(A.x, A.y, 0, A.len, A.a - A.w, A.a + A.w, '#601008', 16); ovSector(A.x, A.y, 0, A.len * p, A.a - A.w, A.a + A.w, col, 16); }
                 else { const a = Math.atan2(A.y2 - A.y, A.x2 - A.x), nx = -Math.sin(a) * A.w, ny = Math.cos(a) * A.w, L = Math.hypot(A.x2 - A.x, A.y2 - A.y), seg = 10; for (let i = 0; i < seg; i++) { const x0 = A.x + Math.cos(a) * L * i / seg, y0 = A.y + Math.sin(a) * L * i / seg, x1 = A.x + Math.cos(a) * L * (i + 1) / seg, y1 = A.y + Math.sin(a) * L * (i + 1) / seg, cc = i / seg < p ? col : '#601008'; ovTri(x0 + nx, y0 + ny, x1 + nx, y1 + ny, x1 - nx, y1 - ny, cc); ovTri(x0 + nx, y0 + ny, x1 - nx, y1 - ny, x0 - nx, y0 - ny, cc); } } }
         }
+        const showM = (C2.mkT || 0) > 0 || C2.place, gs = C2.sel === 'all' ? ['p', 'l', 'j'] : [C2.sel], GC = { p: '#80c0ff', l: '#a0e080', j: '#ffb060' };
+        if (showM && typeof grpOf === 'function') for (const u of U) {   // vybraná skupina a jej miesta v útvare
+            if (u.t || u.h || u.ally || u.hp <= 0 || u.rout || !gs.includes(grpOf(u))) continue;
+            ovSector(u.x, u.y, u.r + 1, u.r + 2.2, 0, 6.283, GC[grpOf(u)], 10);
+            if (u.hx != null && !C2.prev) { const x = u.hx, y = u.hy; ovTri(x - 2.5, y, x, y - 2.5, x + 2.5, y, GC[grpOf(u)]); ovTri(x - 2.5, y, x + 2.5, y, x, y + 2.5, GC[grpOf(u)]); }
+        }
+        if (C2.prev) for (const S of C2.prev) { const x = S.x, y = S.y; ovTri(x - 3, y, x, y - 3, x + 3, y, '#ffffff'); ovTri(x - 3, y, x + 3, y, x, y + 3, '#ffffff'); }
         if (h.hp > 0) {
             const sw = C2.swing;
             if (sw && sw.t > 0) { if (sw.k === 's') ovSector(h.x, h.y, 6, sw.r, sw.a - (sw.w || 1.05), sw.a + (sw.w || 1.05), '#fff0c0', 14); else if (sw.k === 't') ovSector(h.x, h.y, 6, sw.r, sw.a - .3, sw.a + .3, '#fff0c0', 4); else ovSector(h.x, h.y, 10, sw.r, 0, 6.283, '#ffd080', 16); }
@@ -497,6 +524,86 @@ const B3 = (() => {
             ptsCol[n * 3] = cc.r; ptsCol[n * 3 + 1] = cc.g; ptsCol[n * 3 + 2] = cc.b; n++;
         }
         const g = pts.geometry; g.setDrawRange(0, n); g.attributes.position.needsUpdate = g.attributes.color.needsUpdate = true;
+    }
+
+    // ---------- efekty etapy 3: oheň, prach, trosky, kamene, olej, údery bossov ----------
+    /** Sústava častíc s vlastnou veľkosťou a priehľadnosťou (oheň sčítava svetlo, prach a dym normálne). */
+    function Psys(max, additive) {
+        const t = T(), pos = new Float32Array(max * 3), col = new Float32Array(max * 3), al = new Float32Array(max), sz = new Float32Array(max), P = [];
+        const g = new t.BufferGeometry(); g.setAttribute('position', new t.BufferAttribute(pos, 3)); g.setAttribute('color', new t.BufferAttribute(col, 3)); g.setAttribute('a', new t.BufferAttribute(al, 1)); g.setAttribute('s', new t.BufferAttribute(sz, 1));
+        const m = new t.ShaderMaterial({ transparent: true, depthWrite: false, blending: additive ? t.AdditiveBlending : t.NormalBlending, vertexColors: true,
+            vertexShader: 'attribute float a; attribute float s; varying float vA; varying vec3 vC; void main(){ vA = a; vC = color; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = s * 320.0 / max(1.0, -mv.z); gl_Position = projectionMatrix * mv; }',
+            fragmentShader: 'varying float vA; varying vec3 vC; void main(){ float d = length(gl_PointCoord - 0.5); if (d > 0.5) discard; gl_FragColor = vec4(vC, vA * smoothstep(0.5, 0.1, d)); }' });
+        const pts3 = new t.Points(g, m); pts3.frustumCulled = false; pts3.renderOrder = 6; scene.add(pts3);
+        return {
+            add(o) { if (P.length < max) P.push({ vx: 0, vy: 0, vz: 0, g: 0, s0: 8, s1: 8, a0: 1, ...o, l0: o.l, c: C(o.c || '#ffffff'), c1: o.c1 ? C(o.c1) : null }); },
+            step(dt) {
+                let n = 0;
+                for (let i = P.length - 1; i >= 0; i--) { const q = P[i]; q.l -= dt; if (q.l <= 0) { P.splice(i, 1); continue; } q.x += q.vx * dt; q.y += q.vy * dt; q.z += q.vz * dt; q.vy -= q.g * dt; const fl = heightAt(q.x, q.z) + .5; if (q.y < fl) { q.y = fl; q.vy = 0; q.vx *= .8; q.vz *= .8; } }
+                for (const q of P) { const k = q.l / q.l0, c = q.c1 ? q.c.clone().lerp(q.c1, 1 - k) : q.c; pos[n * 3] = q.x; pos[n * 3 + 1] = q.y; pos[n * 3 + 2] = q.z; col[n * 3] = c.r; col[n * 3 + 1] = c.g; col[n * 3 + 2] = c.b; al[n] = q.a0 * Math.min(1, k * 2.2); sz[n] = q.s0 + (q.s1 - q.s0) * (1 - k); n++; }
+                g.setDrawRange(0, n); for (const k of ['position', 'color', 'a', 's']) g.attributes[k].needsUpdate = true;
+            }
+        };
+    }
+    let FIRE = null, DUST = null, debris = [], rocks = [], fxState = {};
+    const flame = (x, y, z, k = 1) => FIRE.add({ x, y, z, vx: (Math.random() - .5) * .5, vy: .5 + Math.random() * .9, vz: (Math.random() - .5) * .5, l: 26 + Math.random() * 22, c: '#ffe08a', c1: '#a01a04', s0: 6 * k, s1: 15 * k, a0: .85 });
+    const smoke = (x, y, z, k = 1, c = '#3a3430') => DUST.add({ x, y, z, vx: (Math.random() - .5) * .4, vy: .25 + Math.random() * .4, vz: (Math.random() - .5) * .4, l: 60 + Math.random() * 40, c, s0: 12 * k, s1: 34 * k, a0: .45 });
+    const dust = (x, y, n, r = 10, c) => { const cc = c || (BI === 's' ? '#e8eef2' : BI === 'a' ? '#6a5a52' : BI === 'd' ? '#e0c890' : '#b8a888'); for (let i = 0; i < n; i++) { const a = Math.random() * 6.283, v = .6 + Math.random() * 1.6; DUST.add({ x: x + Math.cos(a) * r * Math.random(), y: heightAt(x, y) + 2, z: y + Math.sin(a) * r * Math.random(), vx: Math.cos(a) * v, vy: .2 + Math.random() * .5, vz: Math.sin(a) * v, l: 40 + Math.random() * 30, c: cc, s0: 10, s1: 30, a0: .5 }); } };
+    function ring(x, y, r, c = '#ffd0a0') {
+        const t = T(), m = new t.Mesh(new t.RingGeometry(.8, 1, 40), new t.MeshBasicMaterial({ color: C(c), transparent: true, opacity: .8, side: t.DoubleSide, depthWrite: false, blending: t.AdditiveBlending }));
+        m.rotation.x = -Math.PI / 2; m.position.set(x, heightAt(x, y) + 1.5, y); scene.add(m); debris.push({ ring: m, r, l: 24, l0: 24 });
+    }
+    function chunk(x, y, z, col, k = 1, v = 1) {
+        const t = T(), m = mesh(Part().add('box', col, [0, 0, 0], [0, 0, 0], [3 + Math.random() * 4 * k, 1.5 + Math.random() * 2, 2 + Math.random() * 5 * k]).build()); m.position.set(x, y, z); scene.add(m);
+        const a = Math.random() * 6.283; debris.push({ m, vx: Math.cos(a) * v * (.5 + Math.random()), vy: v * (1 + Math.random() * 1.5), vz: Math.sin(a) * v * (.5 + Math.random()), wx: Math.random() * .3, wz: Math.random() * .3, rest: 0 });
+    }
+    function stepDebris(dt) {
+        for (let i = debris.length - 1; i >= 0; i--) {
+            const d = debris[i];
+            if (d.ring) { d.l -= dt; const k = 1 - d.l / d.l0; d.ring.scale.setScalar(d.r * (.2 + k)); d.ring.material.opacity = .8 * (1 - k); if (d.l <= 0) { scene.remove(d.ring); d.ring.geometry.dispose(); debris.splice(i, 1); } continue; }
+            if (d.rest) continue;
+            const m = d.m; m.position.x += d.vx * dt; m.position.y += d.vy * dt; m.position.z += d.vz * dt; d.vy -= .12 * dt; m.rotation.x += d.wx * dt; m.rotation.z += d.wz * dt;
+            const fl = heightAt(m.position.x, m.position.z) + 1; if (m.position.y < fl) { m.position.y = fl; if (d.vy < -1.2) { d.vy *= -.3; d.vx *= .5; d.vz *= .5; } else d.rest = 1; }
+        }
+        for (let i = rocks.length - 1; i >= 0; i--) {   // kamene z hradieb: letia oblúkom a dopadnú s prachom
+            const r = rocks[i]; r.t += dt; const k = Math.min(1, r.t / 22);
+            r.m.position.set(r.x0 + (r.x - r.x0) * k, 52 * (1 - k * k) + heightAt(r.x, r.y) * k + 4, r.y0 + (r.y - r.y0) * k); r.m.rotation.x += .2 * dt;
+            if (k >= 1) { dust(r.x, r.y, 14, 16, '#a8a090'); ring(r.x, r.y, 30, '#d8d0c0'); rocks.splice(i, 1); r.m.position.y = heightAt(r.x, r.y) + 3; }
+        }
+        FIRE.step(dt); DUST.step(dt);
+    }
+    /** Spotrebuje udalosti zo simulácie (FX3) a sleduje zmeny stavu (brána, smrť bossa). */
+    function runFx(dt) {
+        const Q = typeof FX3 !== 'undefined' ? FX3.splice(0) : [];
+        for (const e of Q) {
+            if (e.k === 'rock') { const m = mesh(Part().add('sph0', '#8a8478', [0, 0, 0], [0, 0, 0], [8, 7, 8]).build()); scene.add(m); rocks.push({ m, x0: e.x0, y0: e.y0, x: e.x, y: e.y, t: 0 }); }
+            if (e.k === 'oil') for (let i = 0; i < 60; i++) { const y = 440 + Math.random() * 80; FIRE.add({ x: 1000 - Math.random() * 6, y: 44 - Math.random() * 6, z: y, vx: -.4 - Math.random() * .6, vy: 0, vz: 0, g: .06, l: 40 + Math.random() * 30, c: '#ffb040', c1: '#5a1a04', s0: 7, s1: 14, a0: .8 }); if (i % 3 === 0) smoke(960 + Math.random() * 30, 3, y, 1.2); }
+            if (e.k === 'ladder') { const l = [250, 710][e.i]; dust(955, l, 20, 20); for (let i = 0; i < 4; i++) chunk(960, 10, l + (Math.random() - .5) * 20, '#7a5a30', .6, .8); }
+            if (e.k === 'boss') {
+                const A = e.A, pts = [];
+                if (A.k === 'circle') for (let i = 0; i < 90; i++) { const a = Math.random() * 6.283, r = Math.sqrt(Math.random()) * A.r; pts.push([A.x + Math.cos(a) * r, A.y + Math.sin(a) * r]); }
+                else if (A.k === 'cone') for (let i = 0; i < 110; i++) { const a = A.a + (Math.random() - .5) * 2 * A.w, r = Math.sqrt(Math.random()) * A.len; pts.push([A.x + Math.cos(a) * r, A.y + Math.sin(a) * r]); }
+                else for (let i = 0; i < 60; i++) { const k = Math.random(), w = (Math.random() - .5) * 2 * A.w; const a = Math.atan2(A.y2 - A.y, A.x2 - A.x); pts.push([A.x + (A.x2 - A.x) * k - Math.sin(a) * w, A.y + (A.y2 - A.y) * k + Math.cos(a) * w]); }
+                if (A.fire) { for (const [x, y] of pts) { flame(x, heightAt(x, y) + 2 + Math.random() * 10, y, 1.2); flame(x + (Math.random() - .5) * 8, heightAt(x, y) + 6 + Math.random() * 14, y + (Math.random() - .5) * 8, .9); if (Math.random() < .25) smoke(x, heightAt(x, y) + 12, y, 1.4); } for (let i = 0; i < 10; i++) { const [x, y] = pts[i * 7 % pts.length]; decal(x, y, '#1a1410', 10 + Math.random() * 8); } }
+                else { for (const [x, y] of pts.filter((p, i) => i % 3 === 0)) dust(x, y, 1, 4); ring(A.x, A.y, (A.r || 60) * 1.3); for (let i = 0; i < 6; i++) chunk(A.x + (Math.random() - .5) * 30, heightAt(A.x, A.y) + 2, A.y + (Math.random() - .5) * 30, '#6a5a48', .6, 1.2); }
+            }
+        }
+        if (SGB) {   // brána: pri zásahoch sa trasie a trieskami, keď padne, rozletí sa na trosky
+            const gv = SGB.gate;
+            if (fxState.gate != null && gv < fxState.gate - .5 && gv > 0) { fxState.gj = 6; if (Math.random() < .4) chunk(1000, 10 + Math.random() * 20, 450 + Math.random() * 60, '#5a3a1a', .4, .6); }
+            if (fxState.gate > 0 && gv <= 0) { for (let i = 0; i < 26; i++) chunk(1002, 6 + Math.random() * 36, 445 + Math.random() * 70, i % 4 ? '#5a3a1a' : '#8a8a8a', 1, 1.6); dust(990, 480, 40, 40); ring(995, 480, 90); SHAKE = Math.max(SHAKE, 3); }
+            fxState.gate = gv;
+            if (fxState.gj > 0) { fxState.gj -= dt; siege.gate.position.x = Math.sin(clock * 60) * .8; siege.gate.rotation.z = Math.sin(clock * 47) * .01; } else { siege.gate.position.x = 0; siege.gate.rotation.z = 0; }
+        }
+        for (const u of U) if (u.boss) {   // boss: oheň v papuli pred ohnivým útokom, tieň pod letiacim, pád pri smrti
+            const o = units.get(u); if (!o) continue;
+            if (u.atk && u.atk.fire && u.hp > 0 && Math.random() < .7) { const a = -o.root.rotation.y, d = u.boss === 'dragon' ? 56 : 14, hy = u.boss === 'dragon' ? 18 : 64; flame(u.x + Math.cos(a) * d, o.root.position.y + hy, u.y + Math.sin(a) * d, .8); }
+            if (u.hp <= 0 && !o.bossDead) { o.bossDead = 1; dust(u.x, u.y, 50, 40); ring(u.x, u.y, 120); SHAKE = Math.max(SHAKE, 4); if (o.light) o.light.intensity = 0; if (o.fire) o.fire.visible = false; for (let i = 0; i < 30; i++) smoke(u.x + (Math.random() - .5) * 40, heightAt(u.x, u.y) + 10, u.y + (Math.random() - .5) * 40, 1.5, u.boss === 'balrog' ? '#2a1a14' : '#6a6058'); }
+            if (!o.shadow) { const t = T(); o.shadow = new t.Mesh(new t.CircleGeometry(1, 20), new t.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .35, depthWrite: false })); o.shadow.rotation.x = -Math.PI / 2; o.shadow.renderOrder = 3; scene.add(o.shadow); }
+            const air = o.root.position.y - heightAt(u.x, u.y); o.shadow.visible = air > 8 && u.hp > 0; o.shadow.position.set(u.x, heightAt(u.x, u.y) + .6, u.y); o.shadow.scale.setScalar(u.boss === 'dragon' ? 50 : 34);
+        }
+        if (SGB && WX.night) for (const a of AR) if (a.m3 && Math.random() < .5) FIRE.add({ x: a.m3.position.x, y: a.m3.position.y, z: a.m3.position.z, l: 10, c: '#ffc060', c1: '#801804', s0: 5, s1: 2, a0: .9 });   // horiace šípy pri nočnom obliehaní
+        stepDebris(dt);
     }
 
     // ---------- kamera a vstup ----------
@@ -574,14 +681,14 @@ const B3 = (() => {
             if (u.h && u.dis && !o.disDone) { o.disDone = 1; scene.remove(o.root); o = rig(u); scene.add(o.root); units.set(u, o); }   // hrdina zosadol z padnutého koňa
             pose(o, u, dt);
         }
-        updSiege(); syncArrows(); syncParticles(); drawOverlay(); camUpdate(dt);
+        updSiege(); syncArrows(); syncParticles(); runFx(dt); drawOverlay(); camUpdate(dt);
         R.render(scene, cam);
     }
     function stop() {
         on = false;
         if (canvas) canvas.style.display = 'none';
         if (scene) scene.traverse(o => { if (o.geometry && !TPLgeo(o.geometry)) o.geometry.dispose(); if (o.material && o.material.map) o.material.map.dispose(); });
-        scene = null; units = new Map(); arrowPool = []; stuck = []; decals = []; terrain = null; wx = null; torches = [];
+        FIRE = DUST = null; debris = []; rocks = []; scene = null; units = new Map(); arrowPool = []; stuck = []; decals = []; terrain = null; wx = null; torches = [];
         if (R) R.renderLists.dispose();
     }
     const TPLgeo = g => { for (const tp of TPL.values()) for (const v of Object.values(tp)) { if (v === g) return true; if (v && typeof v === 'object') for (const w of Object.values(v)) if (w === g) return true; } return g === (PR && Object.values(PR).find(p => p === g)) || (AGEO && Object.values(AGEO).includes(g)); };

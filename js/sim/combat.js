@@ -19,11 +19,14 @@
 /** Nastavenia hráča (Hlavné menu → Nastavenia): krv v bitke. */
 const OPT = (() => { const d = { blood: true }; try { return Object.assign(d, JSON.parse(localStorage.getItem('vsOpt') || '{}')); } catch (e) { return d; } })();
 const saveOpt = () => { try { localStorage.setItem('vsOpt', JSON.stringify(OPT)); } catch (e) { } };
+/** Udalosti pre 3D efekty (kamene, olej, zásahy bossov); B3 ich spotrebuje, bez 3D sa len zahodia. */
+let FX3 = [];
+const fx3 = o => { if (FX3.length < 60) FX3.push(o); };
 const CMB = { km: 0, blk: 0, blkT: 99, gb: 0, st: 100, shp: 0, shMax: 0, run: 0, lastA: null, chg: 0, charging: 0, ammo: 0, ammo0: 0, bowC: 0, cry: 0, swing: null,
     sel: 'all', og: { p: 'a', l: 'a', j: 'a' }, M: [60, 60], M0: [60, 60], n0: [1, 1], endT: 0, noRout: 0, lmb: 0, rmb: 0, said: {} };
 /** Klávesy akcií (dajú sa zmeniť v Nastaveniach → Ovládanie; OPT.keys) a stav ovládača (GP, js/sim/combat.js pollPad). */
-const KEYS_DEF = { atk: ' ', thrust: 'e', block: 'Shift', shoot: 'q', cry: 'v', wall: 'b', o_a: 't', o_h: 'h', o_f: 'f', o_l: 'g', o_r: 'r' };
-const KEY_N = { atk: 'Sek (útok)', thrust: 'Bod', block: 'Kryt', shoot: 'Výstrel / hod', cry: 'Bojový pokrik', wall: 'Na hradbách: rebrík, olej, kameň', o_a: 'Rozkaz Útok', o_h: 'Rozkaz Držať', o_f: 'Rozkaz Za mnou', o_l: 'Rozkaz Šík', o_r: 'Rozkaz Ústup' };
+const KEYS_DEF = { atk: ' ', thrust: 'e', block: 'Shift', shoot: 'q', cry: 'v', wall: 'b', fm: 'x', o_a: 't', o_h: 'h', o_f: 'f', o_l: 'g', o_r: 'r' };
+const KEY_N = { atk: 'Sek (útok)', thrust: 'Bod', block: 'Kryt', shoot: 'Výstrel / hod', cry: 'Bojový pokrik', wall: 'Na hradbách: rebrík, olej, kameň', fm: 'Útvar (riadky, štítový val, voľný)', o_a: 'Rozkaz Útok', o_h: 'Rozkaz Držať', o_f: 'Rozkaz Za mnou', o_l: 'Rozkaz Šík', o_r: 'Rozkaz Ústup' };
 const KB = () => Object.assign({}, KEYS_DEF, (typeof OPT !== 'undefined' && OPT.keys) || {});
 let GP = null;
 const kd = a => !!keys[KB()[a]] || !!(GP && GP[a]);
@@ -61,6 +64,10 @@ const heroShield = () => !!(G && G.eq.s > 0 && it('s').v > 0 && !twoHand());
 /** Šanca, že vojak kryje úder spredu (štít, výcvik). */
 function blockChance(u) {
     if (u.h || u.rout || u.stun > 0 || u.wu > 0) return 0;
+    if (!u.t && u.hx != null && fmOf(u) === 'wall' && grpOf(u) === 'p') return Math.min(.8, blockChance0(u) * 1.6 + .15);   // štítový val
+    return blockChance0(u);
+}
+function blockChance0(u) {
     if (u.cp) return .4;
     if (u.uk && FU[u.uk] && FU[u.uk].b) { const F = FU[u.uk]; return F.b === 'i' && F.wp !== 'ax' ? .35 : F.b === 'c' ? .2 : 0; }
     return { i: .3, v: .4, o: .15, c: .2, r: .25 }[u.k] || 0;
@@ -70,7 +77,7 @@ const cmbSay = (id, s, l = 180) => { if (CMB.said[id]) return; CMB.said[id] = 1;
 /** Začiatok bitky: morálka podľa síl, veliteľ nepriateľa, výdrž, štít a šípy hrdinu. */
 function cmbStart(en) {
     const C = CMB;
-    Object.assign(C, { blk: 0, blkT: 99, gb: 0, st: 100, run: 0, lastA: null, chg: 0, charging: 0, bowC: 0, cry: 0, swing: null, rd: null, draw: 0, aim: null, couch: 0, hist: [], bd: 't', mdx: 0, mdy: 0, px: null, py: null, vx: 0, vy: 0, sel: 'all', endT: 0, lmb: 0, rmb: 0, said: {}, noRout: en && en.ar ? 1 : 0 });
+    Object.assign(C, { blk: 0, blkT: 99, gb: 0, st: 100, run: 0, lastA: null, chg: 0, charging: 0, bowC: 0, cry: 0, swing: null, rd: null, draw: 0, aim: null, couch: 0, fm: { p: 'line', l: 'line', j: 'line' }, at: {}, place: null, prev: null, mkT: 0, hist: [], bd: 't', mdx: 0, mdy: 0, px: null, py: null, vx: 0, vy: 0, sel: 'all', endT: 0, lmb: 0, rmb: 0, said: {}, noRout: en && en.ar ? 1 : 0 });
     const mine = U.filter(u => !u.t), foe = U.filter(u => u.t), pw = s => s.reduce((a, u) => a + u.mh * (u.d || 5), 0) + 1, r = pw(mine) / pw(foe);
     const cl = v => Math.max(-18, Math.min(18, v));
     const m0 = 62 + cl((r - 1) * 12) + Math.min(12, G.lv || 1) + (G.king ? 5 : 0) + Math.min(6, (G.ren || 0) / 3) + ((G.pm ?? 60) - 50) * .3 + (perk('vodca') ? 8 : 0) + (hasRole('velitel') ? 6 : 0);   // morálka družiny, Charizma, spoločník veliteľ
@@ -81,7 +88,7 @@ function cmbStart(en) {
     const RW = rangedW();   // strelná výbava (luk, kuša, oštepy), inak lovecký luk podľa lukostreľby
     C.ammo = C.ammo0 = RW ? RW.ammo + G.s.ls * 2 + (perk('konilu') ? 6 : 0) : G.s.ls >= 1 || G.race === 'elf' || perk('konilu') ? 6 + 4 * G.s.ls + (G.race === 'elf' ? 4 : 0) + (perk('konilu') ? 6 : 0) : 0;
     C.horse = C.horse0 = heroMounted() ? Math.round(70 + it('m').v * 25) : 0;   // zdravie koňa hrdinu
-    const o0 = G.ord0 || 'a'; C.og = { p: o0, l: o0, j: o0 };
+    const o0 = G.ord0 || 'a'; C.og = { p: o0, l: o0, j: o0 }; FX3 = [];
     // veliteľ nepriateľa: najsilnejší vojak hlavnej armády nesie zástavu; jeho pád zlomí morálku
     if (en && en.nm && !en.ar && !en.nz) { const c = foe.filter(u => !u.src && !heavy(u)).sort((a, b) => b.mh - a.mh)[0]; if (c) { c.cmd = 1; c.bn = 1; c.hp = c.mh = c.mh * 1.6; c.d *= 1.2; } }
     if (G && !G.cmbTip) { G.cmbTip = 1; const K = KB(), n = a => keyName(K[a]); TS = { s: 'Myšou zvoľ smer, drž ľavé tl./' + n('atk') + ' a pusť = úder · ' + n('thrust') + ' bod · pravé tl./' + n('block') + ' kryt · drž ' + n('shoot') + ' luk · ' + n('cry') + ' pokrik · ' + ['o_a', 'o_h', 'o_f', 'o_l', 'o_r'].map(n).join(' ') + ' rozkazy', l: 720 }; }
@@ -92,6 +99,8 @@ function cmbHero(u, dt, mv) {
     const C = CMB;
     if (C.km && (!ptr.down || C.lmb)) { const ax = ptr.x + bc.x - u.x, ay = ptr.y + bc.y - u.y; if (Math.hypot(ax, ay) > 8) u.f = Math.atan2(ay, ax); }
     if (C.gb > 0) C.gb -= dt;
+    if (C.mkT > 0) C.mkT -= dt;
+    placeTick();
     if (GP && Math.hypot(GP.ax, GP.ay) > .35) { u.f = Math.atan2(GP.ay, GP.ax); C.km = 1; }   // pravá páčka ovládača mieri
     const want = !!(kd('block') || C.rmb) && C.gb <= 0 && C.st > 2;
     if (want && !C.blk) C.blkT = 0;
@@ -313,18 +322,18 @@ function wallAction(u) {
     if (S.lad && L >= 0 && !((S.ladOff || [])[L] > 0)) {
         S.ladOff = S.ladOff || [0, 0]; S.ladOff[L] = 600;
         for (const v of U) if (foe(v) && v.x > 950 && v.x < 1050 && Math.abs(v.y - [250, 710][L]) < 30) { hit(v, 30, u); v.x = Math.min(v.x, 960); v.stun = 40; }
-        TS = { s: 'Rebrík je zhodený! Útočníci padajú do priekopy.', l: 160 }; SHAKE = Math.max(SHAKE, 1.5); return;
+        fx3({ k: 'ladder', i: L }); TS = { s: 'Rebrík je zhodený! Útočníci padajú do priekopy.', l: 160 }; SHAKE = Math.max(SHAKE, 1.5); return;
     }
     if (Math.abs(u.y - 480) < 70 && (C.oil || 0) <= 0) {
         C.oil = 900;
         for (const v of U) if (foe(v) && v.x > 920 && v.x < 1004 && v.y > 415 && v.y < 545) hit(v, 45, u);
         for (let i = 0; i < 24; i++) PT.push({ x: 960 + Math.random() * 40, y: 430 + Math.random() * 100, vx: Math.random() - .5, vy: -Math.random(), g: .03, l: 30, c: '#ff8a20' });
-        TS = { s: 'Vriaci olej zalial bránu!', l: 140 }; return;
+        fx3({ k: 'oil', x: 975, y: 480 }); TS = { s: 'Vriaci olej zalial bránu!', l: 140 }; return;
     }
     if ((C.rock || 0) <= 0) {
         C.rock = 220; const x = u.x - 55, y = u.y;
         for (const v of U) if (foe(v) && Math.hypot(v.x - x, v.y - y) < 45) { hit(v, 28, u); v.stun = 20; }
-        PT.push({ x, y, ring: 1, rr: 30, l: 14, c: '#c8c0b0' });
+        PT.push({ x, y, ring: 1, rr: 30, l: 14, c: '#c8c0b0' }); fx3({ k: 'rock', x, y, x0: u.x, y0: u.y });
     }
 }
 /** Šíp: štít hrdinu (pri kryte) alebo štít vojaka spredu ho zachytí. */
@@ -419,30 +428,53 @@ function cmbDeath(b) {
 }
 
 /** Rozkaz skupine: Držať a Šík určia každému vojakovi miesto (Šík = línia čelom k nepriateľom). */
-function ordPlace(gs, k) {
-    if (!U || mode !== 'battle') return;
-    const mine = U.filter(u => !u.t && !u.ally && !u.h && u.hp > 0 && !u.rout), foes = U.filter(u => u.t && u.hp > 0);
+/** Útvary skupín: riadky (line), hustý štítový šík (wall: tesne, viac krytov, pomalší), voľný (loose: rozostúpení, šípy menej zasiahnu). */
+const FM_N = { line: 'riadky', wall: 'štítový val', loose: 'voľný útvar' }, FM_GAP = { line: 16, wall: 11, loose: 27 }, FM_PER = { line: 14, wall: 12, loose: 11 };
+const fmOf = u => (CMB.fm || {})[grpOf(u)] || 'line';
+/** Miesta v útvare pre skupiny gs. at = bod, kam ich hráč postavil (inak pri skupine), čelom k nepriateľovi. */
+function slotsFor(gs, k, at) {
+    const mine = U.filter(u => !u.t && !u.ally && !u.h && u.hp > 0 && !u.rout), foes = U.filter(u => u.t && u.hp > 0), out = [];
     const ctr = a => a.length ? { x: a.reduce((s, u) => s + u.x, 0) / a.length, y: a.reduce((s, u) => s + u.y, 0) / a.length } : null;
-    const ec = ctr(foes) || { x: BW - 100, y: BH / 2 }, all = ctr(mine);
+    const ec = ctr(foes) || { x: BW - 100, y: BH / 2 }, all = at || ctr(mine);
     for (const g of gs) {
         const us = mine.filter(u => grpOf(u) === g);
-        if (k !== 'h' && k !== 'l') { us.forEach(u => { u.hx = u.hy = undefined; }); continue; }
-        if (k === 'h') { us.forEach(u => { u.hx = u.x; u.hy = u.y; }); continue; }
         if (!us.length) continue;
-        const c = gs.length > 1 && all ? all : ctr(us), a = Math.atan2(ec.y - c.y, ec.x - c.x), px = -Math.sin(a), py = Math.cos(a);
-        const off = gs.length > 1 ? { p: 22, l: -26, j: -62 }[g] : 0, per = 14;
-        us.sort((p, q) => (p.x * px + p.y * py) - (q.x * px + q.y * py)).forEach((u, i) => {
+        if (k === 'h' && !at) { us.forEach(u => out.push({ u, x: u.x, y: u.y })); continue; }
+        const c = gs.length > 1 && all ? all : at || ctr(us), a = Math.atan2(ec.y - c.y, ec.x - c.x), px = -Math.sin(a), py = Math.cos(a);
+        const fm = (CMB.fm || {})[g] || 'line', gap = FM_GAP[fm], per = FM_PER[fm];
+        const off = gs.length > 1 ? { p: 22, l: -26, j: -62 }[g] * gap / 16 : 0;
+        us.slice().sort((p, q) => (p.x * px + p.y * py) - (q.x * px + q.y * py)).forEach((u, i) => {
             const row = Math.floor(i / per), col = i % per, n = Math.min(per, us.length - row * per);
-            u.hx = Math.max(20, Math.min(BW - 20, c.x + Math.cos(a) * (off - row * 16) + px * (col - (n - 1) / 2) * 16));
-            u.hy = Math.max(30, Math.min(BH - 20, c.y + Math.sin(a) * (off - row * 16) + py * (col - (n - 1) / 2) * 16));
+            out.push({ u, x: Math.max(20, Math.min(BW - 20, c.x + Math.cos(a) * (off - row * gap) + px * (col - (n - 1) / 2) * gap)), y: Math.max(30, Math.min(BH - 20, c.y + Math.sin(a) * (off - row * gap) + py * (col - (n - 1) / 2) * gap)), g });
         });
     }
+    return out;
 }
-/** Vojak drží svoje miesto (Držať, Šík): lukostrelci strieľajú, ostatní bojujú len s nepriateľmi pri sebe. Vráti true, ak je ťah hotový. */
+function ordPlace(gs, k, at) {
+    if (!U || mode !== 'battle') return;
+    const mine = U.filter(u => !u.t && !u.ally && !u.h && u.hp > 0 && !u.rout);
+    if (k !== 'h' && k !== 'l') { mine.filter(u => gs.includes(grpOf(u))).forEach(u => { u.hx = u.hy = undefined; }); return; }
+    slotsFor(gs, k, at).forEach(S => { S.u.hx = S.x; S.u.hy = S.y; });
+    CMB.mkT = 260;   // značky miest na zemi
+}
+/** Útvar vybranej skupiny: riadky → štítový val → voľný útvar (kláves X). */
+function cycleFormation() {
+    const gs = CMB.sel === 'all' ? ['p', 'l', 'j'] : [CMB.sel], cur = (CMB.fm || {})[gs[0]] || 'line', nx = { line: 'wall', wall: 'loose', loose: 'line' }[cur];
+    CMB.fm = CMB.fm || { p: 'line', l: 'line', j: 'line' }; gs.forEach(g => { CMB.fm[g] = nx; });
+    gs.filter(g => CMB.og[g] === 'h' || CMB.og[g] === 'l').forEach(g => { const at = CMB.at && CMB.at[g]; ordPlace([g], CMB.og[g] === 'h' && !at ? 'l' : CMB.og[g], at); });
+    if (typeof odSync === 'function') odSync();
+    TS = { s: GRP_N[CMB.sel] + ': ' + FM_N[nx] + (nx === 'wall' ? ' – tesne pri sebe, štíty kryjú údery aj šípy, ale pomalší' : nx === 'loose' ? ' – rozostúpení, šípy a strely zasiahnu menej' : ''), l: 150 };
+}
+/** Rozkaz na miesto: drž kláves Držať alebo Šík, namier myšou a pusti – skupina sa postaví tam (ako vo Warbande). */
+function placeTick() {
+    const P = CMB.place; if (!P) return;
+    if (!keys[P.key]) { if (P.on) { const gs = P.gs; ordPlace(gs, P.k, P.at); CMB.at = CMB.at || {}; gs.forEach(g => { CMB.at[g] = P.at; }); TS = { s: GRP_N[CMB.sel] + ': ' + (P.k === 'h' ? 'držte toto miesto' : 'šík tu') + '!', l: 100 }; } CMB.place = null; CMB.prev = null; return; }
+    if (performance.now() - P.t0 > 250) { P.on = 1; P.at = { x: ptr.x + bc.x, y: ptr.y + bc.y }; CMB.prev = slotsFor(P.gs, P.k, P.at); }
+}
 function holdSlot(u, b, bd, dt) {
     if (u.hx == null) { u.hx = u.x; u.hy = u.y; }
     const dx = u.hx - u.x, dy = u.hy - u.y, ds = Math.hypot(dx, dy), archer = u.k === 'a' || u.k === 'e';
-    const step = () => { if (ds > 3) { u.x += dx / ds * Math.min(ds, u.sp * dt); u.y += dy / ds * Math.min(ds, u.sp * dt); } };
+    const sp = u.sp * (fmOf(u) === 'wall' && !u.t ? .75 : 1), step = () => { if (ds > 3) { u.x += dx / ds * Math.min(ds, sp * dt); u.y += dy / ds * Math.min(ds, sp * dt); } };
     if (archer) { step(); u.f = dirTo(u, b); if (u.c <= 0 && bd < WX.r) { u.c = 75; const an = u.f + (Math.random() - .5) * .12; AR.push({ x: u.x, y: u.y, vx: Math.cos(an) * 7, vy: Math.sin(an) * 7, l: 40, t: u.t, d: u.k === 'e' ? 7 : 4.5, by: u }); snd('ar'); } return true; }
     if (bd > 45 || ds > 70) { step(); u.f = ds > 3 ? Math.atan2(dy, dx) : dirTo(u, b); u.run = 0; return true; }
     return false;
@@ -463,7 +495,8 @@ if (typeof addEventListener === 'function') {
         if (e.repeat) return;
         if (k >= '1' && k <= '4' && typeof selGroup === 'function') selGroup(['all', 'p', 'l', 'j'][+k - 1]);
         const act = Object.entries(KB()).find(([a, key]) => key === k && /^o_/.test(a));   // rozkazy podľa nastavených kláves
-        if (act && typeof setOrd === 'function') setOrd({ o_a: 'a', o_h: 'h', o_f: 'f', o_l: 'l', o_r: 'r' }[act[0]]);
+        if (act && typeof setOrd === 'function') { const ok = { o_a: 'a', o_h: 'h', o_f: 'f', o_l: 'l', o_r: 'r' }[act[0]]; setOrd(ok); if (CMB.at) (CMB.sel === 'all' ? ['p', 'l', 'j'] : [CMB.sel]).forEach(g => { delete CMB.at[g]; }); if (ok === 'h' || ok === 'l') CMB.place = { k: ok, key: k, t0: performance.now(), gs: CMB.sel === 'all' ? ['p', 'l', 'j'] : [CMB.sel] }; }
+        if (KB().fm === k) cycleFormation();
     });
     addEventListener('keyup', e => { const k = norm(e); if (k) keys[e.key] = keys[k] = false; });
     addEventListener('blur', () => { for (const k in keys) keys[k] = false; CMB.lmb = CMB.rmb = 0; });

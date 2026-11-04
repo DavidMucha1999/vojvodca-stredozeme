@@ -163,7 +163,15 @@ Bitka sa predvolene zobrazuje v **3D pohľadom za hrdinom**, ako v Mount & Blade
 - **Ovládanie:** kamera je za hrdinom; **koliesko** približuje, **Z** a **C** alebo **stredné tlačidlo myši** (ťahanie) otáčajú kameru. **WASD** sa hýbe vzhľadom na kameru (W = dopredu od kamery), myš mieri na bod na zemi pod kurzorom; ostatné klávesy a rozkazy sú rovnaké ako v 2D.
 - **Prepínač:** Nastavenia → **Bitka: 3D / 2D**. Ak počítač nepodporuje WebGL alebo sa 3D nedá spustiť, hra sama použije 2D bojisko.
 
-Plátno Three.js leží pod priehľadným plátnom Phaseru, takže lišty, rozkazy a okná ostávajú z UIScene. Súradnice: x bojiska = X, y bojiska = Z, výška = Y. Ďalšia etapa: šíky, obliehanie a bossovia v plnom 3D (etapa 3).
+Plátno Three.js leží pod priehľadným plátnom Phaseru, takže lišty, rozkazy a okná ostávajú z UIScene. Súradnice: x bojiska = X, y bojiska = Z, výška = Y. Ďalej pozri etapy 2 a 3 nižšie.
+
+## Útvary, obliehanie a bossovia v 3D (etapa 3)
+
+- **Rozkaz na miesto (ako vo Warbande):** **drž** kláves Držať (**H**) alebo Šík (**G**), namier myšou na zem – biele značky ukazujú, kde sa vybraná skupina postaví – a **pusti**. Krátke stlačenie funguje ako doteraz. Po každom rozkaze sa na chvíľu ukážu farebné krúžky pod vojakmi vybranej skupiny (pechota modrá, lukostrelci zelení, jazda oranžová) a značky ich miest v útvare (`slotsFor`, `ordPlace`, `placeTick` v `js/sim/combat.js`).
+- **Útvary (kláves X alebo tlačidlo vedľa rozkazov):** **riadky** (ako doteraz), **štítový val** – pechota stojí tesne, štíty drží vpred, kryje údery aj šípy o polovicu častejšie, ale presúva sa pomalšie, **voľný útvar** – vojaci sú rozostúpení a strely nimi často preletia. Útvar sa dá prepnúť pre každú skupinu zvlášť; skupiny v rozkaze Držať/Šík sa hneď preskupia.
+- **Obliehanie:** vojaci lezú po rebríkoch (ruky striedavo hore), mostík obliehacej veže po prisunutí dopadne na hradby, brána sa pri údere baranidla trasie a sypú sa z nej triesky, a keď padne, rozletí sa na trosky s oblakom prachu. Na vežiach vejú zástavy obrancov. Hodený kameň z hradieb letí oblúkom a dopadne s prachom, vriaci olej steká po hradbách v plameňoch a dyme, zhodený rebrík sa rozbije. V noci horia šípy.
+- **Bossovia:** pred ohnivým útokom šľahajú drakovi a Balrogovi plamene z papule, ohnivý útok zaplaví ohlásené miesto ohňom a dymom a nechá spálenú zem, údery bez ohňa (dopad draka, kyjak Kráľa trollov) pošlú tlakovú vlnu, prach a kamene. Letiaci drak a šelma vrhajú na zem tieň, aby bolo vidno, kam dopadnú. Kráľ trollov dvíha kyjak pred úderom. Padlý boss sa zrúti v oblaku prachu a jeho oheň zhasne.
+- Efekty idú cez frontu udalostí `FX3` zo simulácie (`fx3` v `js/sim/combat.js`), takže logika nezávisí od 3D; v 2D sa udalosti len zahodia.
 
 ## Smerový boj (etapa 2, ako vo Warbande)
 

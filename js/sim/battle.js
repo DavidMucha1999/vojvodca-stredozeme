@@ -423,6 +423,7 @@ function updBattle(dt) {
             a.l -= dt;
             for (const v of U)
                 if (v.hp > 0 && v.t !== a.t && Math.abs(v.x - a.x) < 7 && Math.abs(v.y - a.y) < 7) {
+                    if (!v.t && v.hx != null && !v.h && fmOf(v) === 'loose' && Math.random() < .35) continue;   // voľný útvar: strela preletí medzerou
                     if (arrowBlocked(v, a)) { a.l = 0; break; }
                     if (SGB && v.t !== (SGB.att ?? 0) && v.x >= 1000 && v.x <= 1050 && Math.random() < .4) { a.l = 0; break; }   // cimburie kryje obrancov na hradbách
                     if (SGB && a.by && a.by.t !== (SGB.att ?? 0) && a.by.x >= 1000 && a.by.x <= 1050) a.d = (a.d || 4.5) * 1.3;   // výstrel z hradieb

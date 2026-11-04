@@ -348,6 +348,19 @@ try {
         for (const u of U) if (u.t) u.hp = 0; var kc = 0; while (mode === "battle" && kc < 50) { U[0].hp = 999; updBattle(1); kc++; } G.eq.m = 0; G.eq.w = 0;`);
     check('Sklopená kopija v cvale: veľký zásah podľa rýchlosti koňa', run('couchOk'), run('couchHit'));
     run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
+    // útvary a rozkazy na miesto (etapa 3): riadky, štítový val, voľný útvar; skupina sa postaví k bodu pod kurzorom
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide"); for (const k in keys) keys[k] = false; G.eq.m = 0;');
+    run(`G.inf = 24; G.arc = 8; G.cav = 0; startBattle({ n: 10, f: 2, nm: "T" }); CMB.sel = "p"; setOrd("l"); var inf = U.filter(u => !u.t && !u.ally && u.k === "i");
+        var gap = us => { let m = 1e9; for (const a of us) for (const b of us) if (a !== b) m = Math.min(m, Math.hypot(a.hx - b.hx, a.hy - b.hy)); return m; };
+        var g0 = gap(inf), bc0 = blockChance(inf[0]); cycleFormation(); var fmW = CMB.fm.p === "wall", g1 = gap(inf), bc1 = blockChance(inf[0]); cycleFormation(); var g2 = gap(inf); cycleFormation();
+        var at = { x: 400, y: 700 }; ordPlace(["p"], "h", at); var cx = inf.reduce((s, u) => s + u.hx, 0) / inf.length, cy = inf.reduce((s, u) => s + u.hy, 0) / inf.length; var placed = Math.hypot(cx - at.x, cy - at.y) < 40;
+        CMB.prev = slotsFor(["p"], "l", at); var prevOk = CMB.prev.length === U.filter(u => !u.t && !u.ally && !u.h && u.hp > 0 && !u.rout && grpOf(u) === "p").length && CMB.prev.length >= inf.length; CMB.prev = null;`);
+    check('Útvary: štítový val je tesnejší a lepšie kryje, voľný útvar je rozostúpený; rozkaz na miesto postaví skupinu k bodu', run('fmW && g1 < g0 && g2 > g0 && bc1 > bc0 && placed && prevOk'), run('[fmW, g0, g1, g2, bc0, bc1, placed, prevOk].join(" ")'));
+    run(`FX3.length = 0; var hb = U[0]; hb.x = 1020; hb.y = 600; SGB = null; var hasRock = false; for (const u of U) if (u.t) u.hp = 0; var kf3 = 0; while (mode === "battle" && kf3 < 50) { U[0].hp = 999; updBattle(1); kf3++; }`);
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
+    run(`bossBattle("trollking"); var bo = U.find(u => u.boss); FX3.length = 0; bossStrike(bo, { k: "circle", x: bo.x, y: bo.y, r: 80, t: 0, t0: 30, dmg: 1 }); var bossFx = FX3.some(e => e.k === "boss" && e.b === "trollking"); for (const u of U) if (u.t) u.hp = 0; var kb3 = 0; while (mode === "battle" && kb3 < 60) { U[0].hp = 999; updBattle(1); kb3++; }`);
+    check('Údery bossov posielajú udalosti pre 3D efekty', run('bossFx'));
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
 } catch (e) { fails++; console.log('CHYBA výnimka: ' + e.stack); }
 console.log(fails ? '\n' + fails + ' testov zlyhalo.' : '\nVšetky testy prešli.');
 process.exit(fails ? 1 : 0);

@@ -64,6 +64,7 @@ function inAtk(A, x, y) {
 }
 function bossStrike(u, A) {
     SHAKE = Math.max(SHAKE, 3);
+    if (typeof fx3 === 'function') fx3({ k: 'boss', A: { ...A }, b: u.boss });
     snd('hb');
     for (let i = 0; i < 18; i++) { const px = A.k === 'line' ? A.x + (A.x2 - A.x) * i / 18 : A.x + (Math.random() - .5) * (A.r || A.len || 60), py = A.k === 'line' ? A.y + (A.y2 - A.y) * i / 18 : A.y + (Math.random() - .5) * (A.r || 60); PT.push({ x: px, y: py, vx: Math.random() * 2 - 1, vy: -1 - Math.random() * 2, g: .05, l: 26, c: A.fire ? '#ff7a20' : '#c8b48c' }); }
     for (const v of U) {
