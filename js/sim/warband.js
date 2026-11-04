@@ -145,7 +145,7 @@ function stepArrows(dt) {
 function chamber(att, def) {
     const C = CMB, sw = C.swing;
     if (!def.h || !sw || !att.lwd || sw.t < 6 || sw.d !== att.lwd) return false;
-    att.stun = 45; att.wu = 0; blockFx(def, dirTo(def, att), 0); fx3({ k: 'chamber', x: def.x, y: def.y });
+    att.stun = 45; att.wu = 0; blockFx(def, dirTo(def, att), 0, att); fx3({ k: 'chamber', x: def.x, y: def.y });
     wbMsg('Kryt útokom! Úder si odrazil vlastným úderom.', '#9fe08a'); HITSTOP = Math.max(HITSTOP, 5);
     return true;
 }

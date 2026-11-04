@@ -421,7 +421,11 @@ function updBattle(dt) {
         }
         if (SHAKE > 0) SHAKE -= dt * .3;
         PT = PT.filter(p => p.l > 0);
-        trackVel(dt); stepArrows(dt); wxTick(dt);   // šípy v 3D s gravitáciou a miestom zásahu (js/sim/warband.js)
+        trackVel(dt); stepArrows(dt); wxTick(dt);
+        if (U.length > 50 && (U[0].tt || 0) < 2700 && !(typeof B3 !== 'undefined' && B3.isOn() && B3.intro)) {   // vojnové bubny, kým sa vojská blížia (DUM . dum . DUM DUM . .)
+            const b0 = Math.floor((U[0].tt || 0) / 14), b1 = Math.floor(((U[0].tt || 0) + dt) / 14);
+            if (b1 !== b0 && typeof warDrum === 'function') { const k = [1, 0, .5, 0, 1, .9, 0, 0][b1 % 8]; if (k) warDrum(k * Math.min(1, (2700 - U[0].tt) / 600)); }
+        }   // šípy v 3D s gravitáciou a miestom zásahu (js/sim/warband.js)
         for (const u of U) {
             if (u.hp <= 0)
                 continue;

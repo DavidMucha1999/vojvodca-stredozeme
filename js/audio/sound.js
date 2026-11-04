@@ -64,10 +64,10 @@ function osc(f, t, d, ty, v, out, a, det, lp) {
     o.stop(t + d + .05);
     return o;
 }
+const NOISE_B = {};   // šum sa vytvorí raz pre každú dĺžku (v boji sa nezahlcuje pamäť)
 function noi(t, d, v, ty, fq, out, q) {
-    const n = ac.sampleRate * d | 0, b = ac.createBuffer(1, n, ac.sampleRate), a = b.getChannelData(0);
-    for (let i = 0; i < n; i++)
-        a[i] = Math.random() * 2 - 1;
+    const n = ac.sampleRate * d | 0; let b = NOISE_B[n];
+    if (!b) { b = NOISE_B[n] = ac.createBuffer(1, n, ac.sampleRate); const a = b.getChannelData(0); for (let i = 0; i < n; i++) a[i] = Math.random() * 2 - 1; }
     const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
     s.buffer = b;
     f.type = ty;
@@ -80,6 +80,13 @@ function noi(t, d, v, ty, fq, out, q) {
     g.connect(out);
     s.start(t);
     return f;
+}
+/** Vojnový bubon (k = sila): hlboký úder s dozvukom. */
+function warDrum(k) {
+    if (!ac || mu) return;
+    bus(); const t = ac.currentTime;
+    const o = osc(62, t, .5, 'sine', .5 * k, SB, .004); o.frequency.exponentialRampToValueAtTime(36, t + .32);
+    noi(t, .14, .22 * k, 'lowpass', 260, SB);
 }
 function sndBase(k) {
     if (!ac || mu)

@@ -36,6 +36,7 @@ function optItems() {
         [() => 'Rozmazanie pohybu: ' + (OPT.mblur ? 'áno' : 'nie'), () => set('mblur', !OPT.mblur)],
         [() => 'Hĺbka ostrosti (foto režim a spomalenie): ' + (OPT.dof === false ? 'nie' : 'áno'), () => set('dof', OPT.dof === false)],
         [() => 'Zastavenie obrazu pri ťažkom údere: ' + (OPT.hitstop ? 'áno' : 'nie (plynulejší boj)'), () => set('hitstop', !OPT.hitstop)],
+        [() => 'Časové vyhladenie obrazu (TAA): ' + (OPT.taa === true ? 'áno' : OPT.taa === false ? 'nie' : 'len na ultra'), () => set('taa', OPT.taa === true ? false : OPT.taa === false ? null : true)],
         [() => 'Filmové zrno: ' + (OPT.grain ? 'áno' : 'nie'), () => set('grain', !OPT.grain)],
         [() => 'Nálet kamery na začiatku bitky: ' + (OPT.intro3d === false ? 'nie' : 'áno'), () => set('intro3d', OPT.intro3d === false)],
         [() => 'Mierenie v 3D: ' + (OPT.aimMode === 'ground' ? 'kurzorom na zem' : 'ako vo Warbande (myš otáča kameru, zameriavač v strede)'), () => set('aimMode', OPT.aimMode === 'ground' ? 'look' : 'ground')],

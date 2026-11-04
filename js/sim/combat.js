@@ -279,7 +279,7 @@ function meleeHit(att, def, d, kind, info) {
     if (kind === 'ai' && def.h && typeof chamber === 'function' && chamber(att, def)) return false;   // kryt útokom
     if (kind === 'charge' && braced(def, att)) {   // šík kopijníkov zastaví nápor jazdy
         hit(att, def.d * 2.5, def); if (!att.h) { att.stun = 35; att.rear = 45; } else { C.run = 0; C.rear = 45; C.mvS = 0; wbMsg('Kôň sa vzopol pred kopijami!', '#ff9a80'); }
-        blockFx(def, from, 0); cmbSay('brace', 'Šík kopijníkov zastavil nápor jazdy!', 150); return false;
+        blockFx(def, from, 0, att); cmbSay('brace', 'Šík kopijníkov zastavil nápor jazdy!', 150); return false;
     }
     if (def.h && C.blk && C.st > 0) {
         const sh = C.shp > 0;
@@ -289,7 +289,7 @@ function meleeHit(att, def, d, kind, info) {
             if (sh) { C.shp -= d * .6; if (C.shp <= 0) { C.shp = 0; TS = { s: 'Štít sa rozbil!', l: 120 }; } }
             if (C.blkT < (man ? 18 : 12) && !att.h) { att.stun = 40; att.wu = 0; cmbSay('perf', 'Dokonalý kryt! Útočník sa zapotácal – teraz udri.'); }
             if (kind === 'charge') { def.x -= Math.cos(from) * 10; def.y -= Math.sin(from) * 10; }
-            blockFx(def, from, sh); att.rc = 14;   // spätný ráz zbrane (3D póza)
+            blockFx(def, from, sh, att); att.rc = 14;   // spätný ráz zbrane (3D póza)
             if (C.st <= 0) { C.st = 0; C.gb = 45; hit(def, d * .5, att); cmbSay('gb', 'Kryt prelomený – došla výdrž!'); }
             return false;
         }
@@ -301,12 +301,13 @@ function meleeHit(att, def, d, kind, info) {
         if (info.d === 'u' && !(def.k === 'i' || def.k === 'v')) bc0 *= .8;
         if (twoHand() && info.pow > 1.3) bc0 *= .4;
     }
-    if (!def.h && kind !== 'charge' && rel < 1.1 && Math.random() < bc0) { blockFx(def, from, 1); att.rc = 14; if (att.h) { C.rc = 14; C.st = Math.max(0, C.st - 4); } return false; }
+    if (!def.h && kind !== 'charge' && rel < 1.1 && Math.random() < bc0) { blockFx(def, from, 1, att); att.rc = 14; if (att.h) { C.rc = 14; C.st = Math.max(0, C.st - 4); } return false; }
     const mult = rel > 2.1 ? 1.5 : rel > 1.2 ? 1.25 : 1;
     if (info || kind === 'ai') {   // miesto zásahu a typ poškodenia (js/sim/warband.js)
         const dir = info ? info.d : att.lwd ? ({ l: 'r', r: 'l', u: 'u', t: 't' })[att.lwd] : 'r';
         hitZ(def, d * mult, att, { zone: meleeZone(att, def, dir, info ? info.pitch : null), type: dmgType(att, kind, dir), pow: info ? info.pow : 1 });
     } else hit(def, d * mult, att);
+    if (kind === 'charge') fx3({ k: 'charge', x: def.x, y: def.y, u: def, by: att, a: dirTo(att, def) });   // náraz jazdy (3D: odhodenie, triesky z kopije)
     if (mult > 1 && att.h) cmbSay('flank', rel > 2.1 ? 'Úder zozadu: +50 % zranenia.' : 'Úder zboku: +25 % zranenia.', 120);
     return true;
 }
@@ -365,10 +366,10 @@ function arrowBlocked(v, a) {
     return false;
 }
 /** Iskry a záblesk pri kryte. */
-function blockFx(u, from, shield) {
+function blockFx(u, from, shield, att) {
     const x = u.x + Math.cos(from) * u.r, y = u.y + Math.sin(from) * u.r - 3;
     for (let i = 0; i < 6; i++) PT.push({ x, y, vx: Math.cos(from) * 2 + Math.random() * 3 - 1.5, vy: -1.5 - Math.random() * 2, g: .18, l: 12 + Math.random() * 6, c: '#fff0b0', sp: 1 });
-    PT.push({ x, y, ring: 1, rr: shield ? 12 : 8, l: 10, c: shield ? '#c8d8ff' : '#ffffff' });
+    PT.push({ x, y, ring: 1, rr: shield ? 12 : 8, l: 10, c: shield ? '#c8d8ff' : '#ffffff', att, def: u });   // 3D: iskra presne tam, kde sa zbraň stretne so štítom alebo čepeľou
     snd('sh');
 }
 
