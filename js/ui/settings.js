@@ -28,6 +28,7 @@ function optItems() {
         [() => 'Zvuky boja: ' + volPct(OPT.vSfx), () => set('vSfx', nextVol(OPT.vSfx))],
         [() => 'Prostredie (dážď, vietor): ' + volPct(OPT.vAmb), () => set('vAmb', nextVol(OPT.vAmb))],
         [() => 'Krv v bitke: ' + (OPT.blood ? 'áno' : 'nie'), () => set('blood', !OPT.blood)],
+        [() => 'Bitka: ' + (OPT.b3d === false ? '2D (pohľad zhora)' : '3D (pohľad za hrdinom)'), () => set('b3d', OPT.b3d === false)],
         [() => 'Kvalita grafiky: ' + (lowFx() ? 'nízka (rýchlejšia)' : 'vysoká'), () => set('fx', lowFx() ? 'high' : 'low')],
         [() => 'Obťažnosť: ' + DIFF_N[OPT.diff], () => set('diff', { easy: 'normal', normal: 'hard', hard: 'easy' }[OPT.diff] || 'normal')]
     ];

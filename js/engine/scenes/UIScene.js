@@ -90,7 +90,7 @@ class UIScene extends Phaser.Scene {
         this.gateTxt.setVisible(false);
         if (this.cmbT) this.cmbT.forEach(t => t.setVisible(false));
         if (scene === 'battle' && U && U[0]) {
-            this.drawWeather(g, WX.n, lowFx() ? .6 : 1.3);
+            if (!(typeof B3 !== 'undefined' && B3.isOn() && !lowFx())) this.drawWeather(g, WX.n, lowFx() ? .6 : 1.3);   // v 3D padá dážď a sneh priamo v scéne
             const h = U[0];
             g.fillStyle(0x000000, .55).fillRect(W / 2 - 82, 58, 164, 10);
             g.fillStyle(0xb8402a, 1).fillRect(W / 2 - 80, 60, 160 * Math.max(0, h.hp) / h.mh, 6);

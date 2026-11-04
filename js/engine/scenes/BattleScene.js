@@ -12,7 +12,7 @@ class BattleScene extends Phaser.Scene {
 
     create() {
         this.ready = false;
-        if (!Art.loaded.battle) {   // textúry bojiska sa ešte dočítavajú na pozadí (alebo sa ešte nezačali)
+        if (!Art.loaded.battle && !B3.want()) {   // textúry bojiska sa ešte dočítavajú na pozadí (alebo sa ešte nezačali)
             this.cameras.main.setBackgroundColor('#0b0806');
             const t = this.add.text(W * RES / 2, H * RES / 2, 'Vojská sa zoraďujú…', { fontFamily: '"IM Fell English", Georgia, serif', fontSize: 16 * RES + 'px', color: '#d9a441' }).setOrigin(.5).setScrollFactor(0);
             (Art.loading.battle || Art.loadTextures(this, 'battle')).then(() => { if (this.scene.isActive('Battle')) { t.destroy(); this.build(); } });
@@ -23,6 +23,8 @@ class BattleScene extends Phaser.Scene {
 
     build() {
         this.ready = true;
+        if (B3.want() && B3.start()) return this.build3d();   // 3D bojisko (js/engine/b3d.js); 2D ostáva ako voľba v Nastaveniach
+        this.d3 = false;
         this.buildField();
 
         this.marks = this.add.graphics().setDepth(-6);   // trvalé stopy boja: krv, zapichnuté šípy, padlé zbrane
@@ -57,6 +59,21 @@ class BattleScene extends Phaser.Scene {
         this.input.on('pointermove', set);
         this.input.on('pointerup', p => { if (p.rightButtonReleased()) CMB.rmb = 0; else { ptr.down = false; CMB.lmb = 0; } });
         this.events.once('shutdown', () => { this.input.removeAllListeners(); ptr.down = false; CMB.lmb = CMB.rmb = 0; });
+    }
+
+    /** 3D bitka: Phaser kreslí len rozhranie (UIScene), bojisko a vojakov kreslí B3 pod priehľadným plátnom. */
+    build3d() {
+        this.d3 = true; this.units = new Map();
+        this.cameras.main.transparent = true;
+        let last = null;
+        const set = p => { last = { x: p.x, y: p.y }; const q = B3.pick(p.x, p.y); if (q) { ptr.x = q.x - bc.x; ptr.y = q.y - bc.y; } };
+        this.repick = () => { if (last) set(last); };
+        if (this.input.mouse) this.input.mouse.disableContextMenu();
+        this.input.on('pointerdown', p => { if (p.middleButtonDown()) { B3.dragStart(p.x); return; } set(p); if (p.rightButtonDown()) { CMB.rmb = 1; CMB.km = 1; } else { ptr.down = true; if (CMB.km) CMB.lmb = 1; } });
+        this.input.on('pointermove', p => { B3.dragMove(p.x); set(p); });
+        this.input.on('pointerup', p => { if (p.middleButtonReleased()) { B3.dragEnd(); return; } if (p.rightButtonReleased()) CMB.rmb = 0; else { ptr.down = false; CMB.lmb = 0; } });
+        this.input.on('wheel', (p, o, dx, dy) => B3.wheel(dy));
+        this.events.once('shutdown', () => { this.input.removeAllListeners(); ptr.down = false; CMB.lmb = CMB.rmb = 0; B3.stop(); });
     }
 
     addUnit(u) {
@@ -122,6 +139,7 @@ class BattleScene extends Phaser.Scene {
         if (!this.ready) { if (mode !== 'battle') this.scene.start('Map'); return; }
         if (mode === 'battle') updBattle(Math.min(2, delta / 16.67));
         if (mode !== 'battle') { this.scene.start('Map'); return; }
+        if (this.d3) { this.repick(); B3.frame(Math.min(3, delta / 16.67)); return; }
 
         for (const u of U) {
             let o = this.units.get(u);

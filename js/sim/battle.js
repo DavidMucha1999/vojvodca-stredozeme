@@ -454,6 +454,7 @@ function updBattle(dt) {
                     my--;
                 if (keys.ArrowDown || keys.s)
                     my++;
+                if ((mx || my) && typeof B3 !== 'undefined' && B3.isOn()) [mx, my] = B3.rel(mx, my);   // 3D: pohyb vzhľadom na kameru
                 if (ptr.down && !CMB.km) {
                     const dx = ptr.x + bc.x - u.x, dy = ptr.y + bc.y - u.y, d = Math.hypot(dx, dy);
                     if (d > 8) {

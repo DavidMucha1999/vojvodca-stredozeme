@@ -150,6 +150,21 @@ Zvuky boja sú v `assets/audio/` (`render_sfx.py` ich vie vytvoriť znova). Hra 
 | `build_single.py` | zostaví celú hru do jedného HTML súboru v `dist/` |
 | `proto_iso.html` | samostatný prototyp izometrickej bitky (nie je súčasťou hry) |
 
+## 3D bitka (etapa 1)
+
+Bitka sa predvolene zobrazuje v **3D pohľadom za hrdinom**, ako v Mount & Blade (`js/engine/b3d.js`, knižnica Three.js r159 v `vendor/three.min.js`, licencia MIT). Herná logika je rovnaká ako v 2D – 3D ju len zobrazuje:
+
+- **Bojisko:** terén s výškou podľa miesta na mape (kopec, rieka s brodom, rovina pred hradbami), farby podľa kraja (tráva, popol Mordoru, púšť, sneh), stromy a skaly, obloha, slnko s tieňmi, hmla, dážď, sneh a popol, v noci tma a pohyblivé svetlá fakieľ. Stromy pri kamere sa rozplynú, aby nezakryli hrdinu.
+- **Obliehanie:** hradby s cimburím, štyri veže, brána s prekladom, hradný palác; rebríky sa dvíhajú (zhodený rebrík leží pod hradbami), obliehacia veža sa prisúva, baranidlo búši do brány. Obrancovia stoja hore na ochodzi, útočníci vystupujú po rebríkoch.
+- **Vojaci:** nízkopolygónové postavy skladané kódom z dielov podľa `Soldiers.UNITS` a výbavy hrdinu (`Soldiers.heroSpec`): pleť podľa rasy, prilby (Gondor s krídelkami, Rohan s chvostom, orkské s hrotom, trpasličie, elfské, kapucne nazgûlov), zbrane (meč, kopija, sekera, kyjak, luk, kuša), okrúhle a kosoštvorcové štíty, plášte, zástavy, kone, vargovia, čierne kone, olifanty, enti a trollovia. Rovnaké jednotky zdieľajú geometriu, takže bitka so stovkou vojakov ide plynulo.
+- **Animácie:** chôdza a beh, nápriah (čitateľné varovanie pred úderom), sek a bod, kryt štítom, natiahnutý luk, zapotácanie, útek s rukami nad hlavou, pád (padlí ostávajú ležať s kalužou krvi), jazda s pohupovaním koňa.
+- **Bossovia:** Balrog s krídlami, žeravými puklinami, plamenným mečom a ohňom, ktorý svieti na okolie; drak a okrídlená šelma mávajú krídlami a lietajú; Kráľ trollov s korunou. Ohlásené útoky bossov (kruh, kužeľ, pás) sa plnia na zemi.
+- **Na zemi:** zlatý krúžok hrdinu, oblúk seku a bodu, oblúk krytu, červený nápriah nepriateľov, ktorí mieria na teba, krúžok veliteľa. Šípy, oštepy a šípy z kuše letia v oblúku a zapichnú sa do zeme.
+- **Ovládanie:** kamera je za hrdinom; **koliesko** približuje, **Z** a **C** alebo **stredné tlačidlo myši** (ťahanie) otáčajú kameru. **WASD** sa hýbe vzhľadom na kameru (W = dopredu od kamery), myš mieri na bod na zemi pod kurzorom; ostatné klávesy a rozkazy sú rovnaké ako v 2D.
+- **Prepínač:** Nastavenia → **Bitka: 3D / 2D**. Ak počítač nepodporuje WebGL alebo sa 3D nedá spustiť, hra sama použije 2D bojisko.
+
+Plátno Three.js leží pod priehľadným plátnom Phaseru, takže lišty, rozkazy a okná ostávajú z UIScene. Súradnice: x bojiska = X, y bojiska = Z, výška = Y. Ďalšie etapy: smerové útoky a kryty myšou ako vo Warbande, kopija pri cvale, mierenie s gravitáciou (etapa 2); šíky, obliehanie a bossovia v plnom 3D (etapa 3).
+
 ## Štruktúra kódu
 
 Skripty sa načítavajú v poradí uvedenom v `Vojvodca Stredozeme.html` a zdieľajú globálny priestor premenných. Logika (`js/data`, `js/sim`, `js/ui`) nepozná Phaser – dá sa spustiť aj bez prehliadača (testy); Phaser je len v `js/engine`.
@@ -197,6 +212,7 @@ js/
     assets.js         zbalené obrázky a zvuky (generuje pack_assets.py)
     audio.js          zvuky zo súborov, priestorový zvuk v bitke
     game.js           spustenie Phaseru (rozlíšenie 1440 × 960)
+    b3d.js            3D bitka (Three.js): terén, hradby, vojaci a zvieratá z dielov, animácie, bossovia, šípy, kamera za hrdinom
     scenes/
       BootScene.js    načítacia obrazovka (Prsteň, lišta, citáty), textúry mapy, zvuky, písma
       IntroScene.js   úvodná obrazovka; na pozadí dočíta textúry bojiska
@@ -208,6 +224,7 @@ js/
       UIDialog.js     okná v Phaseri (rám, portrét, ikonky, posúvanie, klávesy; listy ako pergamen s pečaťou)
       UIMaps.js       minimapa, veľká mapa (M), popisky pri myši, legenda
 vendor/phaser.min.js  Phaser 3.80.1
+vendor/three.min.js   Three.js r159 (3D bitka)
 ```
 
 ### Ako funguje Phaser verzia
