@@ -22,6 +22,7 @@ with sync_playwright() as p:
     try: pg.wait_for_function("typeof game !== 'undefined' && game.scene.getScenes(true).some(s => s.sys.settings.key === 'Intro')", timeout=30000)
     except Exception: pass
     E = pg.evaluate
+    E("OPT.gfx = 'med'; OPT.intro3d = false")   # 3D bitka v strednej kvalite (softvérové vykresľovanie v teste je pomalé)
     active = lambda: E("game.scene.getScenes(true).map(s => s.sys.settings.key).join(',')")
     check('Phaser načítaný', E("typeof Phaser !== 'undefined' && Phaser.VERSION"), E("Phaser.VERSION"))
     check('Renderer', True, E("game.renderer.type === Phaser.WEBGL ? 'WebGL' : 'Canvas'"))

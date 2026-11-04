@@ -72,10 +72,14 @@ class BattleScene extends Phaser.Scene {
         const set = p => { last = { x: p.x, y: p.y }; const q = B3.pick(p.x, p.y); if (q) { ptr.x = q.x - bc.x; ptr.y = q.y - bc.y; } };
         this.repick = () => { if (last) set(last); };
         if (this.input.mouse) this.input.mouse.disableContextMenu();
-        this.input.on('pointerdown', p => { if (p.middleButtonDown()) { B3.dragStart(p.x); return; } set(p); if (p.rightButtonDown()) { CMB.rmb = 1; CMB.km = 1; } else { ptr.down = true; if (CMB.km) CMB.lmb = 1; } });
-        this.input.on('pointermove', p => { B3.dragMove(p.x); set(p); if (!p.middleButtonDown()) mouseDelta(p); });
-        this.input.on('pointerup', p => { if (p.middleButtonReleased()) { B3.dragEnd(); return; } if (p.rightButtonReleased()) CMB.rmb = 0; else { ptr.down = false; CMB.lmb = 0; } });
+        // fotorežim (P): hra stojí, myš otáča voľnou kamerou; nálet kamery na začiatku preskočí klik alebo kláves
+        this.input.on('pointerdown', p => { B3.skipIntro(); if (B3.photo || p.middleButtonDown()) { B3.dragStart(p.x, p.y); return; } set(p); if (p.rightButtonDown()) { CMB.rmb = 1; CMB.km = 1; } else { ptr.down = true; if (CMB.km) CMB.lmb = 1; } });
+        this.input.on('pointermove', p => { B3.dragMove(p.x, p.y); if (B3.photo) return; set(p); if (!p.middleButtonDown()) mouseDelta(p); });
+        this.input.on('pointerup', p => { if (B3.photo || p.middleButtonReleased()) { B3.dragEnd(); if (B3.photo) return; } if (p.middleButtonReleased()) return; if (p.rightButtonReleased()) CMB.rmb = 0; else { ptr.down = false; CMB.lmb = 0; } });
         this.input.on('wheel', (p, o, dx, dy) => B3.wheel(dy));
+        this.keyH = e => { if (mode !== 'battle') return; const k = (e.key || '').toLowerCase(); if (k === 'p' && !e.repeat) B3.photoToggle(); else if (k === 'escape' && B3.photo) B3.photoToggle(); else B3.skipIntro(); };
+        addEventListener('keydown', this.keyH);
+        this.events.once('shutdown', () => removeEventListener('keydown', this.keyH));
         this.events.once('shutdown', () => { this.input.removeAllListeners(); ptr.down = false; CMB.lmb = CMB.rmb = 0; B3.stop(); });
     }
 
@@ -140,7 +144,7 @@ class BattleScene extends Phaser.Scene {
 
     update(time, delta) {
         if (!this.ready) { if (mode !== 'battle') this.scene.start('Map'); return; }
-        if (mode === 'battle') updBattle(Math.min(2, delta / 16.67));
+        if (mode === 'battle') { const k = this.d3 ? B3.timeK() : 1; if (k > 0) updBattle(Math.min(2, delta / 16.67) * k); }   // 3D: spomalenie pri páde bossa, fotorežim zastaví hru
         if (mode !== 'battle') { this.scene.start('Map'); return; }
         if (this.d3) { this.repick(); B3.frame(Math.min(3, delta / 16.67)); return; }
 

@@ -173,6 +173,18 @@ Plátno Three.js leží pod priehľadným plátnom Phaseru, takže lišty, rozka
 - **Bossovia:** pred ohnivým útokom šľahajú drakovi a Balrogovi plamene z papule, ohnivý útok zaplaví ohlásené miesto ohňom a dymom a nechá spálenú zem, údery bez ohňa (dopad draka, kyjak Kráľa trollov) pošlú tlakovú vlnu, prach a kamene. Letiaci drak a šelma vrhajú na zem tieň, aby bolo vidno, kam dopadnú. Kráľ trollov dvíha kyjak pred úderom. Padlý boss sa zrúti v oblaku prachu a jeho oheň zhasne.
 - Efekty idú cez frontu udalostí `FX3` zo simulácie (`fx3` v `js/sim/combat.js`), takže logika nezávisí od 3D; v 2D sa udalosti len zahodia.
 
+## Grafika 3D bitky (veľký grafický update)
+
+Všetko je kreslené kódom, bez cudzích modelov a obrázkov (`js/engine/b3d.js`, pomocník `js/engine/b3dgfx.js`):
+
+- **Postavy:** každý vojak je jedna **kostrová sieť** (hip, trup, ramená, lakte, ruky, štít, stehná, kolená, plášť) – kreslí sa naraz, takže aj stovka podrobných vojakov ide plynulo. Telo podľa **rasy**: človek, elf (štíhly, vysoký, špicaté uši), trpaslík (nízky, široký, dlhá zapletená brada), hobit, ork (zhrbený, dlhé ruky, kly, žlté oči), uruk, troll (mohutný). **Tvár** (nos, oči, obočie, ústa, uši), vlasy a brada podľa portrétu hrdinu, **prilby podľa frakcie** (gondorská vysoká s krídlami a lícnicami, rohanská s nánosníkom, zlatým pásom a konským chvostom, orkská s hrotmi, uruk s bielou rukou, trpasličia s maskou, elfská zlatá, východniarska maska, kapucne, turbany). **Kov** sa leskne a odráža oblohu, látka je matná. **Erby frakcií** (z `js/render/heraldry.js`) sú na štítoch a na zástavách, plášte a zástavy **vejú vo vetre**. Zbrane: meče, šable so zakrivenou čepeľou, sekery, kopije s listovým hrotom, kyjaky s hrotmi, luk s tetivou, kuša; lukostrelci nosia tulec.
+- **Animácie:** chôdza a beh s kolenami, predklon v behu, dýchanie a prešľapovanie v pokoji, trhnutie pri zásahu (krv strieka a ostáva na brnení), **pád podľa smeru** – kolená sa podlomia a vojak padne od útočníka. **Kone a vargovia** majú kĺby (koleno vpredu, hlezno vzadu) a tri chôdze: **krok, klus, cval** (s hojdaním tela), hlava kýva, chvost sa dvíha v cvale; jazdec sedí v sedle a hojdá sa s koňom. Gondorský kôň má strieborné brnenie a čaprak, varg strapatý chrbát a kly.
+- **Krajina:** terén s detailnou textúrou (tráva, hlina, skala na svahoch), **rozdupané blato** tam, kde sa bojuje a jazdí, **spálenina** po ohni; **tráva s kvetmi** okolo kamery sa vlní vo vetre a ohýba pod vojakmi a koňmi; **duby, brezy, smreky, mŕtve stromy a kríky** sa hojdajú vo vetre, pod korunami je tieň; **balvany s machom** (alebo snehom), **cesta s plotmi**; **voda** v rieke s vlnami, odrazom oblohy a penou pri brehu, **špliechanie** pri brodení a pri šípoch.
+- **Svetlo a obloha:** obloha s **mrakmi a slnkom podľa dennej doby** v hre (ráno a večer teplé nízke slnko, v noci hviezdy a mesiac), tiene, **žiara** okolo ohňa a fakieľ, **lúče slnka**, filmové tónovanie, **farebné ladenie podľa krajiny** (zlatý Rohan, chladný Gondor, červený Mordor, sivý Isengard, horúci Harad, zlatozelený Lórien…), noc v modrom mesačnom svetle, v daždi mokrá lesklá zem a kaluže, mäkké tiene pod vojakmi.
+- **Efekty:** **stopa čepele** pri seku (hrdina a útočníci pri kamere), **iskry so zábleskom svetla** pri kryte, prach za jazdou, **para z nozdier** koní v zime a v noci, horiaca zem po dračom ohni s iskrami a dymom, žeravý popol v Mordore, žeravé koše na hradbách v noci.
+- **Kamera:** **nálet nad bojiskom** na začiatku bitky (od nepriateľského vojska až za hrdinu; preskočí ho klik alebo kláves, vypína sa v Nastaveniach), **spomalenie** pri páde bossa alebo nepriateľského veliteľa s pohľadom na padlého, rozšírenie záberu v cvale a pri nápore, **fotorežim (P)**: hra stojí, rozhranie zmizne, kamera voľne lieta (WASD, Q/E výška, Shift rýchlo, ťahanie myšou), P alebo Esc ho ukončí.
+- **Výkon a kvalita:** Nastavenia → **Grafika 3D bitky: nízka / stredná / vysoká / ultra**. Nízka = jednoduché ploché tieňovanie bez trávy a dodatočného spracovania (pre slabé počítače), stredná = tráva (9 000 trsov), žiara a tiene, vysoká (predvolená) = vyhladenie hrán, ostrejšie tiene, lúče slnka, 20 000 trsov trávy, ultra = 42 000 trsov a najostrejšie tiene. Detail tvárí a prilieb sa na diaľku skryje.
+
 ## Smerový boj (etapa 2, ako vo Warbande)
 
 Platí v 3D aj v 2D, keď hráš myšou a klávesnicou (`heroDirectional`, `heroStrike`, `heroShoot` v `js/sim/combat.js`); na dotykovom displeji ostáva pôvodné ovládanie.
@@ -232,7 +244,8 @@ js/
     assets.js         zbalené obrázky a zvuky (generuje pack_assets.py)
     audio.js          zvuky zo súborov, priestorový zvuk v bitke
     game.js           spustenie Phaseru (rozlíšenie 1440 × 960)
-    b3d.js            3D bitka (Three.js): terén, hradby, vojaci a zvieratá z dielov, animácie, bossovia, šípy, kamera za hrdinom
+    b3d.js            3D bitka (Three.js): terén, hradby, kostrové postavy a kone, animácie, bossovia, šípy, efekty, kamera, fotorežim
+    b3dgfx.js         grafika 3D bitky: materiály, erby, tráva, voda, obloha, žiara a farebné ladenie
     scenes/
       BootScene.js    načítacia obrazovka (Prsteň, lišta, citáty), textúry mapy, zvuky, písma
       IntroScene.js   úvodná obrazovka; na pozadí dočíta textúry bojiska
