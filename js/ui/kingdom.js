@@ -26,9 +26,10 @@ function kingdom(i, tab) {
         tabs();
         own.forEach(t => {
             const ti = TW.indexOf(t);
-            rowHead(t.n + ' · prosperita ' + Math.round(t.pr ?? 40) + ' % · posádka ' + t.g + ' · príjem ' + Math.round(castleIncome(t) * taxMul() * fiefShare(t)) + (t.lord ? ' · léno drží ' + t.lord : ' · bez pána'));
+            rowHead(t.n + ' · prosperita ' + Math.round(t.pr ?? 40) + ' % · nespokojnosť ' + Math.round(t.unrest || 0) + '/12 · posádka ' + t.g + ' · príjem ' + Math.round(castleIncome(t) * taxMul() * fiefShare(t)) + (t.lord ? ' · léno drží ' + t.lord : ' · bez pána'));
             if (!t.lord) {
                 E.filter(e => e.f === G.fac && !e.kr && !e.dead && !e.nz && !TW.some(x => x.lord === e.nm)).sort((a, b) => Math.hypot(a.x - t.x, a.y - t.y) - Math.hypot(b.x - t.x, b.y - t.y)).slice(0, 2).forEach(e => btn('Udeliť ' + e.nm, () => { t.lord = e.nm; e.rl = (e.rl || 0) + 30; e.vas = 1; e.home = ti; e.role = 'guard'; loyOf(e); e.loy = 30; lg(e.nm + ' dostal léno ' + t.n + '.'); re('f'); }, 0, 'hero'));
+                btn('Nechať rozhodnúť radu vazalov (všetci vernosť +2)', () => { const r = fiefVote(ti); msg(r ? 'Rada hlasovala (' + r.votes + '). Léno ' + t.n + ' dostal ' + r.win.nm + '.' : 'Nemáš vazalov bez léna.', () => re('f')); }, 0, 'court');
                 myComps().forEach(c => btn('Udeliť spoločníkovi ' + c.n, () => { grantToCompanion(c, ti); re('f'); }, 0, 'group'));
             } else {
                 const cid = Object.keys(G.cfief || {}).find(k => G.cfief[k] === ti);
@@ -55,6 +56,8 @@ function kingdom(i, tab) {
         tabs();
         [['low', 'Nízke dane'], ['normal', 'Bežné dane'], ['high', 'Vysoké dane']].forEach(([k, n]) => { const b = btn(n, () => { G.tax = k; re('p'); }, 0, 'coins'); if ((G.tax || 'normal') === k) select(b); });
         if (own.length) btn('Posilniť všetky posádky (+5 obrancov na hrad, ' + own.length * 40 + ' zlata)', () => { G.gold -= own.length * 40; own.forEach(t => t.g += 5); upd(); re('p'); }, G.gold < own.length * 40, 'shield');
+        if (own.length) { const t0 = own[0], ti0 = TW.indexOf(t0), d = caravanDest(ti0); btn('Vyslať karavánu z ' + t0.n + (d >= 0 ? ' do ' + TW[d].n : '') + ' (200 zlata, zisk 30–70 %, môžu ju prepadnúť)', () => { sendCaravan(ti0); upd(); re('p'); }, G.gold < 200 || d < 0, 'cart'); }
+        if ((G.cars || []).length) row('Karavány na ceste: ' + G.cars.map(c => TW[c.from].n + ' → ' + TW[c.to].n).join(', ') + '.');
         if (vill.length) btn('Obnoviť vypálené dediny (' + vill.filter(v => v.st > 0).length + ', 30 zlata/dedinu)', () => { const b = vill.filter(v => v.st > 0); G.gold -= b.length * 30; b.forEach(v => v.st = 0); upd(); re('p'); }, !vill.some(v => v.st > 0) || G.gold < vill.filter(v => v.st > 0).length * 30, 'village');
     }
     btn('Späť', back, 0, 'back');

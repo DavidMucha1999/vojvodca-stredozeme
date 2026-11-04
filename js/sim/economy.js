@@ -14,7 +14,10 @@ function daily2() {
         G.gold += Math.round((lvl(t) * 4 + (t.bd && t.bd.t ? lvl(t) * 2 : 0)) * taxMul() * fiefShare(t)); });
     if ((G.tax || 'normal') === 'high') E.forEach(e => { if (e.f === G.fac && e.vas && e.loy != null) e.loy = Math.max(0, e.loy - .1); });
     if (G.camp && G.stay) G.hp = Math.min(mh(), G.hp + 25);   // pobyt v hrade: rýchlejšie hojenie
-    worldDaily();    // veľké udalosti sveta (js/sim/chronicle.js)
+    worldDaily();
+    realmDaily();      // prímerie, poslovia, karavány, stavby v dedinách, vzbury (js/sim/realm.js)
+    fellDaily();       // Nazgûl na okrídlenej šelme
+    fellowshipDaily(); // spoločníci: spokojnosť, osobné úlohy, hádky (js/sim/fellowship.js)    // veľké udalosti sveta (js/sim/chronicle.js)
     supplyDaily();   // jedlo, morálka družiny, dezercie, hojenie ranených (js/sim/supply.js)
     dailyTrade();
     dailyWeather();

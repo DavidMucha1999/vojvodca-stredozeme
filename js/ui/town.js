@@ -18,7 +18,7 @@ function dip(i) {
 function dipF(i, f) {
     const a = G.fac;
     mode = 'town';
-    show(FN[f], 'Vzťah: ' + REL[a][f] + ' (' + (WR[a][f] ? 'vojna' : AL[a][f] ? 'spojenec' : 'mier') + '). Tvoja sláva: ' + G.ren + '.');
+    show(FN[f], 'Vzťah: ' + REL[a][f] + ' (' + (WR[a][f] ? 'vojna' : AL[a][f] ? 'spojenec' : truceLeft(f) ? 'prímerie ešte ' + truceLeft(f) + ' d' : 'mier') + '). Tvoja sláva: ' + G.ren + '. Sila: tvoja strana ' + Math.round(facPower(a)) + ', ' + FN[f] + ' ' + Math.round(facPower(f)) + '.');
     btn('Darovať 100 zlata (+8 vzťah)', () => { G.gold -= 100; rl(a, f, 8); upd(); dipF(i, f); }, G.gold < 100);
     if (WR[a][f])
         btn('Navrhnúť mier', () => {
@@ -30,8 +30,16 @@ function dipF(i, f) {
             else
                 msg('Odmietajú. Zlepši vzťah darmi.', () => dipF(i, f));
         });
-    else {
-        btn('Vyhlásiť vojnu', () => { WR[a][f] = WR[f][a] = true; AL[a][f] = AL[f][a] = false; rl(a, f, -40); dipF(i, f); });
+    // prímerie, tribút, výmena zajatcov, spoločná vojna (js/sim/realm.js)
+    if (WR[a][f]) {
+        btn('Navrhnúť prímerie na 20 dní', () => { if (REL[a][f] + G.ren + G.s.pr * 3 > -60) { makeTruce(f, 20); rl(a, f, 5); msg('Prímerie uzavreté. Po 20 dňoch sa vojna obnoví, ak vzťah ostane zlý.', () => dipF(i, f)); } else msg('Odmietajú aj prímerie.', () => dipF(i, f)); }, 0, 'honor');
+        if (facPower(a) > facPower(f) * 1.3) btn('Požadovať tribút (' + tributeAsk(f) + ' zlata a prímerie 15 dní)', () => { if (Math.random() < .5 + (facPower(a) / facPower(f) - 1.3) * .5 + G.s.pr * .05) { G.gold += tributeAsk(f); makeTruce(f, 15); rl(a, f, -10); lordsOf(f).forEach(e => lordMem(e, 'Prinútil si nás platiť tribút.', -3)); upd(); msg(FN[f] + ' platí tribút ' + tributeAsk(f) + ' zlata.', () => dipF(i, f)); } else { rl(a, f, -5); msg('Odmietli. Vraj radšej zomrú v boji.', () => dipF(i, f)); } }, 0, 'coins');
+        btn('Ponúknuť tribút za prímerie (' + tributeOffer(f) + ' zlata, 25 dní)', () => { G.gold -= tributeOffer(f); makeTruce(f, 25); rl(a, f, 10); upd(); msg('Prijali tvoje zlato. Na 25 dní je pokoj.', () => dipF(i, f)); }, G.gold < tributeOffer(f), 'coins');
+    }
+    if ((G.pri || []).some(p => p.f === f)) btn('Vymeniť zajatých lordov (' + G.pri.filter(p => p.f === f).length + ', vzťah +12, 40 zlata za každého)', () => { const n = exchangePrisoners(f); upd(); msg('Domov sa vrátilo ' + n + ' lordov. ' + FN[f] + ' posiela zlato a vďaku.', () => dipF(i, f)); }, 0, 'chain');
+    if (AL[a][f]) { const x = a0x.find(o => o !== f && o !== a && WR[a][o] && !WR[f][o]); if (x != null) btn('Navrhnúť spoločnú vojnu proti ' + FN[x], () => { if (REL[a][f] >= 50) { WR[f][x] = WR[x][f] = true; lg(FN[f] + ' na tvoju žiadosť vyhlásil vojnu ' + FN[x] + '.'); msg(FN[f] + ' vyhlasuje vojnu ' + FN[x] + '.', () => dipF(i, f)); } else msg('Spojenec váha – treba vzťah aspoň 50.', () => dipF(i, f)); }, 0, 'sword'); }
+    if (!WR[a][f]) {
+        btn(truceLeft(f) ? 'Vyhlásiť vojnu (porušíš prímerie: česť −5)' : 'Vyhlásiť vojnu', () => { if (truceLeft(f)) breakTruce(f); WR[a][f] = WR[f][a] = true; AL[a][f] = AL[f][a] = false; rl(a, f, -40); dipF(i, f); });
         if (!AL[a][f])
             btn('Navrhnúť spojenectvo', () => {
                 if (REL[a][f] >= 45 - Math.min(15, G.ren)) {

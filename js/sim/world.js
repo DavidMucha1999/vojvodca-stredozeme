@@ -27,7 +27,7 @@ function worldTick(dt) {
         else
             G.talk = null;
     }
-    const dx = G.tx - G.x, dy = G.ty - G.y, d = Math.hypot(dx, dy), v = it('m').v * (season() === 3 ? .85 : 1) * weatherSlow() * (isNight() ? .85 : 1) * (G.hungry ? .85 : 1) * (worldEv('winter') ? .9 : 1);   // hladná družina ide pomalšie
+    const dx = G.tx - G.x, dy = G.ty - G.y, d = Math.hypot(dx, dy), v = it('m').v * (season() === 3 ? .85 : 1) * weatherSlow() * (isNight() ? .85 : 1) * (G.hungry ? .85 : 1) * (worldEv('winter') ? .9 : 1) * (hasRole('stopar') ? 1.08 : 1);   // hladná družina ide pomalšie
     if (d > 3) {
         G.x += dx / d * v * dt;
         G.y += dy / d * v * dt;
@@ -152,6 +152,8 @@ function updMap(dt) {
     {
         const d = G.day;
         worldTick(dt);
+        realmTick(dt);   // poslovia a karavány na mape
+        fellTick(dt);    // okrídlená šelma (js/sim/bosses.js)
         if (G.day !== d)
             daily2();
         if (LETTERS.length && mode === 'map' && ov.classList.contains('hide')) readLetter();

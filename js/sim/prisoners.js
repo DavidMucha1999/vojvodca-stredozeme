@@ -24,6 +24,7 @@ function releasePrisoner(i, how) {
         const home = TW.find(t => t.f === p.f) || TW[0];
         E.push({ id: ++NID, x: home.x + 20, y: home.y + 30, f: p.f, n: 4 + Math.floor(Math.random() * 4), vx: 0, vy: 0, w: 0, nm: p.nm, kr: p.kr, home: TW.indexOf(home), role: 'army', rl: how === 'free' ? 12 : 0 });
     }
+    const ne = E[E.length - 1]; if (ne && ne.nm === p.nm) lordMem(ne, how === 'free' ? 'Prepustil si ma bez výkupného.' : how === 'ransom' ? 'Musel som zaplatiť výkupné.' : how === 'escape' ? 'Utiekol som ti zo žalára.' : 'Vrátil si ma domov.', how === 'free' ? 8 : how === 'ransom' ? -3 : 0);
     if (how === 'free') { G.hon = (G.hon || 0) + 3; if (p.f !== 9) rl(G.fac, p.f, 6); lg('Prepustil si ' + p.nm + ' bez výkupného. Česť +3.'); }
     if (how === 'ransom') lg(p.nm + ' bol vykúpený a vracia sa domov.');
     if (how === 'escape') lg(p.nm + ' utiekol zo zajatia!');

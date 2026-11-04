@@ -260,6 +260,47 @@ try {
     run(`G.tips = {}; town(0); var tipRow = document.getElementById("bt").children.some(c => /^Tip:/.test(c.textContent)); town(0); var tipOnce = document.getElementById("bt").children.filter(c => /^Tip:/.test(c.textContent)).length === 0;`);
     check('Tip pri prvom vstupe do hradu (len raz)', run('tipRow && tipOnce'));
     run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
+    // kráľovstvo (realm.js): prímerie, posol, karavána, stavby, vzbura, hlasovanie, pamäť lordov
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide"); LETTERS.length = 0;');
+    run(`G.fac = 6; G.king = 1; var tf = a0x.find(f => bloc(f) !== bloc(6) && TW.some(t => t.f === f)); WR[6][tf] = WR[tf][6] = true; REL[6][tf] = REL[tf][6] = -40; makeTruce(tf, 2); var tr1 = !WR[6][tf] && truceLeft(tf) === 2; G.day += 3; truceDaily(); var tr2 = WR[6][tf]; G.day -= 3;`);
+    check('Prímerie a obnovenie vojny', run('tr1 && tr2'));
+    run(`G.envs = [{ f: tf, offer: "peace", x: G.x + 30, y: G.y, from: "X" }]; realmTick(1); var envL = LETTERS.length && LETTERS[0].kind === "envoy"; readLetter(); var envDlg = document.getElementById("bt").children.some(b => /Prijať mier/.test(b.textContent));`);
+    check('Posol dorazí a prinesie ponuku', run('envL && envDlg'));
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
+    run(`TW.forEach(t => t.mine = 0); TW[0].mine = 1; TW[0].f = 6; G.gold = 1000; var cOk = sendCaravan(0); var car = G.cars[0]; car.x = TW[car.to].x; car.y = TW[car.to].y; var g0 = G.gold; realmTick(1); var paid = G.gold > g0 + 200;`);
+    check('Karavána dorazí a prinesie zisk', run('cOk && paid'), run('"zisk " + (G.gold - g0 - 200)'));
+    run(`var vv = VL.find(v => v.t === 0); vv.st = 0; vv.bd = { m: 1, p: 1 }; var gd = G.gold, md = (G.fd.meat || 0); villageDaily(); var vOk = G.gold === gd + 3 && G.fd.meat === md + 2;
+        G.tax = "high"; G.hon = -10; TW[0].pr = 10; TW[0].g = 5; TW[0].unrest = 11.5; var nE = E.length; unrestDaily(); var rebels = E.length === nE + 1 && /Vzbúrenci/.test(E[E.length - 1].nm); G.tax = "normal"; G.hon = 0;`);
+    check('Stavby v dedine a vzbura pri nespokojnosti', run('vOk && rebels'));
+    run(`var vs = E.filter(e => !e.nz && e.f !== 9).slice(0, 3); vs.forEach(e => { e.f = 6; e.dead = 0; }); TW[0].lord = 0; var fv = fiefVote(0); var fvOk = fv && TW[0].lord === fv.win.nm && fv.win.mem.length > 0;`);
+    check('Rada vazalov hlasuje o léne', run('fvOk'), run('fv && fv.votes'));
+    // spoločníci (fellowship.js): rola, osobná úloha, hádka
+    run(`G.comp = ["aragorn", "legolas", "gimli"]; G.cjoin = { aragorn: G.day - 9, legolas: G.day - 9, gimli: G.day - 9 }; G.cq = {}; G.crel = {}; var roleOk = hasRole("ranhojic") && hasRole("inzinier") && !hasRole("velitel");
+        fellowshipDaily(); var qStart = !!G.cq.aragorn; G.st.w = (G.cq.aragorn.w0 || 0) + 2; var done = compQuestVisit("Rivendell"); var qDone = !!G.cq.aragorn.done && done.length > 0;`);
+    check('Spoločníci: role a osobná úloha', run('roleOk && qStart && qDone'));
+    run(`LETTERS.length = 0; LETTERS.push({ kind: "quarrel", a: "legolas", b: "gimli", topic: "test" }); readLetter(); var qb = document.getElementById("bt").children.find(b => /^Dať za pravdu: Legolas/.test(b.textContent)); qb.onclick(); var qOk = G.crel.gimli < 60 && G.crel.legolas > 60;
+        G.crel.gimli = 5; mode = "map"; fellowshipDaily(); var left = !G.comp.includes("gimli");`);
+    check('Hádka v družine a odchod nespokojného', run('qOk && left'));
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide"); G.comp = []; G.king = 0;');
+    // výpravy (bosses.js, voyage.js, sidequests.js): bossovia, súboj, plavba, vedľajšie výpravy
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide"); G.relic = {}; G.inf = 20;');
+    for (const bk of ['balrog', 'trollking', 'fell', 'dragon']) {
+        run(`mode = "map"; ov.classList.add("hide"); bossBattle("${bk}"); var bo = U.find(u => u.boss); var atkSeen = 0, flew = 0; for (let k = 0; k < 900 && mode === "battle"; k++) { U[0].hp = 999; updBattle(1); if (bo.atk) atkSeen = 1; if (bo.fly > 0) flew = 1; }
+            var hp1 = bo.hp; bo.fly = 5; hit(bo, 100); var inv = bo.hp === hp1; bo.fly = 0; for (const u of U) if (u.t) u.hp = 0; var g0 = G.gold; var kb = 0; while (mode === "battle" && kb < 50) { U[0].hp = 999; updBattle(1); kb++; }`);
+        check('Boss ' + bk + ': útoky, odmena a relikvia', run(`atkSeen && relic("${bk}") && G.gold > g0 && inv && ("${bk}" !== "dragon" || flew)`), run('atkSeen + " " + flew + " " + inv'));
+        run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
+    }
+    run(`var de = E.find(e => hos(e.f, G.fac) && !e.nz && e.f !== 9 && e.nm) || E.find(e => !e.nz && e.f !== 9); de.f = [0,1,2,3,4,5,7,8].find(f => hos(f, G.fac)) ?? de.f; meetFoe(de, null); var meetDlg = document.getElementById("bt").children.some(b => /na súboj/.test(b.textContent));
+        ov.classList.add("hide"); duelLord(de); var duelU = U.filter(u => u.t).length === 1 && U.find(u => u.t).duelist; for (const u of U) if (u.t) u.hp = 0; var kd = 0; while (mode === "battle" && kd < 50) { U[0].hp = 999; updBattle(1); kd++; } var dWin = G.duel && G.duel.win === 1;
+        ov.classList.add("hide"); mode = "map"; startBattle(de); var mBroken = CMB.M[1] < CMB.M0[1] || CMB.M[1] <= 35; for (const u of U) if (u.t) u.hp = 0; kd = 0; while (mode === "battle" && kd < 50) { U[0].hp = 999; updBattle(1); kd++; }`);
+    check('Stretnutie a súboj veliteľov zlomí morálku nepriateľa', run('meetDlg && duelU && dWin && mBroken'));
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
+    run(`var pi = portIdx("Pelargir"), oi = portIdx("Osgiliath"); var hasPorts = portsFrom(pi).includes(oi) && !portsFrom(oi).includes(portIdx("Umbar")); G.gold = 2000; var d0 = G.day, g0 = G.gold; var sr = sail(pi, oi); var sOk = G.day > d0 && G.gold < g0 && Math.hypot(G.x - TW[oi].x, G.y - TW[oi].y) < 200;`);
+    check('Plavba medzi prístavmi', run('hasPorts && sOk'), run('sr.text'));
+    run(`G.sq = {}; G.wf = {}; var hi = portIdx("Hobitov"), bi = portIdx("Bree"); TW[hi].f = TW[bi].f = G.fac; ov.classList.add("hide"); mode = "map"; town(hi); var s0 = G.sq.kraj && G.sq.kraj.s === 1; ov.classList.add("hide"); mode = "map"; town(bi); var s1 = G.sq.kraj.s === 2; G.wf[9] = (G.wf[9] || 0) + 1; ov.classList.add("hide"); mode = "map"; town(hi);
+        var ch = document.getElementById("bt").children.find(b => /Naverbovať odvážnych hobitov/.test(b.textContent)); var i0 = G.inf; ch.onclick(); var sDone = G.sq.kraj.done && G.inf === i0 + 8;`);
+    check('Vedľajšia výprava: Tiene nad Krajom', run('s0 && s1 && sDone'));
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
 } catch (e) { fails++; console.log('CHYBA výnimka: ' + e.stack); }
 console.log(fails ? '\n' + fails + ' testov zlyhalo.' : '\nVšetky testy prešli.');
 process.exit(fails ? 1 : 0);

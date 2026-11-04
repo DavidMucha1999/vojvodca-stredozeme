@@ -10,7 +10,7 @@ const myComps = () => (G.comp || []).map(compDef).filter(Boolean);
 const compsAt = t => COMPANIONS.filter(c => c.at === t.n && c.side === heroSide() && !(G.comp || []).includes(c.id) && !(G.cgone || []).includes(c.id));
 function compJoin(c) {
     G.comp = G.comp || []; G.chp = G.chp || {};
-    G.comp.push(c.id); G.chp[c.id] = 1;
+    G.comp.push(c.id); G.chp[c.id] = 1; (G.cjoin = G.cjoin || {})[c.id] = G.day;
     lg(c.n + ' sa pridal k tvojej družine.');
     upd();
 }

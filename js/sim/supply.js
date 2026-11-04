@@ -25,7 +25,7 @@ const perk = id => !!(G && G.perk && G.perk[id]);
 const men = () => G.inf + G.cav + G.arc + G.elf + G.roh + G.vet + (G.ent || 0) + uS() + (G.comp || []).length;
 const foodTotal = () => Object.values(G.fd || {}).reduce((a, b) => a + b, 0);
 /** Porcie, ktoré družina zje za deň. */
-const foodNeed = () => Math.max(1, Math.ceil((men() + 1) / 6 * (perk('zasobovac') ? .75 : 1) * (typeof worldEv === 'function' && worldEv('winter') ? 1.5 : 1)));
+const foodNeed = () => Math.max(1, Math.ceil((men() + 1) / 6 * (perk('zasobovac') ? .75 : 1) * (typeof worldEv === 'function' && worldEv('winter') ? 1.5 : 1) * (typeof hasRole === 'function' && hasRole('zasobovac') ? .85 : 1)));
 /** Na koľko dní vystačia zásoby (lembas sa počíta za dvojnásobok). */
 const foodDays = () => Math.floor((foodTotal() + ((G.fd || {}).lembas || 0)) / foodNeed());
 /** Čo sa dá kúpiť na trhu miesta o: chlieb a nápoj všade, mäso a syr v hradoch a na statkoch, lembas v Lothlóriene. */
@@ -68,12 +68,12 @@ function supplyDaily() {
         if (lost) { lg('Pre nízku morálku z družiny zbehlo ' + lost + ' mužov.'); TS = { s: 'Zbehlo ' + lost + ' mužov – morálka družiny je nízka (' + G.pm + ').', l: 260 }; }
     }
     // hojenie ranených
-    const rate = (G.camp && G.stay ? .35 : .2) * (perk('ranhojic') ? 1.5 : 1);
+    const rate = (G.camp && G.stay ? .35 : .2) * (perk('ranhojic') ? 1.5 : 1) * (hasRole('ranhojic') ? 1.3 : 1);
     for (const k of Object.keys(G.wd)) { const h = Math.min(G.wd[k], Math.max(1, Math.round(G.wd[k] * rate))); G.wd[k] -= h; G[k] = (G[k] || 0) + h; if (G.wd[k] <= 0) delete G.wd[k]; }
 }
 /** Ranení po víťazstve: časť padlých vojakov hráča prežije a hojí sa (vojsko ich už odpočítalo). */
 function woundAfterBattle() {
-    const KK = { i: 'inf', c: 'cav', a: 'arc', v: 'vet', e: 'elf', r: 'roh', n: 'ent' }, rate = .35 + (perk('ranhojic') ? .25 : 0);
+    const KK = { i: 'inf', c: 'cav', a: 'arc', v: 'vet', e: 'elf', r: 'roh', n: 'ent' }, rate = .35 + (perk('ranhojic') ? .25 : 0) + (hasRole('ranhojic') ? .15 : 0);
     G.wd = G.wd || {};
     const dead = {};
     for (const u of U) if (!u.t && !u.h && !u.ally && !u.cp && fallen(u)) { const k = u.uk || KK[u.k]; if (k) dead[k] = (dead[k] || 0) + 1; }

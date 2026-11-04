@@ -74,4 +74,19 @@ Object.entries(TIPS).forEach(([fn, [id, s]]) => {
     const f0 = window[fn];
     window[fn] = function () { const r = f0.apply(this, arguments); tip(id, s); return r; };
 });
+// osobné úlohy spoločníkov sa plnia pri vstupe do hradu (js/sim/fellowship.js)
+if (typeof town === 'function') { const t0 = town; town = function (i) {
+    const r = t0.apply(this, arguments);
+    try {
+        const t = TW[i];
+        if (t && !hos(t.f, G.fac) && !ov.classList.contains('hide')) {
+            compQuestVisit(t.n).forEach(s => row(s, { color: '#9fe08a' }));   // osobné úlohy spoločníkov
+            sqVisit(t.n, () => town(i));                                        // vedľajšie výpravy (js/sim/sidequests.js)
+            if (PORTS[t.n] && portsFrom(i).length) btn('Prístav – plavba loďou', () => portMenu(i), 0, 'map');   // plavba (js/sim/voyage.js)
+        }
+    } catch (e) { }
+    return r;
+}; }
+if (typeof place === 'function') { const p0 = place; place = function (i, inScene) { const r = p0.apply(this, arguments); try { if (!ov.classList.contains('hide') && PLACES[i]) sqVisit(PLACES[i].n, inScene != null ? () => { ov.classList.add('hide'); mode = 'room'; } : () => { ov.classList.add('hide'); mode = 'map'; }); } catch (e) { } return r; }; }
+if (typeof questLog === 'function') { const q0 = questLog; questLog = function () { const r = q0.apply(this, arguments); try { if (mode === 'town') sqLogRows(); } catch (e) { } return r; }; }
 if (typeof market === 'function') { const m0 = market; market = function () { const r = m0.apply(this, arguments); tip('market', 'kupuj tovar tam, kde ho je veľa (lacno), a predávaj tam, kde chýba. Pestré jedlo dvíha morálku družiny.'); return r; }; }

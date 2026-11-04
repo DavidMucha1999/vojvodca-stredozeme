@@ -17,6 +17,8 @@ function villageElder(i, line) {
     if (!evil && !own && v.st <= 0) btn('Ponúknuť ochranu (30 zlata, prosperita a česť)', () => { G.gold -= 30; v.pr = Math.min(100, (v.pr ?? 40) + 8); G.hon = (G.hon || 0) + 1; G.ren++; upd(); villageElder(i, 'Nech ťa Valar ochraňujú, pane. Deti budú spať pokojnejšie.'); }, G.gold < 30, 'shield');
     if (own && v.st <= 0) btn('Vybrať mimoriadne dane (+' + lvl(v) * 6 + ' zlata, prosperita −5)', () => { G.gold += lvl(v) * 6; v.pr = Math.max(0, (v.pr ?? 40) - 5); upd(); villageElder(i, 'Ako prikážeš. Ale sýpky sú po tomto plytšie.'); }, 0, 'coins');
     if (evil && v.st <= 0) btn('Vymáhať poplatok (+' + (10 + lvl(v) * 4) + ' zlata, strach +1)', () => { G.gold += 10 + lvl(v) * 4; G.fear = (G.fear || 0) + 1; G.hon = (G.hon || 0) - 1; v.pr = Math.max(0, (v.pr ?? 40) - 4); upd(); villageElder(i, 'Hrr. Tu máš. Nabudúce nech ťa pošle sám Lugbúrz, inak nedám nič.'); }, 0, 'skull');
+    if (TW[v.t].mine && v.st <= 0) VBUILD.forEach(([k, n, cost, d]) => { if (!(v.bd && v.bd[k])) btn('Postaviť: ' + n + ' – ' + d + ' (' + cost + ' zlata)', () => { G.gold -= cost; v.bd = v.bd || {}; v.bd[k] = 1; lg('V dedine ' + v.n + ' stojí nová stavba: ' + n + '.'); upd(); villageElder(i, 'Ďakujeme, pane. ' + n + ' bude slúžiť celej dedine.'); }, G.gold < cost, 'village'); });
+    if (v.bd && Object.keys(v.bd).length) row('Stavby: ' + VBUILD.filter(([k]) => v.bd[k]).map(([, n]) => n).join(', ') + '.');
     if (v.st > 0 && G.gold >= 50) btn('Pomôcť s obnovou (50 zlata, dedina sa obnoví skôr)', () => { G.gold -= 50; v.st = Math.max(0, v.st - 3); G.hon = (G.hon || 0) + 2; upd(); villageElder(i, 'Kúpime drevo a tesárov. O pár dní tu zas bude stáť strecha. Nezabudneme ti to.'); }, 0, 'heart');
     btn('Späť', vBack, 0, 'back');
 }

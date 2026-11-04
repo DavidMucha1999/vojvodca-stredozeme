@@ -68,7 +68,7 @@ class UIScene extends Phaser.Scene {
     // ---------- Prekryvné efekty ----------------------------------------------------
     drawOverlay(scene, dt) {
         const g = this.g; g.clear();
-        if (TS && TS.l > 0 && G) { TS.l -= dt; this.toast.setVisible(!this.dlg).setText(TS.s).setAlpha(Math.min(1, TS.l / 40)).setY(scene === 'battle' ? 114 : 70); }
+        if (TS && TS.l > 0 && G) { TS.l -= dt; this.toast.setVisible(!this.dlg).setText(TS.s).setAlpha(Math.min(1, TS.l / 40)).setY(scene === 'battle' ? (typeof bossAlive === 'function' && bossAlive() ? 172 : 114) : 70); }
         else this.toast.setVisible(false);
         this.pause.setVisible(scene === 'map' && mode === 'map' && !!PAUSE && !this.dlg && !this.menu && !this.big);
         if (scene === 'map') {
@@ -117,6 +117,8 @@ class UIScene extends Phaser.Scene {
             this.cmbT[0].setPosition(18, 81).setText('Morálka – tvoje vojsko').setVisible(true);
             this.cmbT[1].setPosition(W - 18, 81).setText('Morálka – nepriateľ').setVisible(true);
         }
+        const bo = bossAlive();   // boss: veľká lišta zdravia s menom
+        if (bo) { g.fillStyle(0x000000, .65).fillRect(W / 2 - 152, 102, 304, 12); g.fillStyle(0x8a1a10, 1).fillRect(W / 2 - 150, 104, 300 * bo.hp / bo.mh, 8); g.fillStyle(0xff8a40, .5).fillRect(W / 2 - 150, 104, 300 * bo.hp / bo.mh, 3); if (!this.cmbT[3]) this.cmbT[3] = this.add.text(0, 0, '', txtStyle(12, '#ffb090', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5).setDepth(5); this.cmbT[3].setPosition(W / 2, 124).setText(BOSSES[bo.boss].n).setVisible(true); }
         const st = [C.charging ? 'NÁPOR!' : '', C.gb > 0 ? 'Kryt prelomený' : '', C.ammo0 ? 'Šípy: ' + C.ammo : '', C.cry > 0 ? '' : 'Pokrik (V) pripravený', 'Skupina: ' + GRP_N[C.sel]].filter(Boolean).join('   ');
         this.cmbT[2].setPosition(W / 2, 90).setText(st).setVisible(true);
     }

@@ -104,7 +104,7 @@ function lordTick(e, dt) {
     e.x = Math.max(10, Math.min(WW - 10, e.x + e.vx * dt));
     e.y = Math.max(10, Math.min(WH - 10, e.y + e.vy * dt));
     if (hos(e.f, G.fac) && pd < ENGAGE_R && mode === 'map' && !(G.safe > 0) && !sheltered) {
-        startBattle(e, e.fo && !hos(e.fo.f, G.fac) ? e.fo : null);
+        meetFoe(e, e.fo && !hos(e.fo.f, G.fac) ? e.fo : null);   // stretnutie: boj alebo súboj veliteľov (js/sim/bosses.js)
         return true;
     }
     if (G.talk === e && pd < 24 && mode === 'map') {

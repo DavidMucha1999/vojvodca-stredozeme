@@ -38,6 +38,7 @@ class PlaceScene extends IsoRoom {
             for (const [sx, sy] of [[FW - 60, 40], [FW - 110, 70], [60, FD - 60]]) { this.prop(sx, sy, (g, px, py) => { g.fillStyle(0x000000, .25).fillEllipse(px, py + 2, 44, 16); g.fillStyle(0x6a6a66, 1).fillEllipse(px, py - 34, 44, 70); g.fillStyle(0x4a4a46, 1).fillEllipse(px + 6, py - 50, 12, 9).fillEllipse(px - 10, py - 52, 10, 8); }); this.blocks.push([sx - 16, sy - 12, 32, 24]); }
             this.fires.push([FW / 2 + 60, FD / 2 + 40]);
             spots.push([10, FD / 2, 80, 110, 'Jaskyne', 0, [40, FD / 2]]);
+            if (P.id === 'trolls') spots.push([FW - 60, 40, 80, 80, 'Trón trollieho kráľa', 1, [FW - 60, 90]]);
         } else if (k === 'house') {   // dom Toma Bombadila: žltý dom so zelenou strechou, vŕby, kvety, Vrbovka vpredu
             this.water(0, FD - 36, FW, 36, '#2c5b73');
             this.doorAt = this.house(190, 30, 90, 56, 40, 0xe8d070, 0x7a9a3a, { rh: 30, ov: 8, doorCol: 0x3a6ad0, chimneyCol: 0x8a8a90 });

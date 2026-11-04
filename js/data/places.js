@@ -13,5 +13,7 @@ const PLACES = [
     { id: 'deadpaths', n: 'Cesty mŕtvych', x: 850, y: 1040, kind: 'door', cd: 999, d: 'Tmavá brána pod Dwimorbergom. Z hlbín sa ozýva hlas, ktorý čaká na dediča, čo zruší kliatbu.' },
     { id: 'carrock', n: 'Beornov dvor a Karrock', x: 985, y: 135, kind: 'homestead', cd: 6, d: 'Veľký drevený dom medzi úľmi a poliami. Gazda je zavalitý, mrzutý a v noci vraj chodí ako medveď.' },
     { id: 'isenfords', n: 'Brody na Isene', x: 650, y: 880, kind: 'ford', cd: 7, d: 'Plytký brod cez Isen, miesto starých bitiek. Hliadky Isengardu sem radi chodia na prepady.' },
+    { id: 'moriagate', n: 'Brána Morie', x: 760, y: 585, kind: 'door', cd: 3, d: 'Hladká skalná stena pod Caradhrasom a v nej obrysy zapečatenej brány. Z puklín stúpa teplý vzduch a občas zaznie hlboké dunenie.' },
+    { id: 'dragonmount', n: 'Dračia hora', x: 1290, y: 95, kind: 'cave', cd: 3, d: 'Spálené svahy Šedých hôr, kosti dobytka a jaskyňa, z ktorej vychádza sírový dym. Tu sa usadil drak Hrôzozub.' },
     { id: 'minasithil', n: 'Mŕtvy strom na Pelennore', x: 1345, y: 995, kind: 'tree', cd: 999, d: 'Pole pred Bielym mestom, kde sa rozhodovalo o osude Západu. V tráve ešte ležia zlomené kopije.' }
 ];

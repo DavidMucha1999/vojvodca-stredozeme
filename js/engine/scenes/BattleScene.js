@@ -140,6 +140,7 @@ class BattleScene extends Phaser.Scene {
                 if (o.state !== want) { o.state = want; o.spr.play(o.key + ':' + want); }
             }
             o.lc = u.c;
+            if (u.boss && !o.bossInit) { o.bossInit = 1; if (u.boss === 'trollking') o.spr.setScale(o.spr.scaleX * 1.7); else o.spr.setVisible(false); }   // bossovia: kráľ trollov je veľký troll, ostatných kreslí drawBoss
             o.spr.setPosition(u.x, u.y).setRotation(u.f).setDepth(u.y);
             if (o.flag) o.flag.setPosition(u.x - Math.cos(u.f) * u.r * .8, u.y - Math.sin(u.f) * u.r * .8 - u.r * 2.4).setDepth(u.y + .5);
         }
@@ -201,6 +202,47 @@ class BattleScene extends Phaser.Scene {
         g.lineStyle(1.5, 0xffe8a0, .35 + .2 * p).strokeCircle(h.x, h.y, 22 + 2 * Math.sin(tm / 7));
     }
 
+    /** Bossovia: ohlásený útok (červená plocha, ktorá sa plní), Balrog, drak a okrídlená šelma kreslené tvarmi. */
+    drawBoss(g, u) {
+        const A = u.atk;
+        if (A) {
+            const p = 1 - A.t / A.t0, col = A.fire ? 0xff5a10 : 0xd02010, al = .1 + .25 * p;
+            g.fillStyle(col, al); g.lineStyle(2, col, .5 + .4 * p);
+            if (A.k === 'circle') { g.fillCircle(A.x, A.y, A.r).strokeCircle(A.x, A.y, A.r); g.fillStyle(col, .25).fillCircle(A.x, A.y, A.r * p); }
+            else if (A.k === 'cone') { g.slice(A.x, A.y, A.len, A.a - A.w, A.a + A.w).fillPath(); g.slice(A.x, A.y, A.len, A.a - A.w, A.a + A.w).strokePath(); g.fillStyle(col, .25).slice(A.x, A.y, A.len * p, A.a - A.w, A.a + A.w).fillPath(); }
+            else { const a = Math.atan2(A.y2 - A.y, A.x2 - A.x), nx = -Math.sin(a) * A.w, ny = Math.cos(a) * A.w; g.fillPoints([{ x: A.x + nx, y: A.y + ny }, { x: A.x2 + nx, y: A.y2 + ny }, { x: A.x2 - nx, y: A.y2 - ny }, { x: A.x - nx, y: A.y - ny }], true); }
+        }
+        if (u.boss === 'trollking') { g.fillStyle(0xd9a441, 1).fillTriangle(u.x - 9, u.y - 30, u.x - 6, u.y - 40, u.x - 3, u.y - 30).fillTriangle(u.x - 3, u.y - 30, u.x, u.y - 43, u.x + 3, u.y - 30).fillTriangle(u.x + 3, u.y - 30, u.x + 6, u.y - 40, u.x + 9, u.y - 30).fillRect(u.x - 9, u.y - 31, 18, 3); return; }
+        const t = tm, f = u.f, c = Math.cos(f), s = Math.sin(f), P = (dx, dy) => ({ x: u.x + c * dx - s * dy, y: u.y + s * dx + c * dy });   // body v smere pohľadu
+        const air = u.fly > 0 ? 50 + Math.sin(t / 6) * 6 : u.boss === 'fell' ? 26 : 0;
+        g.fillStyle(0x000000, air ? .25 : .35).fillEllipse(u.x, u.y + 6, u.r * (air ? 3.4 : 2.4), u.r * (air ? 1.4 : 1));   // tieň na zemi
+        const yo = -air, flap = Math.sin(t / (u.boss === 'fell' ? 4 : 7)) * .35;
+        const wing = (side, len, col) => { const a = P(-4, 0), b = P(-u.r * .4 + Math.cos(flap) * 4, side * len), d = P(-u.r * 1.1, side * len * .7); g.fillStyle(col, .95).fillTriangle(a.x, a.y + yo, b.x, b.y + yo + side * flap * 10, d.x, d.y + yo); g.lineStyle(1.2, 0x000000, .5).lineBetween(a.x, a.y + yo, b.x, b.y + yo + side * flap * 10); };
+        if (u.boss === 'balrog') {
+            for (let k = 4; k >= 1; k--) g.fillStyle(k % 2 ? 0xff6a10 : 0xffa030, .07 + .03 * Math.sin(t / 3 + k)).fillCircle(u.x, u.y, u.r * (1 + k * .35));   // plamenná aura
+            wing(-1, u.r * 2.2, 0x1a0c08); wing(1, u.r * 2.2, 0x1a0c08);
+            const h = P(u.r * .55, 0); g.fillStyle(0x24120a, 1).fillEllipse(u.x, u.y, u.r * 1.5, u.r * 1.25); g.fillStyle(0x2e160c, 1).fillCircle(h.x, h.y, u.r * .5);
+            for (const sd of [-1, 1]) { const b = P(u.r * .7, sd * u.r * .45), e = P(u.r * .95, sd * u.r * .75); g.lineStyle(3, 0x0a0604, 1).lineBetween(b.x, b.y, e.x, e.y); }   // rohy
+            for (const sd of [-1, 1]) { const e = P(u.r * .8, sd * u.r * .18); g.fillStyle(0xffd040, .95).fillCircle(e.x, e.y, 2.2); }
+            for (let k = 0; k < 6; k++) { const a = t / 4 + k, r = u.r * (.7 + (k % 3) * .2); g.fillStyle(0xffb040, .6).fillTriangle(u.x + Math.cos(a) * r - 3, u.y + Math.sin(a) * r, u.x + Math.cos(a) * r, u.y + Math.sin(a) * r - 9 - (k % 2) * 5, u.x + Math.cos(a) * r + 3, u.y + Math.sin(a) * r); }
+            if (A && A.k === 'cone') { const w = P(A.len * (1 - A.t / A.t0), Math.sin(t / 2) * 10); g.lineStyle(3, 0xff8a20, .9).lineBetween(P(u.r * .4, u.r * .6).x, P(u.r * .4, u.r * .6).y, w.x, w.y); }   // ohnivý bič
+        } else if (u.boss === 'dragon') {
+            const col = 0x5a1e14, bel = 0x9a5a2a;
+            for (let k = 0; k < 5; k++) { const q = P(-u.r * (1 + k * .45), Math.sin(t / 8 + k) * 6); g.fillStyle(col, 1).fillCircle(q.x, q.y + yo, u.r * (.45 - k * .07)); }   // chvost
+            wing(-1, u.r * 2.6, 0x3a120c); wing(1, u.r * 2.6, 0x3a120c);
+            g.fillStyle(col, 1).fillEllipse(u.x, u.y + yo, u.r * 1.9, u.r * 1.1); g.fillStyle(bel, .8).fillEllipse(u.x, u.y + yo + 3, u.r * 1.2, u.r * .5);
+            const n = P(u.r * 1.1, 0), hd = P(u.r * 1.6, 0); g.fillStyle(col, 1).fillCircle(n.x, n.y + yo, u.r * .38).fillEllipse(hd.x, hd.y + yo, u.r * .9, u.r * .55);
+            for (const sd of [-1, 1]) { const e = P(u.r * 1.75, sd * u.r * .14); g.fillStyle(0xffe040, 1).fillCircle(e.x, e.y + yo, 2); }
+            if (A && A.k === 'cone' && A.t < 14) for (let k = 0; k < 14; k++) { const d = A.len * k / 14, q = P(u.r * 1.8 + d, (Math.random() - .5) * d * .55); g.fillStyle(k % 2 ? 0xffa020 : 0xff5010, .7).fillCircle(q.x, q.y, 4 + d * .05); }   // oheň z tlamy
+        } else if (u.boss === 'fell') {
+            wing(-1, u.r * 2.8, 0x14141a); wing(1, u.r * 2.8, 0x14141a);
+            g.fillStyle(0x1a1a20, 1).fillEllipse(u.x, u.y + yo, u.r * 1.6, u.r * .8);
+            const hd = P(u.r * 1.1, 0); g.fillStyle(0x24242a, 1).fillEllipse(hd.x, hd.y + yo, u.r * .7, u.r * .4);
+            g.fillStyle(0x050508, 1).fillCircle(u.x, u.y + yo - 8, 5); g.fillStyle(0x0a0a10, 1).fillTriangle(u.x - 5, u.y + yo - 8, u.x, u.y + yo - 20, u.x + 5, u.y + yo - 8);   // jazdec v kapucni
+            g.fillStyle(0xff3020, .8).fillCircle(u.x + 1, u.y + yo - 9, 1.2);
+        }
+    }
+
     /** Nový boj: oblúk sekania a bodnutia, nápor, kryt, varovanie pred úderom nepriateľa, veliteľ, utekajúci a zapotácaní. */
     drawCombat(g) {
         const h = U[0], C = CMB, sw = C.swing;
@@ -220,6 +262,7 @@ class BattleScene extends Phaser.Scene {
             const arc = C.shp > 0 ? (perk('stit') ? 1.7 : 1.4) : .85;
             g.lineStyle(C.shp > 0 ? 4 : 2.5, C.shp > 0 ? 0xc8d8ff : 0xffffff, .75).beginPath().arc(h.x, h.y, h.r + 8, h.f - arc, h.f + arc).strokePath();
         }
+        for (const u of U) if (u.boss && u.hp > 0) this.drawBoss(g, u);
         for (const u of U) {
             if (u.hp <= 0) continue;
             if (u.wu > 0 && u.wu0 && (u.t || u.wt === h) && Math.hypot(u.x - h.x, u.y - h.y) < 240) {   // nápriah: červený oblúk rastie do úderu
@@ -235,7 +278,7 @@ class BattleScene extends Phaser.Scene {
     drawFx() {
         const g = this.fx; g.clear();
         for (const [u, o] of this.units) if (o.flag) g.lineStyle(1.5, 0x3a2a1a, 1).lineBetween(o.flag.x, o.flag.y, o.flag.x, o.flag.y + u.r * 2.6);
-        for (const u of U) if (u.hp > 0 && !u.h && u.hp < u.mh) {
+        for (const u of U) if (u.hp > 0 && !u.h && !u.boss && u.hp < u.mh) {
             g.fillStyle(0x000000, 1).fillRect(u.x - 7, u.y - u.r - 6, 14, 3);
             g.fillStyle(u.t ? 0xc0392b : 0x6fbf5a, 1).fillRect(u.x - 7, u.y - u.r - 6, 14 * u.hp / u.mh, 3);
         }

@@ -50,7 +50,7 @@ function siegeDaily() {
         const bs = besiegers(i), me = playerBesieging(i);
         if (!bs.length && !me) { lg('Obliehanie hradu ' + t.n + ' sa skončilo – obliehatelia odtiahli.'); t.sg = null; if (G.besiege === i) G.besiege = -1; return; }
         // práca na technike
-        const men = Math.min(SIEGE_DAY_WORK, siegeMen(i)), k = s.lead === 'G' ? s.build : aiBuild(t);
+        const men = Math.min(SIEGE_DAY_WORK, siegeMen(i)) * (s.lead === 'G' && hasRole('inzinier') ? 1.3 : 1), k = s.lead === 'G' ? s.build : aiBuild(t);
         if (k && !s[k]) {
             s.w[k] = (s.w[k] || 0) + men;
             if (s.w[k] >= SIEGE_WORK[k]) { s[k] = 1; if (s.lead === 'G' || me) TS = { s: 'Pri ' + t.n + ' je hotová technika: ' + SIEGE_NAME[k] + '.', l: 320 }; if (s.lead === 'G') { s.build = !s.lad ? 'lad' : !s.ram ? 'ram' : !s.tow ? 'tow' : null; } }

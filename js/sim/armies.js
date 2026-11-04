@@ -39,7 +39,7 @@ function spawnX() {
     E.forEach(e => {
         if (e.f === 9)
             VL.forEach(v => {
-                if (!v.st && Math.hypot(v.x - e.x, v.y - e.y) < 120) {
+                if (!v.st && Math.hypot(v.x - e.x, v.y - e.y) < 120 && !(v.bd && v.bd.w && Math.random() < .8)) {   // palisáda
                     v.st = 6;
                     lg(e.nm + ' vyplienil dedinu ' + v.n + '.');
                 }

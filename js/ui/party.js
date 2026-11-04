@@ -33,6 +33,7 @@ function party(back, tab) {
             const hp = Math.round((G.chp && G.chp[c.id] != null ? G.chp[c.id] : 1) * 100), w = G.cwound && G.cwound[c.id] > G.day, lv = compLv(c), xp = (G.cxp || {})[c.id] || 0, k = (G.ckills || {})[c.id] || 0;
             let pic = null; try { pic = { canvas: Portraits.canvas(c.look, 34), key: 'ico_por_c_' + c.id }; } catch (e) { }
             row(c.n + ' · ' + c.t + ' · úroveň ' + lv + ' (' + (xp % 40) + '/40) · zdravie ' + hp + ' %' + (w ? ' · ranený, zotaví sa o ' + (G.cwound[c.id] - G.day) + ' d.' : '') + ' · zabití: ' + k, { gold: 1, icon: pic });
+            row('Rola: ' + (CROLE[c.id] || []).map(r => ROLE_N[r] + ' – ' + ROLE_D[r]).join('; ') + ' · spokojnosť ' + Math.round(crel(c.id)) + '/100' + (CQUEST[c.id] && G.cq && G.cq[c.id] ? (G.cq[c.id].done ? ' · osobná úloha splnená' : ' · úloha: ' + CQUEST[c.id].t + ' (víťazstvá ' + Math.min(CQUEST[c.id].w, ((G.st || {}).w || 0) - G.cq[c.id].w0) + '/' + CQUEST[c.id].w + ', potom vstúp do hradu ' + CQUEST[c.id].a + ')') : ''));
             const m = (G.cmount || {})[c.id];
             row('Sila: zdravie ' + Math.round(c.hp * compBonus(c)) + ', útok ' + Math.round(c.d * compBonus(c)) + ', rýchlosť ' + c.sp.toFixed(1) + (c.archer ? ', lukostrelec' : ', bojovník zblízka') + (m ? ', na koni (' + SH.find(x => x.k === 'm').it[m].n + ')' : '') + '.', { dim: 1 });
             btn('Rozhovor', () => compTalk(c, fromMap ? null : back), 0, 'talk');

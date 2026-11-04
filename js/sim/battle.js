@@ -86,7 +86,7 @@ function sideLosses(win, L) {
         e.n = Math.max(0, e.n - e.n * dead / us.length * .9);
         if (BSIDES.foes.includes(e) && win) e.n *= .85;   // porazení pomocníci nepriateľa sa rozpŕchnu
         if (e.n < 1) e.dead = 1;
-        if (BSIDES.allies.includes(e)) { e.rl = (e.rl || 0) + 4; rl(G.fac, e.f, 2); }
+        if (BSIDES.allies.includes(e)) { e.rl = (e.rl || 0) + 4; rl(G.fac, e.f, 2); lordMem(e, 'Bojovali sme bok po boku' + (LB && LB.nm ? ' proti ' + LB.nm : '') + '.'); }
     }
     if (L.def != null && BSIDES.gUnits) { const t = TW[L.def], gu = U.filter(u => u.garrison), dead = gu.filter(fallen).length; t.g = Math.max(2, Math.round(t.g * (1 - dead / gu.length * .9))); }
     if ((L.siege || L.sortie != null) && L.t) {   // preživší obrancovia sa vrátia za hradby
@@ -125,6 +125,7 @@ function battleReport(win) {
 /** Chrám v niektorom z tvojich hradov: tvoji vojaci sú pevnejší (o 10 % menej zranení). */
 const temple = () => TW.some(t => t.mine && t.bd && t.bd.c);
 function hit(b, d, from) {
+    if (b.fly > 0) return;   // drak vo vzduchu
     const was = b.hp > 0;
     if (from && onHill(from) && !onHill(b)) d *= 1.15;   // útok z kopca
     if (from && !from.t && !from.h && perk('taktik')) d *= 1.1;   // perk Taktik
@@ -173,6 +174,7 @@ function startBattle(en, al) {
     }
     else
         SGB = null;
+    if (en.boss) { if (!BOSSES[en.boss].minions) U = U.filter(u => !u.t); U.push(makeBoss(en.boss)); }   // boss (js/sim/bosses.js)
     cmbStart(en);   // morálka, veliteľ, výdrž, štít a šípy hrdinu (js/sim/combat.js)
 }
 function endBattle(win) {
@@ -180,6 +182,7 @@ function endBattle(win) {
     SGB = null;
     const L = LB;
     if (!L.ar) { sideLosses(win, L); if (!win) siegeLost(L); }
+    if (L.duel) { compAfterBattle(); return duelEnd(win, L); }   // súboj veliteľov (js/sim/bosses.js)
     if (L.ar) {   // turnaj v aréne
         mode = 'over';
         od.style.display = 'none';
@@ -313,6 +316,8 @@ function endBattle(win) {
                 G.pmv = Math.min(20, (G.pmv || 0) + 8); G.pm = Math.min(100, (G.pm ?? 60) + 4);   // víťazstvo dvíha morálku družiny
                 if (perk('slavny')) G.ren++;
                 const wnd = woundAfterBattle();
+                (G.wf = G.wf || {})[LB.f] = (G.wf[LB.f] || 0) + 1;   // víťazstvá proti frakciám (vedľajšie výpravy)
+                const bossTxt = LB.boss ? ' ' + bossReward(LB.boss) : '';
                 if (G.king && G.ren >= 30 && !G.endK) {   // kráľ so slávou 30: koniec hry (raz), potom sa dá hrať ďalej
                     G.endK = 1;
                     ending('king');
@@ -320,7 +325,7 @@ function endBattle(win) {
                     afterBattleFlags(win, L);
                     return;
                 }
-                show('Víťazstvo', 'Padlo ' + (dI + dC) + ' tvojich mužov' + (wnd ? ' (z padlých ' + wnd + ' prežilo ranených – vrátia sa po vyliečení)' : '') + '. Korisť: ' + loot + ' zlata.' + lv);
+                show('Víťazstvo', 'Padlo ' + (dI + dC) + ' tvojich mužov' + (wnd ? ' (z padlých ' + wnd + ' prežilo ranených – vrátia sa po vyliečení)' : '') + '. Korisť: ' + loot + ' zlata.' + lv + bossTxt);
                 battleReport(true);
                 const L = LB;
                 if (!L.siege)
@@ -336,10 +341,10 @@ function endBattle(win) {
                     rl(G.fac, L.al.f, 10);
                     L.al.rl = (L.al.rl || 0) + 15;
                 }
-                if (L.nm && !L.siege) {
+                if (L.nm && !L.siege && !L.boss) {
                     btn('Zajať veliteľa ' + L.nm + ' (výkupné)', () => { capturePrisoner(L); ov.classList.add('hide'); mode = 'map'; upd(); }, 0, 'chain');
-                    btn('Popraviť', () => { rl(G.fac, L.f, -18); ov.classList.add('hide'); mode = 'map'; });
-                    btn('Prepustiť (vzťah +8)', () => { rl(G.fac, L.f, 8); G.ren++; ov.classList.add('hide'); mode = 'map'; upd(); });
+                    btn('Popraviť', () => { rl(G.fac, L.f, -18); lordsOf(L.f).forEach(e => lordMem(e, 'Popravil si ' + L.nm + '.', -8)); ov.classList.add('hide'); mode = 'map'; });
+                    btn('Prepustiť (vzťah +8)', () => { rl(G.fac, L.f, 8); lordsOf(L.f).forEach(e => lordMem(e, 'Prepustil si ' + L.nm + ' po bitke.', 2)); G.ren++; ov.classList.add('hide'); mode = 'map'; upd(); });
                 }
                 else {
                     rl(G.fac, L.f, -10);
@@ -376,6 +381,7 @@ function endBattle(win) {
 /** Po každej bitke: česť a strach za rabovanie, popravu a prepustenie (doplní sa k tlačidlám okna). */
 function afterBattleFlags(win, L) {
     if (win && L.vil) {
+        lordsOf(TW[L.vil.t].f).forEach(e => lordMem(e, 'Vyplienil si dedinu ' + L.vil.n + '.', -4));
         G.hon = (G.hon || 0) - 3;
         G.fear = (G.fear || 0) + 2;
     }
@@ -423,6 +429,7 @@ function updBattle(dt) {
             u.sp = u.bs * fieldSlow(u);
             if (u.rout) { cmbFlee(u, dt); continue; }
             if (u.stun > 0) { u.stun -= dt; continue; }
+            if (u.boss) { let bt = null, bd2 = 1e9; for (const v of U) if (v.t !== u.t && v.hp > 0) { const d = Math.hypot(v.x - u.x, v.y - u.y) * (v.h ? .8 : 1); if (d < bd2) { bd2 = d; bt = v; } } bossAI(u, bt, dt); continue; }
             if (u.h) {
                 let mx = 0, my = 0;
                 if (keys.ArrowLeft || keys.a)

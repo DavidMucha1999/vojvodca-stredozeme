@@ -49,9 +49,10 @@ function cmbStart(en) {
     Object.assign(C, { blk: 0, blkT: 99, gb: 0, st: 100, run: 0, lastA: null, chg: 0, charging: 0, bowC: 0, cry: 0, swing: null, sel: 'all', endT: 0, lmb: 0, rmb: 0, said: {}, noRout: en && en.ar ? 1 : 0 });
     const mine = U.filter(u => !u.t), foe = U.filter(u => u.t), pw = s => s.reduce((a, u) => a + u.mh * (u.d || 5), 0) + 1, r = pw(mine) / pw(foe);
     const cl = v => Math.max(-18, Math.min(18, v));
-    const m0 = 62 + cl((r - 1) * 12) + Math.min(12, G.lv || 1) + (G.king ? 5 : 0) + Math.min(6, (G.ren || 0) / 3) + ((G.pm ?? 60) - 50) * .3 + (perk('vodca') ? 8 : 0);   // morálka družiny a Charizma
+    const m0 = 62 + cl((r - 1) * 12) + Math.min(12, G.lv || 1) + (G.king ? 5 : 0) + Math.min(6, (G.ren || 0) / 3) + ((G.pm ?? 60) - 50) * .3 + (perk('vodca') ? 8 : 0) + (hasRole('velitel') ? 6 : 0);   // morálka družiny, Charizma, spoločník veliteľ
     const m1 = 62 + cl((1 / r - 1) * 12) - Math.min(15, (G.fear || 0) * 1.2) + (en && en.nz ? 40 : 0) + (en && en.siege ? 10 : 0);
-    C.M = [Math.min(95, m0), Math.max(25, Math.min(95, m1))]; C.M0 = C.M.slice(); C.n0 = [mine.length, foe.length];
+    C.M = [Math.min(95, m0), Math.max(25, Math.min(95, m1 - (relic('fell') ? 8 : 0)))];
+    if (G.duel && en && en.id === G.duel.id && !en.duel) { if (G.duel.win) C.M[1] = Math.max(10, C.M[1] - 30); else C.M[0] = Math.max(10, C.M[0] - 25); G.duel = null; }   // výsledok súboja veliteľov C.M0 = C.M.slice(); C.n0 = [mine.length, foe.length];
     C.shMax = heroShield() ? Math.round((70 + it('s').v * 500) * (perk('stit') ? 1.6 : 1)) : 0; C.shp = C.shMax;
     C.ammo = C.ammo0 = G.s.ls >= 1 || G.race === 'elf' || perk('konilu') ? 6 + 4 * G.s.ls + (G.race === 'elf' ? 4 : 0) + (perk('konilu') ? 6 : 0) : 0;
     const o0 = G.ord0 || 'a'; C.og = { p: o0, l: o0, j: o0 };
@@ -211,6 +212,7 @@ function cmbDeath(b) {
     if (b.h || b.fled) return;
     const s = b.t ? 1 : 0, C = CMB, loss = 85 / Math.max(8, C.n0[s]) * (b.uk || b.cp ? 1.3 : 1) * (heavy(b) ? 2 : 1);
     C.M[s] = Math.max(0, C.M[s] - loss); C.M[1 - s] = Math.min(100, C.M[1 - s] + loss * .3);
+    if (b.boss) C.M[1] = Math.max(0, C.M[1] - 40);
     if (b.cmd) { C.M[1] = Math.max(0, C.M[1] - 25); TS = { s: 'Nepriateľský veliteľ padol! Morálka nepriateľa sa láme.', l: 160 }; }
     if (b.cp) C.M[0] = Math.max(0, C.M[0] - 8);
 }

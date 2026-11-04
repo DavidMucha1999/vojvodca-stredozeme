@@ -470,6 +470,14 @@ class MapScene extends Phaser.Scene {
             for (const s of [-1, 1]) { const fx = t.x + s * dw * .14, fy = t.y - dh * .08, f = 1 + .25 * Math.sin(tm / 2.3 + s + i); g.fillStyle(0xff8a20, .2 * a).fillCircle(fx, fy, 12 * f); g.fillStyle(0xffe08a, .9 * a).fillCircle(fx, fy, 2.2 * f); } }
           if (!lowFx()) { const rp = riverPoints(); for (let i = 0; i < rp.length; i += 2) { const [x, y] = rp[i]; if (Math.abs(x - cx) > rr || Math.abs(y - cy) > rr) continue;
             const sh = Math.sin(tm / 9 + i * .7); if (sh > .55) g.fillStyle(nn > .4 ? 0xdfe8ff : 0xffffff, (sh - .55) * (nn > .4 ? .9 : .7)).fillEllipse(x + Math.sin(tm / 20 + i) * 8, y, 12, 2.4); } } }
+        // Nazgûl na okrídlenej šelme: tieň na zemi a tmavé krídla nad ním (js/sim/bosses.js)
+        if (G.fell) { const F = G.fell, a = Math.atan2(G.y - F.y, G.x - F.x), fl = Math.sin(tm / 4) * 10, c = Math.cos(a), s = Math.sin(a);
+            g.fillStyle(0x000000, .28).fillEllipse(F.x, F.y + 40, 90, 30);
+            for (const sd of [-1, 1]) g.fillStyle(0x121218, .95).fillTriangle(F.x, F.y - 30, F.x - c * 30 - s * sd * 80, F.y - 30 - s * 30 + c * sd * 80 + fl * sd, F.x - c * 50, F.y - 30 - s * 50);
+            g.fillStyle(0x1a1a20, 1).fillEllipse(F.x, F.y - 30, 44, 20); g.fillStyle(0xff3020, .9).fillCircle(F.x + c * 12, F.y - 36 + s * 12, 2.5); }
+        // poslovia a karavány (js/sim/realm.js)
+        for (const v of G.envs || []) { const b = Math.sin(tm / 3) * 1.5; g.fillStyle(0x000000, .3).fillEllipse(v.x, v.y + 6, 16, 5); g.fillStyle(0x6a4a2a, 1).fillEllipse(v.x, v.y + b, 14, 7); g.fillStyle(0xe8d8b0, 1).fillCircle(v.x + 2, v.y - 7 + b, 3.4); g.lineStyle(1.5, 0x3a2a1a, 1).lineBetween(v.x - 4, v.y - 4 + b, v.x - 4, v.y - 24 + b); g.fillStyle(hex(FC[v.f]), 1).fillTriangle(v.x - 4, v.y - 24 + b, v.x + 9, v.y - 20 + b, v.x - 4, v.y - 16 + b); }
+        for (const c of G.cars || []) { g.fillStyle(0x000000, .3).fillEllipse(c.x, c.y + 7, 22, 6); g.fillStyle(0x8a5a30, 1).fillRect(c.x - 9, c.y - 6, 18, 9); g.fillStyle(0xe8d8b0, 1).fillRect(c.x - 8, c.y - 11, 16, 6); g.fillStyle(0x3a2a1a, 1).fillCircle(c.x - 6, c.y + 4, 3).fillCircle(c.x + 6, c.y + 4, 3); g.fillStyle(0xffd24a, 1).fillCircle(c.x, c.y - 13, 2); }
         // prach pod armádami na pochode
         if (!lowFx()) for (const e of E) if ((e.vx || e.vy) && Math.hypot(e.x - G.x, e.y - G.y) < 900) for (let k = 1; k < 3 + Math.min(3, e.n / 10); k++) g.fillStyle(regionAt(e.x, e.y) === 's' ? 0xffffff : 0xc8b48c, .16 - k * .03).fillCircle(e.x - e.vx * k * 9 + Math.sin(tm / 3 + k) * 2, e.y - e.vy * k * 9 + 8, 4 + k * .4);
         this.drawSieges(g);
