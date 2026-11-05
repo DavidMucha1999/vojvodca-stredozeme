@@ -157,28 +157,66 @@ const B3 = (() => {
     /** Z tvarovaného tela poskladá geometriu pre Part (farba a materiál podľa oblasti); kov a látka zvlášť kvôli dvom materiálom. */
     function sdfGeos(M, colorOf) {
         const t = T(), out = [];
-        for (const metal of [false, true]) {
-            const tri = []; for (let i = 0; i < M.I.length; i += 3) { const a = M.I[i], r = colorOf(M.main[a], M.P[a * 3 + 1], M.P[a * 3 + 2]); if (!!r[2] === metal) tri.push(M.I[i], M.I[i + 1], M.I[i + 2]); }
+        for (const grp of [0, 1, 2]) {   // 0 látka a koža (farby vrcholov), 1 kov, 2 textúra modelu
+            const metal = grp === 1, tri = []; for (let i = 0; i < M.I.length; i += 3) { const a = M.I[i], r = colorOf(M.main[a], M.P[a * 3 + 1], M.P[a * 3 + 2]); if ((r[3] ? 2 : r[2] ? 1 : 0) === grp) tri.push(M.I[i], M.I[i + 1], M.I[i + 2]); }
             if (!tri.length) continue;
             const n = tri.length, pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3), mt = new Float32Array(n), si = new Uint16Array(n * 4), sw = new Float32Array(n * 4), c = new t.Color(), uv = M.UV ? new Float32Array(n * 2) : null;
             tri.forEach((v, k) => { pos.set([M.P[v * 3], M.P[v * 3 + 1], M.P[v * 3 + 2]], k * 3); if (uv) { uv[k * 2] = M.UV[v * 2]; uv[k * 2 + 1] = M.UV[v * 2 + 1]; } nor.set([M.N[v * 3], M.N[v * 3 + 1], M.N[v * 3 + 2]], k * 3); const r = colorOf(M.main[v], M.P[v * 3 + 1], M.P[v * 3 + 2]); c.set(r[0]); col.set([c.r, c.g, c.b], k * 3); mt[k] = r[1]; si.set(M.si.subarray(v * 4, v * 4 + 4), k * 4); sw.set(M.sw.subarray(v * 4, v * 4 + 4), k * 4); });
             const g = new t.BufferGeometry(); g.setAttribute('position', new t.BufferAttribute(pos, 3)); g.setAttribute('normal', new t.BufferAttribute(nor, 3)); g.setAttribute('color', new t.BufferAttribute(col, 3)); g.setAttribute('aMat', new t.BufferAttribute(mt, 1)); g.setAttribute('skinIndex', new t.Uint16BufferAttribute(si, 4)); g.setAttribute('skinWeight', new t.BufferAttribute(sw, 4)); if (uv) g.setAttribute('uv', new t.BufferAttribute(uv, 2));
-            out.push([g, metal]);
+            out.push([g, metal, grp === 2]);
         }
         return out;
     }
     // ---------- telo človeka z modelu (Meshy, import tools/model_import.py → js/data/model_clovek.js) ----------
     /** Modely postáv podľa rasy (z Meshy cez tools/model_import.py): človek a ork. Vypínajú sa v Nastaveniach (Telá v 3D). */
-    const MODELS = { human: () => typeof MODEL_CLOVEK !== 'undefined' ? MODEL_CLOVEK : null, orc: () => typeof MODEL_ORK !== 'undefined' ? MODEL_ORK : null };
-    const modelOf = race => (typeof OPT !== 'undefined' && OPT.modelHuman === false) ? null : (MODELS[race] ? MODELS[race]() : null);
+    const MODELS = {
+        human: () => typeof MODEL_CLOVEK !== 'undefined' ? MODEL_CLOVEK : null, orc: () => typeof MODEL_ORK !== 'undefined' ? MODEL_ORK : null, elf: () => typeof MODEL_ELF !== 'undefined' ? MODEL_ELF : null,
+        hobbit: () => typeof MODEL_HOBIT !== 'undefined' ? MODEL_HOBIT : null, dwarf: () => typeof MODEL_TRPASLIK !== 'undefined' ? MODEL_TRPASLIK : null, uruk: () => typeof MODEL_URUK !== 'undefined' ? MODEL_URUK : null,
+        troll: () => typeof MODEL_TROL !== 'undefined' ? MODEL_TROL : null, wraith: () => typeof MODEL_NAZGUL !== 'undefined' ? MODEL_NAZGUL : null, trollking: () => typeof MODEL_KRAL_TROLOV !== 'undefined' ? MODEL_KRAL_TROLOV : null,
+        varg: () => typeof MODEL_VARG !== 'undefined' ? MODEL_VARG : null, oliphant: () => typeof MODEL_OLIFANT !== 'undefined' ? MODEL_OLIFANT : null, ent: () => typeof MODEL_ENT !== 'undefined' ? MODEL_ENT : null,
+        dragon: () => typeof MODEL_DRAK !== 'undefined' ? MODEL_DRAK : null, balrog: () => typeof MODEL_BALROG !== 'undefined' ? MODEL_BALROG : null, fell: () => typeof MODEL_BESTIA !== 'undefined' ? MODEL_BESTIA : null
+    };
+    const modelOf0 = k => MODELS[k] ? MODELS[k]() : null;
+    const modelOf = race => (typeof OPT !== 'undefined' && OPT.modelHuman === false) ? null : modelOf0(race);
+    /** Atlas textúr všetkých modelov (4×4 políčka po 512 px) – jeden materiál pre všetky textúrované telá, aj pre vzdialené zástupy. */
+    let ATLAS = null;
+    function atlas() {
+        if (ATLAS) return ATLAS;
+        const t = T(), names = Object.keys(MODELS).filter(k => modelOf0(k) && modelOf0(k).tex), c = document.createElement('canvas'); c.width = c.height = 2048;
+        const x = c.getContext('2d'); x.fillStyle = '#8a8078'; x.fillRect(0, 0, 2048, 2048);
+        const tex = new t.CanvasTexture(c); tex.colorSpace = t.SRGBColorSpace; tex.flipY = false; tex.anisotropy = 4; const slots = {};
+        const ready = Promise.all(names.map((k, i) => new Promise(res => { slots[k] = i; const im = new Image(); im.onload = () => { x.drawImage(im, (i % 4) * 512, (i >> 2) * 512, 512, 512); tex.needsUpdate = true; res(); }; im.onerror = res; im.src = modelOf0(k).tex; })));
+        return (ATLAS = { tex, slots, ready });
+    }
+    /** Rozbalí model (pozície ×100, trojuholníky, UV do atlasu) a dopočíta normály. */
+    function decodeModel(M0, key, low, scale = 1) {
+        const dec = (b64, Tp) => { const s2 = atob(b64), u8 = new Uint8Array(s2.length); for (let i = 0; i < s2.length; i++) u8[i] = s2.charCodeAt(i); return new Tp(u8.buffer); };
+        const Pq = dec(low ? M0.pl : M0.p, Int16Array), I = Array.from(dec(low ? M0.il : M0.i, Uint16Array)), n = Pq.length / 3, P = new Float32Array(n * 3);
+        for (let i = 0; i < P.length; i++) P[i] = Pq[i] / 100 * scale;
+        let UV = null; if (M0.uv && !low) { const q = dec(M0.uv, Uint16Array), sl = atlas().slots[key] || 0, ox = sl % 4, oy = sl >> 2; UV = new Float32Array(q.length); for (let i = 0; i < q.length; i += 2) { UV[i] = (q[i] / 10000 + ox) / 4; UV[i + 1] = (q[i + 1] / 10000 + oy) / 4; } }
+        const N = new Float32Array(n * 3);
+        for (let i = 0; i < I.length; i += 3) { const a = I[i] * 3, b = I[i + 1] * 3, c = I[i + 2] * 3, ux = P[b] - P[a], uy = P[b + 1] - P[a + 1], uz = P[b + 2] - P[a + 2], vx = P[c] - P[a], vy = P[c + 1] - P[a + 1], vz = P[c + 2] - P[a + 2], nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; for (const v of [a, b, c]) { N[v] += nx; N[v + 1] += ny; N[v + 2] += nz; } }
+        for (let v = 0; v < N.length; v += 3) { const l = Math.hypot(N[v], N[v + 1], N[v + 2]) || 1; N[v] /= l; N[v + 1] /= l; N[v + 2] /= l; }
+        return { P, N, I, n, UV };
+    }
+    /** Váhy kostí podľa vzdialenosti od úsečiek kostí (dve najbližšie, plynulé kĺby). */
+    function skinBySegs(M, segs, BN, pw = 4) {
+        const { P, n } = M, si = new Uint16Array(n * 4), sw = new Float32Array(n * 4), main = new Array(n);
+        for (let v = 0; v < n; v++) {
+            const x = P[v * 3], y = P[v * 3 + 1], z = P[v * 3 + 2]; let b1 = -1, d1 = 1e9, b2 = -1, d2 = 1e9;
+            for (const g of segs) { const d = Math.max(.05, SDF.cap(x, y, z, g[1], g[2], 0, 0)), bi = BN.idx[g[0]]; if (bi === b1) { d1 = Math.min(d1, d); continue; } if (d < d1) { b2 = b1; d2 = d1; b1 = bi; d1 = d; } else if (d < d2 && bi !== b1) { b2 = bi; d2 = d; } }
+            const w1 = 1 / Math.pow(d1, pw), w2 = b2 >= 0 ? 1 / Math.pow(d2, pw) : 0, sm = w1 + w2; si[v * 4] = b1; sw[v * 4] = w1 / sm; if (b2 >= 0) { si[v * 4 + 1] = b2; sw[v * 4 + 1] = w2 / sm; } main[v] = BN.list[b1][0];
+        }
+        return Object.assign(M, { si, sw, main });
+    }
     const MRC = {};
     /** Rozmery kostry z kĺbov modelu (členky, kolená, bedrá, ramená, lakte, zápästia, hlava, oči, ústa). */
     function modelRace(race) {
         if (MRC[race]) return MRC[race];
         const MD = modelOf(race), L = MD.land, foot = L.ankleY + .3, lt = L.hipJY - L.kneeY, ls = L.kneeY - L.ankleY, hipY = lt + ls + foot, chY = hipY + .8, H = L.shY - chY + 1.9;
         const elO = [L.el[0] - L.shX, L.el[1] - L.shY, L.el[2] - L.shZ], hO = [L.wr[0] - L.el[0], L.wr[1] - L.el[1], L.wr[2] - L.el[2]], len = v => Math.hypot(v[0], v[1], v[2]);
-        const base = RACE[race] || RACE.human;
-        MRC[race] = { model: 1, race, md: MD, hunch0: base.hunch, ears: base.ears, tusks: base.tusks, W: (L.shZ - .7) * 2, D: Math.max(3.4, L.chestD), H, lt, ls, a1: len(elO), a2: len(hO), hs: (L.headD / 4.1 + L.headW / 3.9) / 2, hunch: 0, foot, legZ: L.legZ, shZ: L.shZ, shX: L.shX, elO, hO,
+        const base = RACE[race] || (race === 'trollking' ? RACE.troll : RACE.human);
+        MRC[race] = { model: 1, race, md: MD, hunch0: base.hunch, ears: base.ears, tusks: base.tusks, noFace: base.noFace, W: (L.shZ - .7) * 2, D: Math.max(3.4, L.chestD), H, lt, ls, a1: len(elO), a2: len(hO), hs: (L.headD / 4.1 + L.headW / 3.9) / 2, hunch: 0, foot, legZ: L.legZ, shZ: L.shZ, shX: L.shX, elO, hO,
             hc: [L.hc[0], L.hc[1] - chY, 0], hipW: L.hipW, ey: [L.eye[0], L.eye[1] - chY, 0], eyeZ: L.eye[2], mo: [L.mouth[0], L.mouth[1] - chY, 0], wpO: [.25, -.9, 0], chY, headH: L.headH, tip: L.handTip };
         return MRC[race];
     }
@@ -186,26 +224,46 @@ const B3 = (() => {
     /** Sieť tela z modelu s váhami kostí podľa vzdialenosti od kostí hernej kostry (rovnako ako pri tvarovaných telách); low = zjednodušená verzia. */
     function modelBody(BN, rc, low) {
         const key = rc.race + (low ? 'l' : 'h'); if (MBC[key]) return MBC[key];
-        const M0 = rc.md, dec = (b64, T) => { const s2 = atob(b64), u8 = new Uint8Array(s2.length); for (let i = 0; i < s2.length; i++) u8[i] = s2.charCodeAt(i); return new T(u8.buffer); };
-        const Pq = dec(low ? M0.pl : M0.p, Int16Array), I = Array.from(dec(low ? M0.il : M0.i, Uint16Array)), n = Pq.length / 3, P = new Float32Array(n * 3);
-        for (let i = 0; i < P.length; i++) P[i] = Pq[i] / 100;
-        let UV = null; if (M0.uv && !low) { const q = dec(M0.uv, Uint16Array); UV = new Float32Array(q.length); for (let i = 0; i < q.length; i++) UV[i] = q[i] / 10000; }
-        const N = new Float32Array(n * 3);
-        for (let i = 0; i < I.length; i += 3) { const a = I[i] * 3, b = I[i + 1] * 3, c = I[i + 2] * 3, ux = P[b] - P[a], uy = P[b + 1] - P[a + 1], uz = P[b + 2] - P[a + 2], vx = P[c] - P[a], vy = P[c + 1] - P[a + 1], vz = P[c + 2] - P[a + 2], nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; for (const v of [a, b, c]) { N[v] += nx; N[v + 1] += ny; N[v + 2] += nz; } }
-        for (let v = 0; v < N.length; v += 3) { const l = Math.hypot(N[v], N[v + 1], N[v + 2]) || 1; N[v] /= l; N[v + 1] /= l; N[v + 2] /= l; }
+        const M0 = rc.md, M = decodeModel(M0, rc.race, low), P = M.P, n = M.n;
         const J = b => { const e = BN.rest[b].elements; return [e[12], e[13], e[14]]; }, add = (a, d) => [a[0] + d[0], a[1] + d[1], a[2] + d[2]], hip = J('hip'), ch = J('ch'), hd = J('hd'), L = M0.land;
         const segs = [['hip', add(hip, [0, -.6, 0]), add(ch, [0, .3, 0])], ['ch', add(ch, [0, .4, 0]), add(ch, [0, rc.H - 1.4, 0])], ['ch', add(ch, [0, rc.H - 1.2, 0]), add(hd, [-.3, -rc.headH * .55, 0])], ['hd', add(hd, [0, -rc.headH * .35, 0]), add(hd, [0, rc.headH * .45, 0])]];
         for (const [sd, sh2, el, hh, lg, kn] of [[1, 'shR', 'elR', 'hR', 'lgR', 'knR'], [-1, 'shL', 'elL', 'hL', 'lgL', 'knL']]) {
             const S = J(sh2), E = J(el), Hh = J(hh), Tp = [L.handTip[0], L.handTip[1], L.handTip[2] * sd], Lg = J(lg), K = J(kn), A = add(K, [0, -rc.ls, 0]);
             segs.push([sh2, add(S, [0, .2, 0]), E], [el, E, Hh], [hh, Hh, Tp], [lg, add(Lg, [0, .5, 0]), K], [kn, K, A], [kn, A, add(A, [2.2, -1.2, 0])]);
         }
-        const si = new Uint16Array(n * 4), sw = new Float32Array(n * 4), main = new Array(n);
-        for (let v = 0; v < n; v++) {
-            const x = P[v * 3], y = P[v * 3 + 1], z = P[v * 3 + 2]; let b1 = -1, d1 = 1e9, b2 = -1, d2 = 1e9;
-            for (const g of segs) { const d = Math.max(.05, SDF.cap(x, y, z, g[1], g[2], 0, 0)), bi = BN.idx[g[0]]; if (bi === b1) { d1 = Math.min(d1, d); continue; } if (d < d1) { b2 = b1; d2 = d1; b1 = bi; d1 = d; } else if (d < d2 && bi !== b1) { b2 = bi; d2 = d; } }
-            const w1 = 1 / Math.pow(d1, 4), w2 = b2 >= 0 ? 1 / Math.pow(d2, 4) : 0, sm = w1 + w2; si[v * 4] = b1; sw[v * 4] = w1 / sm; if (b2 >= 0) { si[v * 4 + 1] = b2; sw[v * 4 + 1] = w2 / sm; } main[v] = BN.list[b1][0];
+        return (MBC[key] = skinBySegs(M, segs, BN));
+    }
+    /** Zviera alebo boss z modelu (varg s jazdcom, olifant s vežou, ent, drak, Balrog, okrídlená šelma): kostra podľa druhu z obálky modelu,
+     *  váhy podľa úsečiek; nohy, krídla a ruky sú kosti, ktoré hýbe rovnaký kód ako doteraz (o.legs, o.wings, o.arms). */
+    function beastModel(kind, BN0, scale) {
+        const key = 'beast' + kind; if (MBC[key]) return MBC[key];
+        const M0 = modelOf0(kind), b = M0.land.bbox, L = b[1][0] - b[0][0], W = b[1][2] - b[0][2], H = b[1][1] - b[0][1], M = decodeModel(M0, kind, false, scale || 1);
+        let BN = BN0, segs, legs = null, wings = null, arms = null;
+        if (kind === 'oliphant') {
+            BN = skel([['body', null, [0, H * .55, 0]], ['hd', 'body', [L * .36, H * .05, 0]], ['FR', 'body', [L * .2, -H * .17, W * .25]], ['FL', 'body', [L * .2, -H * .17, -W * .25]], ['BR', 'body', [-L * .26, -H * .17, W * .25]], ['BL', 'body', [-L * .26, -H * .17, -W * .25]]]);
+            segs = [['body', [-L * .5, H * .55, 0], [L * .3, H * .55, 0]], ['hd', [L * .38, H * .6, 0], [L * .5, H * .08, 0]]]; legs = ['FR', 'FL', 'BR', 'BL'];
+            for (const n of legs) { const e = BN.rest[n].elements; segs.push([n, [e[12], e[13] + H * .05, e[14]], [e[12], 0, e[14]]]); }
+        } else if (kind === 'ent') {
+            BN = skel([['body', null, [0, H * .3, 0]], ['lgR', 'body', [0, 0, W * .07]], ['lgL', 'body', [0, 0, -W * .07]], ['arR', 'body', [0, H * .42, W * .15]], ['arL', 'body', [0, H * .42, -W * .15]]]);
+            segs = [['body', [0, H * .28, 0], [0, H, 0]], ['lgR', [0, H * .3, W * .07], [0, 0, W * .09]], ['lgL', [0, H * .3, -W * .07], [0, 0, -W * .09]], ['arR', [0, H * .72, W * .15], [0, H * .45, W * .5]], ['arL', [0, H * .72, -W * .15], [0, H * .45, -W * .5]]];
+            legs = ['lgR', 'lgL']; arms = ['arR', 'arL'];
+        } else {   // drak, Balrog, okrídlená šelma: telo a dve krídla (os x = vpred, krídla do ±z)
+            const wy = kind === 'balrog' ? H * .72 : H * .55, wz = kind === 'balrog' ? W * .08 : W * .07, wx = kind === 'balrog' ? -L * .1 : 0;
+            BN = skel([['body', null, [0, 0, 0]], ['wR', 'body', [wx, wy, wz]], ['wL', 'body', [wx, wy, -wz]]]);
+            segs = [['body', [-L * .5, H * .45, 0], [L * .5, H * .45, 0]], ['body', [0, 0, 0], [0, H, 0]], ['wR', [wx, wy, wz], [wx, wy * 1.05, W * .5]], ['wL', [wx, wy, -wz], [wx, wy * 1.05, -W * .5]]];
+            wings = ['wR', 'wL'];
         }
-        return (MBC[key] = { P, N, I, si, sw, main, n, UV });
+        skinBySegs(M, segs, BN, 6);
+        const P2 = Part(); for (const [g] of sdfGeos(M, () => ['#ffffff', 0, false])) P2.add(g, '#ffffff', [0, 0, 0], [0, 0, 0], [1, 1, 1], { pre: 1, tex: !!M0.tex });
+        return (MBC[key] = { geo: P2.build(BN, 4), BN, legs, wings, arms, kind, L, W, H });
+    }
+    /** Varg s jazdcom z modelu na kostre herného vlka (kĺby nôh, krk, hlava, chvost). */
+    function vargModel(BN, k) {
+        const key = 'varg'; if (MBC[key]) return MBC[key];
+        const M = decodeModel(modelOf0('varg'), 'varg', false, 1 / k), J = b => { const e = BN.rest[b].elements; return [e[12], e[13], e[14]]; }, add = (a, d) => [a[0] + d[0], a[1] + d[1], a[2] + d[2]];
+        const mb = J('mb'), segs = [['mb', add(mb, [-9, 1, 0]), add(mb, [9, 1, 0])], ['mb', add(mb, [0, 2, 0]), add(mb, [0, 24, 0])], ['nk', J('nk'), J('hd')], ['hd', J('hd'), add(J('hd'), [5, -1, 0])], ['tl', J('tl'), add(J('tl'), [-7, -3, 0])]];
+        for (const Lg of ['FR', 'FL', 'BR', 'BL']) { const A = J(Lg), K = J(Lg + 'k'); segs.push([Lg, A, K], [Lg + 'k', K, add(K, [0, -(K[1] - 1), 0])]); }
+        return (MBC[key] = skinBySegs(M, segs, BN, 6));
     }
     const SDFC = new Map();
     /** Ľudské (elfské, orkské, trolie…) telo zo SDF v pokojovej póze; vrátené z vyrovnávacej pamäte podľa rasy. */
@@ -245,7 +303,7 @@ const B3 = (() => {
     const mat = k => MAT[k + QN()] || (MAT[k + QN()] = k === 'glow' ? new (T().MeshBasicMaterial)({ vertexColors: true })
         : QN() === 0 ? new (T().MeshLambertMaterial)({ vertexColors: true, flatShading: true, side: k === 'vs' ? T().DoubleSide : T().FrontSide })
         : new (T().MeshStandardMaterial)({ vertexColors: true, flatShading: true, roughness: .88, metalness: 0, envMapIntensity: .5, side: k === 'vs' ? T().DoubleSide : T().FrontSide }));
-    const chrMats = () => [B3G.chrMat('c'), B3G.chrMat('m'), B3G.chrMat('t', null, (modelOf('orc') || {}).tex)];
+    const chrMats = () => [B3G.chrMat('c'), B3G.chrMat('m'), B3G.chrMat('t', null, atlas().tex)];
     /** Krídlo: koreň v počiatku, rozpätie do +Z (druhé krídlo sa zrkadlí scale.z = -1). */
     function wingGeo(len, c1, c2) {
         const t = T(), a = C(c1), b = C(c2), P = [], Cl = [];
@@ -667,10 +725,10 @@ const B3 = (() => {
         const k = keyOf(s); if (TPL.has(k)) return TPL.get(k);
         let tp;
         if (s.boss) tp = bossTemplate(s.boss);
-        else if (s.beast === 'oliphant') tp = beastOliphant(s);
-        else if (s.beast === 'ent') tp = beastEnt(s);
+        else if (s.beast === 'oliphant') tp = modelOf('oliphant') ? { beast: 'oliphant', mdl: beastModel('oliphant') } : beastOliphant(s);
+        else if (s.beast === 'ent') tp = modelOf('ent') ? { beast: 'ent', mdl: beastModel('ent') } : beastEnt(s);
         else if (s.beast === 'wolf') tp = { humanoid: humanoid({ ...s, race: 'orc', skin: SKIN.orc, armor: '#2a2420', weapon: 'scimitar' }), mount: mountParts('wolf', s) };
-        else tp = { humanoid: humanoid(s), mount: s.mount || s.horse ? mountParts(s.mount === 'wolf' || (s.horse && s.horse.wolf) ? 'wolf' : s.mount === 'darkhorse' ? 'dark' : 'horse', s) : null };
+        else tp = { humanoid: humanoid(s), mount: s.mount || s.horse ? mountParts(s.mount === 'wolf' || (s.horse && s.horse.wolf) ? 'wolf' : s.mount === 'darkhorse' ? 'dark' : 'horse', s.mount === 'wolf' && modelOf('varg') ? { ...s, vargModel: 1 } : s) : null };
         TPL.set(k, tp); return tp;
     }
     /** Kostra: [meno, rodič, poloha voči rodičovi]. Vráti rest (matice v priestore siete) a indexy. */
@@ -703,30 +761,36 @@ const B3 = (() => {
         const sleeve0 = mA ? armor : sh(armor, .9), fore0 = mA ? armor : s.race === 'orc' || s.race === 'troll' ? skin : sh(armor, .85), chY = BN.rest.ch.elements[13], knY = BN.rest.knR.elements[13];
         const regionOf = (bn, y) => bn === 'hd' ? [skin, 0, false] : bn === 'hR' || bn === 'hL' ? (mA ? [sh(armor, .9), 4, true] : [skin, 0, false]) : bn === 'ch' ? (y > chY + H - .4 ? [skin, 0, false] : [armor, fab(armor), mA]) : bn === 'hip' ? (y > hipY - .7 ? [sh(armor, .85), fab(armor), mA] : [pants, 2, false])
             : bn[0] === 's' ? [sleeve0, fab(sleeve0), mA] : bn[0] === 'e' ? [fore0, fore0 === skin ? 0 : fab(fore0), mA && fore0 === armor] : bn[0] === 'l' ? [pants, 2, false] : y < knY - ls * .38 ? [boots, 3, false] : [pants, 2, false];
-        if (MM && MM.md.tex) {   // telo z modelu s vlastnou textúrou (ork): celé telo jedným textúrovaným materiálom; kabátec/zbroj sa kreslia navrch
-            const texOf = (bn, y) => ['#ffffff', 0, false]; const lo = sdfGeos(modelBody(BN, rc, true), regionOf), hi = sdfGeos(modelBody(BN, rc, false), texOf);
+        const fullTex = MM && MM.md.tex && ['orc', 'troll', 'trollking', 'wraith', 'uruk'].includes(s.race);
+        if (fullTex) {   // telo z modelu s vlastným vzhľadom (ork, uruk, troll, Nazgûl): celé telo textúrou modelu; zbroj hrdinu navrch
+            const texOf = (bn, y) => ['#ffffff', 0, false, 1]; const lo = sdfGeos(modelBody(BN, rc, true), regionOf), hi = sdfGeos(modelBody(BN, rc, false), texOf);
             hi.forEach(([g]) => P.add(g, '#ffffff', [0, 0, 0], [0, 0, 0], [1, 1, 1], { pre: 1, tex: 1, lod: (lo[0] || [])[0] }));
+        } else if (MM && MM.md.tex) {   // textúra modelu len na koži (tvár, krk, ruky), zvyšok tela nesie zbroj a odev vo farbách jednotky
+            const mix = (bn, y) => { const r = regionOf(bn, y); return r[0] === skin ? ['#ffffff', 0, false, 1] : r; }, lo = sdfGeos(modelBody(BN, rc, true), regionOf);
+            sdfGeos(modelBody(BN, rc, false), mix).forEach(([g, metal, tx]) => P.add(g, '#ffffff', [0, 0, 0], [0, 0, 0], [1, 1, 1], { pre: 1, m: metal, tex: tx ? 1 : 0, lod: tx ? null : (lo.find(x => x[1] === metal) || [])[0] }));
         } else if (MM) { const lo = sdfGeos(modelBody(BN, rc, true), regionOf); sdfGeos(modelBody(BN, rc, false), regionOf).forEach(([g, metal], i) => P.add(g, '#ffffff', [0, 0, 0], [0, 0, 0], [1, 1, 1], { pre: 1, m: metal, lod: (lo.find(x => x[1] === metal) || [])[0] })); }   // telo z modelu (Meshy)
         else for (const [g, metal] of sdfGeos(bodySDF(s.race || 'human', rc, BN), regionOf)) P.add(g, '#ffffff', [0, 0, 0], [0, 0, 0], [1, 1, 1], { pre: 1, m: metal });
-        P.add('rbox', team, [D * .56, H * .44, 0], [0, 0, 0], [.5, H * .82, W * .44], bt('ch', 2)).add('rbox', team, [-D * .56, H * .44, 0], [0, 0, 0], [.5, H * .82, W * .44], bt('ch', 2))
+        const noTab = fullTex && s.race !== 'orc';   // trollovia, Nazgûl a uruci bez kabátca a opasku (majú vlastný vzhľad)
+        if (!noTab) P.add('rbox', team, [D * .56, H * .44, 0], [0, 0, 0], [.5, H * .82, W * .44], bt('ch', 2)).add('rbox', team, [-D * .56, H * .44, 0], [0, 0, 0], [.5, H * .82, W * .44], bt('ch', 2))
             .add('cyl12', leather, [0, .35, 0], [0, 0, 0], [D * .98, 1.2, W * .8], bt('ch', 3)).add('box', '#c8a040', [D * .49, .35, 0], [0, 0, 0], [.35, 1, 1], bm('ch', 1))
             .add('sph2', rim, [-.1, H - 1.6, W / 2 - .2], [0, 0, -.1], [D * .95, 2.8, 3.4], bm('ch', mR)).add('sph2', rim, [-.1, H - 1.6, -W / 2 + .2], [0, 0, -.1], [D * .95, 2.8, 3.4], bm('ch', mR));
         if (!MM) P.add('sph2', skin, hc, [0, 0, 0], [4.1 * hs, 4.9 * hs, 3.9 * hs], b('hdc'));
-        if (MM && MM.md.tex && mA) P.add('taperU', armor, [.3, (H - .8) / 2 + .3, 0], [0, 0, 0], [D * 1.05, H - 1.2, W * 1.02], bt('ch', fab(armor), mA));   // textúrovaný ork v plátovej zbroji: kyrys navrch
-        P.add('taper', mA ? sh(armor, .85) : sh(armor, .8), [0, -1.4, 0], [0, 0, 0], [MM ? D * 1.3 : D * 1.12, 3.4, MM ? Math.max(W * .9, rc.hipW * 1.06) : W * .9], bt('hip', fab(armor), mA));
+        if (fullTex && mA && !noTab) P.add('taperU', armor, [.3, (H - .8) / 2 + .3, 0], [0, 0, 0], [D * 1.05, H - 1.2, W * 1.02], bt('ch', fab(armor), mA));   // textúrovaný ork v plátovej zbroji: kyrys navrch
+        if (!noTab) P.add('taper', mA ? sh(armor, .85) : sh(armor, .8), [0, -1.4, 0], [0, 0, 0], [MM ? D * 1.3 : D * 1.12, 3.4, MM ? Math.max(W * .9, rc.hipW * 1.06) : W * .9], bt('hip', fab(armor), mA));
         // vrstvená výstroj: chlopne kabátca vejú pri behu, mešec a dýka na opasku, druhá lamela náplecníkov
-        P.add('rbox', team, [D * .5, -2.4, 0], [0, 0, 0], [.35, 4.4, W * .4], { b: 'hip', t: 2, cl: [-.2, 4.4, .5], rigid: 1 }).add('rbox', team, [-D * .5, -2.4, 0], [0, 0, 0], [.35, 4.4, W * .4], { b: 'hip', t: 2, cl: [-.2, 4.4, .5], rigid: 1 });
-        P.add('rbox', leather, [D * .2, -.1, W * .48], [0, 0, 0], [1.4, 1.6, .8], bt('hip', 3)).add('cyl6', '#2a1c12', [-D * .1, -.8, -W * .48], [0, 0, .5], [.5, 3, .5], bt('hip', 3));
-        if (mR) for (const z of [-1, 1]) P.add('sph2', sh(rim, .82), [-.15, H - 2.7, z * (W / 2 - .05)], [0, 0, -.1], [D * .85, 2, 3], bm('ch', mR));   // sukňa krúžkovej košele / šosy
-        if (rc.tusks || s.race === 'orc' || s.race === 'troll') P.add('rbox', skin, [HX + 1.1 * hs, HY - 1.5 * hs, 0], [0, 0, 0], [2.4 * hs, 1.7 * hs, 3.4 * hs], b('hdc'));   // čeľusť
+        if (!noTab) P.add('rbox', team, [D * .5, -2.4, 0], [0, 0, 0], [.35, 4.4, W * .4], { b: 'hip', t: 2, cl: [-.2, 4.4, .5], rigid: 1 }).add('rbox', team, [-D * .5, -2.4, 0], [0, 0, 0], [.35, 4.4, W * .4], { b: 'hip', t: 2, cl: [-.2, 4.4, .5], rigid: 1 });
+        if (!noTab) P.add('rbox', leather, [D * .2, -.1, W * .48], [0, 0, 0], [1.4, 1.6, .8], bt('hip', 3)).add('cyl6', '#2a1c12', [-D * .1, -.8, -W * .48], [0, 0, .5], [.5, 3, .5], bt('hip', 3));
+        if (mR && !noTab) for (const z of [-1, 1]) P.add('sph2', sh(rim, .82), [-.15, H - 2.7, z * (W / 2 - .05)], [0, 0, -.1], [D * .85, 2, 3], bm('ch', mR));   // sukňa krúžkovej košele / šosy
+        if (!MM && (rc.tusks || s.race === 'orc' || s.race === 'troll')) P.add('rbox', skin, [HX + 1.1 * hs, HY - 1.5 * hs, 0], [0, 0, 0], [2.4 * hs, 1.7 * hs, 3.4 * hs], b('hdc'));   // čeľusť
         // tvár (detail: pri vzdialenej kamere sa skryje)
-        if (MM) {   // tvár z modelu: len oči, obočie a ústa (výrazy), brada; ork má navyše kly
-            if (rc.tusks) for (const z of [-1, 1]) P.add('cone', '#e8e0c8', [rc.mo[0] + .1, rc.mo[1] - .25, z * .55], [0, 0, .1], [.32, .9, .32], b('det'));
+        if (MM && rc.noFace) { }   // Nazgûl: pod kapucňou nič
+        else if (MM) {   // tvár z modelu: len oči, obočie a ústa (výrazy), brada; ork má navyše kly
+            if (rc.tusks && s.race === 'orc') for (const z of [-1, 1]) P.add('cone', '#e8e0c8', [rc.mo[0] + .1, rc.mo[1] - .25, z * .55], [0, 0, .1], [.32, .9, .32], b('det'));
             const ez = rc.eyeZ, ex = rc.ey[0], ey = rc.ey[1];
             const eyeC = rc.tusks || s.race === 'uruk' ? '#d8a020' : '#1a1410';
             for (const z of [-1, 1]) { if (eyeC === '#1a1410') P.add('box', '#ece6dc', [-.02, 0, z * ez], [0, 0, 0], [.14, .26, .4], b('ey')); P.add('box', eyeC, [.04, 0, z * ez], [0, 0, 0], [.12, .22, eyeC === '#1a1410' ? .2 : .3], b('ey')).add('box', '#2a1c12', [ex + .02, ey + .36, z * ez], [z * .12, 0, 0], [.18, .14, .62], b('det')); }
             P.add('box', '#3a1410', [0, 0, 0], [0, 0, 0], [.16, .14, .7], b('mo'));
-            if (s.beard) P.add('cone', hair, [rc.mo[0] - .35, rc.mo[1] - 1.2, 0], [0, 0, Math.PI - .2], [1.9, 2.8, 2.2], b('det')).add('box', hair, [rc.mo[0] + .02, rc.mo[1] + .32, 0], [0, 0, 0], [.3, .3, 1.2], b('det'));
+            if (s.beard && !MM.md.tex) P.add('cone', hair, [rc.mo[0] - .35, rc.mo[1] - 1.2, 0], [0, 0, Math.PI - .2], [1.9, 2.8, 2.2], b('det')).add('box', hair, [rc.mo[0] + .02, rc.mo[1] + .32, 0], [0, 0, 0], [.3, .3, 1.2], b('det'));
         } else if (!rc.noFace) {
             const eye = s.race === 'orc' || s.race === 'uruk' || s.race === 'troll' ? '#d8a020' : '#1a1410';
             P.add('rbox', sh(skin, .9), [HX + 2.0 * hs, HY - .15 * hs, 0], [0, 0, -.15], [.9 * hs, 1.4 * hs, s.race === 'orc' || s.race === 'troll' ? 1.3 * hs : .8 * hs], b('det'));
@@ -754,7 +818,9 @@ const B3 = (() => {
         const hairOn = () => { P.add('hemi', hair, [HX - .3, HY + .3 * hs, 0], [0, 0, .25], [4.6 * hs, 4.6 * hs, 4.3 * hs], b('hdc')); if (s.longHair || s.race === 'elf') { P.add('rbox', hair, [HX - 1.8 * hs, HY - 2.4 * hs, 0], [0, 0, .1], [1.3, 5.4 * hs, 3.8 * hs], b('hdc')); for (let i = 0; i < 5; i++) P.add('rbox', sh(hair, .9 + i % 2 * .15), [HX - 1.9 * hs + (i % 2) * .3, HY - 3 * hs - (i % 3) * .5, (i - 2) * .75 * hs], [0, 0, .08 + (i - 2) * .03], [.6, 5.4 * hs, .7], b('hdc')); }   // pramene vlasov
             else for (let i = 0; i < 4; i++) P.add('rbox', sh(hair, .85 + i % 2 * .2), [HX - 1.7 * hs, HY - .6 * hs, (i - 1.5) * 1.05 * hs], [0, 0, .2], [.7, 2.2 * hs, .9], b('hdc')); };
         const helmBase = (sc = 1) => P.add('hemi', hcol, [HX - .2, HY + .72 * hs, 0], [0, 0, .08], [4.8 * hs * sc, 5.2 * hs * sc, 4.6 * hs * sc], bm('hdc', hm)).add('torus', sh(hcol, .78), [HX - .2, HY + .78 * hs, 0], [0, 0, .08], [4.9 * hs, 2.2, 4.7 * hs], bm('hdc', hm));   // prilba vyššie: oči ostanú viditeľné
-        if (hk === 'hood' || hk === 'nazgul') { const hcc = hk === 'nazgul' ? '#0c0c0e' : hcol; P.add('sph2', hcc, [HX - .5, HY + .5, 0], [0, 0, .15], [5.4 * hs, 6 * hs, 5.2 * hs], b('hdc')).add('cone', hcc, [HX - 1.4, HY + 3, 0], [0, 0, .5], [3, 3.4, 3], b('hdc')).add('box', hcc, [HX - 2.2, HY - 2.6, 0], [0, 0, .15], [1, 4.6, 5], b('hdc')); }
+        if (noTab && !s.hero) { }   // trollovia, uruci a Nazgûl: prilba a vlasy sú súčasťou modelu
+        else if ((hk === 'hood' || hk === 'nazgul') && MM && MM.md.tex) { }   // kapucňa a plášť sú v modeli (Nazgûl)
+        else if (hk === 'hood' || hk === 'nazgul') { const hcc = hk === 'nazgul' ? '#0c0c0e' : hcol; P.add('sph2', hcc, [HX - .5, HY + .5, 0], [0, 0, .15], [5.4 * hs, 6 * hs, 5.2 * hs], b('hdc')).add('cone', hcc, [HX - 1.4, HY + 3, 0], [0, 0, .5], [3, 3.4, 3], b('hdc')).add('box', hcc, [HX - 2.2, HY - 2.6, 0], [0, 0, .15], [1, 4.6, 5], b('hdc')); }
         else if (hk === 'turban') { P.add('torus', hcol || '#c84a2a', [HX - .1, HY + .9, 0], [0, 0, .1], [4.8 * hs, 5, 4.6 * hs], b('hdc')).add('torus', sh(hcol || '#c84a2a', .85), [HX - .2, HY + 1.9, 0], [0, 0, .1], [4.2 * hs, 5, 4 * hs], b('hdc')).add('sph', hcol || '#c84a2a', [HX - .3, HY + 2.2, 0], [0, 0, 0], [3.6, 2.6, 3.6], b('hdc')); }
         else if (hk === 'cap') P.add('hemi', hcol || '#6a4a2e', [HX - .2, HY + .6, 0], [0, 0, .15], [4.6 * hs, 3.6 * hs, 4.4 * hs], b('hdc'));
         else if (hk && hk !== 'none') {
@@ -779,7 +845,7 @@ const B3 = (() => {
             if (hk === 'elf') P.add('cone', '#d8b850', [HX - .4, HY + 2.6, 0], [0, 0, .25], [4.4, 6.4, 4.2], bt('hdc', 6, 1)).add('box', '#f4e2a0', [HX - .6, HY + 4.4, 0], [0, 0, .3], [3.6, 1.4, .5], bt('det', 6, 1));
             if (hk === 'mask' || hk === 'easterling') P.add('box', '#c09030', [HX + 2.15 * hs, HY - .4, 0], [0, 0, 0], [.4, 3.4, 3.8], bm('hdc', 1)).add('box', '#1a1410', [HX + 2.4 * hs, HY + .4, 0], [0, 0, 0], [.1, .35, 3], b('det'));
             if (!['gondor', 'winged', 'citadel', 'rohan', 'plume', 'orc', 'troll', 'uruk', 'dwarf', 'elf', 'mask', 'easterling'].includes(hk)) P.add('box', hcol, [HX + 2.3 * hs, HY - .2, 0], [0, 0, 0], [.35, 2.2, .55], bm('hdc', hm));
-        } else hairOn();
+        } else if (!(MM && MM.md.tex)) hairOn();   // textúrované modely majú vlasy v sebe
         // tulec na chrbte (lukostrelci)
         if (s.quiver) { P.add('cyl12', leather, [-D / 2 - .8, H * .55, 1.4], [.35, 0, 0], [1.8, 7.4, 1.8], bt('ch', 3)); for (let i = 0; i < 4; i++) P.add('box', '#e8e4dc', [-D / 2 - .8 + (i % 2) * .5, H * .55 + 4.2, 1.4 + (i - 1.5) * .35 + 1.3], [.35, 0, 0], [.3, 1.4, .25], b('det')); }
         // plášť (látka, ktorá sa vlní)
@@ -795,7 +861,7 @@ const B3 = (() => {
         if (wt === 'spear') { WP.add('cyl6', (Wg && Wg.shaft) || '#7a5a34', [0, -6, 0], [0, 0, 0], [.75, 38, .75], b('wp')).add('sph2', wb, [0, -27.5, 0], [0, 0, 0], [1.1, 5.6, .3], bm('wp', 1)).add('cone6', '#6a6a6a', [0, -24.6, 0], [Math.PI, 0, 0], [1, 1.6, 1], bm('wp', 1)); tipY = -30; }
         else if (wt === 'axe') { WP.add('cyl6', (Wg && Wg.haft) || '#5a3a1a', [0, -5.5, 0], [0, 0, 0], [.85, 16, .85], b('wp')).add('box', wb, [1.7, -12, 0], [0, 0, 0], [3, 3.6, .4], bm('wp', 1)).add('box', wb, [2.6, -13.4, 0], [0, 0, .55], [1.6, 2.4, .35], bm('wp', 1)).add('cone6', wb, [-1, -12, 0], [0, 0, Math.PI / 2], [.7, 1.8, .4], bm('wp', 1)); tipY = -14; }
         else if (wt === 'club' || wt === 'mace') { WP.add('taperU', '#5a4030', [0, -6.5, 0], [0, 0, 0], [2, 15, 2], b('wp')).add('sph2', wt === 'mace' ? '#7a7c80' : '#4a3424', [0, -14.5, 0], [0, 0, 0], [4.4, 5.2, 4.4], bm('wp', wt === 'mace')); for (let i = 0; i < 5; i++) WP.add('cone6', '#8a8a8a', [Math.cos(i * 1.26) * 2.2, -14.5 + (i % 2) * 1.5, Math.sin(i * 1.26) * 2.2], [Math.sin(i * 1.26) * 1.57, 0, -Math.cos(i * 1.26) * 1.57], [.6, 1.6, .6], bm('wp', 1)); tipY = -16; }
-        else if (wt === 'bow' || wt === 'xbow') { }
+        else if (wt === 'bow' || wt === 'xbow' || wt === 'none') { }
         else {   // meče: rovný, široký obojručný, zakrivená šabľa, štíhla elfská čepeľ
             const L = Wg ? 6 + Wg.L * 3.4 : 11, wide = Wg && Wg.t === 'broad' ? 1.7 : 1.25, curve = wt === 'scimitar' || wt === 'curve' || (Wg && Wg.t === 'curve') ? .13 : wt === 'elfblade' ? .07 : 0;
             WP.add('cyl6', leather, [0, -.6, 0], [0, 0, 0], [.6, 2.4, .6], b('wp')).add('sph', guard, [0, 1, 0], [0, 0, 0], [.8, .8, .8], bm('wp', 1)).add('box', guard, [0, -2, 0], [0, 0, 0], [.75, .6, 3.8], bm('wp', 1));
@@ -835,6 +901,7 @@ const B3 = (() => {
         BN.blend = [['FRk', 'FR', 1.8], ['FLk', 'FL', 1.8], ['BRk', 'BR', 1.8], ['BLk', 'BL', 1.8], ['nk', 'mb', 3.2], ['hd', 'nk', 2.2], ['FR', 'mb', 2.4], ['FL', 'mb', 2.4], ['BR', 'mb', 2.4], ['BL', 'mb', 2.4]];
         const P = Part(), b = n => ({ b: n });
         const back = H.back || sh(c, .8);
+        if (wolf && s.vargModel) { const M = vargModel(BN, k); for (const [g] of sdfGeos(M, () => ['#ffffff', 0, false])) P.add(g, '#ffffff', [0, 0, 0], [0, 0, 0], [1, 1, 1], { pre: 1, tex: 1 }); return { geo: P.build(BN), BN, k, h, wolf, seat: (h + 3.6) * k, hideRider: 1 }; }   // varg s jazdcom z modelu (Meshy)
         if (wolf) P.add('sph2', c, [0, 0, 0], [0, 0, 0], [20, 8.4, 7.4], b('mb')).add('sph2', c, [6.6, .5, 0], [0, 0, 0], [9, 9.4, 7.8], b('mb')).add('sph2', back, [-7, .7, 0], [0, 0, 0], [8.6, 8.4, 7.4], b('mb')).add('sph2', sh(c, .82), [0, -2.4, 0], [0, 0, 0], [16, 5, 6.6], b('mb'));
         else {   // kôň s tvarovaným telom zo SDF (krk, hlava, svalnaté nohy s kĺbmi); svetlejšie brucho, tmavšie spodné nohy
             const M = horseSDF('horse', BN, up, lo), mbY = BN.rest.mb.elements[13];
@@ -880,6 +947,8 @@ const B3 = (() => {
         return { beast: 'ent', body: b.build(), arm, leg };
     }
     function bossTemplate(k) {
+        if (k === 'trollking' && modelOf('trollking')) return { humanoid: humanoid({ mdl: 1, race: 'trollking', skin: SKIN.troll, armor: '#4e5446', helm: 'none', hair: '#2a2a20', weapon: 'none', team: '#4e5446', scale: 2.1, fac: 2 }) };   // Kráľ trollov z modelu (zbroj, prilba s rohmi a palcát sú v modeli)
+        if ((k === 'balrog' || k === 'dragon' || k === 'fell') && modelOf(k)) return { boss: k, mdl: beastModel(k) };
         if (k === 'trollking') return { humanoid: humanoid({ race: 'troll', skin: SKIN.troll, armor: '#4e5446', helm: 'none', hair: '#2a2a20', weapon: 'club', team: '#4e5446', scale: 2.1, fac: 2 }), crown: Part().add('torus', '#d9a441', [0, 0, 0], [0, 0, 0], [5, 3, 5], { m: 1 }).add('cone', '#ffd24a', [0, 1.6, 2], [0, 0, 0], [1, 2.4, 1], { m: 1 }).add('cone', '#ffd24a', [0, 2, 0], [0, 0, 0], [1, 3, 1], { m: 1 }).add('cone', '#ffd24a', [0, 1.6, -2], [0, 0, 0], [1, 2.4, 1], { m: 1 }).build() };
         if (k === 'balrog') {
             const b = Part().add('taperU', '#24120a', [0, 44, 0], [0, 0, 0], [24, 34, 32]).add('sph2', '#2e160c', [4, 66, 0], [0, 0, 0], [16, 16, 16]).add('cone', '#0a0604', [2, 76, 7], [.6, 0, .3], [3, 14, 3]).add('cone', '#0a0604', [2, 76, -7], [-.6, 0, .3], [3, 14, 3])
@@ -920,6 +989,13 @@ const B3 = (() => {
         o.cz = -.12; o.cv = 0; o.cx = 0; o.cxv = 0; o.ry0 = 0; o.pa = null;
         root.rotation.order = 'YXZ';
         if (tp.boss || tp.beast) {
+            if (tp.mdl) {   // zviera alebo boss z modelu: kostrová sieť, nohy, krídla a ruky sú kosti
+                const M = tp.mdl, k = skinned(M); root.add(k.sm); o.body = k.sm; o.MBn = k.B;
+                if (M.legs) o.legs = M.legs.map(n => k.B[n]); if (M.arms) o.arms = M.arms.map(n => k.B[n]);
+                if (M.wings) o.wings = M.wings.map(n => { const w = k.B[n]; w.userData.sd = n.endsWith('R') ? 1 : -1; return w; });
+                if (tp.boss === 'balrog') { o.light = new t.PointLight(C('#ff7a20'), 120, 300, 1); o.light.position.y = M.H * .6; root.add(o.light); }
+                return o;
+            }
             if (tp.body) { o.body = mesh(tp.body); root.add(o.body); }
             if (tp.wing) { o.wings = [1, -1].map(sd => { const w = mesh(tp.wing, 'vs'); w.scale.z = sd; w.position.set(tp.boss === 'balrog' ? -6 : 0, tp.boss === 'balrog' ? 62 : 6, sd * (tp.boss === 'balrog' ? 10 : 8)); w.userData.sd = sd; root.add(w); return w; }); }
             if (tp.glow) root.add(new t.Mesh(tp.glow, mat('glow')));
@@ -935,6 +1011,7 @@ const B3 = (() => {
             o.mount = k.sm; o.MB = k.B; o.mk = M; seat = M.seat;
         }
         Object.assign(o, humanRig(tp.humanoid, root, seat, o));
+        if (tp.mount && tp.mount.hideRider) o.sm.visible = false;   // jazdec je súčasťou modelu zvieraťa (varg z Meshy)
         if (u.bn || u.cmd) {   // zástava s erbom na chrbte
             const pole = mesh(Part().add('cyl6', '#3a2a1a', [0, 12, 0], [0, 0, 0], [.7, 34, .7]).add('sph', '#c8a040', [0, 29.4, 0], [0, 0, 0], [1.2, 1.2, 1.2], { m: 1 }).build());
             const f = bannerMesh(s.fac, 9, 8); f.position.set(0, 24.5, 0); pole.add(f);
@@ -1907,7 +1984,7 @@ const B3 = (() => {
     function farUnit(o) {
         o.root.updateMatrix(); const tp = o.tp;
         const dead = !!o.dead, amt = dead ? 0 : Math.min(1, o.sp / 1.2) * (o.rout ? 1.3 : 1);
-        if (o.sm) { o.sm.updateMatrix(); M1.multiplyMatrices(o.root.matrix, o.sm.matrix); farPut(tp.humanoid.geoLow || tp.humanoid.geo, chrMats(), M1, o.ph, o.mount && !dead ? -1 : amt, dead ? 0 : o.atk || 0, 0); }
+        if (o.sm && o.sm.visible) { o.sm.updateMatrix(); M1.multiplyMatrices(o.root.matrix, o.sm.matrix); farPut(tp.humanoid.geoLow || tp.humanoid.geo, chrMats(), M1, o.ph, o.mount && !dead ? -1 : amt, dead ? 0 : o.atk || 0, 0); }
         if (o.mount) { const s = o.sp, gait = s < 1.1 ? 0 : s < 2.1 ? 1 : 2; o.mount.updateMatrix(); M1.multiplyMatrices(o.root.matrix, o.mount.matrix); farPut(tp.mount.geo, chrMats(), M1, 0, dead ? 0 : [.32, .5, .78][gait] * Math.min(1, s / .6), 0, o.mph); }
     }
     function stepAQ() {
@@ -2069,6 +2146,7 @@ const B3 = (() => {
             at(new t.Mesh(new t.CircleGeometry(1, 8), new t.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .35, depthWrite: false })));
             at(arrowMesh(0, 0)); at(arrowMesh(1, 0));
             stepEnv(true);
+            try { await atlas().ready; } catch (e) { }   // textúry modelov do atlasu
             if (R.compileAsync) await R.compileAsync(scene, cam); else R.compile(scene, cam);
         } catch (e) { try { R.compile(scene, cam); } catch (e2) { } }
         if (!on) return;

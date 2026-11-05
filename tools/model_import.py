@@ -36,19 +36,30 @@ def load_glb(path):
 def seg_dist(P, a, b):
     ab = b - a; t = np.clip(((P - a) @ ab) / (ab @ ab), 0, 1); return np.linalg.norm(P - (a + t[:, None] * ab), axis=1)
 
+OPTS = {}
 RACES = {   # pomery pre hľadanie kĺbov: výška ramien, kolien, bedier, hlavy (podiel výšky), šírka pliec (podiel polšírky trupu)
     'human': dict(sh=.79, kn=.29, hip=.52, head=.875, shW=.8, legZ=.05, ang=16),
     'orc': dict(sh=.80, kn=.27, hip=.50, head=.86, shW=.82, legZ=.06, ang=18),
+    'elf': dict(sh=.79, kn=.29, hip=.52, head=.875, shW=.8, legZ=.05, ang=16),
+    'uruk': dict(sh=.79, kn=.28, hip=.51, head=.87, shW=.82, legZ=.06, ang=17),
+    'hobbit': dict(sh=.72, kn=.25, hip=.47, head=.80, shW=.8, legZ=.06, ang=16),
+    'dwarf': dict(sh=.74, kn=.25, hip=.48, head=.82, shW=.85, legZ=.07, ang=16),
+    'troll': dict(sh=.80, kn=.27, hip=.48, head=.88, shW=.8, legZ=.08, ang=20),
+    'wraith': dict(sh=.80, kn=.28, hip=.50, head=.86, shW=.75, legZ=.05, ang=10),
 }
 def main():
-    args = [a for a in sys.argv[1:] if not a.startswith('--')]; opts = dict(a[2:].split('=', 1) if '=' in a else (a[2:], '1') for a in sys.argv[1:] if a.startswith('--'))
+    args = [a for a in sys.argv[1:] if not a.startswith('--')]; opts = dict(a[2:].split('=', 1) if '=' in a else (a[2:], '1') for a in sys.argv[1:] if a.startswith('--')); OPTS.update(opts)
     src, dst = args[0], args[1]; height = float(args[2]) if len(args) > 2 else 25.5
-    race = opts.get('race', 'human'); RC = RACES[race]; name = opts.get('name', 'MODEL_CLOVEK'); texSize = int(opts.get('tex', 512))
+    race = opts.get('race', 'human'); RC = RACES.get(race, RACES['human']); name = opts.get('name', 'MODEL_CLOVEK'); texSize = int(opts.get('tex', 512))
     P, I, UV, texBytes = load_glb(src)
     y0 = P[:, 1].min(); h = P[:, 1].max() - y0; s = height / h
     # do súradníc hry: x = vpred (model +Z), y hore, z = vpravo (model -X)
     G = np.stack([P[:, 2] * s, (P[:, 1] - y0) * s, -P[:, 0] * s], 1)
     Y = G[:, 1] / height
+    if opts.get('kind') == 'beast':   # zviera alebo boss: bez kĺbov, len obálka; kostru a váhy si hra určí podľa druhu
+        G[:, 0] -= (G[:, 0].min() + G[:, 0].max()) / 2; G[:, 2] -= (G[:, 2].min() + G[:, 2].max()) / 2
+        land = dict(kind='beast', race=race, height=height, bbox=[[float(v) for v in G.min(0)], [float(v) for v in G.max(0)]])
+        return finish(G, I, UV, texBytes, land, dst, name, texSize, src, lodCell=float(opts.get('lod', 1.2)))
     # konce rúk (najďalej do strán) a ramenné kĺby
     tips = {sd: G[np.argmax(G[:, 2] * sd)] for sd in (1, -1)}
     sl = lambda f, w=.006: G[np.abs(Y - f) < w]
@@ -73,19 +84,36 @@ def main():
     head = G[Y > RC['head']]; hcy = (head[:, 1].min() + head[:, 1].max()) / 2; mid = head[np.abs(head[:, 1] - hcy) < .02 * height]
     hc = np.array([(mid[:, 0].min() + mid[:, 0].max()) / 2, hcy, 0.0]); headD = np.ptp(mid[:, 0]); headW = np.ptp(mid[:, 2])
     headH = head[:, 1].max() - head[:, 1].min(); front = lambda y, z: G[(np.abs(G[:, 1] - y) < .012 * height) & (np.abs(G[:, 2] - z) < .012 * height) & (Y > RC['head'] - .02)][:, 0].max()
-    eyeY = hc[1] + .1 * headH; eyeZ = .017 * height; eyeX = front(eyeY, eyeZ); mouthY = hc[1] - .27 * headH; mouthX = front(mouthY, 0)
+    def front2(y, z):
+        for w in (.012, .02, .035, .06):
+            sel = G[(np.abs(G[:, 1] - y) < w * height) & (np.abs(G[:, 2] - z) < w * height) & (Y > RC['head'] - .04)]
+            if len(sel): return sel[:, 0].max()
+        return hc[0] + headD / 2
+    eyeY = hc[1] + .1 * headH; eyeZ = .017 * height; eyeX = front2(eyeY, eyeZ); mouthY = hc[1] - .27 * headH; mouthX = front2(mouthY, 0)
     land = dict(race=race, height=height, ankleY=ankleY, kneeY=kneeY, hipJY=hipJY, legZ=legZ, shY=float(a[1]), shZ=float(abs(a[2])), shX=float(a[0]), el=[float(v) for v in el], wr=[float(v) for v in wrist],
                 hc=[float(v) for v in hc], headH=float(headH), eye=[float(eyeX), float(eyeY), float(eyeZ)], mouth=[float(mouthX), float(mouthY)],
                 chestD=float(np.ptp(sl(.72)[np.abs(sl(.72)[:, 2]) < shZ * .6][:, 0])), headD=float(headD), headW=float(headW), hipW=float(np.ptp(sl(.5)[np.abs(sl(.5)[:, 2]) < .12 * height][:, 2])),
                 handTip=[float(v) for v in tips[1]])
+    return finish(G, I, UV, texBytes, land, dst, name, texSize, src)
+
+def finish(G, I, UV, texBytes, land, dst, name, texSize, src, lodCell=.55):
+    race = land.get('race', '')
     # zjednodušená verzia (zhlukovanie vrcholov v mriežke) pre vzdialené zástupy
-    def cluster(cell):
-        key = np.floor(G / cell).astype(np.int64); _, inv = np.unique(key, axis=0, return_inverse=True); inv = inv.ravel()
+    UVc = None
+    def cluster(cell, keepUV=False):
+        key = np.floor(G / cell).astype(np.int64)
+        if UV is not None and keepUV: key = np.hstack([key, np.floor(UV * 48).astype(np.int64)])   # odľahčenie: vrcholy na švoch textúry ostanú oddelené (inak sa textúra rozmaže)
+        _, inv = np.unique(key, axis=0, return_inverse=True); inv = inv.ravel()
         n = inv.max() + 1; Pc = np.zeros((n, 3)); cnt = np.zeros(n); np.add.at(Pc, inv, G); np.add.at(cnt, inv, 1); Pc /= cnt[:, None]
+        nonlocal UVc
+        if UV is not None: UVc = np.zeros((n, 2)); np.add.at(UVc, inv, UV); UVc /= cnt[:, None]
         T = inv[I][(inv[I][:, 0] != inv[I][:, 1]) & (inv[I][:, 1] != inv[I][:, 2]) & (inv[I][:, 0] != inv[I][:, 2])]
         return Pc, T
-    Pl, Il = cluster(.55)
+    Pl, Il = cluster(lodCell)
+    lite = float(OPTS.get('lite', 0))   # --lite=0.3: odľahčená verzia pre hru v jednom súbore (menej vrcholov, textúra 256 px)
+    if lite: G, I = cluster(lite, True); UV = None if UV is None else UVc; print('odľahčené:', len(G), 'vrcholov,', len(I), 'trojuholníkov')
     q = lambda A: base64.b64encode(np.round(A * 100).astype(np.int16).tobytes()).decode()
+    assert np.abs(G).max() * 100 < 32000, 'model je príliš veľký pre Int16'
     ix = lambda A: base64.b64encode(A.astype(np.uint16).tobytes()).decode()
     out = {'land': land, 'p': q(G), 'i': ix(I), 'pl': q(Pl), 'il': ix(Il), 'n': [len(G), len(I), len(Pl), len(Il)]}
     if UV is not None and texBytes:   # UV súradnice (×10000, Uint16) a textúra zmenšená do JPEG
@@ -98,6 +126,6 @@ def main():
         bio = io.BytesIO(); im.save(bio, 'JPEG', quality=82); out['tex'] = 'data:image/jpeg;base64,' + base64.b64encode(bio.getvalue()).decode()
         print('textúra', texSize, 'px,', len(bio.getvalue()) // 1024, 'kB')
     open(dst, 'w').write('/* Telo (' + race + ') z modelu (import tools/model_import.py, zdroj: ' + src.split('/')[-1] + '): pozície ×100 (Int16), trojuholníky (Uint16), UV a textúra (ak sú), zjednodušená verzia a kĺby. */\nconst ' + name + ' = ' + json.dumps(out) + ';\n')
-    print('vrcholy', len(G), 'trojuholníky', len(I), 'LOD', len(Pl), len(Il), json.dumps(land))
+    print('vrcholy', len(G), 'trojuholníky', len(I), 'LOD', len(Pl), len(Il), json.dumps(land)[:200])
 
 main()

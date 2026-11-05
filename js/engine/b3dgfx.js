@@ -137,7 +137,7 @@ const B3G = (() => {
         const k = 'chr' + m + QN(); if (!own && MATS[k]) return MATS[k];
         if (own && QN() === 0) return chrMat(m);
         const t = T(), low = QN() === 0, tex = m === 't';
-        let map = null; if (tex && texUrl) { map = TEXC[texUrl] || (TEXC[texUrl] = new t.TextureLoader().load(texUrl)); map.colorSpace = t.SRGBColorSpace; map.flipY = false; }   // textúra modelu (GLB: UV bez prevrátenia)
+        let map = null; if (tex && texUrl) { if (typeof texUrl === 'object') map = texUrl; else { map = TEXC[texUrl] || (TEXC[texUrl] = new t.TextureLoader().load(texUrl)); map.colorSpace = t.SRGBColorSpace; map.flipY = false; } }   // textúra modelu (GLB: UV bez prevrátenia)
         const mt = low ? new t.MeshLambertMaterial({ vertexColors: !tex, flatShading: !tex, map })
             : new t.MeshStandardMaterial({ vertexColors: !tex, map, roughness: m === 'm' ? .34 : tex ? .9 : .82, metalness: m === 'm' ? .78 : 0, envMapIntensity: m === 'm' ? 1.1 : .6 });
         if (low) { mt.onBeforeCompile = clothPatch; mt.customProgramCacheKey = () => 'chr' + m; }
