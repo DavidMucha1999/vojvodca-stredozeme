@@ -2,6 +2,7 @@
 """
 Import modelu postavy (GLB, napr. z Meshy) do hry: telo človeka pre 3D bitku.
 Použitie: python3 tools/model_import.py vstup.glb js/data/model_clovek.js [vyska=25.5] [--race=human|orc] [--name=MODEL_CLOVEK] [--tex=512]
+- --fwd=-x|+x|-z ak model nepozerá na +Z (napr. kôň modelovaný pozdĺž osi x), --kind=beast pre zvieratá a bossov (bez kĺbov),
 - --race nastaví pomery pre hľadanie kĺbov (ork má širšie plecia a väčšiu hlavu), --tex uloží textúru modelu (ak má UV) zmenšenú na danú veľkosť ako JPEG v base64,
 - model stojí v A-póze alebo T-póze, tvárou do +Z, chodidlá dole (ako z Meshy),
 - prevedie ho do súradníc hry (vpred +X, vpravo +Z, chodidlá na 0, výška v jednotkách hry),
@@ -53,7 +54,11 @@ def main():
     race = opts.get('race', 'human'); RC = RACES.get(race, RACES['human']); name = opts.get('name', 'MODEL_CLOVEK'); texSize = int(opts.get('tex', 512))
     P, I, UV, texBytes = load_glb(src)
     y0 = P[:, 1].min(); h = P[:, 1].max() - y0; s = height / h
-    # do súradníc hry: x = vpred (model +Z), y hore, z = vpravo (model -X)
+    # do súradníc hry: x = vpred (model +Z), y hore, z = vpravo (model -X); --fwd=-x|+x|-z určí, kam model pozerá, ak nie na +Z
+    fwd = opts.get('fwd', '+z')
+    if fwd == '-x': P = np.stack([P[:, 2], P[:, 1], -P[:, 0]], 1)
+    elif fwd == '+x': P = np.stack([-P[:, 2], P[:, 1], P[:, 0]], 1)
+    elif fwd == '-z': P = np.stack([-P[:, 0], P[:, 1], -P[:, 2]], 1)
     G = np.stack([P[:, 2] * s, (P[:, 1] - y0) * s, -P[:, 0] * s], 1)
     Y = G[:, 1] / height
     if opts.get('kind') == 'beast':   # zviera alebo boss: bez kĺbov, len obálka; kostru a váhy si hra určí podľa druhu

@@ -174,26 +174,29 @@ const B3 = (() => {
         hobbit: () => typeof MODEL_HOBIT !== 'undefined' ? MODEL_HOBIT : null, dwarf: () => typeof MODEL_TRPASLIK !== 'undefined' ? MODEL_TRPASLIK : null, uruk: () => typeof MODEL_URUK !== 'undefined' ? MODEL_URUK : null,
         troll: () => typeof MODEL_TROL !== 'undefined' ? MODEL_TROL : null, wraith: () => typeof MODEL_NAZGUL !== 'undefined' ? MODEL_NAZGUL : null, trollking: () => typeof MODEL_KRAL_TROLOV !== 'undefined' ? MODEL_KRAL_TROLOV : null,
         varg: () => typeof MODEL_VARG !== 'undefined' ? MODEL_VARG : null, oliphant: () => typeof MODEL_OLIFANT !== 'undefined' ? MODEL_OLIFANT : null, ent: () => typeof MODEL_ENT !== 'undefined' ? MODEL_ENT : null,
-        dragon: () => typeof MODEL_DRAK !== 'undefined' ? MODEL_DRAK : null, balrog: () => typeof MODEL_BALROG !== 'undefined' ? MODEL_BALROG : null, fell: () => typeof MODEL_BESTIA !== 'undefined' ? MODEL_BESTIA : null
+        dragon: () => typeof MODEL_DRAK !== 'undefined' ? MODEL_DRAK : null, balrog: () => typeof MODEL_BALROG !== 'undefined' ? MODEL_BALROG : null, fell: () => typeof MODEL_BESTIA !== 'undefined' ? MODEL_BESTIA : null,
+        ponik: () => typeof MODEL_KON_PONIK !== 'undefined' ? MODEL_KON_PONIK : null, rohan: () => typeof MODEL_KON_ROHAN !== 'undefined' ? MODEL_KON_ROHAN : null, mearas: () => typeof MODEL_KON_MEARAS !== 'undefined' ? MODEL_KON_MEARAS : null, gondor: () => typeof MODEL_KON_GONDOR !== 'undefined' ? MODEL_KON_GONDOR : null
     };
-    const modelOf0 = k => MODELS[k] ? MODELS[k]() : null;
+    /** Tmavé varianty koní (Čierny kôň Mordoru, kôň nazgûla): rovnaký model, textúra v atlase stmavená. */
+    const VARIANTS = { gondor_d: ['gondor', '#3a3034'], mearas_d: ['mearas', '#1c1a22'] };
+    const modelOf0 = k => MODELS[k] ? MODELS[k]() : VARIANTS[k] ? MODELS[VARIANTS[k][0]]() : null;
     const modelOf = race => (typeof OPT !== 'undefined' && OPT.modelHuman === false) ? null : modelOf0(race);
     /** Atlas textúr všetkých modelov (4×4 políčka po 512 px) – jeden materiál pre všetky textúrované telá, aj pre vzdialené zástupy. */
     let ATLAS = null;
     function atlas() {
         if (ATLAS) return ATLAS;
-        const t = T(), names = Object.keys(MODELS).filter(k => modelOf0(k) && modelOf0(k).tex), c = document.createElement('canvas'); c.width = c.height = 2048;
-        const x = c.getContext('2d'); x.fillStyle = '#8a8078'; x.fillRect(0, 0, 2048, 2048);
+        const t = T(), names = Object.keys(MODELS).concat(Object.keys(VARIANTS)).filter(k => modelOf0(k) && modelOf0(k).tex), rows = Math.max(1, Math.ceil(names.length / 4)), c = document.createElement('canvas'); c.width = 2048; c.height = rows * 512;
+        const x = c.getContext('2d'); x.fillStyle = '#8a8078'; x.fillRect(0, 0, c.width, c.height);
         const tex = new t.CanvasTexture(c); tex.colorSpace = t.SRGBColorSpace; tex.flipY = false; tex.anisotropy = 4; const slots = {};
-        const ready = Promise.all(names.map((k, i) => new Promise(res => { slots[k] = i; const im = new Image(); im.onload = () => { x.drawImage(im, (i % 4) * 512, (i >> 2) * 512, 512, 512); tex.needsUpdate = true; res(); }; im.onerror = res; im.src = modelOf0(k).tex; })));
-        return (ATLAS = { tex, slots, ready });
+        const ready = Promise.all(names.map((k, i) => new Promise(res => { slots[k] = i; const im = new Image(); im.onload = () => { const ox = (i % 4) * 512, oy = (i >> 2) * 512; x.drawImage(im, ox, oy, 512, 512); if (VARIANTS[k]) { x.globalCompositeOperation = 'multiply'; x.fillStyle = VARIANTS[k][1]; x.fillRect(ox, oy, 512, 512); x.globalCompositeOperation = 'source-over'; } tex.needsUpdate = true; res(); }; im.onerror = res; im.src = modelOf0(k).tex; })));
+        return (ATLAS = { tex, slots, ready, rows });
     }
     /** Rozbalí model (pozície ×100, trojuholníky, UV do atlasu) a dopočíta normály. */
     function decodeModel(M0, key, low, scale = 1) {
         const dec = (b64, Tp) => { const s2 = atob(b64), u8 = new Uint8Array(s2.length); for (let i = 0; i < s2.length; i++) u8[i] = s2.charCodeAt(i); return new Tp(u8.buffer); };
         const Pq = dec(low ? M0.pl : M0.p, Int16Array), I = Array.from(dec(low ? M0.il : M0.i, Uint16Array)), n = Pq.length / 3, P = new Float32Array(n * 3);
         for (let i = 0; i < P.length; i++) P[i] = Pq[i] / 100 * scale;
-        let UV = null; if (M0.uv && !low) { const q = dec(M0.uv, Uint16Array), sl = atlas().slots[key] || 0, ox = sl % 4, oy = sl >> 2; UV = new Float32Array(q.length); for (let i = 0; i < q.length; i += 2) { UV[i] = (q[i] / 10000 + ox) / 4; UV[i + 1] = (q[i + 1] / 10000 + oy) / 4; } }
+        let UV = null; if (M0.uv && !low) { const q = dec(M0.uv, Uint16Array), sl = atlas().slots[key] || 0, ox = sl % 4, oy = sl >> 2; UV = new Float32Array(q.length); for (let i = 0; i < q.length; i += 2) { UV[i] = (q[i] / 10000 + ox) / 4; UV[i + 1] = (q[i + 1] / 10000 + oy) / atlas().rows; } }
         const N = new Float32Array(n * 3);
         for (let i = 0; i < I.length; i += 3) { const a = I[i] * 3, b = I[i + 1] * 3, c = I[i + 2] * 3, ux = P[b] - P[a], uy = P[b + 1] - P[a + 1], uz = P[b + 2] - P[a + 2], vx = P[c] - P[a], vy = P[c + 1] - P[a + 1], vz = P[c + 2] - P[a + 2], nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; for (const v of [a, b, c]) { N[v] += nx; N[v + 1] += ny; N[v + 2] += nz; } }
         for (let v = 0; v < N.length; v += 3) { const l = Math.hypot(N[v], N[v + 1], N[v + 2]) || 1; N[v] /= l; N[v + 1] /= l; N[v + 2] /= l; }
@@ -264,6 +267,18 @@ const B3 = (() => {
         const mb = J('mb'), segs = [['mb', add(mb, [-9, 1, 0]), add(mb, [9, 1, 0])], ['mb', add(mb, [0, 2, 0]), add(mb, [0, 24, 0])], ['nk', J('nk'), J('hd')], ['hd', J('hd'), add(J('hd'), [5, -1, 0])], ['tl', J('tl'), add(J('tl'), [-7, -3, 0])]];
         for (const Lg of ['FR', 'FL', 'BR', 'BL']) { const A = J(Lg), K = J(Lg + 'k'); segs.push([Lg, A, K], [Lg + 'k', K, add(K, [0, -(K[1] - 1), 0])]); }
         return (MBC[key] = skinBySegs(M, segs, BN, 6));
+    }
+    /** Kôň z modelu (poník, rohanský, gondorský bojový, Mearas a ich tmavé varianty) na kostre herného koňa: telo, krk, hlava, chvost, nohy s kĺbmi.
+     *  Model sa posunie tak, aby stred kopýt sedel pod telom, a stojí na zemi. */
+    function horseModel(key, BN, k) {
+        const ck = 'horse' + key; if (MBC[ck]) return MBC[ck];
+        const M = decodeModel(modelOf0(key), key, false, 1 / k), P = M.P, J = b => { const e = BN.rest[b].elements; return [e[12], e[13], e[14]]; }, add = (a, d) => [a[0] + d[0], a[1] + d[1], a[2] + d[2]];
+        let ymin = 1e9, ymax = -1e9; for (let i = 1; i < P.length; i += 3) { ymin = Math.min(ymin, P[i]); ymax = Math.max(ymax, P[i]); }
+        let sx = 0, n = 0; for (let i = 0; i < P.length; i += 3) if (P[i + 1] < ymin + (ymax - ymin) * .1) { sx += P[i]; n++; }
+        const dx = n ? sx / n + .3 : 0; for (let i = 0; i < P.length; i += 3) { P[i] -= dx; P[i + 1] -= ymin; }   // kopytá pod kostrou, na zemi
+        const mb = J('mb'), segs = [['mb', add(mb, [-10, 1, 0]), add(mb, [8, 1, 0])], ['mb', add(mb, [0, -4, 0]), add(mb, [0, 5, 0])], ['nk', add(J('nk'), [-1, -1, 0]), J('hd')], ['hd', J('hd'), add(J('hd'), [6, -3, 0])], ['tl', J('tl'), add(J('tl'), [-8, -6, 0])]];
+        for (const Lg of ['FR', 'FL', 'BR', 'BL']) { const A = J(Lg), K = J(Lg + 'k'); segs.push([Lg, add(A, [0, 1.5, 0]), K], [Lg + 'k', K, add(K, [0, -(K[1] - .5), 0])]); }
+        return (MBC[ck] = skinBySegs(M, segs, BN, 6));
     }
     const SDFC = new Map();
     /** Ľudské (elfské, orkské, trolie…) telo zo SDF v pokojovej póze; vrátené z vyrovnávacej pamäte podľa rasy. */
@@ -710,14 +725,15 @@ const B3 = (() => {
         const fac = u.t ? (u.fc ?? 9) : (G.fac ?? 6), team = u.t ? (FC[u.fc] || '#8a7a6a') : FC[G.fac] || '#d9a441';
         const raceOf = L => L && ({ elf: 'elf', dwarf: 'dwarf', orc: 'orc', uruk: 'uruk', hobbit: 'hobbit', wraith: 'wraith' }[L.race]) || 'human';
         if (u.h) { const S = Soldiers.heroSpec(typeof twoHand === 'function' && twoHand() ? { ...G.eq, s: 0 } : G.eq), L = Portraits.hero(), lo = Figures.lookOpts(L); const C = typeof CMB !== 'undefined' ? CMB : {}, RW = typeof rangedW === 'function' ? rangedW() : null, rng = C.wpn === 'r', broken = C.shMax && C.shp <= 0;
-            return { hero: 1, mdl: modelOf(raceOf(L)) ? 1 : 0, race: raceOf(L), fac, skin: lo.skin || SKIN.human, hair: lo.hcol || '#4a3020', beard: lo.beard ? 1 : 0, longHair: lo.hstyle === 'long', armor: S.armorG.col, rim: S.armorG.rim, helmG: S.helmG, shieldG: rng || broken ? null : S.shieldG, weaponG: rng ? null : S.weaponG, weapon: rng ? (RW && RW.rt === 'xbow' ? 'xbow' : RW && RW.rt === 'jav' ? 'spear' : 'bow') : S.weaponG.t, quiver: !!C.ammo0, horse: G.eq.m && !(u.dis) ? S.horse : null, team, cape: heroSide() ? '#2a1414' : '#6a2a2a' }; }
+            return { hero: 1, hm: ['', 'ponik', 'rohan', 'gondor', 'mearas', '', '', 'gondor_d', 'mearas_d'][G.eq.m] || null, mdl: modelOf(raceOf(L)) ? 1 : 0, race: raceOf(L), fac, skin: lo.skin || SKIN.human, hair: lo.hcol || '#4a3020', beard: lo.beard ? 1 : 0, longHair: lo.hstyle === 'long', armor: S.armorG.col, rim: S.armorG.rim, helmG: S.helmG, shieldG: rng || broken ? null : S.shieldG, weaponG: rng ? null : S.weaponG, weapon: rng ? (RW && RW.rt === 'xbow' ? 'xbow' : RW && RW.rt === 'jav' ? 'spear' : 'bow') : S.weaponG.t, quiver: !!C.ammo0, horse: G.eq.m && !(u.dis) ? S.horse : null, team, cape: heroSide() ? '#2a1414' : '#6a2a2a' }; }
         const kind = Art.unitArt(u), sp = (Soldiers.UNITS[kind] || Soldiers.UNITS.i);
-        if (u.cp) { const c = compDef(u.cp); if (c && c.eq) { const S = Soldiers.heroSpec(c.eq), L = c.look || {}, lo = Figures.lookOpts(L); return { hero: 1, race: raceOf(L), fac, skin: lo.skin || SKIN.human, hair: lo.hcol || '#4a3020', beard: lo.beard ? 1 : 0, longHair: lo.hstyle === 'long', armor: S.armorG.col, rim: S.armorG.rim, helmG: L.helm || c.eq.h ? S.helmG : null, shieldG: S.shieldG, weaponG: S.weaponG, weapon: S.weaponG.t, horse: u.mnt ? Soldiers.GEAR.m[u.mnt] : null, team, cape: '#4a3a2a' }; } }
+        if (u.cp) { const c = compDef(u.cp); if (c && c.eq) { const S = Soldiers.heroSpec(c.eq), L = c.look || {}, lo = Figures.lookOpts(L); return { hero: 1, mdl: modelOf(raceOf(L)) ? 1 : 0, hm: u.mnt ? ['', 'ponik', 'rohan', 'gondor', 'mearas', '', '', 'gondor_d', 'mearas_d'][u.mnt] || null : null, race: raceOf(L), fac, skin: lo.skin || SKIN.human, hair: lo.hcol || '#4a3020', beard: lo.beard ? 1 : 0, longHair: lo.hstyle === 'long', armor: S.armorG.col, rim: S.armorG.rim, helmG: L.helm || c.eq.h ? S.helmG : null, shieldG: S.shieldG, weaponG: S.weaponG, weapon: S.weaponG.t, horse: u.mnt ? Soldiers.GEAR.m[u.mnt] : null, team, cape: '#4a3a2a' }; } }
         const fu = u.uk && FU[u.uk], race = { orc: 'orc', uruk: 'uruk', troll: 'troll', dwarf: 'dwarf', elf: 'elf', none: 'wraith' }[sp.skin] || 'human';
         // rozmanitosť: časť pešiakov nesie sekeru alebo kyjak namiesto meča, niektorí bojujú bez prilby
         const vr = u.vr ?? (u.vr = Math.random()), plainW = !sp.weapon || sp.weapon === 'sword' || sp.weapon === 'scimitar', bare = (race === 'human' || race === 'orc') && sp.helm && sp.helm !== 'hood' && !fu && vr > .86;
         const wpn = plainW && !sp.mount && vr < .22 ? 'axe' : plainW && !sp.mount && vr > .9 && race !== 'elf' ? 'mace' : sp.weapon || 'sword';
-        return { mdl: modelOf(race) ? 1 : 0, race, fac, skin: SKIN[sp.skin] || SKIN.human, hair: race === 'elf' ? '#e8d8a0' : ['#3a2a1a', '#6a4a2a', '#2a1a10', '#8a6a3a'][(u.x * 7 | 0) % 4], beard: sp.beard || (race === 'human' && (u.y * 3 | 0) % 3 === 0) ? 1 : 0, armor: (fu && fu.col) || sp.armor, helm: bare ? 'none' : sp.helm, helmCol: fu && fu.hel, weapon: wpn, shield: sp.shield, mount: sp.mount, beast: sp.beast, big: sp.big, team, quiver: sp.weapon === 'bow' || sp.weapon === 'xbow', scale: race === 'troll' ? 1.55 : sp.big ? 1.6 : 1 };
+        const gon = u.uk === 'uG3' || (u.t ? u.fc === 0 : G.fac === 0), hm = sp.mount === 'horse' ? (gon ? 'gondor' : 'rohan') : sp.mount === 'darkhorse' ? 'mearas_d' : null;   // plemeno koňa jednotky: Gondor bojový kôň, inak rohanský; Nazgûl čierny
+        return { hm, mdl: modelOf(race) ? 1 : 0, race, fac, skin: SKIN[sp.skin] || SKIN.human, hair: race === 'elf' ? '#e8d8a0' : ['#3a2a1a', '#6a4a2a', '#2a1a10', '#8a6a3a'][(u.x * 7 | 0) % 4], beard: sp.beard || (race === 'human' && (u.y * 3 | 0) % 3 === 0) ? 1 : 0, armor: (fu && fu.col) || sp.armor, helm: bare ? 'none' : sp.helm, helmCol: fu && fu.hel, weapon: wpn, shield: sp.shield, mount: sp.mount, beast: sp.beast, big: sp.big, team, quiver: sp.weapon === 'bow' || sp.weapon === 'xbow', scale: race === 'troll' ? 1.55 : sp.big ? 1.6 : 1 };
     }
     const keyOf = s => JSON.stringify(s);
     /** Šablóna (geometrie a kostra) pre popis s; zdieľajú ju všetky rovnaké jednotky. */
@@ -901,6 +917,11 @@ const B3 = (() => {
         BN.blend = [['FRk', 'FR', 1.8], ['FLk', 'FL', 1.8], ['BRk', 'BR', 1.8], ['BLk', 'BL', 1.8], ['nk', 'mb', 3.2], ['hd', 'nk', 2.2], ['FR', 'mb', 2.4], ['FL', 'mb', 2.4], ['BR', 'mb', 2.4], ['BL', 'mb', 2.4]];
         const P = Part(), b = n => ({ b: n });
         const back = H.back || sh(c, .8);
+        if (!wolf && s.hm && modelOf(s.hm)) {   // kôň z modelu: sedlo, postroj a pancier sú v modeli (Mearas bez sedla)
+            const M = horseModel(s.hm, BN, k); for (const [g] of sdfGeos(M, () => ['#ffffff', 0, false, 1])) P.add(g, '#ffffff', [0, 0, 0], [0, 0, 0], [1, 1, 1], { pre: 1, tex: 1 });
+            if (H.plume) P.add('cone', H.plume, [15, 29 / k, 0], [0, 0, .3], [1.2, 3.6, 1.2], b('hd'));
+            return { geo: P.build(BN), BN, k, h, wolf, seat: (h + 5.2) * k, mdl: 1 };
+        }
         if (wolf && s.vargModel) { const M = vargModel(BN, k); for (const [g] of sdfGeos(M, () => ['#ffffff', 0, false])) P.add(g, '#ffffff', [0, 0, 0], [0, 0, 0], [1, 1, 1], { pre: 1, tex: 1 }); return { geo: P.build(BN), BN, k, h, wolf, seat: (h + 3.6) * k, hideRider: 1 }; }   // varg s jazdcom z modelu (Meshy)
         if (wolf) P.add('sph2', c, [0, 0, 0], [0, 0, 0], [20, 8.4, 7.4], b('mb')).add('sph2', c, [6.6, .5, 0], [0, 0, 0], [9, 9.4, 7.8], b('mb')).add('sph2', back, [-7, .7, 0], [0, 0, 0], [8.6, 8.4, 7.4], b('mb')).add('sph2', sh(c, .82), [0, -2.4, 0], [0, 0, 0], [16, 5, 6.6], b('mb'));
         else {   // kôň s tvarovaným telom zo SDF (krk, hlava, svalnaté nohy s kĺbmi); svetlejšie brucho, tmavšie spodné nohy

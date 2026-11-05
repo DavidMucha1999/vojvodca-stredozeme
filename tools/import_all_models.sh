@@ -18,3 +18,8 @@ OUT=model_ent      imp Ent.glb 64 --kind=beast --race=ent --name=MODEL_ENT
 OUT=model_drak     imp drak.glb 91 --kind=beast --race=dragon --name=MODEL_DRAK
 OUT=model_balrog   imp Balrog.glb 100 --kind=beast --race=balrog --name=MODEL_BALROG
 OUT=model_bestia   imp okridlena_bestia.glb 71 --kind=beast --race=fell --name=MODEL_BESTIA
+# kone (bez kĺbov – kostru herného koňa dostanú v hre); gondorský je modelovaný pozdĺž osi x (hlava na -x)
+OUT=model_kon_ponik  imp ponik.glb 20 --kind=beast --race=ponik --name=MODEL_KON_PONIK
+OUT=model_kon_rohan  imp rohan.glb 27 --kind=beast --race=rohan --name=MODEL_KON_ROHAN
+OUT=model_kon_mearas imp mearas.glb 29 --kind=beast --race=mearas --name=MODEL_KON_MEARAS
+OUT=model_kon_gondor imp gondor.glb 30 --kind=beast --race=gondor --name=MODEL_KON_GONDOR --fwd=-x
