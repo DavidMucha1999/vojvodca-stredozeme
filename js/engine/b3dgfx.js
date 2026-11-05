@@ -117,6 +117,9 @@ const B3G = (() => {
                 else if (mt == 7) { float pl = abs(fract(vOP.z * 0.42 + 0.5) - 0.5), seam = 1.0 - smoothstep(0.0, 0.05, pl); vec2 sg = fract(vec2(vOP.y * 0.32, vOP.z * 0.42 + 0.5)) - 0.5; float nail = 1.0 - smoothstep(0.08, 0.12, length(sg * vec2(1.0, 1.0)));
                     float gr = n3(vec3(vOP.y * 0.4, vOP.z * 6.0, vOP.x)); dc *= (0.82 + 0.3 * gr) * (1.0 - seam * 0.45 * dk); dc = mix(dc, vec3(0.32, 0.32, 0.34), nail * dk); mR = mix(0.9, 0.35, nail); mM = mix(1.0, 4.0, nail * dk); bh = gr * 0.3 - seam * 0.6 + nail * 0.8; }   // štít z dosiek s kovanými klincami
                 float dm = clamp(uDirt * ((1.0 - smoothstep(2.0, 15.0, vOP.y)) * 0.85 + 0.22) * (0.5 + 0.8 * n3(vOP * 0.45)), 0.0, 0.85);
+                #ifdef USE_MAP
+                dm *= 0.45;   // textúrované telo (model): blato len jemne, textúra má vlastné tiene
+                #endif
                 dc = mix(dc, uMud * (0.8 + 0.4 * n3(vOP * 2.0)), dm); mR = mix(mR, 1.7, dm); mM *= 1.0 - dm * 0.7;
                 float rs = uWet > 0.05 ? smoothstep(0.62, 0.95, n3(vec3(vOP.x * 4.0, vOP.y * 0.35, vOP.z * 4.0))) * uWet : 0.0; mR *= 1.0 - rs * 0.55; dc *= 1.0 - rs * 0.18;   // stružky dažďa
                 float snw = uSnow > 0.01 ? smoothstep(0.45, 0.85, normalize(vON).y) * uSnow * (0.55 + 0.45 * n3(vOP * 1.6)) : 0.0;
@@ -129,12 +132,14 @@ const B3G = (() => {
     }
     /** Materiál postáv: m = 'c' látka a koža, 'm' kov (lesk a odraz oblohy). own = vlastná špina a odtieň vojaka (inak spoločný materiál pre vzdialené zástupy).
      *  Na nízkej kvalite jednoduché ploché tieňovanie. */
-    function chrMat(m, own) {
+    const TEXC = {};
+    function chrMat(m, own, texUrl) {
         const k = 'chr' + m + QN(); if (!own && MATS[k]) return MATS[k];
         if (own && QN() === 0) return chrMat(m);
-        const t = T(), low = QN() === 0;
-        const mt = low ? new t.MeshLambertMaterial({ vertexColors: true, flatShading: true })
-            : new t.MeshStandardMaterial({ vertexColors: true, roughness: m === 'm' ? .34 : .82, metalness: m === 'm' ? .78 : 0, envMapIntensity: m === 'm' ? 1.1 : .6 });
+        const t = T(), low = QN() === 0, tex = m === 't';
+        let map = null; if (tex && texUrl) { map = TEXC[texUrl] || (TEXC[texUrl] = new t.TextureLoader().load(texUrl)); map.colorSpace = t.SRGBColorSpace; map.flipY = false; }   // textúra modelu (GLB: UV bez prevrátenia)
+        const mt = low ? new t.MeshLambertMaterial({ vertexColors: !tex, flatShading: !tex, map })
+            : new t.MeshStandardMaterial({ vertexColors: !tex, map, roughness: m === 'm' ? .34 : tex ? .9 : .82, metalness: m === 'm' ? .78 : 0, envMapIntensity: m === 'm' ? 1.1 : .6 });
         if (low) { mt.onBeforeCompile = clothPatch; mt.customProgramCacheKey = () => 'chr' + m; }
         else { mt.onBeforeCompile = sh => chrPatch(sh, own); mt.customProgramCacheKey = () => 'chrP' + m; mt.extensions = { derivatives: true }; }
         return own ? mt : (MATS[k] = mt);
