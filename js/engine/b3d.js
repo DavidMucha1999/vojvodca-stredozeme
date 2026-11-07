@@ -195,6 +195,34 @@ const B3 = (() => {
         'Trpasličia sekera z Ereboru': 'w_sekera_erebor', 'Glamdring': 'w_glamdring', 'Plameň Anoru': 'w_plamen_anoru', 'Andúril': 'w_anduril', 'Gondorský obojručný meč': 'w_gondor_obojrucny' };
     const weaponModel = k => k && WMODELS[k] && (typeof OPT === 'undefined' || OPT.modelHuman !== false) ? WMODELS[k]() : null;
     const weaponOf = i => { const it = typeof shOf === 'function' && i != null ? shOf('w')[i] : null; return (it && WEAPON_BY_NAME[it.n]) || null; };
+    /** Brnenia z modelov (Meshy, --kind=garment): samostatný odev, telu rasy ho prispôsobí GarmentFit (js/engine/garment.js). */
+    const AMODELS = {
+        a_kozeny_odev: () => typeof MODEL_A_KOZENY_ODEV !== 'undefined' ? MODEL_A_KOZENY_ODEV : null, a_rohanska_kruzkova: () => typeof MODEL_A_ROHANSKA_KRUZKOVA !== 'undefined' ? MODEL_A_ROHANSKA_KRUZKOVA : null,
+        a_gondorsky_plat: () => typeof MODEL_A_GONDORSKY_PLAT !== 'undefined' ? MODEL_A_GONDORSKY_PLAT : null, a_galadrimska_supinova: () => typeof MODEL_A_GALADRIMSKA_SUPINOVA !== 'undefined' ? MODEL_A_GALADRIMSKA_SUPINOVA : null,
+        a_plat_z_ereboru: () => typeof MODEL_A_PLAT_Z_EREBORU !== 'undefined' ? MODEL_A_PLAT_Z_EREBORU : null, a_mithrilova_kosela: () => typeof MODEL_A_MITHRILOVA_KOSELA !== 'undefined' ? MODEL_A_MITHRILOVA_KOSELA : null
+    };
+    const ARMOR_BY_NAME = { 'Kožený odev': 'a_kozeny_odev', 'Rohanská krúžková zbroj': 'a_rohanska_kruzkova', 'Gondorský plát': 'a_gondorsky_plat', 'Galadrimská šupinová zbroj': 'a_galadrimska_supinova', 'Plát z Ereboru': 'a_plat_z_ereboru', 'Mithrilová košeľa': 'a_mithrilova_kosela' };
+    const armorModel = k => k && AMODELS[k] && typeof GarmentFit !== 'undefined' && (typeof OPT === 'undefined' || OPT.modelHuman !== false) ? AMODELS[k]() : null;
+    const armorOf = i => { const it = typeof shOf === 'function' && i != null ? shOf('a')[i] : null; return (it && ARMOR_BY_NAME[it.n]) || null; };
+    const b64 = (s2, Tp) => { const a = atob(s2), u8 = new Uint8Array(a.length); for (let i = 0; i < a.length; i++) u8[i] = a.charCodeAt(i); return new Tp(u8.buffer); };
+    let REFM = null;
+    const GGC = {};
+    /** Brnenie nasadené na telo rasy (kostra BN, rozmery rc): [nekovové časti, kov] ako hotové kostrové siete (pre Part s o.pre); low = zjednodušené. */
+    function garmentGeos(k, BN, rc, low) {
+        const ck = k + rc.race + (low ? 'l' : 'h'); if (GGC[ck]) return GGC[ck];
+        const t = T(), A0 = armorModel(k), Pq = b64(low ? A0.pl : A0.p, Int16Array), I = b64(low ? A0.il : A0.i, Uint16Array), Cb = b64(low ? A0.cl : A0.c, Uint8Array), n = Pq.length / 3, G = new Float32Array(n * 3);
+        for (let i = 0; i < G.length; i++) G[i] = Pq[i] / 100;
+        if (!REFM && modelOf0('human')) { const H0 = decodeModel(modelOf0('human'), 'human'); REFM = GarmentFit.bodyMeasures(H0, modelOf0('human').land); }
+        const F = GarmentFit.fit(G, A0.land, modelBody(BN, rc, false), rc.md.land, REFM), col = new Float32Array(n * 3), c = new t.Color();
+        for (let v = 0; v < n; v++) { c.setRGB(Cb[v * 4] / 255, Cb[v * 4 + 1] / 255, Cb[v * 4 + 2] / 255, t.SRGBColorSpace); col[v * 3] = c.r; col[v * 3 + 1] = c.g; col[v * 3 + 2] = c.b; }
+        const out = [0, 1].map(metal => {
+            const tri = []; for (let i = 0; i < I.length; i += 3) if ((Cb[I[i] * 4 + 3] + Cb[I[i + 1] * 4 + 3] + Cb[I[i + 2] * 4 + 3] > 382) === !!metal) tri.push(I[i], I[i + 1], I[i + 2]);
+            if (!tri.length) return null;
+            const g = new t.BufferGeometry(); g.setAttribute('position', new t.BufferAttribute(F.P, 3)); g.setAttribute('color', new t.BufferAttribute(col, 3)); g.setAttribute('aMat', new t.BufferAttribute(new Float32Array(n), 1));
+            g.setAttribute('skinIndex', new t.Uint16BufferAttribute(F.si, 4)); g.setAttribute('skinWeight', new t.BufferAttribute(F.sw, 4)); g.setIndex(tri); g.computeVertexNormals(); return g;
+        });
+        return (GGC[ck] = out);
+    }
     const WGC = {};
     /** Geometrie zbrane z modelu: [nekovové časti, kov]; low = zjednodušená pre vzdialené zástupy. */
     function weaponGeos(k, low) {
@@ -753,18 +781,22 @@ const B3 = (() => {
         const fac = u.t ? (u.fc ?? 9) : (G.fac ?? 6), team = u.t ? (FC[u.fc] || '#8a7a6a') : FC[G.fac] || '#d9a441';
         const raceOf = L => L && ({ elf: 'elf', dwarf: 'dwarf', orc: 'orc', uruk: 'uruk', hobbit: 'hobbit', wraith: 'wraith' }[L.race]) || 'human';
         if (u.h) { const S = Soldiers.heroSpec(typeof twoHand === 'function' && twoHand() ? { ...G.eq, s: 0 } : G.eq), L = Portraits.hero(), lo = Figures.lookOpts(L); const C = typeof CMB !== 'undefined' ? CMB : {}, RW = typeof rangedW === 'function' ? rangedW() : null, rng = C.wpn === 'r', broken = C.shMax && C.shp <= 0;
-            return { hero: 1, hm: ['', 'ponik', 'rohan', 'gondor', 'mearas', '', '', 'gondor_d', 'mearas_d'][G.eq.m] || null, mdl: modelOf(raceOf(L)) ? 1 : 0, race: raceOf(L), fac, skin: lo.skin || SKIN.human, hair: lo.hcol || '#4a3020', beard: lo.beard ? 1 : 0, longHair: lo.hstyle === 'long', armor: S.armorG.col, rim: S.armorG.rim, helmG: S.helmG, shieldG: rng || broken ? null : S.shieldG, weaponG: rng ? null : S.weaponG, wm: rng ? null : weaponOf(G.eq.w), weapon: rng ? (RW && RW.rt === 'xbow' ? 'xbow' : RW && RW.rt === 'jav' ? 'spear' : 'bow') : S.weaponG.t, quiver: !!C.ammo0, horse: G.eq.m && !(u.dis) ? S.horse : null, team, cape: heroSide() ? '#2a1414' : '#6a2a2a' }; }
+            return { hero: 1, hm: ['', 'ponik', 'rohan', 'gondor', 'mearas', '', '', 'gondor_d', 'mearas_d'][G.eq.m] || null, mdl: modelOf(raceOf(L)) ? 1 : 0, race: raceOf(L), fac, skin: lo.skin || SKIN.human, hair: lo.hcol || '#4a3020', beard: lo.beard ? 1 : 0, longHair: lo.hstyle === 'long', armor: S.armorG.col, rim: S.armorG.rim, helmG: S.helmG, shieldG: rng || broken ? null : S.shieldG, weaponG: rng ? null : S.weaponG, wm: rng ? null : weaponOf(G.eq.w), am: armorOf(G.eq.a), weapon: rng ? (RW && RW.rt === 'xbow' ? 'xbow' : RW && RW.rt === 'jav' ? 'spear' : 'bow') : S.weaponG.t, quiver: !!C.ammo0, horse: G.eq.m && !(u.dis) ? S.horse : null, team, cape: heroSide() ? '#2a1414' : '#6a2a2a' }; }
         const kind = Art.unitArt(u), sp = (Soldiers.UNITS[kind] || Soldiers.UNITS.i);
-        if (u.cp) { const c = compDef(u.cp); if (c && c.eq) { const S = Soldiers.heroSpec(c.eq), L = c.look || {}, lo = Figures.lookOpts(L); return { hero: 1, mdl: modelOf(raceOf(L)) ? 1 : 0, hm: u.mnt ? ['', 'ponik', 'rohan', 'gondor', 'mearas', '', '', 'gondor_d', 'mearas_d'][u.mnt] || null : null, race: raceOf(L), fac, skin: lo.skin || SKIN.human, hair: lo.hcol || '#4a3020', beard: lo.beard ? 1 : 0, longHair: lo.hstyle === 'long', armor: S.armorG.col, rim: S.armorG.rim, helmG: L.helm || c.eq.h ? S.helmG : null, shieldG: S.shieldG, weaponG: S.weaponG, wm: weaponOf(c.eq.w), weapon: S.weaponG.t, horse: u.mnt ? Soldiers.GEAR.m[u.mnt] : null, team, cape: '#4a3a2a' }; } }
+        if (u.cp) { const c = compDef(u.cp); if (c && c.eq) { const S = Soldiers.heroSpec(c.eq), L = c.look || {}, lo = Figures.lookOpts(L); return { hero: 1, mdl: modelOf(raceOf(L)) ? 1 : 0, hm: u.mnt ? ['', 'ponik', 'rohan', 'gondor', 'mearas', '', '', 'gondor_d', 'mearas_d'][u.mnt] || null : null, race: raceOf(L), fac, skin: lo.skin || SKIN.human, hair: lo.hcol || '#4a3020', beard: lo.beard ? 1 : 0, longHair: lo.hstyle === 'long', armor: S.armorG.col, rim: S.armorG.rim, helmG: L.helm || c.eq.h ? S.helmG : null, shieldG: S.shieldG, weaponG: S.weaponG, wm: weaponOf(c.eq.w), am: armorOf(c.eq.a), weapon: S.weaponG.t, horse: u.mnt ? Soldiers.GEAR.m[u.mnt] : null, team, cape: '#4a3a2a' }; } }
         const fu = u.uk && FU[u.uk], race = { orc: 'orc', uruk: 'uruk', troll: 'troll', dwarf: 'dwarf', elf: 'elf', none: 'wraith' }[sp.skin] || 'human';
         // rozmanitosť: časť pešiakov nesie sekeru alebo kyjak namiesto meča, niektorí bojujú bez prilby
         const vr = u.vr ?? (u.vr = Math.random()), plainW = !sp.weapon || sp.weapon === 'sword' || sp.weapon === 'scimitar', bare = (race === 'human' || race === 'orc') && sp.helm && sp.helm !== 'hood' && !fu && vr > .86;
         const wpn = plainW && !sp.mount && vr < .22 ? 'axe' : plainW && !sp.mount && vr > .9 && race !== 'elf' ? 'mace' : sp.weapon || 'sword';
         // zbrane dobra z modelov: Gondor, Rohan, Erebor, Lothlórien a tvoje vojsko, ak stojíš na strane dobra; veterán (vylepšený pešiak) nesie meč strážcu
         const good = u.t ? [0, 1, 5, 8].includes(u.fc) : !(typeof heroSide === 'function' && heroSide());
+        // brnenia dobra z modelov: trpaslíci plát z Ereboru, elfovia galadhrimskú šupinovú, Strážca Citadely a rytieri Dol Amrothu gondorský plát,
+        // veterán a jazdci Rohanu rohanskú krúžkovú, lukostrelci a hraničiari kožený odev (bežný pešiak a jazdec zatiaľ zbroj kreslenú kódom)
+        const am = !good ? null : race === 'dwarf' ? 'a_plat_z_ereboru' : race === 'elf' ? 'a_galadrimska_supinova' : u.uk === 'uG1' || u.uk === 'uG3' ? 'a_gondorsky_plat'
+            : kind === 'v' || kind === 'r' || u.uk === 'uR2' ? 'a_rohanska_kruzkova' : kind === 'a' || u.uk === 'uG2' ? 'a_kozeny_odev' : null;
         const wm = !good ? null : wpn === 'spear' ? 'w_rohanska_kopija' : wpn === 'elfblade' ? 'w_orcrist' : wpn === 'axe' && race === 'dwarf' ? 'w_sekera_erebor' : wpn === 'sword' ? (kind === 'v' ? 'w_mec_strazcu' : 'w_zelezny_mec') : null;
         const gon = u.uk === 'uG3' || (u.t ? u.fc === 0 : G.fac === 0), hm = sp.mount === 'horse' ? (gon ? 'gondor' : 'rohan') : sp.mount === 'darkhorse' ? 'mearas_d' : null;   // plemeno koňa jednotky: Gondor bojový kôň, inak rohanský; Nazgûl čierny
-        return { hm, mdl: modelOf(race) ? 1 : 0, race, fac, skin: SKIN[sp.skin] || SKIN.human, hair: race === 'elf' ? '#e8d8a0' : ['#3a2a1a', '#6a4a2a', '#2a1a10', '#8a6a3a'][(u.x * 7 | 0) % 4], beard: sp.beard || (race === 'human' && (u.y * 3 | 0) % 3 === 0) ? 1 : 0, armor: (fu && fu.col) || sp.armor, helm: bare ? 'none' : sp.helm, helmCol: fu && fu.hel, weapon: wpn, wm: weaponModel(wm) ? wm : null, shield: sp.shield, mount: sp.mount, beast: sp.beast, big: sp.big, team, quiver: sp.weapon === 'bow' || sp.weapon === 'xbow', scale: race === 'troll' ? 1.55 : sp.big ? 1.6 : 1 };
+        return { hm, mdl: modelOf(race) ? 1 : 0, race, fac, skin: SKIN[sp.skin] || SKIN.human, hair: race === 'elf' ? '#e8d8a0' : ['#3a2a1a', '#6a4a2a', '#2a1a10', '#8a6a3a'][(u.x * 7 | 0) % 4], beard: sp.beard || (race === 'human' && (u.y * 3 | 0) % 3 === 0) ? 1 : 0, armor: (fu && fu.col) || sp.armor, helm: bare ? 'none' : sp.helm, helmCol: fu && fu.hel, weapon: wpn, wm: weaponModel(wm) ? wm : null, am: armorModel(am) ? am : null, shield: sp.shield, mount: sp.mount, beast: sp.beast, big: sp.big, team, quiver: sp.weapon === 'bow' || sp.weapon === 'xbow', scale: race === 'troll' ? 1.55 : sp.big ? 1.6 : 1 };
     }
     const keyOf = s => JSON.stringify(s);
     /** Šablóna (geometrie a kostra) pre popis s; zdieľajú ju všetky rovnaké jednotky. */
@@ -817,7 +849,9 @@ const B3 = (() => {
             sdfGeos(modelBody(BN, rc, false), mix).forEach(([g, metal, tx]) => P.add(g, '#ffffff', [0, 0, 0], [0, 0, 0], [1, 1, 1], { pre: 1, m: metal, tex: tx ? 1 : 0, lod: tx ? null : (lo.find(x => x[1] === metal) || [])[0] }));
         } else if (MM) { const lo = sdfGeos(modelBody(BN, rc, true), regionOf); sdfGeos(modelBody(BN, rc, false), regionOf).forEach(([g, metal], i) => P.add(g, '#ffffff', [0, 0, 0], [0, 0, 0], [1, 1, 1], { pre: 1, m: metal, lod: (lo.find(x => x[1] === metal) || [])[0] })); }   // telo z modelu (Meshy)
         else for (const [g, metal] of sdfGeos(bodySDF(s.race || 'human', rc, BN), regionOf)) P.add(g, '#ffffff', [0, 0, 0], [0, 0, 0], [1, 1, 1], { pre: 1, m: metal });
-        const noTab = fullTex && s.race !== 'orc';   // trollovia, Nazgûl a uruci bez kabátca a opasku (majú vlastný vzhľad)
+        const GA = MM && !fullTex && armorModel(s.am) ? s.am : null;   // brnenie z modelu (Meshy) nasadené na telo
+        if (GA) { const hi = garmentGeos(GA, BN, rc), lo = garmentGeos(GA, BN, rc, true); hi.forEach((g, metal) => { if (g) P.add(g, '#ffffff', [0, 0, 0], [0, 0, 0], [1, 1, 1], { pre: 1, m: metal, lod: lo[metal] || g }); }); }
+        const noTab = (fullTex && s.race !== 'orc') || !!GA;   // trollovia, Nazgûl a uruci bez kabátca a opasku (majú vlastný vzhľad); brnenie z modelu má vlastný opasok a šosy
         if (!noTab) P.add('rbox', team, [D * .56, H * .44, 0], [0, 0, 0], [.5, H * .82, W * .44], bt('ch', 2)).add('rbox', team, [-D * .56, H * .44, 0], [0, 0, 0], [.5, H * .82, W * .44], bt('ch', 2))
             .add('cyl12', leather, [0, .35, 0], [0, 0, 0], [D * .98, 1.2, W * .8], bt('ch', 3)).add('box', '#c8a040', [D * .49, .35, 0], [0, 0, 0], [.35, 1, 1], bm('ch', 1))
             .add('sph2', rim, [-.1, H - 1.6, W / 2 - .2], [0, 0, -.1], [D * .95, 2.8, 3.4], bm('ch', mR)).add('sph2', rim, [-.1, H - 1.6, -W / 2 + .2], [0, 0, -.1], [D * .95, 2.8, 3.4], bm('ch', mR));
@@ -2224,5 +2258,7 @@ const B3 = (() => {
         if (R) R.renderLists.dispose();
     }
     const TPLgeo = g => { for (const tp of TPL.values()) for (const v of Object.values(tp)) { if (v === g) return true; if (v && typeof v === 'object') { if (v.geo === g) return true; for (const w of Object.values(v)) if (w === g) return true; } } return (PR && Object.values(PR).includes(g)) || (AGEO && Object.values(AGEO).includes(g)); };
-    return { specOf, rigOf: u => units.get(u), want, start, prep, warm, frame, stop, pick, rel, wheel, dragStart, dragMove, dragEnd, isOn, heightAt, skipIntro, timeK, photoToggle, get photo() { return !!photo; }, get scene() { return scene; }, photoAt(x, y, z, yw, pt) { if (!photo) photoToggle(); photo.pos.set(x, y, z); photo.yaw = yw; photo.pitch = pt; }, get renderer() { return R; }, get intro() { return !!intro; }, get yaw() { return yaw; }, get look() { return lookOn(); }, get fp() { return fpv; }, lookMove, toggleFP, get pitch() { return lp; }, get aq() { return AQ.lvl; }, get fps() { return AQ.fps; } };
+    /** Kontrola nasadenia brnenia (testy): pozície odevu a tela v pokojovej póze pre jednotku u. */
+    function garmentDebug(k, u) { const sp = specOf(u), H = template(sp).humanoid, rc = modelRace(sp.race), g = garmentGeos(k, H.BN, rc), B = modelBody(H.BN, rc, false); return { g: Array.from((g[0] || g[1]).attributes.position.array), b: Array.from(B.P), main: B.main }; }
+    return { garmentDebug, specOf, rigOf: u => units.get(u), want, start, prep, warm, frame, stop, pick, rel, wheel, dragStart, dragMove, dragEnd, isOn, heightAt, skipIntro, timeK, photoToggle, get photo() { return !!photo; }, get scene() { return scene; }, photoAt(x, y, z, yw, pt) { if (!photo) photoToggle(); photo.pos.set(x, y, z); photo.yaw = yw; photo.pitch = pt; }, get renderer() { return R; }, get intro() { return !!intro; }, get yaw() { return yaw; }, get look() { return lookOn(); }, get fp() { return fpv; }, lookMove, toggleFP, get pitch() { return lp; }, get aq() { return AQ.lvl; }, get fps() { return AQ.fps; } };
 })();

@@ -35,3 +35,11 @@ OUT=model_w_glamdring        impw w_glamdring.glb 19 --name=MODEL_W_GLAMDRING
 OUT=model_w_plamen_anoru     impw w_plamen_anoru.glb 22 --grip=pole --at=.32 --name=MODEL_W_PLAMEN_ANORU
 OUT=model_w_anduril          impw w_anduril.glb 21 --name=MODEL_W_ANDURIL
 OUT=model_w_gondor_obojrucny impw w_gondor_obojrucny.glb 23 --name=MODEL_W_GONDOR_OBOJRUCNY
+# brnenia dobra (--kind=garment: samostatný odev z Meshy, stojan figuríny sa odstráni, telu rasy ho prispôsobí hra)
+impa() { f=$1; shift; $I "$D/$f" js/data/$OUT.js "$@" --kind=garment && $I "$D/$f" js/data/lite/$OUT.js "$@" --kind=garment --tris=1800 > /dev/null; }
+OUT=model_a_kozeny_odev          impa a_kozeny_odev.glb --name=MODEL_A_KOZENY_ODEV
+OUT=model_a_rohanska_kruzkova    impa a_rohanska_kruzkova.glb --name=MODEL_A_ROHANSKA_KRUZKOVA
+OUT=model_a_gondorsky_plat       impa a_gondorsky_plat.glb --name=MODEL_A_GONDORSKY_PLAT
+OUT=model_a_galadrimska_supinova impa a_galadrimska_supinova.glb --name=MODEL_A_GALADRIMSKA_SUPINOVA
+OUT=model_a_plat_z_ereboru       impa a_plat_z_ereboru.glb --name=MODEL_A_PLAT_Z_EREBORU
+OUT=model_a_mithrilova_kosela    impa a_mithrilova_kosela.glb --name=MODEL_A_MITHRILOVA_KOSELA

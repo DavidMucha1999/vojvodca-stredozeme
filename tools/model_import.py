@@ -3,7 +3,7 @@
 Import modelu postavy (GLB, napr. z Meshy) do hry: telo človeka pre 3D bitku.
 Použitie: python3 tools/model_import.py vstup.glb js/data/model_clovek.js [vyska=25.5] [--race=human|orc] [--name=MODEL_CLOVEK] [--tex=512]
 - --fwd=-x|+x|-z ak model nepozerá na +Z (napr. kôň modelovaný pozdĺž osi x), --kind=beast pre zvieratá a bossov (bez kĺbov),
-- --kind=prop pre zbrane (--grip=sword|pole, --at, --tris; dĺžka namiesto výšky),
+- --kind=garment pre brnenia (samostatný odev, telu sa prispôsobí v hre), --kind=prop pre zbrane (--grip=sword|pole, --at, --tris; dĺžka namiesto výšky),
 - --race nastaví pomery pre hľadanie kĺbov (ork má širšie plecia a väčšiu hlavu), --tex uloží textúru modelu (ak má UV) zmenšenú na danú veľkosť ako JPEG v base64,
 - model stojí v A-póze alebo T-póze, tvárou do +Z, chodidlá dole (ako z Meshy),
 - prevedie ho do súradníc hry (vpred +X, vpravo +Z, chodidlá na 0, výška v jednotkách hry),
@@ -54,6 +54,7 @@ def main():
     src, dst = args[0], args[1]; height = float(args[2]) if len(args) > 2 else 25.5
     race = opts.get('race', 'human'); RC = RACES.get(race, RACES['human']); name = opts.get('name', 'MODEL_CLOVEK'); texSize = int(opts.get('tex', 512))
     P, I, UV, texBytes = load_glb(src)
+    if opts.get('kind') == 'garment': return garment(P, I, UV, texBytes, opts, dst, name, src)
     if opts.get('kind') == 'prop': return prop(P, I, UV, texBytes, opts, dst, name, texSize, src, height)
     y0 = P[:, 1].min(); h = P[:, 1].max() - y0; s = height / h
     # do súradníc hry: x = vpred (model +Z), y hore, z = vpravo (model -X); --fwd=-x|+x|-z určí, kam model pozerá, ak nie na +Z
@@ -103,6 +104,57 @@ def main():
                 handTip=[float(v) for v in tips[1]])
     return finish(G, I, UV, texBytes, land, dst, name, texSize, src)
 
+def cluster_simplify(P, I, col, base, target):
+    """Zjednodušenie zhlukovaním vrcholov v mriežke (bunka base, zväčšuje sa, kým nie je trojuholníkov najviac target); farby vrcholov sa spriemerujú."""
+    k = 1.0
+    while True:
+        key = np.floor(P / (base * k)).astype(np.int64); _, inv = np.unique(key, axis=0, return_inverse=True); inv = inv.ravel(); n = inv.max() + 1
+        J = inv[I]; J = J[(J[:, 0] != J[:, 1]) & (J[:, 1] != J[:, 2]) & (J[:, 0] != J[:, 2])]
+        _, first = np.unique(np.sort(J, 1), axis=0, return_index=True); J = J[np.sort(first)]
+        if len(J) <= target: break
+        k *= 1.15
+    cnt = np.bincount(inv, minlength=n).astype(np.float64); Pc = np.zeros((n, 3)); C = np.zeros((n, 3)); np.add.at(Pc, inv, P); np.add.at(C, inv, col); Pc /= np.maximum(cnt, 1)[:, None]; C /= np.maximum(cnt, 1)[:, None]
+    used = np.unique(J); remap = -np.ones(n, np.int64); remap[used] = np.arange(len(used)); return Pc[used], remap[J], C[used]
+
+def rgbm(C):   # farba a príznak kovu (svetlé a málo sýte = oceľ, striebro; zlatá s vyšším jasom tiež)
+    mx, mn = C.max(1), C.min(1); sat = (mx - mn) / np.maximum(mx, 1e-3); metal = ((sat < .22) & (mx > .42)) | ((sat < .55) & (mx > .62) & (C[:, 0] >= C[:, 2]))
+    A = np.clip((C - .02) / .9, 0, 1) ** (1 / 1.15)
+    return np.hstack([np.round(A * 255), (metal * 255)[:, None]]).astype(np.uint8)
+
+def tex_colors(UV, texBytes):
+    from PIL import Image
+    T = np.asarray(Image.open(io.BytesIO(texBytes)).convert('RGB').resize((512, 512), Image.LANCZOS)).astype(np.float64) / 255
+    return T[(np.clip(UV[:, 1], 0, .999) * 512).astype(int), (np.clip(UV[:, 0], 0, .999) * 512).astype(int)]
+
+def garment(P, I, UV, texBytes, opts, dst, name, src):
+    """Brnenie alebo odev (--kind=garment): samostatný kus odevu z Meshy (tvárou do +Z, ruky spustené). Odstráni stojan figuríny (valec pod
+    vodorovným viečkom navrchu), zapečie farby do vrcholov, zjednoduší sieť a zapíše orientačné body: výstrih, lem, šírka pliec, hĺbka a stred hrude.
+    Telu sa prispôsobí až v hre (js/engine/garment.js) podľa rasy: rukávy podľa najbližšej časti tela."""
+    col = tex_colors(UV, texBytes); y1 = P[:, 1].max(); h = np.ptp(P[:, 1])
+    hi = np.percentile(col, 99.5); col = np.clip(col * min(1.25, .95 / max(hi, 1e-3)), 0, 1) ** (1 / 1.15)   # Meshy pečie do textúry tiene – mierne zosvetlenie (tmavá oceľ ostane tmavá)
+    T = P[I]; N = np.cross(T[:, 1] - T[:, 0], T[:, 2] - T[:, 0]); N /= np.maximum(np.linalg.norm(N, axis=1), 1e-12)[:, None]; C = T.mean(1)
+    cx0, cz0 = (P[:, 0].min() + P[:, 0].max()) / 2, (P[:, 2].min() + P[:, 2].max()) / 2
+    cap = (np.abs(N[:, 1]) > .85) & (C[:, 1] > y1 - .05 * h) & (np.hypot(C[:, 0] - cx0, C[:, 2] - cz0) < .16 * h)
+    if cap.sum() >= 6:   # stojan figuríny: všetko vo valci pod viečkom (aj vysoký golier, ktorý by na hre prenikal krkom)
+        cc = C[cap].mean(0); rc = np.max(np.hypot(T[cap][:, :, 0] - cc[0], T[cap][:, :, 2] - cc[2]))
+        keep = ~((np.hypot(C[:, 0] - cc[0], C[:, 2] - cc[2]) < rc * 1.12) & (C[:, 1] > y1 - .25 * h)); print('stojan: odstránených', int((~keep).sum()), 'trojuholníkov, polomer %.3f' % rc)
+        I = I[keep]
+    s = 30 / h; G0 = np.stack([P[:, 2], P[:, 1], -P[:, 0]], 1) * s   # do súradníc hry: x vpred, y hore, z vpravo; výška odevu 30
+    def stats(G):   # vrch (výstrih), lem, šírka pliec (najďalej do strán tesne pod výstrihom, aj s rukávmi), hĺbka a stred hrude
+        yT, yB = G[:, 1].max(), G[:, 1].min(); H = yT - yB
+        top = G[(G[:, 1] < yT - .06 * H) & (G[:, 1] > yT - .16 * H)]; shW = float(np.percentile(np.abs(top[:, 2]), 99))
+        ch = G[(np.abs(G[:, 1] - (yT - .2 * H)) < .03 * H) & (np.abs(G[:, 2]) < shW * .35)]
+        return dict(yT=float(yT), yB=float(yB), shW=shW, chD=float(np.ptp(ch[:, 0])), cx=float((ch[:, 0].min() + ch[:, 0].max()) / 2))
+    target = int(opts.get('tris', 4200))
+    base = np.full(3, h * .004)
+    Pc, Jc, Cc = cluster_simplify(P, I, col, base, target); G = np.stack([Pc[:, 2], Pc[:, 1], -Pc[:, 0]], 1) * s
+    Pl, Jl, Cl = cluster_simplify(P, I, col, base, max(300, target // 6)); Gl = np.stack([Pl[:, 2], Pl[:, 1], -Pl[:, 0]], 1) * s
+    land = dict(kind='garment', **stats(G))
+    q = lambda A: base64.b64encode(np.round(A * 100).astype(np.int16).tobytes()).decode(); ix = lambda A: base64.b64encode(A.astype(np.uint16).tobytes()).decode(); cb = lambda C: base64.b64encode(rgbm(C).tobytes()).decode(); u8 = lambda A: base64.b64encode(A.astype(np.uint8).tobytes()).decode()
+    out = {'land': land, 'p': q(G), 'i': ix(Jc), 'c': cb(Cc), 'pl': q(Gl), 'il': ix(Jl), 'cl': cb(Cl), 'n': [len(G), len(Jc), len(Gl), len(Jl)]}
+    open(dst, 'w').write('/* Brnenie z modelu (import tools/model_import.py --kind=garment, zdroj: ' + src.split('/')[-1] + '): pozície ×100 (Int16, výška 30, x vpred), trojuholníky (Uint16), farby vrcholov RGB + kov, zjednodušená verzia, orientačné body; telu sa prispôsobí v hre. */\nconst ' + name + ' = ' + json.dumps(out) + ';\n')
+    print(name, 'trojuholníky', len(Jc), 'LOD', len(Jl), 'vrcholy', len(G), 'kov', round(float((rgbm(Cc)[:, 3] > 0).mean()), 2), json.dumps(land)[:300])
+
 def prop(P, I, UV, texBytes, opts, dst, name, texSize, src, length):
     """Zbraň (--kind=prop): model stojí zvisle (os y). Do súradníc kosti ruky v hre: rukoväť v počiatku, čepeľ alebo hrot smerom -y.
     --grip=sword: rukoväť hore (záštita = najširšie miesto v hornej časti), ostrie do ±z ako meče kreslené kódom;
@@ -111,18 +163,10 @@ def prop(P, I, UV, texBytes, opts, dst, name, texSize, src, length):
     zhlukovaním vrcholov na --tris trojuholníkov (plná) a asi 300 (vzdialený zástup)."""
     from PIL import Image
     y0, y1 = P[:, 1].min(), P[:, 1].max(); s = length / (y1 - y0); grip = opts.get('grip', 'sword')
-    T = np.asarray(Image.open(io.BytesIO(texBytes)).convert('RGB').resize((512, 512), Image.LANCZOS)).astype(np.float64) / 255
-    col = T[(np.clip(UV[:, 1], 0, .999) * 512).astype(int), (np.clip(UV[:, 0], 0, .999) * 512).astype(int)]
+    col = tex_colors(UV, texBytes)
     def simplify(target):
-        ext = np.ptp(P, 0); base = np.maximum(ext / np.array([16, 80, 16]) * .4, (y1 - y0) * .004); base[1] = max(base[1], (y1 - y0) * .012); k = 1.0
-        while True:
-            key = np.floor(P / (base * k)).astype(np.int64); _, inv = np.unique(key, axis=0, return_inverse=True); inv = inv.ravel(); n = inv.max() + 1
-            J = inv[I]; J = J[(J[:, 0] != J[:, 1]) & (J[:, 1] != J[:, 2]) & (J[:, 0] != J[:, 2])]
-            _, first = np.unique(np.sort(J, 1), axis=0, return_index=True); J = J[np.sort(first)]
-            if len(J) <= target: break
-            k *= 1.15
-        cnt = np.bincount(inv, minlength=n).astype(np.float64); Pc = np.zeros((n, 3)); C = np.zeros((n, 3)); np.add.at(Pc, inv, P); np.add.at(C, inv, col); Pc /= np.maximum(cnt, 1)[:, None]; C /= np.maximum(cnt, 1)[:, None]
-        used = np.unique(J); remap = -np.ones(n, np.int64); remap[used] = np.arange(len(used)); return Pc[used], remap[J], C[used]
+        ext = np.ptp(P, 0); base = np.maximum(ext / np.array([16, 80, 16]) * .4, (y1 - y0) * .004); base[1] = max(base[1], (y1 - y0) * .012)
+        return cluster_simplify(P, I, col, base, target)
     def toGame(Pc):
         if grip == 'sword':
             top = P[P[:, 1] > y1 - (y1 - y0) * .4]; bins = np.linspace(y1 - (y1 - y0) * .4, y1, 41)
@@ -131,10 +175,6 @@ def prop(P, I, UV, texBytes, opts, dst, name, texSize, src, length):
             return np.stack([-(Pc[:, 2] - cz), Pc[:, 1] - oy, Pc[:, 0] - cx], 1) * s, (y0 - oy) * s
         oy = y0 + (y1 - y0) * float(opts.get('at', .3)); cz = (P[:, 2].min() + P[:, 2].max()) / 2
         return np.stack([Pc[:, 0], -(Pc[:, 1] - oy), -(Pc[:, 2] - cz)], 1) * s, -(y1 - oy) * s
-    def rgbm(C):   # farba a príznak kovu (svetlé a málo sýte = oceľ, striebro; zlatá s vyšším jasom tiež)
-        mx, mn = C.max(1), C.min(1); sat = (mx - mn) / np.maximum(mx, 1e-3); metal = ((sat < .22) & (mx > .42)) | ((sat < .55) & (mx > .62) & (C[:, 0] >= C[:, 2]))
-        A = np.clip((C - .02) / .9, 0, 1) ** (1 / 1.15)
-        return np.hstack([np.round(A * 255), (metal * 255)[:, None]]).astype(np.uint8)
     target = int(opts.get('tris', 1800))
     Pc, Jc, Cc = simplify(target); G, tip = toGame(Pc); Pl, Jl, Cl = simplify(max(160, target // 6)); Gl, _ = toGame(Pl)
     land = dict(kind='prop', grip=grip, len=length, tip=float(tip), bbox=[[float(v) for v in G.min(0)], [float(v) for v in G.max(0)]])
