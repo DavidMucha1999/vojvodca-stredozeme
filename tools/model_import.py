@@ -3,6 +3,7 @@
 Import modelu postavy (GLB, napr. z Meshy) do hry: telo človeka pre 3D bitku.
 Použitie: python3 tools/model_import.py vstup.glb js/data/model_clovek.js [vyska=25.5] [--race=human|orc] [--name=MODEL_CLOVEK] [--tex=512]
 - --fwd=-x|+x|-z ak model nepozerá na +Z (napr. kôň modelovaný pozdĺž osi x), --kind=beast pre zvieratá a bossov (bez kĺbov),
+- --kind=prop pre zbrane (--grip=sword|pole, --at, --tris; dĺžka namiesto výšky),
 - --race nastaví pomery pre hľadanie kĺbov (ork má širšie plecia a väčšiu hlavu), --tex uloží textúru modelu (ak má UV) zmenšenú na danú veľkosť ako JPEG v base64,
 - model stojí v A-póze alebo T-póze, tvárou do +Z, chodidlá dole (ako z Meshy),
 - prevedie ho do súradníc hry (vpred +X, vpravo +Z, chodidlá na 0, výška v jednotkách hry),
@@ -53,6 +54,7 @@ def main():
     src, dst = args[0], args[1]; height = float(args[2]) if len(args) > 2 else 25.5
     race = opts.get('race', 'human'); RC = RACES.get(race, RACES['human']); name = opts.get('name', 'MODEL_CLOVEK'); texSize = int(opts.get('tex', 512))
     P, I, UV, texBytes = load_glb(src)
+    if opts.get('kind') == 'prop': return prop(P, I, UV, texBytes, opts, dst, name, texSize, src, height)
     y0 = P[:, 1].min(); h = P[:, 1].max() - y0; s = height / h
     # do súradníc hry: x = vpred (model +Z), y hore, z = vpravo (model -X); --fwd=-x|+x|-z určí, kam model pozerá, ak nie na +Z
     fwd = opts.get('fwd', '+z')
@@ -100,6 +102,46 @@ def main():
                 chestD=float(np.ptp(sl(.72)[np.abs(sl(.72)[:, 2]) < shZ * .6][:, 0])), headD=float(headD), headW=float(headW), hipW=float(np.ptp(sl(.5)[np.abs(sl(.5)[:, 2]) < .12 * height][:, 2])),
                 handTip=[float(v) for v in tips[1]])
     return finish(G, I, UV, texBytes, land, dst, name, texSize, src)
+
+def prop(P, I, UV, texBytes, opts, dst, name, texSize, src, length):
+    """Zbraň (--kind=prop): model stojí zvisle (os y). Do súradníc kosti ruky v hre: rukoväť v počiatku, čepeľ alebo hrot smerom -y.
+    --grip=sword: rukoväť hore (záštita = najširšie miesto v hornej časti), ostrie do ±z ako meče kreslené kódom;
+    --grip=pole: hrot hore (kopija, sekera, palica), drží sa vo výške --at (podiel dĺžky od spodného konca), ostrie do +x.
+    Textúra z Meshy je rozdelená na stovky ostrovov, preto sa farby zapečú do vrcholov (a kov sa označí na lesk) a sieť sa zjednoduší
+    zhlukovaním vrcholov na --tris trojuholníkov (plná) a asi 300 (vzdialený zástup)."""
+    from PIL import Image
+    y0, y1 = P[:, 1].min(), P[:, 1].max(); s = length / (y1 - y0); grip = opts.get('grip', 'sword')
+    T = np.asarray(Image.open(io.BytesIO(texBytes)).convert('RGB').resize((512, 512), Image.LANCZOS)).astype(np.float64) / 255
+    col = T[(np.clip(UV[:, 1], 0, .999) * 512).astype(int), (np.clip(UV[:, 0], 0, .999) * 512).astype(int)]
+    def simplify(target):
+        ext = np.ptp(P, 0); base = np.maximum(ext / np.array([16, 80, 16]) * .4, (y1 - y0) * .004); base[1] = max(base[1], (y1 - y0) * .012); k = 1.0
+        while True:
+            key = np.floor(P / (base * k)).astype(np.int64); _, inv = np.unique(key, axis=0, return_inverse=True); inv = inv.ravel(); n = inv.max() + 1
+            J = inv[I]; J = J[(J[:, 0] != J[:, 1]) & (J[:, 1] != J[:, 2]) & (J[:, 0] != J[:, 2])]
+            _, first = np.unique(np.sort(J, 1), axis=0, return_index=True); J = J[np.sort(first)]
+            if len(J) <= target: break
+            k *= 1.15
+        cnt = np.bincount(inv, minlength=n).astype(np.float64); Pc = np.zeros((n, 3)); C = np.zeros((n, 3)); np.add.at(Pc, inv, P); np.add.at(C, inv, col); Pc /= np.maximum(cnt, 1)[:, None]; C /= np.maximum(cnt, 1)[:, None]
+        used = np.unique(J); remap = -np.ones(n, np.int64); remap[used] = np.arange(len(used)); return Pc[used], remap[J], C[used]
+    def toGame(Pc):
+        if grip == 'sword':
+            top = P[P[:, 1] > y1 - (y1 - y0) * .4]; bins = np.linspace(y1 - (y1 - y0) * .4, y1, 41)
+            wid = [np.ptp(top[(top[:, 1] >= a) & (top[:, 1] < b)][:, 0]) if ((top[:, 1] >= a) & (top[:, 1] < b)).any() else 0 for a, b in zip(bins[:-1], bins[1:])]
+            k = int(np.argmax(wid)); guard = (bins[k] + bins[k + 1]) / 2; oy = guard + (y1 - guard) * .55; cx, cz = (P[:, 0].min() + P[:, 0].max()) / 2, (P[:, 2].min() + P[:, 2].max()) / 2
+            return np.stack([-(Pc[:, 2] - cz), Pc[:, 1] - oy, Pc[:, 0] - cx], 1) * s, (y0 - oy) * s
+        oy = y0 + (y1 - y0) * float(opts.get('at', .3)); cz = (P[:, 2].min() + P[:, 2].max()) / 2
+        return np.stack([Pc[:, 0], -(Pc[:, 1] - oy), -(Pc[:, 2] - cz)], 1) * s, -(y1 - oy) * s
+    def rgbm(C):   # farba a príznak kovu (svetlé a málo sýte = oceľ, striebro; zlatá s vyšším jasom tiež)
+        mx, mn = C.max(1), C.min(1); sat = (mx - mn) / np.maximum(mx, 1e-3); metal = ((sat < .22) & (mx > .42)) | ((sat < .55) & (mx > .62) & (C[:, 0] >= C[:, 2]))
+        A = np.clip((C - .02) / .9, 0, 1) ** (1 / 1.15)
+        return np.hstack([np.round(A * 255), (metal * 255)[:, None]]).astype(np.uint8)
+    target = int(opts.get('tris', 1800))
+    Pc, Jc, Cc = simplify(target); G, tip = toGame(Pc); Pl, Jl, Cl = simplify(max(160, target // 6)); Gl, _ = toGame(Pl)
+    land = dict(kind='prop', grip=grip, len=length, tip=float(tip), bbox=[[float(v) for v in G.min(0)], [float(v) for v in G.max(0)]])
+    q = lambda A: base64.b64encode(np.round(A * 100).astype(np.int16).tobytes()).decode(); ix = lambda A: base64.b64encode(A.astype(np.uint16).tobytes()).decode(); cb = lambda C: base64.b64encode(rgbm(C).tobytes()).decode()
+    out = {'land': land, 'p': q(G), 'i': ix(Jc), 'c': cb(Cc), 'pl': q(Gl), 'il': ix(Jl), 'cl': cb(Cl), 'n': [len(G), len(Jc), len(Gl), len(Jl)]}
+    open(dst, 'w').write('/* Zbraň z modelu (import tools/model_import.py --kind=prop, zdroj: ' + src.split('/')[-1] + '): pozície ×100 (Int16) v súradniciach ruky, trojuholníky (Uint16), farby vrcholov RGB + kov (Uint8), zjednodušená verzia. */\nconst ' + name + ' = ' + json.dumps(out) + ';\n')
+    print(name, 'trojuholníky', len(Jc), 'LOD', len(Jl), 'kov', round(float((rgbm(Cc)[:, 3] > 0).mean()), 2), 'hrot', round(float(tip), 1))
 
 def finish(G, I, UV, texBytes, land, dst, name, texSize, src, lodCell=.55):
     race = land.get('race', '')

@@ -88,8 +88,9 @@ const B3 = (() => {
                         if (o.tex) nt += cnt; else if (o.m) nm += cnt; o0 += cnt; g.dispose(); continue;
                     }
                     const bi = BN ? BN.idx[o.b || BN.root] : 0, bn = o.b || (BN && BN.root), chn = CH && CH[bn] && BN.rest[CR[CH[bn][0]][0]] ? CH[bn] : null, P1 = chn ? jp(CR[chn[0]][0]) : null, P2 = chn ? jp(CR[chn[0]][1]) : null;
+                    const VC = o.vc && g.attributes.color;   // farby vo vrcholoch (zbraň z modelu)
                     for (let i = 0; i < cnt; i++) {
-                        const v = o0 + i; col[v * 3] = c.r; col[v * 3 + 1] = c.g; col[v * 3 + 2] = c.b; mt[v] = mc;
+                        const v = o0 + i; if (VC) { col[v * 3] = VC.getX(i); col[v * 3 + 1] = VC.getY(i); col[v * 3 + 2] = VC.getZ(i); } else { col[v * 3] = c.r; col[v * 3 + 1] = c.g; col[v * 3 + 2] = c.b; } mt[v] = mc;
                         if (!BN) continue;
                         si[v * 4] = bi; sw[v * 4] = 1;
                         if (chn) { cls[v] = chn[0] * 2 + chn[1] + 1; p1.set(P1, v * 3); p2.set(P2, v * 3); }
@@ -181,6 +182,33 @@ const B3 = (() => {
     const VARIANTS = { gondor_d: ['gondor', '#3a3034'], mearas_d: ['mearas', '#1c1a22'] };
     const modelOf0 = k => MODELS[k] ? MODELS[k]() : VARIANTS[k] ? MODELS[VARIANTS[k][0]]() : null;
     const modelOf = race => (typeof OPT !== 'undefined' && OPT.modelHuman === false) ? null : modelOf0(race);
+    /** Zbrane z modelov (Meshy, tools/model_import.py --kind=prop): rukoväť v počiatku kosti ruky, farby vo vrcholoch, kov zvlášť (lesk). */
+    const WMODELS = {
+        w_zelezny_mec: () => typeof MODEL_W_ZELEZNY_MEC !== 'undefined' ? MODEL_W_ZELEZNY_MEC : null, w_mec_strazcu: () => typeof MODEL_W_MEC_STRAZCU !== 'undefined' ? MODEL_W_MEC_STRAZCU : null,
+        w_rohanska_kopija: () => typeof MODEL_W_ROHANSKA_KOPIJA !== 'undefined' ? MODEL_W_ROHANSKA_KOPIJA : null, w_dunadansky_mec: () => typeof MODEL_W_DUNADANSKY_MEC !== 'undefined' ? MODEL_W_DUNADANSKY_MEC : null,
+        w_orcrist: () => typeof MODEL_W_ORCRIST !== 'undefined' ? MODEL_W_ORCRIST : null, w_sekera_erebor: () => typeof MODEL_W_SEKERA_EREBOR !== 'undefined' ? MODEL_W_SEKERA_EREBOR : null,
+        w_glamdring: () => typeof MODEL_W_GLAMDRING !== 'undefined' ? MODEL_W_GLAMDRING : null, w_plamen_anoru: () => typeof MODEL_W_PLAMEN_ANORU !== 'undefined' ? MODEL_W_PLAMEN_ANORU : null,
+        w_anduril: () => typeof MODEL_W_ANDURIL !== 'undefined' ? MODEL_W_ANDURIL : null, w_gondor_obojrucny: () => typeof MODEL_W_GONDOR_OBOJRUCNY !== 'undefined' ? MODEL_W_GONDOR_OBOJRUCNY : null
+    };
+    /** Výbava u kováča (názov v js/data/equipment.js) → model zbrane. */
+    const WEAPON_BY_NAME = { 'Železný meč': 'w_zelezny_mec', 'Meč Gondorskej stráže': 'w_mec_strazcu', 'Rohanská kopija': 'w_rohanska_kopija', 'Dúnadanský meč': 'w_dunadansky_mec', 'Orcrist': 'w_orcrist',
+        'Trpasličia sekera z Ereboru': 'w_sekera_erebor', 'Glamdring': 'w_glamdring', 'Plameň Anoru': 'w_plamen_anoru', 'Andúril': 'w_anduril', 'Gondorský obojručný meč': 'w_gondor_obojrucny' };
+    const weaponModel = k => k && WMODELS[k] && (typeof OPT === 'undefined' || OPT.modelHuman !== false) ? WMODELS[k]() : null;
+    const weaponOf = i => { const it = typeof shOf === 'function' && i != null ? shOf('w')[i] : null; return (it && WEAPON_BY_NAME[it.n]) || null; };
+    const WGC = {};
+    /** Geometrie zbrane z modelu: [nekovové časti, kov]; low = zjednodušená pre vzdialené zástupy. */
+    function weaponGeos(k, low) {
+        const ck = k + (low ? 'l' : 'h'); if (WGC[ck]) return WGC[ck];
+        const t = T(), M0 = weaponModel(k), dec = (b64, Tp) => { const s2 = atob(b64), u8 = new Uint8Array(s2.length); for (let i = 0; i < s2.length; i++) u8[i] = s2.charCodeAt(i); return new Tp(u8.buffer); };
+        const Pq = dec(low ? M0.pl : M0.p, Int16Array), I = dec(low ? M0.il : M0.i, Uint16Array), Cb = dec(low ? M0.cl : M0.c, Uint8Array), n = Pq.length / 3, pos = new Float32Array(n * 3), col = new Float32Array(n * 3), c = new t.Color();
+        for (let v = 0; v < n; v++) { pos[v * 3] = Pq[v * 3] / 100; pos[v * 3 + 1] = Pq[v * 3 + 1] / 100; pos[v * 3 + 2] = Pq[v * 3 + 2] / 100; c.setRGB(Cb[v * 4] / 255, Cb[v * 4 + 1] / 255, Cb[v * 4 + 2] / 255, t.SRGBColorSpace); col[v * 3] = c.r; col[v * 3 + 1] = c.g; col[v * 3 + 2] = c.b; }
+        const out = [0, 1].map(metal => {
+            const tri = []; for (let i = 0; i < I.length; i += 3) if ((Cb[I[i] * 4 + 3] + Cb[I[i + 1] * 4 + 3] + Cb[I[i + 2] * 4 + 3] > 382) === !!metal) tri.push(I[i], I[i + 1], I[i + 2]);
+            if (!tri.length) return null;
+            const g = new t.BufferGeometry(); g.setAttribute('position', new t.BufferAttribute(pos, 3)); g.setAttribute('color', new t.BufferAttribute(col, 3)); g.setIndex(tri); g.computeVertexNormals(); return g;
+        });
+        return (WGC[ck] = out);
+    }
     /** Atlas textúr všetkých modelov (4×4 políčka po 512 px) – jeden materiál pre všetky textúrované telá, aj pre vzdialené zástupy. */
     let ATLAS = null;
     function atlas() {
@@ -725,15 +753,18 @@ const B3 = (() => {
         const fac = u.t ? (u.fc ?? 9) : (G.fac ?? 6), team = u.t ? (FC[u.fc] || '#8a7a6a') : FC[G.fac] || '#d9a441';
         const raceOf = L => L && ({ elf: 'elf', dwarf: 'dwarf', orc: 'orc', uruk: 'uruk', hobbit: 'hobbit', wraith: 'wraith' }[L.race]) || 'human';
         if (u.h) { const S = Soldiers.heroSpec(typeof twoHand === 'function' && twoHand() ? { ...G.eq, s: 0 } : G.eq), L = Portraits.hero(), lo = Figures.lookOpts(L); const C = typeof CMB !== 'undefined' ? CMB : {}, RW = typeof rangedW === 'function' ? rangedW() : null, rng = C.wpn === 'r', broken = C.shMax && C.shp <= 0;
-            return { hero: 1, hm: ['', 'ponik', 'rohan', 'gondor', 'mearas', '', '', 'gondor_d', 'mearas_d'][G.eq.m] || null, mdl: modelOf(raceOf(L)) ? 1 : 0, race: raceOf(L), fac, skin: lo.skin || SKIN.human, hair: lo.hcol || '#4a3020', beard: lo.beard ? 1 : 0, longHair: lo.hstyle === 'long', armor: S.armorG.col, rim: S.armorG.rim, helmG: S.helmG, shieldG: rng || broken ? null : S.shieldG, weaponG: rng ? null : S.weaponG, weapon: rng ? (RW && RW.rt === 'xbow' ? 'xbow' : RW && RW.rt === 'jav' ? 'spear' : 'bow') : S.weaponG.t, quiver: !!C.ammo0, horse: G.eq.m && !(u.dis) ? S.horse : null, team, cape: heroSide() ? '#2a1414' : '#6a2a2a' }; }
+            return { hero: 1, hm: ['', 'ponik', 'rohan', 'gondor', 'mearas', '', '', 'gondor_d', 'mearas_d'][G.eq.m] || null, mdl: modelOf(raceOf(L)) ? 1 : 0, race: raceOf(L), fac, skin: lo.skin || SKIN.human, hair: lo.hcol || '#4a3020', beard: lo.beard ? 1 : 0, longHair: lo.hstyle === 'long', armor: S.armorG.col, rim: S.armorG.rim, helmG: S.helmG, shieldG: rng || broken ? null : S.shieldG, weaponG: rng ? null : S.weaponG, wm: rng ? null : weaponOf(G.eq.w), weapon: rng ? (RW && RW.rt === 'xbow' ? 'xbow' : RW && RW.rt === 'jav' ? 'spear' : 'bow') : S.weaponG.t, quiver: !!C.ammo0, horse: G.eq.m && !(u.dis) ? S.horse : null, team, cape: heroSide() ? '#2a1414' : '#6a2a2a' }; }
         const kind = Art.unitArt(u), sp = (Soldiers.UNITS[kind] || Soldiers.UNITS.i);
-        if (u.cp) { const c = compDef(u.cp); if (c && c.eq) { const S = Soldiers.heroSpec(c.eq), L = c.look || {}, lo = Figures.lookOpts(L); return { hero: 1, mdl: modelOf(raceOf(L)) ? 1 : 0, hm: u.mnt ? ['', 'ponik', 'rohan', 'gondor', 'mearas', '', '', 'gondor_d', 'mearas_d'][u.mnt] || null : null, race: raceOf(L), fac, skin: lo.skin || SKIN.human, hair: lo.hcol || '#4a3020', beard: lo.beard ? 1 : 0, longHair: lo.hstyle === 'long', armor: S.armorG.col, rim: S.armorG.rim, helmG: L.helm || c.eq.h ? S.helmG : null, shieldG: S.shieldG, weaponG: S.weaponG, weapon: S.weaponG.t, horse: u.mnt ? Soldiers.GEAR.m[u.mnt] : null, team, cape: '#4a3a2a' }; } }
+        if (u.cp) { const c = compDef(u.cp); if (c && c.eq) { const S = Soldiers.heroSpec(c.eq), L = c.look || {}, lo = Figures.lookOpts(L); return { hero: 1, mdl: modelOf(raceOf(L)) ? 1 : 0, hm: u.mnt ? ['', 'ponik', 'rohan', 'gondor', 'mearas', '', '', 'gondor_d', 'mearas_d'][u.mnt] || null : null, race: raceOf(L), fac, skin: lo.skin || SKIN.human, hair: lo.hcol || '#4a3020', beard: lo.beard ? 1 : 0, longHair: lo.hstyle === 'long', armor: S.armorG.col, rim: S.armorG.rim, helmG: L.helm || c.eq.h ? S.helmG : null, shieldG: S.shieldG, weaponG: S.weaponG, wm: weaponOf(c.eq.w), weapon: S.weaponG.t, horse: u.mnt ? Soldiers.GEAR.m[u.mnt] : null, team, cape: '#4a3a2a' }; } }
         const fu = u.uk && FU[u.uk], race = { orc: 'orc', uruk: 'uruk', troll: 'troll', dwarf: 'dwarf', elf: 'elf', none: 'wraith' }[sp.skin] || 'human';
         // rozmanitosť: časť pešiakov nesie sekeru alebo kyjak namiesto meča, niektorí bojujú bez prilby
         const vr = u.vr ?? (u.vr = Math.random()), plainW = !sp.weapon || sp.weapon === 'sword' || sp.weapon === 'scimitar', bare = (race === 'human' || race === 'orc') && sp.helm && sp.helm !== 'hood' && !fu && vr > .86;
         const wpn = plainW && !sp.mount && vr < .22 ? 'axe' : plainW && !sp.mount && vr > .9 && race !== 'elf' ? 'mace' : sp.weapon || 'sword';
+        // zbrane dobra z modelov: Gondor, Rohan, Erebor, Lothlórien a tvoje vojsko, ak stojíš na strane dobra; veterán (vylepšený pešiak) nesie meč strážcu
+        const good = u.t ? [0, 1, 5, 8].includes(u.fc) : !(typeof heroSide === 'function' && heroSide());
+        const wm = !good ? null : wpn === 'spear' ? 'w_rohanska_kopija' : wpn === 'elfblade' ? 'w_orcrist' : wpn === 'axe' && race === 'dwarf' ? 'w_sekera_erebor' : wpn === 'sword' ? (kind === 'v' ? 'w_mec_strazcu' : 'w_zelezny_mec') : null;
         const gon = u.uk === 'uG3' || (u.t ? u.fc === 0 : G.fac === 0), hm = sp.mount === 'horse' ? (gon ? 'gondor' : 'rohan') : sp.mount === 'darkhorse' ? 'mearas_d' : null;   // plemeno koňa jednotky: Gondor bojový kôň, inak rohanský; Nazgûl čierny
-        return { hm, mdl: modelOf(race) ? 1 : 0, race, fac, skin: SKIN[sp.skin] || SKIN.human, hair: race === 'elf' ? '#e8d8a0' : ['#3a2a1a', '#6a4a2a', '#2a1a10', '#8a6a3a'][(u.x * 7 | 0) % 4], beard: sp.beard || (race === 'human' && (u.y * 3 | 0) % 3 === 0) ? 1 : 0, armor: (fu && fu.col) || sp.armor, helm: bare ? 'none' : sp.helm, helmCol: fu && fu.hel, weapon: wpn, shield: sp.shield, mount: sp.mount, beast: sp.beast, big: sp.big, team, quiver: sp.weapon === 'bow' || sp.weapon === 'xbow', scale: race === 'troll' ? 1.55 : sp.big ? 1.6 : 1 };
+        return { hm, mdl: modelOf(race) ? 1 : 0, race, fac, skin: SKIN[sp.skin] || SKIN.human, hair: race === 'elf' ? '#e8d8a0' : ['#3a2a1a', '#6a4a2a', '#2a1a10', '#8a6a3a'][(u.x * 7 | 0) % 4], beard: sp.beard || (race === 'human' && (u.y * 3 | 0) % 3 === 0) ? 1 : 0, armor: (fu && fu.col) || sp.armor, helm: bare ? 'none' : sp.helm, helmCol: fu && fu.hel, weapon: wpn, wm: weaponModel(wm) ? wm : null, shield: sp.shield, mount: sp.mount, beast: sp.beast, big: sp.big, team, quiver: sp.weapon === 'bow' || sp.weapon === 'xbow', scale: race === 'troll' ? 1.55 : sp.big ? 1.6 : 1 };
     }
     const keyOf = s => JSON.stringify(s);
     /** Šablóna (geometrie a kostra) pre popis s; zdieľajú ju všetky rovnaké jednotky. */
@@ -770,7 +801,7 @@ const B3 = (() => {
         const fab = hex => metalish(hex) ? (orcish ? 5 : 1) : brown(hex) ? 3 : 2;   // krúžky / hrdza, koža, tkanina
         const P = Part(), b = n => ({ b: n }), bm = (n, m) => ({ b: n, m }), bt = (n, t, m) => ({ b: n, t, m });
         const W2 = Part(), S2 = Part();   // samostatná zbraň a štít (padnú na zem pri smrti)
-        const WP = { add(sh_, c, p, r, sc, o) { P.add(sh_, c, p, r, sc, { ...o, b: 'wp', rigid: 1 }); W2.add(sh_, c, p, r, sc, { m: o && o.m }); return WP; } };
+        const WP = { add(sh_, c, p, r, sc, o) { P.add(sh_, c, p, r, sc, { ...o, b: 'wp', rigid: 1 }); W2.add(sh_, c, p, r, sc, { m: o && o.m, vc: o && o.vc, t: o && o.t }); return WP; } };
         const SP = { add(sh_, c, p, r, sc, o) { P.add(sh_, c, p, r, sc, { ...o, b: 'shd', rigid: 1 }); S2.add(sh_, c, p, r, sc, { m: o && o.m }); return SP; } };
         // trup, pás, kabátec vo farbe frakcie, náplecníky, krk, hlava
         // tvarované telo zo SDF (trup s hruďou, krk, ramená so svalmi, stehná, lýtka) – farba podľa oblasti: brnenie, rukávy, nohavice, čižmy, koža
@@ -873,8 +904,14 @@ const B3 = (() => {
         for (let i = 0; i < 4; i++) P.add('cyl6', mA ? sh(armor, .9) : skin, [.62, -.25 - i * .42, 0], [Math.PI / 2, 0, 0], [.42, 1.35, .42], { b: 'hR', m: mA });   // prsty okolo rukoväte
         P.add('cyl6', mA ? sh(armor, .9) : skin, [.35, -.15, .65], [.5, 0, -.6], [.42, 1, .42], { b: 'hR', m: mA }); }   // palec
         const Wg = s.weaponG, wb = (Wg && (Wg.blade || (Wg.grad && Wg.grad[0]) || Wg.head)) || '#b8bec6', wt = s.weapon, guard = (Wg && Wg.guard) || '#6a6058';
-        let tipY = -14;
-        if (wt === 'spear') { WP.add('cyl6', (Wg && Wg.shaft) || '#7a5a34', [0, -6, 0], [0, 0, 0], [.75, 38, .75], b('wp')).add('sph2', wb, [0, -27.5, 0], [0, 0, 0], [1.1, 5.6, .3], bm('wp', 1)).add('cone6', '#6a6a6a', [0, -24.6, 0], [Math.PI, 0, 0], [1, 1.6, 1], bm('wp', 1)); tipY = -30; }
+        let tipY = -14; const WMd = weaponModel(s.wm);
+        if (WMd) {   // zbraň z modelu (Meshy): drevo a koža s farbami vrcholov, kov s leskom; vo vzdialenom zástupe zjednodušená
+            const [gn, gm] = weaponGeos(s.wm), [ln, lm] = weaponGeos(s.wm, true);
+            if (gn) WP.add(gn, '#ffffff', [0, 0, 0], [0, 0, 0], [1, 1, 1], { vc: 1, lod: ln || gn });
+            if (gm) WP.add(gm, '#ffffff', [0, 0, 0], [0, 0, 0], [1, 1, 1], { vc: 1, m: 1, t: 0, lod: lm || gm });
+            tipY = WMd.land.tip;
+        }
+        else if (wt === 'spear') { WP.add('cyl6', (Wg && Wg.shaft) || '#7a5a34', [0, -6, 0], [0, 0, 0], [.75, 38, .75], b('wp')).add('sph2', wb, [0, -27.5, 0], [0, 0, 0], [1.1, 5.6, .3], bm('wp', 1)).add('cone6', '#6a6a6a', [0, -24.6, 0], [Math.PI, 0, 0], [1, 1.6, 1], bm('wp', 1)); tipY = -30; }
         else if (wt === 'axe') { WP.add('cyl6', (Wg && Wg.haft) || '#5a3a1a', [0, -5.5, 0], [0, 0, 0], [.85, 16, .85], b('wp')).add('box', wb, [1.7, -12, 0], [0, 0, 0], [3, 3.6, .4], bm('wp', 1)).add('box', wb, [2.6, -13.4, 0], [0, 0, .55], [1.6, 2.4, .35], bm('wp', 1)).add('cone6', wb, [-1, -12, 0], [0, 0, Math.PI / 2], [.7, 1.8, .4], bm('wp', 1)); tipY = -14; }
         else if (wt === 'club' || wt === 'mace') { WP.add('taperU', '#5a4030', [0, -6.5, 0], [0, 0, 0], [2, 15, 2], b('wp')).add('sph2', wt === 'mace' ? '#7a7c80' : '#4a3424', [0, -14.5, 0], [0, 0, 0], [4.4, 5.2, 4.4], bm('wp', wt === 'mace')); for (let i = 0; i < 5; i++) WP.add('cone6', '#8a8a8a', [Math.cos(i * 1.26) * 2.2, -14.5 + (i % 2) * 1.5, Math.sin(i * 1.26) * 2.2], [Math.sin(i * 1.26) * 1.57, 0, -Math.cos(i * 1.26) * 1.57], [.6, 1.6, .6], bm('wp', 1)); tipY = -16; }
         else if (wt === 'bow' || wt === 'xbow' || wt === 'none') { }

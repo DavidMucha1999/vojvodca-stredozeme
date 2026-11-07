@@ -73,6 +73,8 @@ with sync_playwright() as p:
     check('3D bitka beží', E("game.scene.getScene('Battle').d3 === true && B3.isOn() && document.getElementById('b3d').style.display === 'block'"), E("[game.scene.getScene('Battle').d3, typeof THREE, B3.want()]"))
     pg.wait_for_timeout(1500)
     check('3D: každý vojak má model', E("U.filter(u => !u.fled).every(u => !!B3.rigOf(u))"))
+    wpm = E("(() => { const w0 = G.eq.w, i = shOf('w').findIndex(x => x.n === 'Andúril'); G.eq.w = i; const h = B3.specOf(U[0]).wm; G.eq.w = w0; const d = { t: 1, fc: 5, uk: 'uE1', x: 1, y: 1, vr: .5 }, o = { t: 1, fc: 2, uk: 'uM1', x: 1, y: 1, vr: .5 }; return [h, B3.specOf(d).wm, B3.specOf(o).wm, typeof MODEL_W_ANDURIL]; })()")
+    check('3D: zbrane dobra z modelov (Andúril hrdinu, trpasličia sekera), zlo zatiaľ kódom', wpm[0] == 'w_anduril' and wpm[1] == 'w_sekera_erebor' and wpm[2] is None, wpm)
     gfx3 = E("(() => { let sk = 0, gr = 0, sky = 0; B3.scene.traverse(o => { if (o.isSkinnedMesh) sk++; if (o.geometry && o.geometry.isInstancedBufferGeometry) gr++; if (o.geometry && o.geometry.type === 'SphereGeometry' && o.material.side === THREE.BackSide) sky++; }); return [sk + U.filter(u => !u.fled && B3.rigOf(u) && B3.rigOf(u).far).length, U.filter(u => !u.fled && !u.boss && !(B3.rigOf(u) && B3.rigOf(u).tp.beast)).length, gr, sky, BI, B3.intro]; })()"); check('3D grafika: kostrové postavy (vzdialení v hromadnej sieti), tráva, obloha, nálet kamery', gfx3[0] >= gfx3[1] and (gfx3[2] == 1 or gfx3[4] == 'a') and gfx3[3] == 1 and gfx3[5], gfx3)
     E("dispatchEvent(new KeyboardEvent('keydown', { key: 'x' })); dispatchEvent(new KeyboardEvent('keyup', { key: 'x' }))"); E("for (let i = 0; i < 20; i++) B3.frame(1)")
     check('3D: kláves preskočí nálet kamery', E("!B3.intro"))

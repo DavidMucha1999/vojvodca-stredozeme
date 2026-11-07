@@ -23,3 +23,15 @@ OUT=model_kon_ponik  imp ponik.glb 20 --kind=beast --race=ponik --name=MODEL_KON
 OUT=model_kon_rohan  imp rohan.glb 27 --kind=beast --race=rohan --name=MODEL_KON_ROHAN
 OUT=model_kon_mearas imp mearas.glb 29 --kind=beast --race=mearas --name=MODEL_KON_MEARAS
 OUT=model_kon_gondor imp gondor.glb 30 --kind=beast --race=gondor --name=MODEL_KON_GONDOR --fwd=-x
+# zbrane dobra (--kind=prop: rukoväť v ruke, farby zapečené do vrcholov, zjednodušené na --tris; --grip=pole pre kopiju, sekeru a palicu s hrotom hore, --at = výška úchopu)
+impw() { f=$1; shift; $I "$D/$f" js/data/$OUT.js "$@" --kind=prop && $I "$D/$f" js/data/lite/$OUT.js "$@" --kind=prop --tris=900 > /dev/null; }
+OUT=model_w_zelezny_mec      impw w_zelezny_mec.glb 16 --name=MODEL_W_ZELEZNY_MEC
+OUT=model_w_mec_strazcu      impw w_mec_strazcu.glb 16.5 --name=MODEL_W_MEC_STRAZCU
+OUT=model_w_rohanska_kopija  impw w_rohanska_kopija.glb 43 --grip=pole --at=.3 --name=MODEL_W_ROHANSKA_KOPIJA
+OUT=model_w_dunadansky_mec   impw w_dunadansky_mec.glb 18 --name=MODEL_W_DUNADANSKY_MEC
+OUT=model_w_orcrist          impw w_orcrist.glb 18 --name=MODEL_W_ORCRIST
+OUT=model_w_sekera_erebor    impw w_sekera_erebor.glb 15 --grip=pole --at=.16 --name=MODEL_W_SEKERA_EREBOR
+OUT=model_w_glamdring        impw w_glamdring.glb 19 --name=MODEL_W_GLAMDRING
+OUT=model_w_plamen_anoru     impw w_plamen_anoru.glb 22 --grip=pole --at=.32 --name=MODEL_W_PLAMEN_ANORU
+OUT=model_w_anduril          impw w_anduril.glb 21 --name=MODEL_W_ANDURIL
+OUT=model_w_gondor_obojrucny impw w_gondor_obojrucny.glb 23 --name=MODEL_W_GONDOR_OBOJRUCNY
