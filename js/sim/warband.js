@@ -105,6 +105,7 @@ function hitZ(b, d, from, o) {
     if (zone === 'horse' && b.h && CMB.horse > 0) { CMB.horse -= d; if (CMB.horse <= 0) horseDown(b); d *= .2; }
     WB_SND = plated(b) ? 'sw' : 'hb'; hit(b, d, from); WB_SND = '';
     const dealt = Math.max(0, hp0 - Math.max(0, b.hp));
+    if (b.hp > 0 && b.wu > 0 && !b.h && !big && typeof aiSkill === 'function' && Math.random() > aiSkill(b) * .6 && dealt > 0) { b.wu = 0; b.wt = null; b.c = Math.max(b.c || 0, 16); }   // zásah preruší nápriah (zručný vojak vydrží)
     if (was && b.hp <= 0 && o.type === 'b' && !big && Math.random() < .7) b.ko = 1;   // tupá zbraň: omráčený (zajatie po bitke)
     if (from && from.h) {
         if (was && b.hp <= 0) { wbMsg((zone === 'head' ? 'Zásah do hlavy! ' : '') + (b.ko ? 'Omráčil si: ' : 'Zabil si: ') + unitName(b), zone === 'head' ? '#ffd24a' : '#e8d8a8'); if (zone === 'head' && o.ranged) fx3({ k: 'headshot', u: b }); }

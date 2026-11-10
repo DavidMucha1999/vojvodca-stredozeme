@@ -345,6 +345,10 @@ try {
         plated = () => false; tp.hp = 9999; hitZ(tp, 6, h, { zone: "torso", type: "c" }); var weakN = 9999 - tp.hp; plated = pl; Math.random = Rn;
         OPT.noStam = true; CMB.st = 10; h.c = 0; tick(1); var noSt = CMB.st === 100; OPT.noStam = undefined;`);
     check('Warband: čepeľ zasiahne počas seku (nie hneď), mimo dosahu nič; druhy zbraní; plát odráta pevnú hodnotu (slabý úder sa stratí, silný prejde); bez výdrže', run('swAct && late === 0 && swHit && far && stOk && weak < weakN * .85 && big > 33 && noSt'), run('[swAct, late, swHit, far, kS, weak, weakN, big, noSt].join(" ")'));
+    run(`var ai = U.find(u => u.t && u !== e); ai.uk = null; ai.k = "i"; ai.d = 5; ai.hp = ai.mh = 9999; ai.stun = 0; ai.rout = 0; ai.wu = 10; ai.wt = h; var R1 = Math.random; Math.random = () => .99; hitZ(ai, 8, h, { zone: "torso", type: "c" }); Math.random = R1; var flinch = ai.wu === 0 && ai.c >= 16;
+        ai.wu = 10; ai.d = 15; ai.hp = ai.mh = 9999; Math.random = () => .1; hitZ(ai, 8, h, { zone: "torso", type: "c" }); Math.random = R1; var skilled = ai.wu === 10 - 0 || ai.wu > 0;
+        ai.uk = "uG1"; var wkA = aiWpn(ai); ai.uk = "uE1"; var wkB = aiWpn(ai); ai.uk = null; var wOk = wkA === "spear" && wkB === "axe" && aiSkill({ d: 5 }) === 0 && aiSkill({ d: 15 }) === 1;`);
+    check('Warband: zásah preruší nápriah slabého vojaka, zručný vydrží; druh zbrane a zručnosť AI', run('flinch && skilled && wOk'), run('[flinch, skilled, wkA, wkB].join(" ")'));
     run(`OPT.blkDir = "manual"; CMB.shp = 0; CMB.shMax = 0; CMB.st = 100; CMB.blk = 1; CMB.blkT = 40; CMB.bd = "r"; e.lwd = "l"; e.f = Math.PI; h.f = 0; var hpA = h.hp = 500; meleeHit(e, h, 20, "ai"); var wrongDir = h.hp < hpA;
         CMB.bd = "l"; CMB.st = 100; var hpB = h.hp; var res = meleeHit(e, h, 20, "ai"); var rightDir = !res && h.hp === hpB; OPT.blkDir = "auto"; CMB.blk = 0;
         e.stun = 0; e.c = 0; e.wu = 0; Math.random = R0; e.x = h.x + 10; aiMelee(e, h, 10, 1); var aiDir = ["l", "r", "u", "t"].includes(e.wd);`);

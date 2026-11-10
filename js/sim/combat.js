@@ -395,13 +395,19 @@ function blockFx(u, from, shield, att) {
 }
 
 /** AI vojaka na blízko: nápriah (varovanie), úder, nápor jazdy. Vráti true, ak sa vojak tento snímok už nehýbe. */
+/** Zručnosť vojaka 0 – 1 (silnejší a veliteľ sú zručnejší): skúsenejší sa napriahujú rýchlejšie, robia klamy a zásah ich ľahšie nezastaví. */
+const aiSkill = u => u.cp || u.cmd ? 1 : Math.max(0, Math.min(1, ((u.d || 5) - 5) / 10));
+/** Druh zbrane vojaka (pre dosah a rýchlosť): kopija, sekera, palcát (obri), inak meč. */
+function aiWpn(u) { const F = u.uk && FU[u.uk]; const w = F ? F.wp : (specU(u) || {}).weapon; return heavy(u) ? 'mace' : w === 'sp' || w === 'spear' ? 'spear' : w === 'ax' || w === 'axe' ? 'axe' : 'sword'; }
 function aiMelee(u, b, bd, dt) {
+    const WK = aiWpn(u), S = WSTAT[WK], sk = aiSkill(u);
     if (u.wu > 0) {
         u.wu -= dt; u.f = dirTo(u, u.wt || b);
-        if (u.wu <= 0) { const t = u.wt; u.lwd = u.wd; if (t && t.hp > 0 && Math.hypot(t.x - u.x, t.y - u.y) < 22 + (t.r || 6) * .5) meleeHit(u, t, u.d * (.7 + Math.random() * .6), 'ai'); u.c = heavy(u) ? 40 : 33; u.wt = null; u.atkN = (u.atkN || 0) + 1; }
+        if (u.wu <= 3 && !u.fnt && sk > .35 && u.wt && u.wt.h && Math.random() < sk * .25 * dt) { u.fnt = 1; const o = ['l', 'r', 'u'].filter(x => x !== u.wd); u.wd = o[Math.floor(Math.random() * o.length)]; u.wu += 3; }   // klam: zručný vojak v poslednej chvíli zmení smer úderu
+        if (u.wu <= 0) { const t = u.wt; u.lwd = u.wd; if (t && t.hp > 0 && Math.hypot(t.x - u.x, t.y - u.y) < 22 * S.len + (t.r || 6) * .5) meleeHit(u, t, u.d * S[u.wd === 't' ? 'th' : 'sw'] * (.7 + Math.random() * .6), 'ai'); u.c = (heavy(u) ? 40 : 33) / S.sp; u.wt = null; u.fnt = 0; u.atkN = (u.atkN || 0) + 1; }
         return true;
     }
-    if (bd > 13) { if (mounted(u)) u.run = (u.run || 0) + dt; return false; }
+    if (bd > 13 * (WK === 'spear' ? 1.3 : WK === 'axe' ? .95 : 1)) { if (mounted(u)) u.run = (u.run || 0) + dt; return false; }
     if (u.c > 0 || wallBlocked(u, b)) return false;
     if (mounted(u) && u.run > 40) {   // jazda v plnom cvale: nápor
         const a = dirTo(u, b);
@@ -410,10 +416,10 @@ function aiMelee(u, b, bd, dt) {
         u.run = 0; u.c = 45; return true;
     }
     u.run = 0;
-    // smer úderu (ako ho vidí obranca): zľava, sprava, zhora, bod; trollovia a obri bijú zhora, kopijníci bodajú
-    const sp = u.uk && FU[u.uk] && FU[u.uk].wp === 'sp', r = Math.random();
-    u.wd = heavy(u) ? 'u' : sp ? (r < .6 ? 't' : r < .8 ? 'l' : 'r') : r < .34 ? 'l' : r < .68 ? 'r' : r < .86 ? 'u' : 't';
-    u.wu = u.wu0 = (heavy(u) ? 22 : 12) + (b.h && OPT.blkDir === 'manual' ? 9 : 0); u.wt = b;
+    // smer úderu (ako ho vidí obranca): zľava, sprava, zhora, bod; trollovia a obri bijú zhora, kopijníci bodajú, sekerníci len sekajú
+    const sp = WK === 'spear', r = Math.random();
+    u.wd = heavy(u) ? 'u' : sp ? (r < .6 ? 't' : r < .8 ? 'l' : 'r') : WK === 'axe' ? (r < .4 ? 'l' : r < .75 ? 'r' : 'u') : r < .34 ? 'l' : r < .68 ? 'r' : r < .86 ? 'u' : 't';
+    u.wu = u.wu0 = ((heavy(u) ? 22 : 12) * (1.2 - .35 * sk) / S.sp) + (b.h && OPT.blkDir === 'manual' ? 9 : 0); u.wt = b; u.fnt = 0;
     return true;
 }
 
