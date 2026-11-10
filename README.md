@@ -199,6 +199,13 @@ Všetko je kreslené kódom, bez cudzích modelov a obrázkov (`js/engine/b3d.js
 - **Kamera:** **nálet nad bojiskom** na začiatku bitky (od nepriateľského vojska až za hrdinu; preskočí ho klik alebo kláves, vypína sa v Nastaveniach), **spomalenie** pri páde bossa alebo nepriateľského veliteľa s pohľadom na padlého, rozšírenie záberu v cvale a pri nápore, **fotorežim (P)**: hra stojí, rozhranie zmizne, kamera voľne lieta (WASD, Q/E výška, Shift rýchlo, ťahanie myšou), P alebo Esc ho ukončí.
 - **Výkon a kvalita:** Nastavenia → **Grafika 3D bitky: nízka / stredná / vysoká / ultra**. Nízka = jednoduché ploché tieňovanie bez trávy a dodatočného spracovania (pre slabé počítače), stredná = tráva (9 000 trsov), žiara a tiene, vysoká (predvolená) = vyhladenie hrán, ostrejšie tiene, lúče slnka, 20 000 trsov trávy, ultra = 42 000 trsov a najostrejšie tiene. Detail tvárí a prilieb sa na diaľku skryje.
 
+## Grafika postáv kódom (verzia 56)
+
+- **Ruky:** okrúhla dlaň s vypuklými hánkami a kožený náramok na zápästí (predtým hranatý kváder).
+- **Meče:** čepeľ má **ryhu** uprostred a **svetlejšie brúsené hrany**, parierka má guľové konce, pomelo je guľaté a rukoväť je **omotaná** koženým remienkom.
+- **Materiály postáv** (`js/engine/b3dgfx.js`, `chrPatch`): vzor krúžkovej košele a tkaniny je **jemnejší** (menej moaré zblízka), pridané **ambient occlusion** podľa smeru povrchu (pod rukami, pod hruďou je tmavšie) a **okrajové svetlo** (studený lem po obryse), ktoré postavu odlíši od pozadia. Kov má väčší lesk a odraz oblohy.
+- Poznámka: ide o prvú dávku zlepšenia postáv po odstránení modelov; ďalej má zmysel zaoblenie prilieb, plášťov a obuvi a pestrejšie vojsko.
+
 ## Postavy z modelov Meshy – odstránené (verzia 55)
 
 Všetky modely z Meshy (telá postáv, kone, netvory, zbrane a brnenia dobra) sú **z hry odstránené**, aby sa zmenšila: plná aj odľahčená zostava majú teraz spolu **≈ 10,1 MB** (predtým 19,2 MB a 15,9 MB). Postavy, kone, netvory, zbrane a brnenia sa kreslia **kódom** (`js/engine/b3d.js`, `b3dgfx.js`), ako pred modelmi. Kód načítania modelov ostal (každý model sa hľadá cez `typeof MODEL_… !== 'undefined'`), takže po vrátení súborov `js/data/model_*.js` a značiek `<script>` sa modely znova použijú. Súbory sú v histórii gitu (commit pred verziou 55), importér je v `tools/model_import.py` a `tools/import_all_models.sh`; pôvodné GLB sú mimo repozitára. Nastavenie „Telá postáv z modelov“ je preto zrušené. Nasledujúce sekcie o modeloch (verzia 48 – 52) opisujú, ako fungovali.

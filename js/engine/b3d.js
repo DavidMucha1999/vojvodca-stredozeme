@@ -934,7 +934,7 @@ const B3 = (() => {
         // pravá ruka so zbraňou
         const sleeve = mA ? armor : sh(armor, .9), fore = mA ? armor : s.race === 'orc' || s.race === 'troll' ? skin : sh(armor, .85), sT = fab(sleeve), fT = fore === skin ? 0 : fab(fore);
         P.add('cyl12', leather, [0, -a2 + 1.3, 0], [0, 0, 0], [2.4, 2, 2.4], bt('elR', 3))
-        ; if (!MM) { P.add('rbox', mA ? sh(armor, .9) : skin, [.1, -.6, 0], [0, 0, 0], [1.5, 1.7, 1.4], { b: 'hR', m: mA });
+        ; if (!MM) { P.add('sph2', mA ? sh(armor, .9) : skin, [.1, -.6, 0], [0, 0, 0], [1.5, 1.9, 1.3], { b: 'hR', m: mA }).add('sph2', mA ? sh(armor, .96) : sh(skin, .96), [.55, -.35, 0], [0, 0, 0], [.9, 1.1, 1.35], { b: 'hR', m: mA }).add('cyl12', mA ? sh(armor, .75) : sh(leather, 1.1), [0, .15, 0], [0, 0, 0], [1.75, 1.05, 1.75], { b: 'hR', t: mA ? 0 : 3, m: mA });
         for (let i = 0; i < 4; i++) P.add('cyl6', mA ? sh(armor, .9) : skin, [.62, -.25 - i * .42, 0], [Math.PI / 2, 0, 0], [.42, 1.35, .42], { b: 'hR', m: mA });   // prsty okolo rukoväte
         P.add('cyl6', mA ? sh(armor, .9) : skin, [.35, -.15, .65], [.5, 0, -.6], [.42, 1, .42], { b: 'hR', m: mA }); }   // palec
         const Wg = s.weaponG, wb = (Wg && (Wg.blade || (Wg.grad && Wg.grad[0]) || Wg.head)) || '#b8bec6', wt = s.weapon, guard = (Wg && Wg.guard) || '#6a6058';
@@ -951,15 +951,23 @@ const B3 = (() => {
         else if (wt === 'bow' || wt === 'xbow' || wt === 'none') { }
         else {   // meče: rovný, široký obojručný, zakrivená šabľa, štíhla elfská čepeľ
             const L = Wg ? 6 + Wg.L * 3.4 : 11, wide = Wg && Wg.t === 'broad' ? 1.7 : 1.25, curve = wt === 'scimitar' || wt === 'curve' || (Wg && Wg.t === 'curve') ? .13 : wt === 'elfblade' ? .07 : 0;
-            WP.add('cyl6', leather, [0, -.6, 0], [0, 0, 0], [.6, 2.4, .6], b('wp')).add('sph', guard, [0, 1, 0], [0, 0, 0], [.8, .8, .8], bm('wp', 1)).add('box', guard, [0, -2, 0], [0, 0, 0], [.75, .6, 3.8], bm('wp', 1));
+            WP.add('cyl6', leather, [0, -.6, 0], [0, 0, 0], [.6, 2.4, .6], b('wp')).add('sph2', guard, [0, 1.15, 0], [0, 0, 0], [.95, .8, .95], bm('wp', 1)).add('rbox', guard, [0, -2, 0], [0, 0, 0], [.75, .6, 3.8], bm('wp', 1))
+                .add('sph', guard, [0, -2.15, 1.95], [0, 0, 0], [.7, .7, .7], bm('wp', 1)).add('sph', guard, [0, -2.15, -1.95], [0, 0, 0], [.7, .7, .7], bm('wp', 1));
+            for (let i = 0; i < 3; i++) WP.add('cyl6', sh(leather, .65), [0, -.15 - i * .75, 0], [0, 0, 0], [.72, .22, .72], b('wp'));   // omotávka rukoväte
             let px = 0, py = -2.3, an = 0; const seg = curve ? 4 : 1, sl = L / seg;
-            for (let i = 0; i < seg; i++) { an += curve; const dx = Math.sin(an) * sl, dy = -Math.cos(an) * sl; WP.add('box', wb, [px + dx / 2, py + dy / 2, 0], [0, 0, an], [.3, sl + .1, wide], bm('wp', 1)); px += dx; py += dy; }
+            for (let i = 0; i < seg; i++) {
+                an += curve; const dx = Math.sin(an) * sl, dy = -Math.cos(an) * sl, mx = px + dx / 2, my = py + dy / 2;
+                WP.add('box', wb, [mx, my, 0], [0, 0, an], [.3, sl + .1, wide], bm('wp', 1))
+                    .add('box', sh(wb, .7), [mx, my, 0], [0, 0, an], [.36, sl * .9, wide * .2], bm('wp', 1))   // ryha uprostred čepele
+                    .add('box', sh(wb, 1.25), [mx, my, wide * .46], [0, 0, an], [.33, sl + .1, wide * .1], bm('wp', 1)).add('box', sh(wb, 1.25), [mx, my, -wide * .46], [0, 0, an], [.33, sl + .1, wide * .1], bm('wp', 1));   // brúsené hrany
+                px += dx; py += dy;
+            }
             WP.add('cone6', wb, [px + Math.sin(an) * .7, py - Math.cos(an) * .7, 0], [0, 0, Math.PI + an], [.3, 1.4, wide], bm('wp', 1));
             tipY = py;
         }
         // ľavá ruka so štítom alebo lukom
         P.add('cyl12', leather, [0, -a2 + 1.3, 0], [0, 0, 0], [2.4, 2, 2.4], bt('elL', 3))
-        ; if (!MM) { P.add('rbox', mA ? sh(armor, .9) : skin, [.1, -.6, 0], [0, 0, 0], [1.5, 1.7, 1.4], { b: 'hL', m: mA });
+        ; if (!MM) { P.add('sph2', mA ? sh(armor, .9) : skin, [.1, -.6, 0], [0, 0, 0], [1.5, 1.9, 1.3], { b: 'hL', m: mA }).add('sph2', mA ? sh(armor, .96) : sh(skin, .96), [.55, -.35, 0], [0, 0, 0], [.9, 1.1, 1.35], { b: 'hL', m: mA }).add('cyl12', mA ? sh(armor, .75) : sh(leather, 1.1), [0, .15, 0], [0, 0, 0], [1.75, 1.05, 1.75], { b: 'hL', t: mA ? 0 : 3, m: mA });
         for (let i = 0; i < 4; i++) P.add('cyl6', mA ? sh(armor, .9) : skin, [.62, -.25 - i * .42, 0], [Math.PI / 2, 0, 0], [.42, 1.35, .42], { b: 'hL', m: mA });   // prsty okolo rukoväte
         P.add('cyl6', mA ? sh(armor, .9) : skin, [.35, -.15, .65], [.5, 0, -.6], [.42, 1, .42], { b: 'hL', m: mA }); }   // palec
         const SG = s.shieldG, shape = SG ? SG.shape : s.shield;

@@ -108,14 +108,17 @@ const B3G = (() => {
                 float fwd = length(fwidth(vOP)); float dk = 1.0 - smoothstep(0.3, 1.2, fwd);
                 int mt = int(vMat + 0.5); float mR = 1.0, mM = 1.0, bh = 0.0; vec3 dc = diffuseColor.rgb;
                 if (mt == 1) { vec2 g = vec2((vOP.x + vOP.z) * 2.4, vOP.y * 2.4); g.x += step(0.5, fract(g.y * 0.5)) * 0.5;
-                    float rg = 1.0 - smoothstep(0.06, 0.16, abs(length(fract(g) - 0.5) - 0.3)); dc *= mix(1.0, 0.55 + 0.6 * rg, dk); mR = mix(1.0, mix(1.5, 0.75, rg), dk); bh = rg * 0.5 * dk; }
-                else if (mt == 2) { float w = sin((vOP.x + vOP.z) * 9.0) * sin(vOP.y * 9.0); dc *= 1.0 + (0.07 * w - 0.05 * n3(vOP * 3.0)) * dk; mR = 1.05; bh = w * 0.15 * dk; }
+                    float rg = 1.0 - smoothstep(0.06, 0.16, abs(length(fract(g) - 0.5) - 0.3)); dc *= mix(1.0, 0.72 + 0.36 * rg, dk); mR = mix(1.0, mix(1.3, 0.8, rg), dk); bh = rg * 0.35 * dk; }
+                else if (mt == 2) { float w = sin((vOP.x + vOP.z) * 9.0) * sin(vOP.y * 9.0); dc *= 1.0 + (0.04 * w - 0.05 * n3(vOP * 3.0)) * dk; mR = 1.05; bh = w * 0.08 * dk; }
                 else if (mt == 3) { float n = n3(vOP * 1.4) * 0.6 + n3(vOP * 5.0) * 0.4; float stc = step(0.55, fract(vOP.y * 2.6)) * (1.0 - smoothstep(0.0, 0.07, abs(fract((vOP.z + vOP.x) * 0.7) - 0.5))) * dk; dc *= (0.82 + 0.3 * n) * (1.0 - stc * 0.35); mR = 0.75 + 0.35 * n; bh = n * 0.4 - stc * 0.3; }   // koža so švami
                 else if (mt == 4) { float sc = smoothstep(0.8, 0.95, n3(vec3((vOP.x + vOP.z) * 0.5, vOP.y * 10.0, vOP.z * 0.3))) * dk; float dn = n3(vOP * 0.9); float eng = (1.0 - smoothstep(0.0, 0.09, abs(sin(vOP.y * 2.2 + sin(vOP.z * 3.1 + vOP.x) * 1.3)))) * dk * step(0.55, n3(vOP * 0.35)); dc *= (0.9 + 0.18 * dn + sc * 0.45) * (1.0 - eng * 0.3); mR = 0.8 + 0.5 * dn - sc * 0.45; bh = sc * 0.3 - eng * 0.5 + dn * 0.2; }   // plát s rytinami
                 else if (mt == 5) { float r = smoothstep(0.4, 0.62, n3(vOP * 0.8) * 0.7 + n3(vOP * 3.1) * 0.3); dc = mix(dc * 0.85, vec3(0.3, 0.14, 0.06), r * 0.8); mR = mix(1.1, 2.4, r); mM = 1.0 - r * 0.8; }
                 else if (mt == 6) { float f = 1.0 - smoothstep(0.0, 0.2, abs(sin(vOP.y * 3.0 + sin((vOP.x + vOP.z) * 4.0) * 1.6))); dc *= 1.0 + f * 0.5 * dk; mR = 0.6 - f * 0.3; bh = f * 0.5 * dk; }
                 else if (mt == 7) { float pl = abs(fract(vOP.z * 0.42 + 0.5) - 0.5), seam = 1.0 - smoothstep(0.0, 0.05, pl); vec2 sg = fract(vec2(vOP.y * 0.32, vOP.z * 0.42 + 0.5)) - 0.5; float nail = 1.0 - smoothstep(0.08, 0.12, length(sg * vec2(1.0, 1.0)));
                     float gr = n3(vec3(vOP.y * 0.4, vOP.z * 6.0, vOP.x)); dc *= (0.82 + 0.3 * gr) * (1.0 - seam * 0.45 * dk); dc = mix(dc, vec3(0.32, 0.32, 0.34), nail * dk); mR = mix(0.9, 0.35, nail); mM = mix(1.0, 4.0, nail * dk); bh = gr * 0.3 - seam * 0.6 + nail * 0.8; }   // štít z dosiek s kovanými klincami
+                #ifndef USE_MAP
+                dc *= 0.8 + 0.2 * smoothstep(-0.9, 0.7, normalize(vON).y);   // pod rukami, pod hruďou a pod okrajmi je tmavšie (ambient occlusion)
+                #endif
                 float dm = clamp(uDirt * ((1.0 - smoothstep(2.0, 15.0, vOP.y)) * 0.85 + 0.22) * (0.5 + 0.8 * n3(vOP * 0.45)), 0.0, 0.85);
                 #ifdef USE_MAP
                 dm *= 0.45;   // textúrované telo (model): blato len jemne, textúra má vlastné tiene
@@ -124,6 +127,8 @@ const B3G = (() => {
                 float rs = uWet > 0.05 ? smoothstep(0.62, 0.95, n3(vec3(vOP.x * 4.0, vOP.y * 0.35, vOP.z * 4.0))) * uWet : 0.0; mR *= 1.0 - rs * 0.55; dc *= 1.0 - rs * 0.18;   // stružky dažďa
                 float snw = uSnow > 0.01 ? smoothstep(0.45, 0.85, normalize(vON).y) * uSnow * (0.55 + 0.45 * n3(vOP * 1.6)) : 0.0;
                 diffuseColor.rgb = mix(dc * uTint * (1.0 - uWet * 0.12), vec3(0.9, 0.93, 0.97), snw); mR = mix(mR, 1.4, snw); mM *= 1.0 - snw;`)
+            .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+                { float rimF = pow(1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0), 3.0); totalEmissiveRadiance += vec3(0.55, 0.66, 0.85) * rimF * 0.14; }   // okrajové svetlo: postava sa odlíši od pozadia`)
             .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n roughnessFactor = clamp(roughnessFactor * mR * (1.0 - uWet * 0.35), 0.05, 1.0);')
             .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\n metalnessFactor = clamp(metalnessFactor * mM, 0.0, 1.0);')
             .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
@@ -139,7 +144,7 @@ const B3G = (() => {
         const t = T(), low = QN() === 0, tex = m === 't';
         let map = null; if (tex && texUrl) { if (typeof texUrl === 'object') map = texUrl; else { map = TEXC[texUrl] || (TEXC[texUrl] = new t.TextureLoader().load(texUrl)); map.colorSpace = t.SRGBColorSpace; map.flipY = false; } }   // textúra modelu (GLB: UV bez prevrátenia)
         const mt = low ? new t.MeshLambertMaterial({ vertexColors: !tex, flatShading: !tex, map })
-            : new t.MeshStandardMaterial({ vertexColors: !tex, map, roughness: m === 'm' ? .34 : tex ? .9 : .82, metalness: m === 'm' ? .78 : 0, envMapIntensity: m === 'm' ? 1.1 : .6 });
+            : new t.MeshStandardMaterial({ vertexColors: !tex, map, roughness: m === 'm' ? .3 : tex ? .9 : .82, metalness: m === 'm' ? .82 : 0, envMapIntensity: m === 'm' ? 1.4 : .6 });
         if (low) { mt.onBeforeCompile = clothPatch; mt.customProgramCacheKey = () => 'chr' + m; }
         else { mt.onBeforeCompile = sh => chrPatch(sh, own); mt.customProgramCacheKey = () => 'chrP' + m; mt.extensions = { derivatives: true }; }
         return own ? mt : (MATS[k] = mt);
