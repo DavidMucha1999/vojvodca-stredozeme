@@ -204,7 +204,8 @@ Všetko je kreslené kódom, bez cudzích modelov a obrázkov (`js/engine/b3d.js
 - **Ruky:** okrúhla dlaň s vypuklými hánkami a kožený náramok na zápästí (predtým hranatý kváder).
 - **Meče:** čepeľ má **ryhu** uprostred a **svetlejšie brúsené hrany**, parierka má guľové konce, pomelo je guľaté a rukoväť je **omotaná** koženým remienkom.
 - **Materiály postáv** (`js/engine/b3dgfx.js`, `chrPatch`): vzor krúžkovej košele a tkaniny je **jemnejší** (menej moaré zblízka), pridané **ambient occlusion** podľa smeru povrchu (pod rukami, pod hruďou je tmavšie) a **okrajové svetlo** (studený lem po obryse), ktoré postavu odlíši od pozadia. Kov má väčší lesk a odraz oblohy.
-- Poznámka: ide o prvú dávku zlepšenia postáv po odstránení modelov; ďalej má zmysel zaoblenie prilieb, plášťov a obuvi a pestrejšie vojsko.
+- **Druhá dávka (verzia 57):** plášť má **golier, zlatú sponu na krku a záhyby na pleciach**; čižmy majú **svetlejšie manžety** pod kolenom; lícnice prilieb sú zaoblené (nie ploché kvádre); vojaci majú **6 farieb vlasov** namiesto 4 (zároveň sa pestrejšie delia sekery, kyjaky a holé hlavy, ako predtým).
+- Poznámka: ďalej má zmysel zaoblenie ostatných prilieb a štítov, doplnky (pláštenky, popruhy, tulce) a efekty boja.
 
 ## Postavy z modelov Meshy – odstránené (verzia 55)
 

@@ -796,7 +796,7 @@ const B3 = (() => {
             : kind === 'v' || kind === 'r' || u.uk === 'uR2' ? 'a_rohanska_kruzkova' : kind === 'a' || u.uk === 'uG2' ? 'a_kozeny_odev' : null;
         const wm = !good ? null : wpn === 'spear' ? 'w_rohanska_kopija' : wpn === 'elfblade' ? 'w_orcrist' : wpn === 'axe' && race === 'dwarf' ? 'w_sekera_erebor' : wpn === 'sword' ? (kind === 'v' ? 'w_mec_strazcu' : 'w_zelezny_mec') : null;
         const gon = u.uk === 'uG3' || (u.t ? u.fc === 0 : G.fac === 0), hm = sp.mount === 'horse' ? (gon ? 'gondor' : 'rohan') : sp.mount === 'darkhorse' ? 'mearas_d' : null;   // plemeno koňa jednotky: Gondor bojový kôň, inak rohanský; Nazgûl čierny
-        return { hm, mdl: modelOf(race) ? 1 : 0, race, fac, skin: SKIN[sp.skin] || SKIN.human, hair: race === 'elf' ? '#e8d8a0' : ['#3a2a1a', '#6a4a2a', '#2a1a10', '#8a6a3a'][(u.x * 7 | 0) % 4], beard: sp.beard || (race === 'human' && (u.y * 3 | 0) % 3 === 0) ? 1 : 0, armor: (fu && fu.col) || sp.armor, helm: bare ? 'none' : sp.helm, helmCol: fu && fu.hel, weapon: wpn, wm: weaponModel(wm) ? wm : null, am: armorModel(am) ? am : null, shield: sp.shield, mount: sp.mount, beast: sp.beast, big: sp.big, team, quiver: sp.weapon === 'bow' || sp.weapon === 'xbow', scale: race === 'troll' ? 1.55 : sp.big ? 1.6 : 1 };
+        return { hm, mdl: modelOf(race) ? 1 : 0, race, fac, skin: SKIN[sp.skin] || SKIN.human, hair: race === 'elf' ? '#e8d8a0' : ['#3a2a1a', '#6a4a2a', '#2a1a10', '#8a6a3a', '#a07a3a', '#5a2a1a'][(u.x * 7 | 0) % 6], beard: sp.beard || (race === 'human' && (u.y * 3 | 0) % 3 === 0) ? 1 : 0, armor: (fu && fu.col) || sp.armor, helm: bare ? 'none' : sp.helm, helmCol: fu && fu.hel, weapon: wpn, wm: weaponModel(wm) ? wm : null, am: armorModel(am) ? am : null, shield: sp.shield, mount: sp.mount, beast: sp.beast, big: sp.big, team, quiver: sp.weapon === 'bow' || sp.weapon === 'xbow', scale: race === 'troll' ? 1.55 : sp.big ? 1.6 : 1 };
     }
     const keyOf = s => JSON.stringify(s);
     /** Šablóna (geometrie a kostra) pre popis s; zdieľajú ju všetky rovnaké jednotky. */
@@ -909,14 +909,14 @@ const B3 = (() => {
             if (hk === 'gondor' || hk === 'winged' || hk === 'citadel') {   // vysoká prilba s chráničmi líc a krídlami morských vtákov
                 P.add('taper', hcol, [HX - .2, HY + 2.9 * hs, 0], [0, 0, .05], [3.6, 2.6, 3.4], bm('hdc', hm));
                 for (const z of [-1, 1]) {
-                    P.add('box', hcol, [HX + 1.2, HY - 1.1, z * 1.95 * hs], [z * .08, 0, 0], [2.2, 2.8, .35], bm('hdc', hm));
+                    P.add('rbox', hcol, [HX + 1.2, HY - 1.1, z * 1.95 * hs], [z * .08, 0, 0], [2.2, 2.8, .35], bm('hdc', hm));
                     const wc = (s.helmG && s.helmG.wings) || '#f2f4f6';
                     P.add('box', wc, [HX - .7, HY + 2.3, z * 2.5 * hs], [z * .35, 0, -.45], [.4, 4, 1.5], b('det')).add('box', wc, [HX - 1.4, HY + 2.9, z * 2.6 * hs], [z * .4, 0, -.7], [.35, 3, 1.2], b('det'));
                 }
             }
             if (hk === 'rohan' || hk === 'plume') {   // nánosník, lícnice, zlatý pás a konský chvost
                 P.add('box', hcol, [HX + 2.35 * hs, HY - .2, 0], [0, 0, 0], [.35, 2.4, .55], bm('hdc', hm)).add('torus', '#c8a040', [HX - .1, HY + 1.2, 0], [0, 0, .08], [4.7 * hs, 1.2, 4.5 * hs], bm('hdc', 1));
-                for (const z of [-1, 1]) P.add('box', hcol, [HX + 1.1, HY - 1.2, z * 1.95 * hs], [0, 0, 0], [2, 2.6, .35], bm('hdc', hm));
+                for (const z of [-1, 1]) P.add('rbox', hcol, [HX + 1.1, HY - 1.2, z * 1.95 * hs], [0, 0, 0], [2, 2.6, .35], bm('hdc', hm));
                 const tc = (s.helmG && s.helmG.tail) || (hk === 'plume' ? '#c83a2a' : '#ece0c4');
                 for (let i = 0; i < 4; i++) P.add('box', tc, [HX - 2.1 - i * .5, HY + 1.4 - i * 1.6, (i % 2 - .5) * .6], [0, 0, .5 + i * .12], [.7, 4, .7], b('det'));
             }
@@ -930,7 +930,11 @@ const B3 = (() => {
         // tulec na chrbte (lukostrelci)
         if (s.quiver) { P.add('cyl12', leather, [-D / 2 - .8, H * .55, 1.4], [.35, 0, 0], [1.8, 7.4, 1.8], bt('ch', 3)); for (let i = 0; i < 4; i++) P.add('box', '#e8e4dc', [-D / 2 - .8 + (i % 2) * .5, H * .55 + 4.2, 1.4 + (i - 1.5) * .35 + 1.3], [.35, 0, 0], [.3, 1.4, .25], b('det')); }
         // plášť (látka, ktorá sa vlní)
-        if (s.cape || s.hero) P.add('capeBox', s.cape || team, [0, 0, 0], [0, 0, 0], [.5, H + 3.5, W * .95], { b: 'cape', cl: [0, H + 3.5, 1], t: 2, rigid: 1 });
+        if (s.cape || s.hero) { const cc = s.cape || team; P.add('capeBox', cc, [0, 0, 0], [0, 0, 0], [.5, H + 3.5, W * .95], { b: 'cape', cl: [0, H + 3.5, 1], t: 2, rigid: 1 });
+            if (!noTab) { P.add('sph2', sh(cc, 1.08), [-.4, H - .6, 0], [0, 0, 0], [D * .95, 2.2, W * 1.02], bt('ch', 2)).add('sph', '#d8b450', [D * .5 + .15, H - .5, 0], [0, 0, 0], [.8, .8, .8], bm('ch', 1));   // golier plášťa a spona na krku
+                for (const z of [-1, 1]) P.add('sph2', sh(cc, .92), [-.7, H - 1.2, z * (W / 2 - .3)], [0, 0, z * .15], [D * .8, 1.9, 2.8], bt('ch', 2)); } }   // záhyby plášťa na pleciach
+        // manžety čižiem (okraj čižmy pod kolenom) a špičky
+        if (!noTab || !MM) for (const [kb, z] of [['knR', 0], ['knL', 0]]) P.add('cyl12', sh(boots, 1.3), [0, -ls * .36, 0], [0, 0, 0], [2.05, .95, 2.05], { b: kb, t: 3 });
         // pravá ruka so zbraňou
         const sleeve = mA ? armor : sh(armor, .9), fore = mA ? armor : s.race === 'orc' || s.race === 'troll' ? skin : sh(armor, .85), sT = fab(sleeve), fT = fore === skin ? 0 : fab(fore);
         P.add('cyl12', leather, [0, -a2 + 1.3, 0], [0, 0, 0], [2.4, 2, 2.4], bt('elR', 3))
