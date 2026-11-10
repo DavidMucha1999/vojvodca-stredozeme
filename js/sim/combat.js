@@ -104,6 +104,7 @@ function cmbHero(u, dt, mv) {
     if (C.mkT > 0) C.mkT -= dt;
     placeTick();
     if (GP && Math.hypot(GP.ax, GP.ay) > .35) { u.f = Math.atan2(GP.ay, GP.ax); C.km = 1; }   // pravá páčka ovládača mieri
+    if (OPT.noStam !== false) C.st = 100;   // boj ako vo Warbande: bez výdrže (kryt obmedzuje len štít a načasovanie)
     const want = !!(kd('block') || C.rmb) && C.gb <= 0 && C.st > 2;
     if (want && !C.blk) C.blkT = 0;
     C.blk = want ? 1 : 0;
@@ -187,12 +188,13 @@ function mouseDir() {
 const DIR_N = { l: 'zľava', r: 'sprava', u: 'zhora', t: 'bod' };
 /** Vlastnosti zbrane: čas nápriahu, zotavenie, dosah. */
 function wpnTimes() {
-    const W = it('w') || {}, t2 = twoHand(), spear = !!W.r;
-    return { ready: t2 ? 13 : spear ? 11 : 9, rec: t2 ? 24 : 18, spear, t2, reach: W.r || 34 };
+    const W = it('w') || {}, t2 = twoHand(), spear = !!W.r, S = wstat(W);
+    return { ready: (t2 ? 13 : spear ? 11 : 9) / S.sp, rec: (t2 ? 24 : 18) / S.sp, spear, t2, S, reach: W.r || 34 * S.len, kind: wkind(W) };
 }
 /** Hrdina s myšou: nápriah do smeru (drž tlačidlo = silnejší úder, kryt počas nápriahu = klam), sklopená kopija v cvale. */
 function heroDirectional(u, dt, mv, slow, cost, rg) {
     const C = CMB, WT = wpnTimes();
+    if (C.sw) swingTick(u, dt, WT);   // čepeľ práve letí: zasiahne to, cez čo prejde
     // sklopená kopija: kopija + rovný cval + drž bod (E) → každý v ceste dostane zásah podľa rýchlosti koňa
     const spd = Math.hypot(C.vx || 0, C.vy || 0);
     if (heroMounted() && WT.spear && kd('thrust') && C.run > 18 && spd > (u.bs || u.sp) * .55) {
@@ -220,29 +222,48 @@ function heroDirectional(u, dt, mv, slow, cost, rg) {
     if (kd('thrust')) C.rd = { d: 't', t: 0, key: 'thrust', ready: WT.ready * slow };
     else if (kd('atk') || C.lmb) { const d = mouseDir() || (C.alt = C.alt === 'l' ? 'r' : 'l'); C.rd = { d, t: 0, key: 'atk', ready: WT.ready * slow }; }
 }
-/** Úder do smeru: sek zľava/sprava zasiahne viac nepriateľov v oblúku, úder zhora jedného silnejšie, bod má dlhší dosah.
+/** Úder do smeru (uvoľnenie nápriahu): sek zľava/sprava zasiahne viac nepriateľov v oblúku, úder zhora jedného silnejšie, bod má dlhší dosah.
+ *  Zbraň sa potom pohybuje (swingTick): zasiahne len to, cez čo čepeľ prejde, a silnejšie uprostred seku a hrotom než pri rúčke.
  *  Sila: držaný nápriah až +45 %, pohyb proti nepriateľovi (najmä na koni) pridá, pohyb od neho uberie. */
 function heroStrike(u, R, slow, cost, rg) {
-    const C = CMB, WT = wpnTimes(), d = R.d, held = Math.max(0, R.t - R.ready);
+    const C = CMB, WT = wpnTimes(), d = R.d, S = WT.S, held = Math.max(0, R.t - R.ready);
     const pow = 1 + .45 * Math.min(1, held / 30) * (R.t > 200 ? Math.max(0, 1 - (R.t - 200) / 120) : 1);
-    const P = { u: { arc: .5, n: 1, m: 1.2, r: 1 }, l: { arc: WT.t2 ? 1.3 : 1.05, n: WT.t2 ? 4 : 3, m: WT.t2 ? 1.1 : 1, r: 1 }, r: { arc: WT.t2 ? 1.3 : 1.05, n: WT.t2 ? 4 : 3, m: WT.t2 ? 1.1 : 1, r: 1 }, t: { arc: .42, n: 1, m: WT.spear ? 1.5 : 1.35, r: WT.spear ? 1.5 : 1.35 } }[d];
-    const reach = rg * P.r, sa = v => { let x = dirTo(u, v) - u.f; return Math.atan2(Math.sin(x), Math.cos(x)); };
-    const tg = U.filter(v => v.t && v.hp > 0 && Math.hypot(v.x - u.x, v.y - u.y) < reach + v.r * .5 && !wallBlocked(u, v) && Math.abs(sa(v)) < P.arc)
-        .sort((a, b) => d === 'l' ? sa(a) - sa(b) : d === 'r' ? sa(b) - sa(a) : Math.hypot(a.x - u.x, a.y - u.y) - Math.hypot(b.x - u.x, b.y - u.y)).slice(0, P.n);
+    const a2 = WT.t2 ? 1.3 : 1.05, n2 = WT.t2 ? 4 : 3;
+    const P = { u: { arc: .5, n: 1, m: 1.2 * S.sw, r: 1 }, l: { arc: a2, n: n2, m: S.sw, r: 1 }, r: { arc: a2, n: n2, m: S.sw, r: 1 }, t: { arc: .42, n: 1, m: 1.35 * S.th, r: WT.spear ? 1.5 : 1.35 } }[d];
     C.hist = (C.hist || []).concat(d).slice(-4);
-    const bl = tg.length ? swingBlocked(u, d, reach) : null;
-    if (bl) { tg.length = 0; C.st = Math.max(0, C.st - 6); fx3({ k: 'bounce', x: u.x + Math.cos(u.f) * 12, y: u.y + Math.sin(u.f) * 12 }); wbMsg('Zbraň sa zarazila o ' + bl + '!', '#ff9a80'); snd('sh'); }   // sek zboku v tesnom priestore
-    tg.forEach((v, i) => {
-        const a = dirTo(u, v), close = Math.max(-.5, Math.min(1.2, ((C.vx || 0) * Math.cos(a) + (C.vy || 0) * Math.sin(a)) / Math.max(1, u.bs || u.sp || 2)));
-        const dist = Math.hypot(v.x - u.x, v.y - u.y) - (v.r || 6) * .5, handle = dist < reach * (WT.spear || WT.t2 ? .42 : .26);   // príliš blízko: zasiahne len rúčka
-        if (handle && !i) wbMsg(WT.spear && d === 't' ? 'Príliš blízko – kopija nemá odstup.' : 'Príliš blízko – zasiahla len rúčka.', '#ff9a80');
-        meleeHit(u, v, dmg() * P.m * pow * (1 + close * (heroMounted() ? .5 : .2)) * (i ? .75 : 1) * (handle ? (WT.spear && d === 't' ? 0 : .2) : 1), d === 't' ? 'thrust' : 'swing', { d, pow, pitch: C.aim3 ? C.aim3.pitch : null });
-    });
+    const reach = WT.reach * P.r;
+    C.sw = { d, t: 0, dur: (d === 't' ? 6 : WT.t2 ? 10 : 8) / S.sp * slow, P, pow, reach, hit: [], bl: 0, pitch: C.aim3 ? C.aim3.pitch : null };
     u.c = WT.rec * slow * (d === 't' ? .85 : 1); C.st -= (d === 't' ? 7 : WT.t2 ? 13 : 10) * cost * (pow > 1.2 ? 1.2 : 1); if (C.st < 0) C.st = 0;
     fx = 10; C.swing = { t: 10, a: u.f, k: d === 't' ? 't' : 's', d, r: reach, w: P.arc, pow };
     C.rd = null;
     if (pow > 1.3) cmbSay('pow', 'Silný úder! Dlhšie držaný nápriah udrie tvrdšie – ale ruka sa unaví.', 150);
     if (WT.t2) cmbSay('t2', 'Obojručná zbraň: široký sek, ale bez štítu.');
+    swingTick(u, 0, WT);
+}
+/** Čepeľ v pohybe: pozícia čepele (uhol, dosah) sa mení s časom seku; nepriateľ, cez ktorého prejde, dostane zásah (raz za sek).
+ *  Rýchlosť čepele je najvyššia v strede seku a hrot udiera silnejšie než rúčka – preto záleží na vzdialenosti aj na načasovaní. */
+function swingTick(u, dt, WT) {
+    const C = CMB, s = C.sw; if (!s) return;
+    s.t += dt; const p = Math.min(1, s.t / s.dur), P = s.P, d = s.d;
+    const sa = v => { const x = dirTo(u, v) - u.f; return Math.atan2(Math.sin(x), Math.cos(x)); };
+    const th = d === 'l' ? -P.arc + 2 * P.arc * p : d === 'r' ? P.arc - 2 * P.arc * p : 0;   // uhol čepele voči smeru pohľadu
+    const tip = s.reach * (d === 't' ? Math.sin(Math.min(1, p * 1.6) * Math.PI / 2) : 1);   // bod: hrot sa vysúva
+    const vel = d === 't' ? .7 + .5 * Math.min(1, p * 1.6) : .7 + .5 * Math.sin(p * Math.PI);   // rýchlosť čepele
+    for (const v of U) {
+        if (!v.t || v.hp <= 0 || s.hit.includes(v) || s.hit.length >= P.n || wallBlocked(u, v)) continue;
+        const dist = Math.hypot(v.x - u.x, v.y - u.y), r = v.r || 6, ang = sa(v), wide = Math.atan2(r * .8, Math.max(8, dist));
+        if (dist - r * .5 > tip) continue;
+        if (d === 'l' || d === 'r') { if (Math.abs(ang - th) > .32 + wide || Math.abs(ang) > P.arc + wide) continue; }
+        else { if (Math.abs(ang) > P.arc) continue; if (d === 'u' && p < .4) continue; }
+        if (!s.bl) { s.bl = 1; const bl = swingBlocked(u, d, s.reach); if (bl) { s.hit = new Array(99); C.st = Math.max(0, C.st - 6); fx3({ k: 'bounce', x: u.x + Math.cos(u.f) * 12, y: u.y + Math.sin(u.f) * 12 }); wbMsg('Zbraň sa zarazila o ' + bl + '!', '#ff9a80'); snd('sh'); break; } }
+        const i = s.hit.length; s.hit.push(v);
+        const a = dirTo(u, v), close = Math.max(-.5, Math.min(1.2, ((C.vx || 0) * Math.cos(a) + (C.vy || 0) * Math.sin(a)) / Math.max(1, u.bs || u.sp || 2)));
+        const handle = dist - r * .5 < s.reach * (WT.spear || WT.t2 ? .42 : .26);   // príliš blízko: zasiahne len rúčka
+        if (handle && !i) wbMsg(WT.spear && d === 't' ? 'Príliš blízko – kopija nemá odstup.' : 'Príliš blízko – zasiahla len rúčka.', '#ff9a80');
+        const tipF = .85 + .3 * Math.min(1, dist / s.reach);   // hrot udiera silnejšie
+        meleeHit(u, v, dmg() * P.m * s.pow * vel * tipF * (1 + close * (heroMounted() ? .5 : .2)) * (i ? .75 : 1) * (handle ? (WT.spear && d === 't' ? 0 : .2) : 1), d === 't' ? 'thrust' : 'swing', { d, pow: s.pow, pitch: s.pitch, sp: vel });
+    }
+    if (p >= 1) C.sw = null;
 }
 /** Zameriavač: bod pod kurzorom a rozptyl (napnutie, pohyb, zručnosť, trasúca sa ruka pri dlhom držaní). */
 function aimInfo(u, mv, rt) {

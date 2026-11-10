@@ -331,9 +331,20 @@ try {
         CMB.mdx = -30; CMB.mdy = 0; var dL = mouseDir(); CMB.mdx = 0; CMB.mdy = -30; var dU = mouseDir(); CMB.mdy = 30; var dT = mouseDir(); CMB.mdx = 0; CMB.mdy = 0;
         var R0 = Math.random; Math.random = () => .999;
         CMB.mdx = 30; keys[" "] = true; tick(1); var rdOk = CMB.rd && CMB.rd.d === "r"; tick(3); keys[" "] = false; tick(12); var hp1 = e.hp, quick = 9999 - hp1;
-        h.c = 0; CMB.st = 100; CMB.mdx = 30; keys[" "] = true; tick(45); keys[" "] = false; tick(2); var strong = hp1 - e.hp;
+        h.c = 0; CMB.st = 100; CMB.mdx = 30; keys[" "] = true; tick(45); keys[" "] = false; tick(12); var strong = hp1 - e.hp;
         h.c = 0; CMB.st = 100; keys[" "] = true; tick(5); CMB.blk = 0; keys.Shift = true; tick(1); keys.Shift = false; keys[" "] = false; var feint = !CMB.rd; tick(2);`);
     check('Smer úderu z pohybu myši, držaný nápriah je silnejší, kryt počas nápriahu je klam', run('dL === "l" && dU === "u" && dT === "t" && rdOk && quick > 0 && strong > quick * 1.3 && feint'), run('[dL, dU, dT, rdOk, quick, strong, feint].join(" ")'));
+    // boj ako Warband: čepeľ v pohybe, štatistiky zbraní, brnenie odráta pevnú hodnotu, bez výdrže
+    run(`h.c = 0; e.hp = e.mh = 9999; e.x = h.x + 18; e.y = h.y; CMB.mdx = 30; CMB.sw = null; CMB.rd = { d: "r", t: 99, key: "atk", ready: 9, rel: 1 }; cmbHero(h, 1, null); var swAct = !!CMB.sw, hpA = e.hp; tick(1); var late = e.hp === hpA ? 0 : 1; tick(12); var swHit = e.hp < hpA && !CMB.sw;
+        h.c = 0; e.hp = e.mh = 9999; e.x = h.x + 80; CMB.rd = { d: "r", t: 99, key: "atk", ready: 9, rel: 1 }; cmbHero(h, 1, null); tick(14); var far = e.hp === 9999; e.x = h.x + 18;
+        var kS = ["Železný meč", "Rohanská kopija", "Trpasličia sekera z Ereboru", "Orkský nôž", "Gondorský obojručný meč", "Sauronov palcát"].map(n => wkind(shOf("w").find(w => w.n === n)));
+        var stOk = kS.join() === "sword,spear,axe,knife,two,mace" && wstat({ n: "x" }).sp === 1;
+        var tp = U.find(u => u.t && u !== e); tp.hp = tp.mh = 9999; tp.cp = 0; tp.boss = 0; tp.uk = null; tp.k = "i";
+        var weak = 0, big = 0; var pl = plated; var Rn = Math.random; Math.random = () => .999;
+        plated = () => true; tp.hp = 9999; hitZ(tp, 6, h, { zone: "torso", type: "c" }); weak = 9999 - tp.hp; tp.hp = 9999; hitZ(tp, 40, h, { zone: "torso", type: "c" }); big = 9999 - tp.hp;
+        plated = () => false; tp.hp = 9999; hitZ(tp, 6, h, { zone: "torso", type: "c" }); var weakN = 9999 - tp.hp; plated = pl; Math.random = Rn;
+        OPT.noStam = true; CMB.st = 10; h.c = 0; tick(1); var noSt = CMB.st === 100; OPT.noStam = undefined;`);
+    check('Warband: čepeľ zasiahne počas seku (nie hneď), mimo dosahu nič; druhy zbraní; plát odráta pevnú hodnotu (slabý úder sa stratí, silný prejde); bez výdrže', run('swAct && late === 0 && swHit && far && stOk && weak < weakN * .85 && big > 33 && noSt'), run('[swAct, late, swHit, far, kS, weak, weakN, big, noSt].join(" ")'));
     run(`OPT.blkDir = "manual"; CMB.shp = 0; CMB.shMax = 0; CMB.st = 100; CMB.blk = 1; CMB.blkT = 40; CMB.bd = "r"; e.lwd = "l"; e.f = Math.PI; h.f = 0; var hpA = h.hp = 500; meleeHit(e, h, 20, "ai"); var wrongDir = h.hp < hpA;
         CMB.bd = "l"; CMB.st = 100; var hpB = h.hp; var res = meleeHit(e, h, 20, "ai"); var rightDir = !res && h.hp === hpB; OPT.blkDir = "auto"; CMB.blk = 0;
         e.stun = 0; e.c = 0; e.wu = 0; Math.random = R0; e.x = h.x + 10; aiMelee(e, h, 10, 1); var aiDir = ["l", "r", "u", "t"].includes(e.wd);`);

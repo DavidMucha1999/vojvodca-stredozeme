@@ -108,8 +108,8 @@ class UIScene extends Phaser.Scene {
         if (typeof CMB === 'undefined') return;
         const C = CMB, x = W / 2 - 80;
         if (!this.cmbT) { const t = (s, c, ox) => this.add.text(0, 0, s, txtStyle(10, c, { stroke: '#000', strokeThickness: 3 })).setOrigin(ox, .5).setDepth(5); this.cmbT = [t('Tvoje vojsko', '#e8d8a8', 0), t('Nepriateľ', '#ffb0a0', 1), t('', '#ffd24a', .5)]; }
-        g.fillStyle(0x000000, .5).fillRect(x - 2, 69, 164, 6);
-        g.fillStyle(C.gb > 0 ? (Math.floor(tm / 4) % 2 ? 0xff5030 : 0x802010) : 0xd9b84a, 1).fillRect(x, 70, 160 * Math.max(0, C.st) / 100, 4);   // výdrž
+        if (OPT.noStam === false) { g.fillStyle(0x000000, .5).fillRect(x - 2, 69, 164, 6);
+        g.fillStyle(C.gb > 0 ? (Math.floor(tm / 4) % 2 ? 0xff5030 : 0x802010) : 0xd9b84a, 1).fillRect(x, 70, 160 * Math.max(0, C.st) / 100, 4); }   // výdrž (len ak je zapnutá)
         if (C.shMax) { g.fillStyle(0x000000, .5).fillRect(x - 2, 76, 164, 5); g.fillStyle(C.blk ? 0xd8e8ff : 0x8aa0c0, 1).fillRect(x, 77, 160 * C.shp / C.shMax, 3); }   // štít
         if (!C.noRout) {   // morálka: vľavo tvoja (zlatá), vpravo nepriateľa (červená)
             const mw = 120, y = 66, bar = (bx, v, col) => { g.fillStyle(0x000000, .55).fillRect(bx - 2, y - 2, mw + 4, 10); g.fillStyle(col, 1).fillRect(bx, y, mw * Math.max(0, v) / 100, 6); g.fillStyle(0xffffff, .5).fillRect(bx + mw * .35, y - 2, 1, 10); };

@@ -253,6 +253,14 @@ Všetko je kreslené kódom, bez cudzích modelov a obrázkov (`js/engine/b3d.js
 - **Efekty:** **stopy šípov** vo vzduchu (salvy sú vidieť), pri nápore jazdy **valiace sa mračno prachu** (v daždi blato, v snehu prašan), **oheň sa šíri suchou trávou** (dážď ho hasí), triesky a kusy štítov aj zbrane ostávajú ležať.
 - **Krv:** predvolene **vypnutá** (Nastavenia → Krv v bitke); nové efekty krv nepoužívajú, na postavách sa hromadí len blato a prach. Spomalenie pri zásahu do hlavy a páde veliteľa ostáva.
 
+## Boj bližšie k Warbandu (verzia 53)
+
+- **Čepeľ v pohybe** (`heroStrike` a `swingTick` v `js/sim/combat.js`): úder už nezasiahne všetkých naraz v okamihu stlačenia. Po uvoľnení nápriahu sa zbraň pohybuje – sek zľava/sprava prechádza oblúkom z jednej strany na druhú, úder zhora zasiahne v druhej polovici pohybu, bod sa postupne vysúva – a zasiahne len to, cez čo čepeľ prejde (každého raz za sek, najviac 3 – 4 v oblúku). Čepeľ je najrýchlejšia v strede seku a **hrot udiera silnejšie než rúčka**, takže záleží na vzdialenosti aj na načasovaní; mimo dosahu sa nič nestane. Zbraň sa zarazí o múr či vlastného vojaka ako doteraz.
+- **Druhy zbraní** (`WSTAT`, `wkind`, `wstat` v `js/sim/warband.js`): meč, obojručná zbraň, kopija, sekera, palcát, nôž – každý má **rýchlosť** (nápriah a zotavenie), **dosah**, **silu seku** a **silu bodu**. Sekera seká silno, ale bod je slabý; kopija bodá silno, ale sekom je slabá; nôž je rýchly a krátky; obojručná je pomalá a široká. Druh sa určí z vlastností a mena predmetu, takže nové zbrane v `js/data/equipment.js` ho dostanú samy.
+- **Zranenie s odpočtom brnenia** (`hitZ`): brnenie nepriateľa už zranenie nenásobí koeficientom, ale **odráta pevnú hodnotu** (`armV` × `SOAK`; menej na hlave, rukách a nohách, najmenej pri tupých zbraniach, ktoré majú aj vyššie minimum zranenia). Slabý úder do plátu sa takmer stratí, silný prejde. Hrdina si ponecháva vlastné zníženie podľa brnenia, štítu a prilby (`red()`).
+- **Bez výdrže** (Nastavenia → Výdrž v boji, predvolene bez výdrže): ako vo Warbande kryt obmedzuje len zdravie štítu a načasovanie, údery nič nestoja. Žltá lišta sa skryje. Pôvodný ťažší režim s výdržou sa dá zapnúť.
+- **Nie je zatiaľ**: dotykové ovládanie a AI útoky ostávajú pri starom (AI sa napriahuje a udiera naraz); číselné hodnoty zbraní sú odhad, nie údaje z Warbandu.
+
 ## Smerový boj (etapa 2, ako vo Warbande)
 
 Platí v 3D aj v 2D, keď hráš myšou a klávesnicou (`heroDirectional`, `heroStrike`, `heroShoot` v `js/sim/combat.js`); na dotykovom displeji ostáva pôvodné ovládanie.

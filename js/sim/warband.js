@@ -51,6 +51,33 @@ function dmgType(att, kind, dir) {
     return w === 'club' || heavy(att) ? 'b' : w === 'spear' || (F && F.wp === 'sp') ? 'p' : 'c';
 }
 const TYPE_ARM = { c: [1.15, .75], p: [1, .95], b: [.95, 1.08] };
+/**
+ * Vlastnosti zbrane ako vo Warbande: sp = rýchlosť (nápriah a zotavenie), len = dosah, sw = sila seku, th = sila bodu.
+ * Druh sa pozná podľa vlastností a mena predmetu v js/data/equipment.js (obojručná, kopija, sekera, palcát, nôž, inak meč).
+ */
+const WSTAT = {
+    sword: { sp: 1, len: 1, sw: 1, th: 1 },
+    two: { sp: .8, len: 1.15, sw: 1.1, th: 1 },
+    spear: { sp: .95, len: 1, sw: .75, th: 1.1 },
+    axe: { sp: .88, len: .95, sw: 1.15, th: .5 },
+    mace: { sp: .9, len: .9, sw: 1.1, th: .6 },
+    knife: { sp: 1.25, len: .75, sw: .85, th: .9 }
+};
+function wkind(w) {
+    if (!w) return 'sword';
+    if (w.t2) return 'two';
+    if (w.r) return 'spear';
+    const n = String(w.n || '').toLowerCase();
+    if (/kopij|oštep/.test(n)) return 'spear';
+    if (/sekera|sekern/.test(n)) return 'axe';
+    if (/palcát|kyj|búch/.test(n)) return 'mace';
+    if (/nôž|dýk/.test(n)) return 'knife';
+    return 'sword';
+}
+const wstat = w => WSTAT[wkind(w)];
+/** Hodnota brnenia cieľa (0 – .5): odráta sa od zranenia ako pevná hodnota (hrdina má vlastné zníženie red()). */
+function armV(b) { if (b.cp) return .3; if (b.boss || heavy(b)) return .5; return plated(b) ? .4 : .1; }
+const SOAK = 7, SOAK_T = { c: 1, p: .8, b: .55 }, SOAK_MIN = { c: .3, p: .4, b: .5 }, SOAK_Z = { head: .8, arm: .6, legs: .5, horse: .3, torso: 1 };
 /** Miesto zásahu pri údere na blízko: podľa smeru úderu (z pohľadu útočníka), výšky mierenia a toho, či je útočník na koni. */
 function meleeZone(att, def, dir, pitch) {
     const r = Math.random(), up = (onMount(att) && !onMount(def) ? .2 : 0) - (!onMount(att) && onMount(def) ? .15 : 0);
@@ -63,7 +90,10 @@ function meleeZone(att, def, dir, pitch) {
 function hitZ(b, d, from, o) {
     if (b.fly > 0) return;
     const zone = o.zone || 'torso', big = b.h || b.cp || b.boss || heavy(b);
-    const ta = TYPE_ARM[o.type || 'c'] || TYPE_ARM.c; d *= plated(b) ? ta[1] : ta[0];
+    const ty = o.type || 'c';
+    if (b.h) { const ta = TYPE_ARM[ty] || TYPE_ARM.c; d *= plated(b) ? ta[1] : ta[0]; }
+    else if (o.wb !== false) { const soak = armV(b) * SOAK * (SOAK_T[ty] || 1) * (SOAK_Z[zone] || 1); d = Math.max(d * (SOAK_MIN[ty] || .3), d - soak); }   // brnenie odráta pevnú hodnotu (silný úder prejde, slabý sa stratí)
+    else { const ta = TYPE_ARM[ty] || TYPE_ARM.c; d *= plated(b) ? ta[1] : ta[0]; }
     let lethal = false;
     if (zone === 'head') {
         if (big) d *= b.h ? Math.max(1.6, 3 - (it('h') ? it('h').v : 0) * 8) : 3;
