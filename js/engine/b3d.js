@@ -531,7 +531,7 @@ const B3 = (() => {
         if (SGB) buildSiege();
         // kaluže: v daždi sa naplnia (odraz oblohy, krúžky od kvapiek), v suchu sú neviditeľné
         if (q >= 1 && !['s', 'd', 'a'].includes(BI)) { const pm = puddleM = B3G.puddleMat({ hor: hor0.getStyle(), zen: zen0.getStyle() }); for (let i = 0; i < 26; i++) { const x = rnd() * (SGB ? 960 : BW), y = rnd() * BH; if (FIELD && FIELD.river && Math.abs(x - 720) < 70) continue; const p = new t.Mesh(new t.CircleGeometry(6 + rnd() * 10, 16), pm); p.rotation.x = -Math.PI / 2; p.scale.y = .5 + rnd() * .6; p.position.set(x, heightAt(x, y) + .35, y); p.renderOrder = 2; scene.add(p); } }
-        buildPanorama(B, fogC, night); buildPrints(B); buildBirds();
+        buildPanorama(B, fogC, night); buildPrints(B); buildBirds(); buildAtmo(rnd, B, DL, night, storm, fog, sunC, fogC);
         // počasie: dážď (čiarky, hustota podľa meniaceho sa počasia), sneh, popol okolo kamery
         wx = null; rainN = 0; if (!['snow', 'ash'].includes(WX.n)) makeRain();
         if (['snow', 'ash'].includes(WX.n) && q >= 1) {
@@ -557,6 +557,46 @@ const B3 = (() => {
         torches = [];
         if (night) for (let i = 0; i < 5; i++) { const l = new t.PointLight(C('#ffa040'), 14, 220, 1); scene.add(l); torches.push(l); }
         if (q >= 3) { fireL = new t.PointLight(C('#ff9a40'), 0, 220, 1); fireL.castShadow = true; fireL.shadow.mapSize.set(256, 256); fireL.shadow.bias = -.004; fireL.shadow.autoUpdate = false; scene.add(fireL); }   // svetlo ohňa s tieňom (vytvorené vopred, aby sa shadery neprekladali v boji)
+    }
+    // ---------- atmosféra: nízka hmla nad zemou, lúče slnka a padajúce lístie/lupene ----------
+    let mistL = [], shaftL = [], leafP = null;
+    function buildAtmo(rnd, B, DL, night, storm, fog, sunC, fogC) {
+        mistL = []; shaftL = []; leafP = null;
+        const t = T(), q = QN(); if (q < 1) return;
+        const mk = (w, h, fn) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); fn(x, w, h); const tx = new t.CanvasTexture(c); return tx; };
+        // hmla: mäkké pásy tesne nad zemou, hustejšie pri vode, za úsvitu a po daždi
+        const mt = mk(128, 128, (x, w, h) => { const g = x.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2); g.addColorStop(0, 'rgba(255,255,255,.9)'); g.addColorStop(.5, 'rgba(255,255,255,.35)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, w, h); });
+        const base = night ? .22 : fog ? .0 : storm ? .12 : .1 + DL.low * .22, n = fog ? 0 : q >= 2 ? 16 : 8;
+        for (let i = 0; i < n; i++) {
+            let x = 120 + rnd() * (BW - 240), y = 60 + rnd() * (BH - 120);
+            if (i % 3 === 0) { if (CREEK) { y = 60 + rnd() * (BH - 120); x = creekX(y) + (rnd() - .5) * 30; } else if (FIELD && FIELD.river) x = 720 + (rnd() - .5) * 120; }
+            if (SGB && x > 930) continue;
+            const m = new t.Mesh(new t.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new t.MeshBasicMaterial({ map: mt, color: fogC.clone().lerp(C('#ffffff'), .3), transparent: true, opacity: base * (.6 + rnd() * .6), depthWrite: false, fog: false }));
+            const w = 160 + rnd() * 220; m.scale.set(w, 1, w * (.4 + rnd() * .3)); m.rotation.y = rnd() * 6.28; m.position.set(x, heightAt(x, y) + 3 + rnd() * 5, y); m.renderOrder = 4; m.frustumCulled = false; scene.add(m); mistL.push({ m, v: (rnd() - .5) * .05, o: m.material.opacity, ph: rnd() * 6 });
+        }
+        // lúče slnka: pretiahnuté žiarivé pásy v smere slnka (cez koruny stromov); len cez deň a pri jasnom nebi
+        if (!night && !storm && !fog && q >= 2 && DL.e > .12) {
+            const st = mk(32, 128, (x, w, h) => { const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(255,240,200,0)'); g.addColorStop(.3, 'rgba(255,240,200,.8)'); g.addColorStop(1, 'rgba(255,240,200,0)'); x.fillStyle = g; x.fillRect(0, 0, w, h); const gx = x.createLinearGradient(0, 0, w, 0); gx.addColorStop(0, 'rgba(0,0,0,1)'); gx.addColorStop(.5, 'rgba(0,0,0,0)'); gx.addColorStop(1, 'rgba(0,0,0,1)'); x.globalCompositeOperation = 'destination-out'; x.fillStyle = gx; x.fillRect(0, 0, w, h); });
+            const up = new t.Vector3(0, 1, 0), dir = DL.dir.clone().normalize();
+            for (let i = 0; i < 9; i++) {
+                const x = 150 + rnd() * (BW - 300), y = 80 + rnd() * (BH - 160); if ((FIELD && FIELD.river && Math.abs(x - 720) < 60) || (SGB && x > 900)) continue;
+                const g = new t.Group(), L = 150 + rnd() * 90; for (const a of [0, Math.PI / 2]) { const pl = new t.Mesh(new t.PlaneGeometry(14 + rnd() * 10, L), new t.MeshBasicMaterial({ map: st, color: sunC, transparent: true, opacity: .09 + rnd() * .05, blending: t.AdditiveBlending, depthWrite: false, side: t.DoubleSide, fog: false })); pl.rotation.y = a; g.add(pl); }
+                g.quaternion.setFromUnitVectors(up, dir); g.position.set(x, heightAt(x, y) + L * .5 * dir.y, y).addScaledVector(dir, 0); g.renderOrder = 4; g.frustumCulled = false; scene.add(g); shaftL.push({ g, o: g.children.map(c => c.material.opacity), ph: rnd() * 6 });
+            }
+        }
+        // padajúce lístie (jeseň) a lupene (jar) okolo kamery
+        const se = seas(); if (!storm && WX.n !== 'snow' && WX.n !== 'ash' && (se === 0 || se === 2) && BI === 'g') {
+            const N = q >= 2 ? 260 : 120, p = new Float32Array(N * 3), c = new Float32Array(N * 3), pal = se === 2 ? ['#c8742a', '#d8a030', '#a84a22', '#b89a2a'] : ['#f4f0e8', '#f0c8d8', '#f8e0e8'];
+            for (let i = 0; i < N; i++) { p.set([(Math.random() - .5) * 420, Math.random() * 90, (Math.random() - .5) * 420], i * 3); const k = C(pal[i % pal.length]); c.set([k.r, k.g, k.b], i * 3); }
+            const gg = new t.BufferGeometry(); gg.setAttribute('position', new t.BufferAttribute(p, 3)); gg.setAttribute('color', new t.BufferAttribute(c, 3));
+            const rd = mk(16, 16, (x, w, h) => { x.fillStyle = '#fff'; x.beginPath(); x.ellipse(8, 8, 7, 4, .6, 0, 6.3); x.fill(); });   // drobný oválny lístok namiesto štvorčeka
+            leafP = new t.Points(gg, new t.PointsMaterial({ size: 1.5, map: rd, vertexColors: true, transparent: true, alphaTest: .3, opacity: .9, depthWrite: false })); leafP.frustumCulled = false; scene.add(leafP);
+        }
+    }
+    function stepAtmo(dt) {
+        for (const m of mistL) { m.m.position.x += m.v * dt; if (m.m.position.x < 40 || m.m.position.x > BW - 40) m.v = -m.v; m.m.material.opacity = m.o * (.8 + .2 * Math.sin(clock * .15 + m.ph)); }
+        for (const s of shaftL) s.g.children.forEach((c, i) => { c.material.opacity = s.o[i] * (.75 + .25 * Math.sin(clock * .3 + s.ph + i)); });
+        if (leafP && cam) { leafP.position.set(cam.position.x, 0, cam.position.z); const p = leafP.geometry.attributes.position; for (let i = 0; i < p.count; i++) { let y = p.getY(i) - .35 * dt; if (y < 0) y += 90; p.setY(i, y); p.setX(i, p.getX(i) + Math.sin(clock * 1.7 + i) * .12 * dt + .08 * dt); p.setZ(i, p.getZ(i) + Math.cos(clock * 1.3 + i * 1.7) * .1 * dt); } p.needsUpdate = true; }
     }
     // ---------- predmety na bojisku: tábory, ohne, barikády, kolíky, vozy, zrúcaniny, útesy; rozbitné ----------
     let props = [], campF = [];
@@ -1897,6 +1937,7 @@ const B3 = (() => {
         const h = U[0];
         sun.position.set(x + sunDir.x * 500, sunDir.y * 500, y + sunDir.z * 500); sun.target.position.set(x, 0, y);
         if (skyM) skyM.position.copy(cam.position);
+        stepAtmo(dt);
         if (wx && wx.visible) { wx.position.set(cam.position.x, 0, cam.position.z); const p = wx.geometry.attributes.position, rain = wx.userData.rain, sp = WX.n === 'snow' ? .7 : WX.n === 'ash' ? .5 : 5.5; for (let i = 0; i < p.count; i += rain ? 2 : 1) { let y = p.getY(i) - sp * dt; if (y < 0) y += 260; p.setY(i, y); if (rain) p.setY(i + 1, y + 7); } p.needsUpdate = true; }
         if (torches.length) { const tb = []; units.forEach((o, u) => { if (o.torch && u.hp > 0) tb.push([Math.hypot(u.x - h.x, u.y - h.y), u]); }); tb.sort((a, b) => a[0] - b[0]); torches.forEach((l, i) => { const e = tb[i]; if (!e) { l.intensity = 0; return; } const u = e[1]; l.position.set(u.x, heightAt(u.x, u.y) + 34, u.y); l.intensity = 13 + Math.sin(clock * 9 + i) * 2; }); }
     }
