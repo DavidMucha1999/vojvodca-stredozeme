@@ -1089,7 +1089,7 @@ const B3 = (() => {
     function rig(u) {
         const t = T(), s = specOf(u), tp = template(s), root = new t.Group(), o = { root, s, tp, ph: Math.random() * 6, mph: Math.random(), atk: 0, lc: u.c, px: u.x, py: u.y, dead: 0, sp: 0, hit: 0, hp0: u.hp, bl: 0, id: units.size, hk: u.h ? heroKey(u) : null };
         const vr = u.vr ?? (u.vr = Math.random()), tj = u.h ? 0 : (vr - .5) * .16;   // odtieň a veľkosť sa u vojakov mierne líšia
-        o.own = { dirt: { value: 0 }, tint: { value: new t.Color(1 + tj, 1 + tj * .8 + (vr * 7 % 1 - .5) * .05, 1 + tj * .6) } }; o.vs = u.h || u.cp ? 1 : .94 + ((vr * 13) % 1) * .12;
+        o.own = { dirt: { value: 0 }, flash: { value: 0 }, tint: { value: new t.Color(1 + tj, 1 + tj * .8 + (vr * 7 % 1 - .5) * .05, 1 + tj * .6) } }; o.vs = u.h || u.cp ? 1 : .94 + ((vr * 13) % 1) * .12;
         o.cz = -.12; o.cv = 0; o.cx = 0; o.cxv = 0; o.ry0 = 0; o.pa = null;
         root.rotation.order = 'YXZ';
         if (tp.boss || tp.beast) {
@@ -1148,6 +1148,7 @@ const B3 = (() => {
         if (u.hp < o.hp0 - .5) onHit(o, u, o.hp0 - u.hp);
         o.hp0 = u.hp;
         if (o.hit > 0) o.hit = Math.max(0, o.hit - dt * .08);
+        if (o.own && o.own.flash) o.own.flash.value = Math.max(0, o.hit - .55) * 2.2;   // krátky záblesk po zásahu (hit začína na .5 – 1)
         o.dirt = Math.min(1, (o.dirt || 0) + moved * .00035 + (o.atk > 0 ? .0012 * dt : 0)); o.own.dirt.value = o.dirt * DIRT_K;   // blato a prach sa počas bitky nalepia na nohy, výstroj aj koňa
         if (u.hp <= 0) return poseDead(o, u, dt);
         const yawT = -u.f; let d = yawT - r.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); r.rotation.y += d * Math.min(1, .35 * dt);

@@ -205,6 +205,7 @@ Všetko je kreslené kódom, bez cudzích modelov a obrázkov (`js/engine/b3d.js
 - **Meče:** čepeľ má **ryhu** uprostred a **svetlejšie brúsené hrany**, parierka má guľové konce, pomelo je guľaté a rukoväť je **omotaná** koženým remienkom.
 - **Materiály postáv** (`js/engine/b3dgfx.js`, `chrPatch`): vzor krúžkovej košele a tkaniny je **jemnejší** (menej moaré zblízka), pridané **ambient occlusion** podľa smeru povrchu (pod rukami, pod hruďou je tmavšie) a **okrajové svetlo** (studený lem po obryse), ktoré postavu odlíši od pozadia. Kov má väčší lesk a odraz oblohy.
 - **Druhá dávka (verzia 57):** plášť má **golier, zlatú sponu na krku a záhyby na pleciach**; čižmy majú **svetlejšie manžety** pod kolenom; lícnice prilieb sú zaoblené (nie ploché kvádre); vojaci majú **6 farieb vlasov** namiesto 4 (zároveň sa pestrejšie delia sekery, kyjaky a holé hlavy, ako predtým).
+- **Záblesk pri zásahu (verzia 58):** zasiahnutá postava sa na okamih zablysne teplým svetlom (uniform `uFlash` v `chrPatch`, nastavuje ho `o.hit` v `js/engine/b3d.js`), takže zásah je vidieť aj na diaľku. Ostatné efekty boja (iskry, triesky, prach, zapichnuté šípy, stopy v blate, pohyb tela pri zásahu) už v hre boli.
 - Poznámka: ďalej má zmysel zaoblenie ostatných prilieb a štítov, doplnky (pláštenky, popruhy, tulce) a efekty boja.
 
 ## Postavy z modelov Meshy – odstránené (verzia 55)

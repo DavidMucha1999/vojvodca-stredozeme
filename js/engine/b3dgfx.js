@@ -94,16 +94,16 @@ const B3G = (() => {
                 transformed.z += aCloth * sin(uTime * 2.3 + position.y * 0.7 + ph * 1.7) * 0.5; }`);
     }
     /** Postupné materiály postáv: 1 krúžková košeľa, 2 tkanina, 3 koža, 4 doškrabaný plát, 5 hrdzavé orkské železo, 6 elfský ornament; špina a vlhkosť. */
-    const U_DIRT = { value: 0 }, U_TINT = { value: null }, U_MUD = { value: null }, U_SNOW = { value: 0 };
+    const U_FLASH = { value: 0 }, U_DIRT = { value: 0 }, U_TINT = { value: null }, U_MUD = { value: null }, U_SNOW = { value: 0 };
     const NOISE3 = `float hh3(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
         float n3(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
             return mix(mix(mix(hh3(i), hh3(i + vec3(1, 0, 0)), f.x), mix(hh3(i + vec3(0, 1, 0)), hh3(i + vec3(1, 1, 0)), f.x), f.y), mix(mix(hh3(i + vec3(0, 0, 1)), hh3(i + vec3(1, 0, 1)), f.x), mix(hh3(i + vec3(0, 1, 1)), hh3(i + vec3(1, 1, 1)), f.x), f.y), f.z); }`;
     function chrPatch(sh, own) {
         clothPatch(sh);
         if (!U_TINT.value) { U_TINT.value = new (T().Color)(1, 1, 1); U_MUD.value = new (T().Color)('#3e3020'); }
-        sh.uniforms.uDirt = own ? own.dirt : U_DIRT; sh.uniforms.uTint = own ? own.tint : U_TINT; sh.uniforms.uMud = U_MUD; sh.uniforms.uWet = U_WET; sh.uniforms.uSnow = U_SNOW;
+        sh.uniforms.uFlash = own && own.flash ? own.flash : U_FLASH; sh.uniforms.uDirt = own ? own.dirt : U_DIRT; sh.uniforms.uTint = own ? own.tint : U_TINT; sh.uniforms.uMud = U_MUD; sh.uniforms.uWet = U_WET; sh.uniforms.uSnow = U_SNOW;
         sh.vertexShader = 'attribute float aMat;\nvarying float vMat;\nvarying vec3 vOP;\nvarying vec3 vON;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vMat = aMat; vOP = position; vON = normal;');
-        sh.fragmentShader = 'uniform float uDirt; uniform vec3 uTint; uniform vec3 uMud; uniform float uWet; uniform float uSnow; varying float vMat; varying vec3 vOP; varying vec3 vON;\n' + NOISE3 + '\n' + sh.fragmentShader
+        sh.fragmentShader = 'uniform float uFlash; uniform float uDirt; uniform vec3 uTint; uniform vec3 uMud; uniform float uWet; uniform float uSnow; varying float vMat; varying vec3 vOP; varying vec3 vON;\n' + NOISE3 + '\n' + sh.fragmentShader
             .replace('#include <color_fragment>', `#include <color_fragment>
                 float fwd = length(fwidth(vOP)); float dk = 1.0 - smoothstep(0.3, 1.2, fwd);
                 int mt = int(vMat + 0.5); float mR = 1.0, mM = 1.0, bh = 0.0; vec3 dc = diffuseColor.rgb;
@@ -128,6 +128,7 @@ const B3G = (() => {
                 float snw = uSnow > 0.01 ? smoothstep(0.45, 0.85, normalize(vON).y) * uSnow * (0.55 + 0.45 * n3(vOP * 1.6)) : 0.0;
                 diffuseColor.rgb = mix(dc * uTint * (1.0 - uWet * 0.12), vec3(0.9, 0.93, 0.97), snw); mR = mix(mR, 1.4, snw); mM *= 1.0 - snw;`)
             .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+                { totalEmissiveRadiance += vec3(1.0, 0.82, 0.62) * uFlash * 0.55; }   // záblesk postavy pri zásahu
                 { float rimF = pow(1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0), 3.0); totalEmissiveRadiance += vec3(0.55, 0.66, 0.85) * rimF * 0.14; }   // okrajové svetlo: postava sa odlíši od pozadia`)
             .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n roughnessFactor = clamp(roughnessFactor * mR * (1.0 - uWet * 0.35), 0.05, 1.0);')
             .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\n metalnessFactor = clamp(metalnessFactor * mM, 0.0, 1.0);')
