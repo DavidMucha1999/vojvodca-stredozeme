@@ -350,6 +350,13 @@ try {
             const bwa = AR[0]; if (!bwa) continue; let bwt = 0; while (AR.includes(bwa) && bwt++ < 400) stepArrows(1); const dy = Math.abs(bwa.y - bwT.y), dx = Math.abs(bwa.x - bwT.x); if (dx < 12 && dy < 6) bwH++; if (n < 4) bwS += [bwa.x | 0, bwa.y | 0, bwT.x | 0, bwT.y | 0].join(',') + ' '; }
         Math.random = bwM; var hitPct = bwH / bwN;`);
     check('Warband: lukostrelec najprv mieri (napína) a netrafí každý šíp (stojaci cieľ do 100 jednotiek)', run('firstShot >= 25 && hitPct < .55 && hitPct > .05'), run('[firstShot, hitPct, bwH, bwN, bwS].join(" ")'));
+    run(`startBattle({ n: 6, f: 2, nm: "T" }); var pH = U[0], pA = U.find(u => u.t); pH.f = 0; pA.x = pH.x + 10; pA.y = pH.y; pA.hp = pA.mh = 9999; pA.stun = 0; CMB.blk = 1; CMB.blkT = 3; CMB.st = 100; CMB.shp = 50; CMB.perfT = 0;
+        var pBl = meleeHit(pA, pH, 10, "ai"); var perfOk = pBl === false && CMB.perfT > 0 && pA.stun > 0; CMB.blk = 0;
+        var bwM2 = Math.random; Math.random = (() => { let q = 777; return () => (q = (q * 1664525 + 1013904223) % 4294967296) / 4294967296; })();
+        var df = U.find(u => !u.t && u !== pH && u.k === "i"); if (!df) { df = mk(0, "uG1"); U.push(df); } df.hp = df.mh = 99999; df.stun = 0; df.rout = 0; df.wu = 0; df.d = 15; df.uk = null; df.k = "i"; df.x = pH.x + 14; df.y = pH.y; df.f = Math.PI; pH.f = 0; CMB.hist = [];
+        var rb = vis => { let b = 0; for (let n = 0; n < 400; n++) { CMB.hist = ["l", "r", "u"]; df.hp = 99999; if (meleeHit(pH, df, 5, "swing", { d: "l", pow: 1, vis }) === false) b++; } return b / 400; };
+        var slowB = rb(40), fastB = rb(2); Math.random = bwM2;`);
+    check('Warband: dokonalý kryt dá odozvu a zapotáca útočníka; zručný vojak prečíta dlho držaný nápriah, rýchly úder ho zaskočí', run('perfOk && slowB > fastB + .1'), run('[perfOk, slowB, fastB].join(" ")'));
     run(`var ai = U.find(u => u.t && u !== e); ai.uk = null; ai.k = "i"; ai.d = 5; ai.hp = ai.mh = 9999; ai.stun = 0; ai.rout = 0; ai.wu = 10; ai.wt = h; var R1 = Math.random; Math.random = () => .99; hitZ(ai, 8, h, { zone: "torso", type: "c" }); Math.random = R1; var flinch = ai.wu === 0 && ai.c >= 16;
         ai.wu = 10; ai.d = 15; ai.hp = ai.mh = 9999; Math.random = () => .1; hitZ(ai, 8, h, { zone: "torso", type: "c" }); Math.random = R1; var skilled = ai.wu === 10 - 0 || ai.wu > 0;
         ai.uk = "uG1"; var wkA = aiWpn(ai); ai.uk = "uE1"; var wkB = aiWpn(ai); ai.uk = null; var wOk = wkA === "spear" && wkB === "axe" && aiSkill({ d: 5 }) === 0 && aiSkill({ d: 15 }) === 1;`);

@@ -128,6 +128,10 @@ class UIScene extends Phaser.Scene {
         for (const u of U) if (u.t && u.hp > 0 && u.wu > 0 && u.wt === h0 && u.wd) { const dd = Math.hypot(u.x - h0.x, u.y - h0.y); if (dd < id) { id = dd; inc = u; } }
         if (inc) chev(inc.wd, 0xff3020, .9 + .3 * (1 - inc.wu / inc.wu0));
         // ukazovateľ útokov zo všetkých strán: okolo zameriavača ukazuje, odkiaľ ide úder (červený trojuholník, rastie k dopadu) alebo mieri lukostrelec (oranžový, so spojnicou)
+        if (C.perfT > 0) {   // dokonalý kryt: veľký zlatý nápis s odozvou
+            C.perfT -= 1; if (!this.perfTx) this.perfTx = this.add.text(0, 0, 'DOKONALÝ KRYT', txtStyle(22, '#ffd24a', { stroke: '#2a1a00', strokeThickness: 5 })).setOrigin(.5).setDepth(6);
+            const k = C.perfT / 50; this.perfTx.setPosition(W / 2, H * .36 - (1 - k) * 18).setAlpha(Math.min(1, k * 2.2)).setScale(1 + (1 - k) * .25).setVisible(true);
+        } else if (this.perfTx) this.perfTx.setVisible(false);
         if (OPT.tell !== false && h0 && h0.hp > 0) {
             const cam = C.km && C.aim3 ? C.aim3.yaw : h0.f, cx = W / 2, cy = H * .5, R = Math.min(W, H) * .2, T = [];
             for (const u of U) if (u.t && u.hp > 0) {

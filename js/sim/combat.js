@@ -232,7 +232,7 @@ function heroStrike(u, R, slow, cost, rg) {
     const P = { u: { arc: .5, n: 1, m: 1.2 * S.sw, r: 1 }, l: { arc: a2, n: n2, m: S.sw, r: 1 }, r: { arc: a2, n: n2, m: S.sw, r: 1 }, t: { arc: .42, n: 1, m: 1.35 * S.th, r: WT.spear ? 1.5 : 1.35 } }[d];
     C.hist = (C.hist || []).concat(d).slice(-4);
     const reach = WT.reach * P.r;
-    C.sw = { d, t: 0, dur: (d === 't' ? 6 : WT.t2 ? 10 : 8) / S.sp * slow, P, pow, reach, hit: [], bl: 0, pitch: C.aim3 ? C.aim3.pitch : null };
+    C.sw = { vis: R.t, d, t: 0, dur: (d === 't' ? 6 : WT.t2 ? 10 : 8) / S.sp * slow, P, pow, reach, hit: [], bl: 0, pitch: C.aim3 ? C.aim3.pitch : null };
     u.c = WT.rec * slow * (d === 't' ? .85 : 1); C.st -= (d === 't' ? 7 : WT.t2 ? 13 : 10) * cost * (pow > 1.2 ? 1.2 : 1); if (C.st < 0) C.st = 0;
     fx = 10; C.swing = { t: 10, a: u.f, k: d === 't' ? 't' : 's', d, r: reach, w: P.arc, pow };
     C.rd = null;
@@ -261,7 +261,7 @@ function swingTick(u, dt, WT) {
         const handle = dist - r * .5 < s.reach * (WT.spear || WT.t2 ? .42 : .26);   // príliš blízko: zasiahne len rúčka
         if (handle && !i) wbMsg(WT.spear && d === 't' ? 'Príliš blízko – kopija nemá odstup.' : 'Príliš blízko – zasiahla len rúčka.', '#ff9a80');
         const tipF = .85 + .3 * Math.min(1, dist / s.reach);   // hrot udiera silnejšie
-        meleeHit(u, v, dmg() * P.m * s.pow * vel * tipF * (1 + close * (heroMounted() ? .5 : .2)) * (i ? .75 : 1) * (handle ? (WT.spear && d === 't' ? 0 : .2) : 1), d === 't' ? 'thrust' : 'swing', { d, pow: s.pow, pitch: s.pitch, sp: vel });
+        meleeHit(u, v, dmg() * P.m * s.pow * vel * tipF * (1 + close * (heroMounted() ? .5 : .2)) * (i ? .75 : 1) * (handle ? (WT.spear && d === 't' ? 0 : .2) : 1), d === 't' ? 'thrust' : 'swing', { d, pow: s.pow, pitch: s.pitch, sp: vel, vis: s.vis });
     }
     if (p >= 1) C.sw = null;
 }
@@ -308,7 +308,7 @@ function meleeHit(att, def, d, kind, info) {
         if (rel < (sh ? (perk('stit') ? 1.7 : 1.4) : .85) && (!man || C.bd === att.lwd)) {
             C.st -= kind === 'charge' ? 30 : sh ? 6 : 10;
             if (sh) { C.shp -= d * .6; if (C.shp <= 0) { C.shp = 0; TS = { s: 'Štít sa rozbil!', l: 120 }; } }
-            if (C.blkT < (man ? 18 : 12) && !att.h) { att.stun = 40; att.wu = 0; cmbSay('perf', 'Dokonalý kryt! Útočník sa zapotácal – teraz udri.'); }
+            if (C.blkT < (man ? 18 : 12) && !att.h) { att.stun = 40; att.wu = 0; cmbSay('perf', 'Dokonalý kryt! Útočník sa zapotácal – teraz udri.'); C.perfT = 50; wbMsg('Dokonalý kryt!', '#ffd24a'); SHAKE = Math.max(SHAKE, 1.2); snd('sh'); }
             if (kind === 'charge') { def.x -= Math.cos(from) * 10; def.y -= Math.sin(from) * 10; }
             blockFx(def, from, sh, att); att.rc = 14;   // spätný ráz zbrane (3D póza)
             if (C.st <= 0) { C.st = 0; C.gb = 45; hit(def, d * .5, att); cmbSay('gb', 'Kryt prelomený – došla výdrž!'); }
@@ -319,6 +319,8 @@ function meleeHit(att, def, d, kind, info) {
     if (info && att.h && bc0 > 0) {   // vojaci sa učia: rovnaký smer stále dookola kryjú ľahšie, zmena smeru ich zaskočí; silný obojručný úder kryt prerazí
         const H = (C.hist || []).slice(0, -1), same = H.filter(x => x === info.d).length;
         bc0 *= same >= 2 ? 1.6 : same === 0 ? .7 : 1;
+        const sk = aiSkill(def), react = 22 - 12 * sk;   // reakčný čas v snímkach: zručný vojak vidí smer nápriahu skôr
+        if (info.vis != null) bc0 = info.vis > react ? Math.min(.85, bc0 + .12 + .3 * sk) : bc0 * .8;   // dlho držaný nápriah sa prečíta, rýchly úder zaskočí
         if (info.d === 'u' && !(def.k === 'i' || def.k === 'v')) bc0 *= .8;
         if (twoHand() && info.pow > 1.3) bc0 *= .4;
     }
