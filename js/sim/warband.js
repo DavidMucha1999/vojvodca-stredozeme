@@ -77,7 +77,7 @@ function wkind(w) {
 const wstat = w => WSTAT[wkind(w)];
 /** Hodnota brnenia cieľa (0 – .5): odráta sa od zranenia ako pevná hodnota (hrdina má vlastné zníženie red()). */
 function armV(b) { if (b.cp) return .3; if (b.boss || heavy(b)) return .5; return plated(b) ? .4 : .1; }
-const SOAK = 7, SOAK_T = { c: 1, p: .8, b: .55 }, SOAK_MIN = { c: .3, p: .4, b: .5 }, SOAK_Z = { head: .8, arm: .6, legs: .5, horse: .3, torso: 1 };
+var SOAK = 5, SOAK_T = { c: 1, p: .8, b: .55 }, SOAK_MIN = { c: .3, p: .4, b: .5 }, SOAK_Z = { head: .8, arm: .6, legs: .5, horse: .3, torso: 1 };
 /** Miesto zásahu pri údere na blízko: podľa smeru úderu (z pohľadu útočníka), výšky mierenia a toho, či je útočník na koni. */
 function meleeZone(att, def, dir, pitch) {
     const r = Math.random(), up = (onMount(att) && !onMount(def) ? .2 : 0) - (!onMount(att) && onMount(def) ? .15 : 0);
