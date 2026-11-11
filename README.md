@@ -273,6 +273,7 @@ Všetky modely z Meshy (telá postáv, kone, netvory, zbrane a brnenia dobra) s�
 - **Dokonalý kryt s odozvou** (`meleeHit`): kryt tesne pred dopadom zapotáca útočníka a teraz to aj **vidno a cítiť** – veľký zlatý nápis „DOKONALÝ KRYT“, hlásenie vľavo dole, záchvev kamery a zvuk (predtým len raz za bitku text).
 - **Vojaci čítajú nápriah**: obranca si smer úderu všimne po **reakčnom čase** (22 snímok, zručný až 10). Ak držíš nápriah dlhšie (väčšia sila), zručný vojak ho prečíta a kryje častejšie (až 85 %); **rýchly úder ho zaskočí** (kryje o pätinu menej). Silný nápriah sa teda oplatí len keď je súper zaneprázdnený.
 - **Pohyb v dosahu zbrane** (`aiLen`, `aiStop`, `aiSpacing`): vojak sa zastaví na dosah svojej zbrane (kopija ďalej, sekera bližšie). **Kopijník pri príliš malom odstupe cúva** a drží súpera na dĺžku kopije; **zručnejší vojak pri dobíjaní robí úkroky do strany** a stále sa pohybuje, slabý stojí. Bitky sa stále normálne končia (kontrola 10 bitiek na 4 frakcie).
+- **Úprava ukazovateľov (verzia 63):** červený vyplnený oblúk na zemi pod útočníkmi (pri viacerých sa zlial do veľkej červenej plochy, ktorá pripomínala krv) nahradil **tenký oranžový oblúk** (zlatý, ak útok mieri na hrdinu); trojuholníky okolo zameriavača sú **menšie a bližšie** (okruh 15 % výšky obrazovky).
 - Ovládanie boja už zodpovedalo Warbandu (ľavé tlačidlo sek, pravé kryt, smer úderu pohybom myši, koliesko mení zbraň, F kopnutie, Q luk); zmena sa ho netýka.
 
 ## Boj bližšie k Warbandu (verzia 53)

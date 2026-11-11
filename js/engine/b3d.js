@@ -1437,7 +1437,7 @@ const B3 = (() => {
         if (photo) { overlay.geometry.setDrawRange(0, 0); return; }
         for (const u of U) {
             if (u.hp <= 0) continue;
-            if (u.wu > 0 && u.wu0 && (u.t || u.wt === h) && Math.hypot(u.x - h.x, u.y - h.y) < 260) { const p = 1 - u.wu / u.wu0; ovSector(u.x, u.y, u.r + 4, u.r + 8 + p * 8, u.f - .7, u.f + .7, u.wt === h ? '#ff2010' : '#ff7050', 8); }
+            if (u.wu > 0 && u.wu0 && (u.t || u.wt === h) && Math.hypot(u.x - h.x, u.y - h.y) < 260) { const p = 1 - u.wu / u.wu0; { const ro = u.r + 7 + p * 9; ovSector(u.x, u.y, ro - 1.3, ro, u.f - .7, u.f + .7, u.wt === h ? '#ffd040' : '#ffa878', 10); } }   // len tenký oblúk (bez vyplnenej plochy, ktorá pripomínala krv na zemi)
             if (u.cmd) ovSector(u.x, u.y, u.r * 1.2, u.r * 1.5, 0, 6.283, '#ffd24a', 16);
             if (u.boss && u.atk) { const A = u.atk, p = 1 - A.t / A.t0, col = A.fire ? '#ff5a10' : '#d02010';
                 if (A.k === 'circle') { ovSector(A.x, A.y, 0, A.r, 0, 6.283, '#601008', 24); ovSector(A.x, A.y, 0, A.r * p, 0, 6.283, col, 24); }

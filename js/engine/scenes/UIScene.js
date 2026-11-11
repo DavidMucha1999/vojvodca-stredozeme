@@ -133,14 +133,14 @@ class UIScene extends Phaser.Scene {
             const k = C.perfT / 50; this.perfTx.setPosition(W / 2, H * .36 - (1 - k) * 18).setAlpha(Math.min(1, k * 2.2)).setScale(1 + (1 - k) * .25).setVisible(true);
         } else if (this.perfTx) this.perfTx.setVisible(false);
         if (OPT.tell !== false && h0 && h0.hp > 0) {
-            const cam = C.km && C.aim3 ? C.aim3.yaw : h0.f, cx = W / 2, cy = H * .5, R = Math.min(W, H) * .2, T = [];
+            const cam = C.km && C.aim3 ? C.aim3.yaw : h0.f, cx = W / 2, cy = H * .5, R = Math.min(W, H) * .15, T = [];
             for (const u of U) if (u.t && u.hp > 0) {
                 if (u.wu > 0 && u.wt === h0) T.push({ u, k: 1 - u.wu / u.wu0, a: 0 });
                 else if (u.aim > 0 && u.at === h0) T.push({ u, k: 1 - u.aim / (u.aim0 || 40), a: 1 });
             }
             T.sort((p, q) => q.k - p.k);
             for (const t of T.slice(0, 5)) {
-                const rel = Math.atan2(Math.sin(dirTo(h0, t.u) - cam), Math.cos(dirTo(h0, t.u) - cam)), r = R + (t.a ? 14 : 0), x = cx + Math.sin(rel) * r, y = cy - Math.cos(rel) * r, sz = (t.a ? 9 : 11) + 9 * t.k, ox = Math.sin(rel), oy = -Math.cos(rel);
+                const rel = Math.atan2(Math.sin(dirTo(h0, t.u) - cam), Math.cos(dirTo(h0, t.u) - cam)), r = R + (t.a ? 14 : 0), x = cx + Math.sin(rel) * r, y = cy - Math.cos(rel) * r, sz = (t.a ? 7 : 8) + 7 * t.k, ox = Math.sin(rel), oy = -Math.cos(rel);
                 g.fillStyle(t.a ? 0xff9a30 : 0xff3020, .55 + .4 * t.k);
                 g.fillTriangle(x + ox * sz, y + oy * sz, x - ox * sz * .4 - oy * sz * .75, y - oy * sz * .4 + ox * sz * .75, x - ox * sz * .4 + oy * sz * .75, y - oy * sz * .4 - ox * sz * .75);
                 if (t.a && t.k > .55) { g.lineStyle(1.5, 0xff9a30, .5); g.lineBetween(cx + ox * (R - 10), cy + oy * (R - 10), cx + ox * 24, cy + oy * 24); }
