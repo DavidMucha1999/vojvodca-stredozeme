@@ -278,6 +278,7 @@ Všetky modely z Meshy (telá postáv, kone, netvory, zbrane a brnenia dobra) s�
 - **Zlé strany, elfovia, trpaslíci, štíty (verzia 65):** orkovia a uruci majú **bojovú maľbu**, rôzne kly, hroty na ramenách, handrový pás a zubaté čepele; elfovia diadém s drahokamom alebo náušnice; trpaslíci huňaté obočie a zlaté krúžky na bradách; štíty majú **opotrebenie** (záplata, prasklina, vyštrbený okraj).
 - **Mapa a prostredie (verzia 66):** terén má veľké **škvrny vyschnutej trávy, machu a svetlých lúk**; **lúčne kvety** v zhlukoch (farby podľa ročného obdobia), **trstina a rôpa** pri potoku a rieke, **pne so sekerou**, kopy kameňov, **kruh stojacich kameňov**, kopy sena a balíky, **studňa** a **vyhorená chatrč** (kopy sena a chatrč sa pri prechode vojska rozbijú). Štíty: stredový hrebeň je tenší a leží pod erbom.
 - **Atmosféra (verzia 68):** nízke **pásy hmly** nad zemou (hustejšie pri vode a za súmraku, pomaly plynú), **lúče slnka** cez deň pri jasnom nebi (od vysokej kvality) a **padajúce lístie** na jeseň a **lupene** na jar okolo kamery.
+- **Hrady a obliehanie (verzia 69):** veže majú **cimburie**, kamenné pásy a okná; múr má **opory**, brána pilastre, preklad a klenák oblúka; na múre visia **zástavy obrancov**; na nádvorí je **trhovisko s farebnými prístreškami**, sudy a debny, domy majú komíny, hrazdené priečelie, dvere a okná (v noci svietia).
 - Ovládanie boja už zodpovedalo Warbandu (ľavé tlačidlo sek, pravé kryt, smer úderu pohybom myši, koliesko mení zbraň, F kopnutie, Q luk); zmena sa ho netýka.
 
 ## Boj bližšie k Warbandu (verzia 53)

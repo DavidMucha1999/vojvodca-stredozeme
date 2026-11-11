@@ -789,6 +789,28 @@ const B3 = (() => {
             g.add(mesh(fr.build())); const arm = new t.Group(); arm.position.set(0, 33, 0); g.add(arm);
             arm.add(mesh(Part().add('box', w, [10, 0, 0], [0, 0, 0], [62, 2.4, 2.4]).add('box', '#4a4a4a', [-20, -6, 0], [0, 0, 0], [9, 12, 10], { m: 1 }).add('box', '#5a3a1a', [40, 0, 0], [0, 0, 0], [3, 3, 3]).build()));
             g.position.set(640, heightAt(640, y), y); g.rotation.y = 0; scene.add(g); return { g, arm, t: 120 + i * 210, y }; });
+        // detaily hradu: cimburie veží, kamenné pásy, pilastre múru, vlajky na múre, trhovisko s prístreškami, sudy a debny, komíny, okná a dvere domov
+        { const D = Part(), Wd = Part(), st2 = '#7e7a70';
+            for (const y of [150, 390, 570, 810]) {
+                for (let k = 0; k < 10; k++) { const a = k * .628; D.add('box', st2, [1024 + Math.cos(a) * 17.5, 70, y + Math.sin(a) * 17.5], [0, -a, 0], [3.2, 5, 5]); }   // zuby cimburia veže
+                D.add('cyl12', '#6e6a62', [1024, 40, y], [0, 0, 0], [39, 3, 39]).add('cyl12', '#6e6a62', [1024, 66, y], [0, 0, 0], [40, 3, 40]);   // kamenné pásy
+                for (const k of [-1, 1]) D.add('box', '#2a2420', [1005.4, 52, y + k * 7], [0, 0, 0], [.6, 9, 2.6]);   // okná
+            }
+            for (let y = 20; y < BH; y += 80) if (!(y > 410 && y < 550)) D.add('box', '#7e7a70', [997.5, 18, y], [0, 0, 0], [5, 36, 8]).add('box', '#6e6a62', [996, 38, y], [0, 0, 0], [8, 2.4, 11]);   // opory múru
+            D.add('box', '#6e6a62', [999, 22, 440], [0, 0, 0], [8, 46, 14]).add('box', '#6e6a62', [999, 22, 520], [0, 0, 0], [8, 46, 14]).add('box', '#5a5048', [1000, 47, 480], [0, 0, 0], [6, 4, 94]);   // brána: piliere a preklad
+            for (let k = -3; k <= 3; k++) D.add('box', '#4a4640', [996.6, 36 - Math.abs(k) * 2.4 + 6, 480 + k * 12], [0, 0, 0], [.5, 4, 3]);   // klenák oblúka
+            const hs = [[1120, 200, 50, 40], [1150, 760, 60, 44], [1240, 640, 46, 50]];
+            for (const [x, z, w, d] of hs) {
+                D.add('box', '#6a6258', [x + w * .25, 36, z - d * .2], [0, 0, 0], [5, 14, 5]);   // komín
+                Wd.add('box', '#4a3220', [x - w / 2 - .3, 12, z - d * .2], [0, 0, 0], [.4, 24, 2.2]).add('box', '#4a3220', [x - w / 2 - .3, 12, z + d * .2], [0, 0, 0], [.4, 24, 2.2]).add('box', '#4a3220', [x - w / 2 - .3, 24, z], [0, 0, 0], [.5, 1.6, d]).add('box', '#4a3220', [x - w / 2 - .3, 1, z], [0, 0, 0], [.5, 1.6, d]);   // hrazdenie priečelia
+                Wd.add('box', '#2a1a10', [x - w / 2 - .5, 8, z + d * .05], [0, 0, 0], [.5, 12, 7]).add('box', '#e8c870', [x - w / 2 - .6, 16, z - d * .3], [0, 0, 0], [.4, 5, 5]).add('box', '#e8c870', [x - w / 2 - .6, 16, z + d * .3], [0, 0, 0], [.4, 5, 5]);   // dvere a okná (v noci žiaria)
+            }
+            for (let i = 0; i < 5; i++) { const x = 1090 + i * 30, z = 470 + (i % 2) * 22 - 20, c = ['#a83020', '#c8b060', '#3a5a8a', '#6a3a6a', '#4a7a3a'][i];   // trhové stánky s farebnými prístreškami
+                Wd.add('box', '#5a4028', [x, 4, z], [0, 0, 0], [10, 8, 6]).add('box', c, [x, 11, z], [.3, 0, 0], [12, .8, 9]).add('cyl6', '#4a3220', [x - 5, 6, z + 4], [0, 0, 0], [.6, 12, .6]).add('cyl6', '#4a3220', [x + 5, 6, z + 4], [0, 0, 0], [.6, 12, .6]); }
+            for (let i = 0; i < 12; i++) { const x = 1075 + (i % 6) * 16 + (i >> 2) * 5, z = 300 + (i >> 1) * 34 + (i % 2) * 12; if (i % 3 === 0) Wd.add('box', '#7a5a34', [x, 3, z], [0, i, 0], [5, 6, 5]).add('box', '#5a3a1a', [x, 6.2, z], [0, i, 0], [5.4, .6, 5.4]); else Wd.add('cyl12', '#6a4a2a', [x, 4, z], [0, 0, 0], [4.4, 8, 4.4]).add('torus', '#3a3a3a', [x, 2.5, z], [0, 0, 0], [4.5, .5, 4.5]).add('torus', '#3a3a3a', [x, 6, z], [0, 0, 0], [4.5, .5, 4.5]); }   // sudy a debny
+            const dm = mesh(D.build()); if (QN() >= 1) dm.material = B3G.stoneMat(); scene.add(dm); scene.add(mesh(Wd.build()));
+            const df2 = (U.find(u => u.t !== (SGB.att ?? 0) && !u.h && u.fc != null) || {}).fc ?? 2; for (const y of [250, 330, 630, 710]) { const f = bannerMesh(df2, 7, 16); f.rotation.y = -Math.PI / 2; f.position.set(997, 32, y); scene.add(f); }   // zástavy visiace na múre
+        }
         siege.burn = 0;
     }
     function updSiege() {
