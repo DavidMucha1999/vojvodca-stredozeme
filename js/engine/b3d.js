@@ -872,6 +872,10 @@ const B3 = (() => {
             for (const z of [-1, 1]) P.add('sph2', mA ? sh(armor, 1.12) : sh(rim, 1.05), [-.1, H - 1.3, z * (W / 2 + .75)], [0, 0, z * .3], [3.4, 2.2, 3], bm('ch', 1)).add('torus', '#d8b450', [-.1, H - 1.3, z * (W / 2 + .75)], [0, 0, z * .3 + Math.PI / 2], [3.1, 1, 2.8], bm('ch', 1));
             for (let i = -1; i <= 1; i++) P.add('rbox', sh(armor, .8), [D * .55, -1.6, i * W * .22], [0, 0, .12], [.5, 3.4, W * .2], { b: 'hip', m: mA, rigid: 1 });   // šosy
         }
+        if (!noTab && (s.race === 'orc' || s.race === 'uruk' || s.race === 'troll') && !s.hero) {   // hrubé hroty na ramenách, handrový pás a pásy z kože
+            for (const z of [-1, 1]) { P.add('cone', '#6a6458', [-.1, H - .2, z * (W / 2 + .9)], [z * .55, 0, 0], [.9, 2.4 + (fv % 3) * .6, .9], bm('ch', 1)); if (fv & 1) P.add('cone', '#6a6458', [.9, H - .5, z * (W / 2 + .5)], [z * .8, 0, .3], [.7, 1.8, .7], bm('ch', 1)); }
+            P.add('rbox', sh(pants, .8), [D * .5, -2.6, 0], [0, 0, 0], [.3, 4.2, W * .5], { b: 'hip', t: 2, cl: [-.2, 4.2, .5], rigid: 1 }).add('rbox', leather, [0, -.1, 0], [0, 0, 0], [D * 1.05, .9, W * .85], bt('ch', 3));
+        }
         if (!MM && !noTab && mA && !s.hero && s.race !== 'wraith') P.add('torus', sh(armor, .72), [HX - .6 * hs, HY - 2.9 * hs, 0], [0, 0, .12], [3.3 * hs, 2.4, 3.3 * hs], bt('ch', 1, 1));   // kolčugová kapucňa na krku
         if (!MM && (rc.tusks || s.race === 'orc' || s.race === 'troll')) P.add('rbox', skin, [HX + 1.1 * hs, HY - 1.5 * hs, 0], [0, 0, 0], [2.4 * hs, 1.7 * hs, 3.4 * hs], b('hdc'));   // čeľusť
         // tvár (detail: pri vzdialenej kamere sa skryje)
@@ -902,6 +906,15 @@ const B3 = (() => {
             P.add('box', '#3a1410', [0, 0, 0], [0, 0, 0], [.24, .24, 1.2 * hs], b('mo')).add('rbox', sh(skin, .78), [.06, .2, 0], [0, 0, 0], [.22, .2, 1.3 * hs], b('mo'));   // ústa a pery (otvoria sa pri pokriku a bolesti)
             for (const z of [-1, 1]) P.add('sph2', sh(skin, .97), [HX + 1.45 * hs, HY - .55 * hs, z * 1.15 * hs], [0, 0, 0], [1.3 * hs, 1.1 * hs, 1.1 * hs], b('det'));   // lícne kosti
             P.add('sph2', skin, [HX + 1.55 * hs, HY - 1.7 * hs, 0], [0, 0, 0], [1.5 * hs, 1.1 * hs, 1.9 * hs], b('det'));   // brada
+            if (s.race === 'orc' || s.race === 'uruk') {   // bojová maľba, rozdielne kly a hrubšie obočie podľa variantu
+                const pc = ['#c8c0a8', '#a83020', '#e8e0c8', '#2a2a2a'][fv & 3];
+                if (fv < 5) for (const z of [-1, 1]) P.add('box', pc, [HX + 1.75 * hs, HY - .1 * hs, z * .55 * hs], [z * .2, 0, 0], [.14, 1.9 * hs, .32], b('det'));   // pruhy cez tvár
+                if (fv % 3 === 0) P.add('box', pc, [HX + 2.05 * hs, HY + .3 * hs, 0], [0, 0, 0], [.12, .3, 2.2 * hs], b('det'));   // pás cez oči
+                if (s.race === 'orc') for (const z of [-1, 1]) P.add('cone', '#e8e0c8', [rc.tusks ? HX + 2.0 * hs : HX + 2, HY - 1.45 * hs, z * (.85 + (fv % 3) * .15) * hs], [0, 0, 0], [.4 + (fv & 1) * .15, 1 + (fv % 4) * .3, .4], b('det'));
+            }
+            if (s.race === 'elf') { if (fv % 2) P.add('torus', '#d8c070', [HX - .1, HY + 1.0 * hs, 0], [0, 0, .08], [4.5 * hs, .45, 4.3 * hs], bm('hdc', 1)).add('sph', '#7ac8e8', [HX + 1.9 * hs, HY + 1.0 * hs, 0], [0, 0, 0], [.55, .55, .55], bm('det', 1)); else for (const z of [-1, 1]) P.add('sph', '#d8c070', [HX - .2, HY - .2, z * 2.45 * hs], [0, 0, 0], [.4, .4, .4], bm('det', 1)); }   // diadém s drahokamom alebo náušnice
+            if (s.race === 'dwarf') { for (const z of [-1, 1]) P.add('box', sh(hair, .8), [HX + 1.95 * hs, HY + 1.05 * hs, z * .9 * hs], [z * .12, 0, 0], [.55, .5, 1.5 * hs], b('det'));   // huňaté obočie
+                if (fv % 2 === 0) for (let i = 0; i < 3; i++) P.add('torus', '#c8a040', [HX + 1.6, HY - 3.2 - i * 1.2, 0], [0, 0, 0], [1.6, .3, 1.6], bm('det', 1)); }   // zlaté krúžky na brade
             if (rc.tusks || s.race === 'uruk') for (const [y, z, a] of [[.4, .5, .6], [-.3, -.6, -.4]]) P.add('box', '#3a2018', [HX + 2.02 * hs, HY + y * hs, z * hs], [a, 0, 0], [.12, .14, 1.4 * hs], b('det'));   // jazvy
             if ((s.beard || rc.beard) && s.race === 'human' && (fv === 3 || fv === 7)) {   // strniská a fúzy / kozia briadka
                 P.add('rbox', sh(hair, .85), [HX + 2.0 * hs, HY - .75 * hs, 0], [0, 0, 0], [.3, .35, 2.5 * hs], b('det'));
@@ -992,6 +1005,7 @@ const B3 = (() => {
             WP.add('cyl6', leather, [0, -.6, 0], [0, 0, 0], [.6, 2.4, .6], b('wp')).add('sph2', guard, [0, 1.15, 0], [0, 0, 0], [.95, .8, .95], bm('wp', 1)).add('rbox', guard, [0, -2, 0], [0, 0, 0], [.75, .6, 3.8], bm('wp', 1))
                 .add('sph', guard, [0, -2.15, 1.95], [0, 0, 0], [.7, .7, .7], bm('wp', 1)).add('sph', guard, [0, -2.15, -1.95], [0, 0, 0], [.7, .7, .7], bm('wp', 1));
             for (let i = 0; i < 3; i++) WP.add('cyl6', sh(leather, .65), [0, -.15 - i * .75, 0], [0, 0, 0], [.72, .22, .72], b('wp'));   // omotávka rukoväte
+            if (wt === 'scimitar' && !s.hero) for (let i = 0; i < 3; i++) WP.add('cone6', sh(wb, .7), [Math.sin(.13 * (i + 1.5) * 1.4) * (3 + i * 2.8) + .15, -3.6 - i * 2.8, 0], [0, 0, 1.1], [.3, .8, wide * .4], bm('wp', 1));   // zúbky a štrbiny na čepeli
             if (fv % 3 === 1) WP.add('sph', guard, [0, 1.45, 0], [0, 0, 0], [.95, .95, .95], bm('wp', 1)).add('cyl6', guard, [-.15, -2, 0], [Math.PI / 2, 0, 0], [.4, 4.6, .4], bm('wp', 1));   // guľový záver a rovná záštita
             else if (fv % 3 === 2) for (const z of [-1, 1]) WP.add('cone6', guard, [-.15, -2.2, z * 2.2], [z * (Math.PI / 2 + .5), 0, 0], [.4, 1.6, .4], bm('wp', 1));   // zahnuté ramená záštity
             if (!s.hero) P.add('rbox', '#3a2a1c', [-D * .15, -2.6, -W * .5 + .1], [0, 0, .75], [.8, 8, 1], bt('hip', 3)).add('box', '#c8a040', [-D * .15 + 2.2, .2, -W * .5 + .1], [0, 0, .75], [.45, 1.1, 1.2], bm('hip', 1));   // pošva na boku
@@ -1021,6 +1035,10 @@ const B3 = (() => {
                 if (fv % 3 === 0) SP.add('cone6', '#a8a8ac', [3, 0, -.3], [0, 0, -Math.PI / 2], [1.1, 2, 1.1], bm('shd', 1));   // hrot v strede
                 else if (fv % 3 === 1) for (const a of [0, Math.PI / 2]) SP.add('box', sh(srim, .85), [2.5, 0, -.3], [a, 0, 0], [.2, 8.4, .7], bm('shd', metalish(srim)));   // kovové pásy do kríža
             }
+            if (!s.hero) { const wr = (fv >> 1) & 3;   // opotrebenie: tmavá záplata, prasklina alebo vyštrbený okraj
+                if (wr === 1) SP.add('box', sh(scol, .55), [2.2, 2.2, 1.2], [0, 0, 0], [.14, 2.6, 2.4], b('shd')).add('box', sh(scol, .7), [2.22, 1.6, .7], [.3, 0, 0], [.1, 1.4, 1.2], b('shd'));
+                else if (wr === 2) SP.add('box', '#1a1410', [2.3, -.5, -.3], [.4, 0, .25], [.1, 6.5, .22], b('shd')).add('box', '#1a1410', [2.3, -2.8, 1.4], [-.5, 0, .1], [.1, 3, .2], b('shd'));
+                else if (wr === 3) SP.add('box', '#4a3a28', [1.65, 3.4, 4.1], [.3, 0, 0], [.9, 1.8, 1.7], b('shd')).add('box', sh(scol, .5), [2.2, -2.4, -2.8], [0, 0, 0], [.14, 1.8, 2.6], b('shd')); }
             if (shape === 'kite') SP.add('box', '#c8b060', [2.35, 0, -.3], [0, 0, 0], [.25, 10, .6], bm('shd', 1)).add('sph2', '#c8b060', [2.5, 1.5, -.3], [0, 0, 0], [1.2, 1.2, 1.2], bm('shd', 1));   // stredový hrebeň a puklica kopijovitého štítu
         }
         if (wt === 'bow') { const Rb = 8.5; for (let i = 0; i < 9; i++) { const th = -1.05 + i * .2625, x = Rb * Math.sin(th), y = Rb * (1 - Math.cos(th)) * .55; P.add('cyl6', '#6a4a2a', [x, y - .6, 0], [0, 0, -th * .55 + Math.PI / 2], [.65, 2.4, .65], b('hL')); } P.add('box', '#e8e4d0', [0, Rb * (1 - Math.cos(1.05)) * .55 - .6, 0], [0, 0, 0], [Rb * 2 * Math.sin(1.05), .12, .12], b('hL')); }
