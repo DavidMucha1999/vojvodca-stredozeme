@@ -495,6 +495,9 @@ const B3 = (() => {
             pos.push(x, h, y);
             let c = C(B.g1).lerp(C(B.g2), .5 + .5 * Math.sin(x * .02 + y * .031) * Math.cos(y * .017));
             c.multiplyScalar(.9 + rnd() * .14);
+            if (!SGB || x < 960) { const n1 = Math.sin(x * .045 + Math.sin(y * .03) * 2) * Math.sin(y * .052 + 1.3), n2 = Math.sin(x * .011 + 2) * Math.cos(y * .014);   // veľké škvrny: vyschnutá tráva, machová zeleň, svetlé lúky
+                if (BI === 'g') { if (n1 > .35) c.lerp(C('#a89c58'), (n1 - .35) * .5); else if (n1 < -.4) c.lerp(C('#2e5a2a'), (-.4 - n1) * .55); if (n2 > .4) c.multiplyScalar(1.1); }
+                else c.multiplyScalar(.94 + .12 * n1); }
             const rd = roadD(x, y); if (rd < 16) c.lerp(C(B.dirt), (1 - rd / 16) * .85);
             if (SGB && x > 1000) c = C('#8a8478').multiplyScalar(.85 + rnd() * .2);
             if (FIELD && FIELD.river && Math.abs(x - 720) < 54) c.lerp(C(B.dirt).multiplyScalar(.8), Math.min(1, (54 - Math.abs(x - 720)) / 14) * .7);
@@ -591,6 +594,16 @@ const B3 = (() => {
                 P.add('box', st, [0, 7, -12], [0, 0, 0], [46, 14, 4]).add('box', st, [-12, 16, -12], [0, 0, 0], [20, 6, 4]);
                 const m = put(P.build(), rx, ry, rnd() * 6, 'ruin', 0); if (QN() >= 1) m.material = B3G.stoneMat(); }
         }
+        // kopy sena a balíky, studňa a vyhorená chatrč (len v mierne zeleni a v pustatine)
+        if (!SGB && BI !== 's') {
+            const hay = Part().add('cyl12', '#c8a850', [0, 3, 0], [0, 0, 0], [8, 6, 8]).add('cone', '#d8b860', [0, 9, 0], [0, 0, 0], [7, 6, 7]).add('cyl6', '#6a4a2a', [0, 11, 0], [0, 0, 0], [.4, 5, .4]).build();
+            for (let i = 0; i < 4; i++) { const x = 160 + rnd() * 1000, y = 80 + rnd() * (BH - 160); if (ok(x, y, 14)) put(hay, x, y, rnd() * 6, 'hay', 7, { hp: 1 }); }
+            const bale = Part().add('cyl12', '#c8a850', [0, 3, 0], [Math.PI / 2, 0, 0], [6, 9, 6]).add('torus', '#6a5a30', [0, 3, 3], [0, 0, 0], [5.6, .3, 5.6]).add('torus', '#6a5a30', [0, 3, -3], [0, 0, 0], [5.6, .3, 5.6]).build();
+            for (let i = 0; i < 5; i++) { const x = 220 + rnd() * 900, y = 80 + rnd() * (BH - 160); if (ok(x, y, 10)) put(bale, x, y, rnd() * 6, 'hay', 5, { hp: 1 }); }
+            const wx = 300 + rnd() * 800, wy = 120 + rnd() * (BH - 240);
+            if (ok(wx, wy, 26)) { put(Part().add('cyl12', '#8a847a', [0, 3, 0], [0, 0, 0], [8, 6, 8]).add('cyl12', '#1a2a30', [0, 6.1, 0], [0, 0, 0], [6, .2, 6]).add('box', wood, [-4.2, 9, 0], [0, 0, 0], [1, 12, 1]).add('box', wood, [4.2, 9, 0], [0, 0, 0], [1, 12, 1]).add('box', wood, [0, 15, 0], [0, 0, 0], [10, 1, 1]).add('cone6', '#6a4a2c', [0, 17.5, 0], [0, Math.PI / 2, 0], [8, 4.5, 11]).build(), wx, wy, rnd() * 6, 'well', 0);
+                if (rnd() < .7) { const hx = wx + 48, hy = wy + (rnd() - .5) * 40; if (ok(hx, hy, 30)) { const hu = Part().add('box', '#5a4a3a', [0, 6, 0], [0, 0, 0], [24, 12, 18]).add('box', '#2a2220', [0, 13, 0], [0, 0, .5], [16, 1.4, 22]).add('box', '#2a2220', [0, 13, 0], [0, 0, -.5], [16, 1.4, 22]).add('box', '#1a1410', [12.2, 5, 0], [0, 0, 0], [.4, 8, 5]).add('cyl6', '#2a1a10', [-6, 14, 5], [0, 0, .3], [.9, 8, .9]).add('cyl6', '#2a1a10', [5, 15, -4], [0, 0, -.4], [.9, 7, .9]).build(); put(hu, hx, hy, rnd() * 6, 'hut', 14, { hp: 3 }); } } }
+        }
         // útesy a skalné steny za okrajom bojiska
         const cliff = Part(); for (let i = 0; i < 5; i++) cliff.add('sph0', B.rock, [i * 26 - 52, 14 + (i % 2) * 10, 0], [rnd(), rnd(), rnd()], [34, 40 + rnd() * 30, 26]);
         const cg = cliff.build(); for (let i = 0; i < 9; i++) { const x = 60 + i * 165 + rnd() * 40, y = i % 2 ? -26 : BH + 26; if (!(SGB && x > 940)) put(cg, x, y, rnd() * .4, 'cliff', 0); }
@@ -670,6 +683,29 @@ const B3 = (() => {
         const top = C(snow ? '#eef2f4' : BI === 'g' ? '#5a7a30' : BI === 'd' ? '#c0a878' : B.rock), cA = rg.attributes.color, nA = rg.attributes.normal;
         for (let i = 0; i < cA.count; i++) { const k = Math.max(0, (nA.getY(i) - .45) / .55); if (k > 0) { const c = C('#000').setRGB(cA.getX(i), cA.getY(i), cA.getZ(i)).lerp(top, k * .85); cA.setXYZ(i, c.r, c.g, c.b); } }
         inst(rg, rocksL, ([x, y, k]) => { M.compose(v.set(x, heightAt(x, y) - .5, y), q.setFromEuler(e.set(rnd() * .4, rnd() * 6, rnd() * .3)), s.set(k, k, k)); }, mat('v'));
+        // lúčne kvety v zhlukoch (podľa ročného obdobia), trstina pri vode, pne, kopy kameňov a stojace kamene
+        if (q >= 1 && BI === 'g' && seas() !== 3) {
+            const fl = seas() === 2 ? ['#d89a28', '#c8742a', '#e8d8a0'] : seas() === 0 ? ['#f4f0e8', '#f0c8d8', '#e8d050', '#c8a0e0'] : ['#f2d040', '#f4f0e8', '#d86a8a', '#7a9ae0'], fp = Part();
+            for (let i = 0; i < 6; i++) { const a = i * 1.05, d = 1.5 + (i % 3) * .9; fp.add('cyl6', '#4a7a30', [Math.cos(a) * d, 1.3, Math.sin(a) * d], [0, 0, 0], [.14, 2.6, .14]).add('sph', fl[i % fl.length], [Math.cos(a) * d, 2.8, Math.sin(a) * d], [0, 0, 0], [.9, .6, .9]); }
+            const fg3 = fp.build(), pts = [];
+            for (let i = 0; i < 90; i++) { const cx = rnd() * BW, cy = rnd() * BH; if ((F.river && Math.abs(cx - 720) < 70) || (SGB && cx > 900) || roadD(cx, cy) < 16 || creekD(cx, cy) < 12) continue; const n = 4 + (rnd() * 6 | 0); for (let j = 0; j < n; j++) pts.push([cx + (rnd() - .5) * 26, cy + (rnd() - .5) * 26, 1.5 + rnd() * .9]); }
+            inst(fg3, pts.filter(([x, y]) => x > 0 && y > 0 && x < BW && y < BH), ([x, y, k]) => at(x, y, k));
+        }
+        if (q >= 1 && BI !== 'd' && BI !== 'a') {   // trstina a rôpa pri brehu potoka a rieky
+            const rp = Part(); for (let i = 0; i < 7; i++) { const a = i * .9, d = .5 + (i % 3) * .7; rp.add('cyl6', snow ? '#d8d0b0' : '#6a8a3a', [Math.cos(a) * d, 5, Math.sin(a) * d], [Math.sin(a) * .1, 0, Math.cos(a) * .1], [.22, 10 + (i % 3) * 2.5, .22]).add('cyl6', '#5a3a22', [Math.cos(a) * d, 10.5 + (i % 3) * 2.5, Math.sin(a) * d], [0, 0, 0], [.5, 2, .5]); }
+            const rg2 = rp.build(), rl = [];
+            for (let i = 0; i < 400 && rl.length < 160; i++) { const x = rnd() * BW, y = rnd() * BH, cd = creekD(x, y), rv = F.river ? Math.abs(Math.abs(x - 720) - 62) : 99; if (!((cd > 11 && cd < 22) || rv < 7)) continue; if (SGB && x > 900) continue; rl.push([x, y, 1 + rnd() * .8]); }
+            inst(rg2, rl, ([x, y, k]) => at(x, y, k));
+        }
+        if (BI !== 'a') {   // pne so sekerou, kopy kameňov a stojaci kameň
+            const stump = Part().add('cyl12', '#5a4028', [0, 1.6, 0], [0, 0, 0], [3.4, 3.2, 3.4]).add('cyl12', '#c8a878', [0, 3.25, 0], [0, 0, 0], [3, .15, 3]).add('cone6', '#5a4028', [2.4, .6, 0], [0, 0, 1.2], [.9, 2.4, .9]).build(), st = [];
+            for (let i = 0; i < 26; i++) { const x = rnd() * BW, y = rnd() * BH; if (roadD(x, y) > 22 && creekD(x, y) > 16 && !(F.river && Math.abs(x - 720) < 70) && !(SGB && x > 900)) st.push([x, y, .8 + rnd() * .5]); }
+            inst(stump, st, ([x, y, k]) => { M.compose(v.set(x, heightAt(x, y) - .3, y), q.setFromEuler(e.set(0, rnd() * 6, 0)), s.set(k, k, k)); }, mat('v'));
+            const cairn = Part(); for (let i = 0; i < 6; i++) cairn.add('sph0', sh(B.rock, .85 + (i % 3) * .1), [Math.cos(i * 1.4) * (3 - i * .35), .9 + (i > 3 ? 2.2 : i > 1 ? 1.4 : 0), Math.sin(i * 1.4) * (3 - i * .35)], [i, i * .6, 0], [3.2 - i * .2, 2.2, 3]);
+            const ca = cairn.build(), cl = []; for (let i = 0; i < 9; i++) { const x = rnd() * BW, y = rnd() * BH; if (roadD(x, y) > 24 && creekD(x, y) > 18 && !(F.river && Math.abs(x - 720) < 70) && !(SGB && x > 900)) cl.push([x, y, .8 + rnd() * .6]); }
+            inst(ca, cl, ([x, y, k]) => { M.compose(v.set(x, heightAt(x, y) - .4, y), q.setFromEuler(e.set(0, rnd() * 6, 0)), s.set(k, k, k)); }, mat('v'));
+            if (!SGB && rnd() < .8) { const mx = 200 + rnd() * 900, my = 60 + rnd() * (BH - 120); if (roadD(mx, my) > 30 && !(F.river && Math.abs(mx - 720) < 90) && creekD(mx, my) > 24) { const sg = Part(); for (let i = 0; i < 5; i++) { const a = i * 1.257; sg.add('box', sh(B.rock, .9 + (i % 2) * .15), [Math.cos(a) * 10, 7, Math.sin(a) * 10], [.05, a, .04], [3.2, 14 + (i % 3) * 3, 5.4]); } sg.add('box', sh(B.rock, .8), [0, 15, 8], [0, 0, 0], [3, 2.6, 18]); const m2 = mesh(sg.build()); m2.position.set(mx, heightAt(mx, my) - .8, my); scene.add(m2); if (QN() >= 1) m2.material = B3G.stoneMat(); } }   // kruh stojacich kameňov
+        }
         // plot pri ceste
         const fence = []; for (let i = 2; i < road.length - 2; i++) { if (i % 9 > 4) continue; const [ax, ay] = road[i], [bx, by] = road[i + 1], a = Math.atan2(by - ay, bx - ax), nx = -Math.sin(a) * 19, ny = Math.cos(a) * 19; fence.push([ax + nx, ay + ny, a, Math.hypot(bx - ax, by - ay)]); }
         const fg = Part().add('box', '#5a4028', [0, 4, 0], [0, 0, 0], [1, 8, 1]).add('box', '#6a4a2e', [18, 5.4, 0], [0, 0, 0], [36, .9, .5]).add('box', '#6a4a2e', [18, 2.8, 0], [0, 0, 0], [36, .9, .5]).build();
