@@ -350,6 +350,11 @@ try {
             const bwa = AR[0]; if (!bwa) continue; let bwt = 0; while (AR.includes(bwa) && bwt++ < 400) stepArrows(1); const dy = Math.abs(bwa.y - bwT.y), dx = Math.abs(bwa.x - bwT.x); if (dx < 12 && dy < 6) bwH++; if (n < 4) bwS += [bwa.x | 0, bwa.y | 0, bwT.x | 0, bwT.y | 0].join(',') + ' '; }
         Math.random = bwM; var hitPct = bwH / bwN;`);
     check('Warband: lukostrelec najprv mieri (napína) a netrafí každý šíp (stojaci cieľ do 100 jednotiek)', run('firstShot >= 25 && hitPct < .55 && hitPct > .05'), run('[firstShot, hitPct, bwH, bwN, bwS].join(" ")'));
+    run(`startBattle({ n: 6, f: 2, nm: "T" }); var sT = U[0], sA = U.find(u => u.t); sA.uk = "uG3"; sA.k = "i"; sA.hp = sA.mh = 9999; sA.stun = 0; sA.rout = 0; sA.wu = 0; sA.c = 0; sA.sp = 1;
+        var spOk = aiWpn(sA) === "spear" || (sA.uk = Object.keys(FU).find(k => FU[k].wp === "sp"), aiWpn(sA) === "spear"); sA.x = sT.x + 6; sA.y = sT.y; var d0 = Math.hypot(sA.x - sT.x, sA.y - sT.y); aiSpacing(sA, sT, d0, 1); var back = Math.hypot(sA.x - sT.x, sA.y - sT.y) > d0;
+        sA.uk = null; sA.k = "i"; sA.d = 15; sA.c = 30; sA.x = sT.x + 10; sA.y = sT.y; sA.sd = 1; sA.sdT = 50; var y0 = sA.y; aiSpacing(sA, sT, 10, 1); var side = Math.abs(sA.y - y0) > .1;
+        sA.d = 5; sA.x = sT.x + 10; sA.y = sT.y; y0 = sA.y; aiSpacing(sA, sT, 10, 1); var still = Math.abs(sA.y - y0) < .01; var stopOk = aiStop(sA) < 13;`);
+    check('Warband: kopijník pri malom odstupe cúva, zručný vojak pri dobíjaní robí úkroky, slabý stojí', run('spOk && back && side && still && stopOk'), run('[spOk, back, side, still, stopOk].join(" ")'));
     run(`startBattle({ n: 6, f: 2, nm: "T" }); var pH = U[0], pA = U.find(u => u.t); pH.f = 0; pA.x = pH.x + 10; pA.y = pH.y; pA.hp = pA.mh = 9999; pA.stun = 0; CMB.blk = 1; CMB.blkT = 3; CMB.st = 100; CMB.shp = 50; CMB.perfT = 0;
         var pBl = meleeHit(pA, pH, 10, "ai"); var perfOk = pBl === false && CMB.perfT > 0 && pA.stun > 0; CMB.blk = 0;
         var bwM2 = Math.random; Math.random = (() => { let q = 777; return () => (q = (q * 1664525 + 1013904223) % 4294967296) / 4294967296; })();

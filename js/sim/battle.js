@@ -517,10 +517,11 @@ function updBattle(dt) {
                         if (u.c <= 0 && bd < WX.r) aiBow(u, b, 7); else u.aim = 0;
                     }
                     else if (aiMelee(u, b, bd, dt)) { }   // nápriah a úder, nápor jazdy (js/sim/combat.js)
-                    else if (bd > 13) {
+                    else if (bd > aiStop(u)) {
                         u.x += (b.x - u.x) / bd * u.sp * dt;
                         u.y += (b.y - u.y) / bd * u.sp * dt;
                     }
+                    else aiSpacing(u, b, bd, dt);   // odstup kopijníkov a úkroky zručných vojakov (js/sim/warband.js)
                 }
             }
         }

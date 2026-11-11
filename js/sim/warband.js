@@ -143,6 +143,21 @@ function aiShoot(u, b, sp = 7) {
     fireArrow(u, yaw + g() * sig, p + g() * sig * .45, sp, { d: u.k === 'e' ? 7 : 4.5 });
     snd('ar');
 }
+/** Dosah zbrane vojaka v útoku (kopija ďalej, sekera bližšie) a vzdialenosť, na ktorej sa pri chôdzi zastaví. */
+const aiLen = u => { const w = aiWpn(u); return w === 'spear' ? 1.3 : w === 'axe' ? .95 : 1; };
+const aiStop = u => 13 * aiLen(u) * .95;
+/** Pohyb v dosahu zbrane ako vo Warbande: kopijník sa pri príliš malom odstupe cúva (drží súpera na dĺžku kopije),
+ *  zručnejší vojak pri dobíjaní úkrokom do strany nestojí na mieste. */
+function aiSpacing(u, b, bd, dt) {
+    if (u.wu > 0 || u.stun > 0 || u.rout) return;
+    const a = dirTo(u, b), len = aiLen(u), sk = aiSkill(u);
+    if (aiWpn(u) === 'spear' && bd < 13 * len * .62) { u.x -= Math.cos(a) * u.sp * .5 * dt; u.y -= Math.sin(a) * u.sp * .5 * dt; return; }
+    if (u.c > 0 && sk > .25 && !mounted(u)) {
+        if (!u.sd) u.sd = Math.random() < .5 ? 1 : -1;
+        if ((u.sdT = (u.sdT || 0) - dt) <= 0) { u.sdT = 50 + Math.random() * 60; u.sd = -u.sd; }
+        const k = .3 * u.sp * dt; u.x += -Math.sin(a) * u.sd * k; u.y += Math.cos(a) * u.sd * k;
+    }
+}
 /** Lukostrelec AI: najprv mieri (napína asi pol sekundy, hrdina to vidí v ukazovateli útokov), potom vystrelí a dlhšie dobíja. */
 function aiBow(u, b, sp, dt = 1) {
     if (!(u.aim > 0)) { u.aim = u.aim0 = 30 + Math.random() * 20; u.at = b; return; }
