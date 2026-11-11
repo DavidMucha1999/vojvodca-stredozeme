@@ -348,7 +348,7 @@ const B3 = (() => {
         segs.push(['ch', add(ch, [0, H - 1.4, 0]), add(ch, [0, H + .9, 0]), .95 * bk, .85 * bk, .9]);   // krk
         ex.push(['ch', add(ch, [.15, H * .62, 0]), [D * .55 * bk, H * .36, W * .5 * bk], 1.3], ['ch', add(ch, [.35, H * .62, W * .2]), [D * .3, H * .2, W * .18], .9], ['ch', add(ch, [.35, H * .62, -W * .2]), [D * .3, H * .2, W * .18], .9]);   // hruď a prsné svaly
         ex.push(['hip', add(hip, [0, -.4, 0]), [D * .5 * bk, 1.9, W * .42 * bk], 1]);
-        ex.push(['ch', add(ch, [-.1, H - .9, 0]), [D * .38 * bk, 1.1, W * .36 * bk], .9]);   // trapézy (prechod krk–ramená)
+        ex.push(['ch', add(ch, [-.15, H - 1.75, 0]), [D * .34 * bk, .8, W * .3 * bk], .9]);   // trapézy (prechod krk–ramená, pod hranicou kože)
         for (const z of [-1, 1]) ex.push(['hip', add(hip, [-.8, -1, z * W * .17]), [1.9 * bk, 1.7, W * .17], .8]);   // sedacie svaly
         for (const [sd, sh, el, hd, lg, kn] of [[1, 'shR', 'elR', 'hR', 'lgR', 'knR'], [-1, 'shL', 'elL', 'hL', 'lgL', 'knL']]) {
             const S = J(sh), E = J(el), Hh = J(hd), L = J(lg), K = J(kn), F = add(K, [.2, -ls + .9, 0]);
@@ -931,7 +931,7 @@ const B3 = (() => {
         const BN = skel([['hip', null, [0, hipY, 0]], ['ch', 'hip', [0, .8, 0]], ['hd', 'ch', hc], ['hdc', 'hd', nhc], ['det', 'hd', nhc], ['shR', 'ch', [shX, H - 1.9, shZ]], ['elR', 'shR', rc.elO || [0, -a1, 0]], ['hR', 'elR', rc.hO || [0, -a2, 0]],
             ['shL', 'ch', [shX, H - 1.9, -shZ]], ['elL', 'shL', rc.elO ? mz(rc.elO) : [0, -a1, 0]], ['hL', 'elL', rc.hO ? mz(rc.hO) : [0, -a2, 0]], ['shd', 'elL', [0, -a2 * .5, 0]],
             ['lgR', 'hip', [0, -.3, legZ]], ['knR', 'lgR', [0, -lt, 0]], ['lgL', 'hip', [0, -.3, -legZ]], ['knL', 'lgL', [0, -lt, 0]], ['cape', 'ch', [-D / 2 - .35, H - .9, 0]],
-            ['mo', 'det', rc.mo || [HX + 1.98 * hs, HY - 1.3 * hs, 0]], ['ey', 'det', rc.ey || [HX + 1.9 * hs, HY + .38 * hs, 0]], ['wp', 'hR', rc.wpO || [0, 0, 0]]]);
+            ['mo', 'det', rc.mo || [HX + 1.98 * hs, HY - 1.3 * hs, 0]], ['ey', 'det', rc.ey || [HX + 1.9 * hs, HY + .38 * hs, 0]], ['br', 'det', [HX + 1.95 * hs, HY + 1.0 * hs, 0]], ['wp', 'hR', rc.wpO || [0, 0, 0]]]);
         BN.blend = [['elR', 'shR', 2], ['elL', 'shL', 2], ['knR', 'lgR', 2.4], ['knL', 'lgL', 2.4], ['lgR', 'hip', 2.2], ['lgL', 'hip', 2.2], ['ch', 'hip', 2.6], ['shR', 'ch', 1.6], ['shL', 'ch', 1.6]];
         const orcish = ['orc', 'uruk', 'troll'].includes(s.race), mdef = orcish ? 5 : 4;
         const brown = hex => { const hsl = {}; C(hex).getHSL(hsl); return hsl.h > .02 && hsl.h < .14 && hsl.s > .18 && hsl.l < .5; };
@@ -1001,22 +1001,29 @@ const B3 = (() => {
             if (s.beard && !MM.md.tex) P.add('cone', hair, [rc.mo[0] - .35, rc.mo[1] - 1.2, 0], [0, 0, Math.PI - .2], [1.9, 2.8, 2.2], b('det')).add('box', hair, [rc.mo[0] + .02, rc.mo[1] + .32, 0], [0, 0, 0], [.3, .3, 1.2], b('det'));
         } else if (!rc.noFace) {
             const eye = s.race === 'orc' || s.race === 'uruk' || s.race === 'troll' ? '#d8a020' : '#1a1410';
-            const nz = [1, 1.2, .9, 1.35, 1.05, .85, 1.25, 1.1][fv], bw = [1, 1.25, .8, 1.5, 1, .9, 1.35, 1.1][fv];
-            P.add('rbox', sh(skin, .9), [HX + 2.0 * hs, HY - .15 * hs, 0], [0, 0, -.15], [.9 * hs * nz, 1.4 * hs * (.9 + nz * .1), (s.race === 'orc' || s.race === 'troll' ? 1.3 * hs : .8 * hs) * (.9 + nz * .15)], b('det'));
+            const mixC = (a, c, k) => { const q = C(a).lerp(C(c), k); return '#' + q.getHexString(); }, lipU = s.race === 'orc' || s.race === 'troll' || s.race === 'uruk' ? sh(skin, .6) : mixC(skin, '#9a4a48', .4), lipL = s.race === 'orc' || s.race === 'troll' || s.race === 'uruk' ? sh(skin, .7) : mixC(skin, '#b05a54', .3);   // pery: horná tmavšia, dolná plnšia
+            const skD = sh(skin, .78), nz = [1, 1.2, .9, 1.35, 1.05, .85, 1.25, 1.1][fv], bw = [1, 1.25, .8, 1.5, 1, .9, 1.35, 1.1][fv];
+            P.add('rbox', sh(skin, .93), [HX + 1.95 * hs, HY + .2 * hs, 0], [0, 0, -.1], [.6 * hs * nz, 1.5 * hs, .55 * hs], b('det'));   // koreň a chrbát nosa
+            P.add('rbox', sh(skin, .9), [HX + 2.05 * hs, HY - .35 * hs, 0], [0, 0, -.15], [.9 * hs * nz, 1.1 * hs * (.9 + nz * .1), (s.race === 'orc' || s.race === 'troll' ? 1.3 * hs : .8 * hs) * (.9 + nz * .15)], b('det')).add('sph2', sh(skin, .86), [HX + 2.0 * hs, HY - .7 * hs, 0], [0, 0, 0], [.7 * hs * nz, .45 * hs, .75 * hs], b('det'));   // špička nosa
+            for (const z of [-1, 1]) P.add('sph2', sh(skin, .88), [HX + 1.85 * hs, HY - .65 * hs, z * .42 * hs], [0, 0, 0], [.55 * hs, .5 * hs, .38 * hs], b('det')).add('box', '#1a0e0a', [HX + 2.2 * hs, HY - .85 * hs, z * .2 * hs], [0, 0, 0], [.1, .12, .16], b('det'));   // krídla a nozdry
+            P.add('box', skD, [HX + 1.88 * hs, HY + .55 * hs, 0], [0, 0, 0], [.3, .25, 2.0 * hs], b('det'));   // oblúk obočia
             if (s.race === 'human' || s.race === 'dwarf') {   // jazva, pehy a vrásky podľa variantu tváre
                 if (fv === 2 || fv === 5) P.add('box', '#b87a68', [HX + 1.98 * hs, HY + .1 * hs, (fv === 2 ? 1 : -1) * .9 * hs], [(fv === 2 ? 1 : -1) * .5, 0, 0], [.1, .12, 1.5 * hs], b('det'));
                 if (fv === 4 || fv === 7) for (const z of [-1, 1]) P.add('box', sh(skin, .86), [HX + 1.9 * hs, HY - .85 * hs, z * .95 * hs], [0, 0, 0], [.1, .08, .9 * hs], b('det'));
             }
+            const iris = s.race === 'elf' ? ['#4a9ac8', '#5ac88a', '#a8a8b0', '#c8a850'][fv & 3] : ['#5a3a1c', '#3a6a9a', '#4a7a3a', '#6a6a70', '#3a2a1a', '#6a8aaa', '#7a5a2a', '#2a4a5a'][fv];
             for (const z of [-1, 1]) {
-                if (eye === '#1a1410') P.add('box', '#ece6dc', [-.04 * hs, 0, z * .85 * hs], [0, 0, 0], [.2, .5 * hs, .95 * hs], b('ey'));
-                P.add('box', eye, [.03 * hs, 0, z * .85 * hs], [0, 0, 0], [.2, .45 * hs, .45 * hs], b('ey'));
-                P.add('box', s.race === 'elf' ? sh(hair, .8) : '#2a1c12', [HX + 1.95 * hs, HY + 1.0 * hs, z * .85 * hs], [z * .12, 0, 0], [.35, .22 + .1 * bw, 1.35 * hs], b('det'));
+                if (eye === '#1a1410') {   // oko: bielko, farebná dúhovka, zrenica, odlesk a viečka
+                    P.add('box', '#ece6dc', [-.04 * hs, 0, z * .85 * hs], [0, 0, 0], [.22, .5 * hs, 1.05 * hs], b('ey')).add('box', iris, [.07 * hs, 0, z * .85 * hs], [0, 0, 0], [.14, .4 * hs, .34 * hs], b('ey')).add('box', '#0a0806', [.13 * hs, 0, z * .85 * hs], [0, 0, 0], [.1, .2 * hs, .15 * hs], b('ey')).add('box', '#ffffff', [.17 * hs, .1 * hs, z * .85 * hs + .1], [0, 0, 0], [.06, .1, .1], b('ey'));
+                    P.add('box', skD, [.05 * hs, .3 * hs, z * .85 * hs], [0, 0, 0], [.28, .09, 1.1 * hs], b('det'));   // horné a dolné viečko
+                } else { P.add('box', eye, [.03 * hs, 0, z * .85 * hs], [0, 0, 0], [.2, .45 * hs, .45 * hs], b('ey')); P.add('box', '#0a0806', [.12 * hs, 0, z * .85 * hs], [0, 0, 0], [.1, .42 * hs, .1], b('ey')); }   // štrbinová zrenica orka
+                P.add('box', s.race === 'elf' ? sh(hair, .8) : fv & 1 ? '#2a1c12' : sh(hair, .75), [0, 0, z * .85 * hs], [z * .12, 0, 0], [.35, .22 + .1 * bw, 1.35 * hs], b('br'));   // obočie (hýbe sa so šírkou emócií)
                 const ear = rc.ears === 'elf' ? ['cone', [HX - .3, HY + .7 * hs, z * 2.0 * hs], [z * 1.15, 0, .45], [.55, 2.6, .55]] : rc.ears === 'orc' ? ['cone', [HX - .2, HY + .2 * hs, z * 2.1 * hs], [z * 1.45, 0, .2], [1, 3, .6]] : ['sph2', [HX - .1, HY, z * 2.0 * hs], [0, 0, 0], [.9, 1.3 * hs, .5]];
                 P.add(ear[0], skin, ear[1], ear[2], ear[3], b('det'));
                 if (rc.tusks) P.add('cone', '#e8e0c8', [HX + 2.0 * hs, HY - 1.45 * hs, z * .85 * hs], [0, 0, 0], [.4, 1, .4], b('det'));
             }
-            P.add('box', '#3a1410', [0, 0, 0], [0, 0, 0], [.24, .24, 1.2 * hs], b('mo')).add('rbox', sh(skin, .78), [.06, .2, 0], [0, 0, 0], [.22, .2, 1.3 * hs], b('mo'));   // ústa a pery (otvoria sa pri pokriku a bolesti)
-            for (const z of [-1, 1]) P.add('sph2', sh(skin, .97), [HX + 1.45 * hs, HY - .55 * hs, z * 1.15 * hs], [0, 0, 0], [1.3 * hs, 1.1 * hs, 1.1 * hs], b('det'));   // lícne kosti
+            P.add('box', '#3a1410', [0, 0, 0], [0, 0, 0], [.24, .24, 1.2 * hs], b('mo')).add('rbox', lipU, [.06, .2, 0], [0, 0, 0], [.24, .2, 1.3 * hs], b('mo')).add('rbox', lipL, [.08, -.2, 0], [0, 0, 0], [.26, .22, 1.1 * hs], b('mo'));   // ústa a pery (otvoria sa pri pokriku a bolesti)
+            for (const z of [-1, 1]) P.add('sph2', sh(skin, .97), [HX + 1.4 * hs, HY - .6 * hs, z * 1.05 * hs], [0, 0, 0], [.95 * hs, .8 * hs, .75 * hs], b('det'));   // lícne kosti
             P.add('sph2', skin, [HX + 1.55 * hs, HY - 1.7 * hs, 0], [0, 0, 0], [1.5 * hs, 1.1 * hs, 1.9 * hs], b('det'));   // brada
             if (s.race === 'orc' || s.race === 'uruk') {   // bojová maľba, rozdielne kly a hrubšie obočie podľa variantu
                 const pc = ['#c8c0a8', '#a83020', '#e8e0c8', '#2a2a2a'][fv & 3];
@@ -1050,7 +1057,7 @@ const B3 = (() => {
             if (st === 7) { for (let i = 0; i < 6; i++) P.add('sph2', sh(hair, .8 + (i % 3) * .12), [HX - .5 - (i % 2) * .6, HY + .9 * hs + (i < 3 ? .7 : 0), (i % 3 - 1) * 1.45 * hs], [0, 0, 0], [1.9, 1.7, 1.7], b('hdc')); return; }   // kučery
             P.add('hemi', hair, [HX - .3, HY + .3 * hs, 0], [0, 0, .25], [4.6 * hs, 4.6 * hs, 4.3 * hs], b('hdc')); if (s.longHair || s.race === 'elf') { P.add('rbox', hair, [HX - 1.8 * hs, HY - 2.4 * hs, 0], [0, 0, .1], [1.3, 5.4 * hs, 3.8 * hs], b('hdc')); for (let i = 0; i < 5; i++) P.add('rbox', sh(hair, .9 + i % 2 * .15), [HX - 1.9 * hs + (i % 2) * .3, HY - 3 * hs - (i % 3) * .5, (i - 2) * .75 * hs], [0, 0, .08 + (i - 2) * .03], [.6, 5.4 * hs, .7], b('hdc')); }   // pramene vlasov
             else for (let i = 0; i < 4; i++) P.add('rbox', sh(hair, .85 + i % 2 * .2), [HX - 1.7 * hs, HY - .6 * hs, (i - 1.5) * 1.05 * hs], [0, 0, .2], [.7, 2.2 * hs, .9], b('hdc')); };
-        const helmBase = (sc = 1) => P.add('hemi', hcol, [HX - .2, HY + .72 * hs, 0], [0, 0, .08], [4.8 * hs * sc, 5.2 * hs * sc, 4.6 * hs * sc], bm('hdc', hm)).add('torus', sh(hcol, .78), [HX - .2, HY + .78 * hs, 0], [0, 0, .08], [4.9 * hs, 2.2, 4.7 * hs], bm('hdc', hm));   // prilba vyššie: oči ostanú viditeľné
+        const helmBase = (sc = 1) => P.add('hemi', hcol, [HX - .2, HY + .72 * hs, 0], [0, 0, .08], [4.8 * hs * sc, 5.2 * hs * sc, 4.6 * hs * sc], bt('hdc', hm ? 4 : 0, hm)).add('torus', sh(hcol, .78), [HX - .2, HY + .78 * hs, 0], [0, 0, .08], [4.9 * hs, 2.2, 4.7 * hs], bt('hdc', hm ? 4 : 0, hm));   // prilba vyššie: oči ostanú viditeľné
         if (noTab && !s.hero) { }   // trollovia, uruci a Nazgûl: prilba a vlasy sú súčasťou modelu
         else if ((hk === 'hood' || hk === 'nazgul') && MM && MM.md.tex) { }   // kapucňa a plášť sú v modeli (Nazgûl)
         else if (hk === 'hood' || hk === 'nazgul') { const hcc = hk === 'nazgul' ? '#0c0c0e' : hcol; P.add('sph2', hcc, [HX - .5, HY + .5, 0], [0, 0, .15], [5.4 * hs, 6 * hs, 5.2 * hs], b('hdc')).add('cone', hcc, [HX - 1.4, HY + 3, 0], [0, 0, .5], [3, 3.4, 3], b('hdc')).add('box', hcc, [HX - 2.2, HY - 2.6, 0], [0, 0, .15], [1, 4.6, 5], b('hdc')); }
@@ -1079,7 +1086,11 @@ const B3 = (() => {
             if (hk === 'mask' || hk === 'easterling') P.add('box', '#c09030', [HX + 2.15 * hs, HY - .4, 0], [0, 0, 0], [.4, 3.4, 3.8], bm('hdc', 1)).add('box', '#1a1410', [HX + 2.4 * hs, HY + .4, 0], [0, 0, 0], [.1, .35, 3], b('det'));
             if (!['gondor', 'winged', 'citadel', 'rohan', 'plume', 'orc', 'troll', 'uruk', 'dwarf', 'elf', 'mask', 'easterling'].includes(hk)) {
                 P.add('box', hcol, [HX + 2.3 * hs, HY - .2, 0], [0, 0, 0], [.35, 2.2, .55], bm('hdc', hm));   // nánosník
-                P.add('torus', sh(hcol, 1.1), [HX - .1, HY + .15, 0], [0, 0, .08], [5.6 * hs, 1.1, 5.3 * hs], bm('hdc', hm));   // široký okraj prilby
+                const hv = s.hero ? 0 : fv & 3;
+                if (hv === 0 || s.hero) P.add('torus', sh(hcol, 1.1), [HX - .1, HY + .15, 0], [0, 0, .08], [5.6 * hs, 1.1, 5.3 * hs], bm('hdc', hm));   // široký okraj prilby (kotlík)
+                else if (hv === 1) { P.add('cone', sh(hcol, 1.05), [HX - .2, HY + 2.3 * hs, 0], [0, 0, 0], [4.2, 4.4, 4.2], bm('hdc', hm)); for (let i = 0; i < 4; i++) P.add('box', trimC, [HX - .2 + Math.cos(i * 1.571 + .79) * 1.9, HY + 1.6 * hs, Math.sin(i * 1.571 + .79) * 1.9], [0, -(i * 1.571 + .79), 0], [.3, 3.2, .6], bm('det', 1)); P.add('sph', trimC, [HX - .2, HY + 4.6 * hs, 0], [0, 0, 0], [.7, .7, .7], bm('det', 1)); }   // špicatá prilba s pásmi
+                else if (hv === 2) { P.add('rbox', sh(hcol, 1.02), [HX + 2.2 * hs, HY - .9 * hs, 0], [0, 0, 0], [.45, 3.9 * hs, 4.1 * hs], bm('hdc', hm)).add('box', '#0a0806', [HX + 2.5 * hs, HY - .1 * hs, 0], [0, 0, 0], [.1, .38, 3.2 * hs], b('det')).add('box', '#0a0806', [HX + 2.5 * hs, HY - 1.3 * hs, 0], [0, 0, 0], [.1, 2.0 * hs, .35], b('det')); }   // barbuta s T-štrbinou
+                else for (const z of [-1, 1]) P.add('rbox', sh(hcol, 1.05), [HX + 1.2, HY - 1.3, z * 2.0 * hs], [0, 0, 0], [2.6, 3.2, .4], bm('hdc', hm)).add('rbox', sh(hcol, .9), [HX - 2.1, HY - .4, z * 1.2 * hs], [0, 0, 0], [1.2, 3.6, 1.4], bm('hdc', hm));   // otvorená prilba s lícnicami a chráničom šije
                 if (!s.hero) { P.add('rbox', hcol, [HX - .2, HY + 2.6 * hs, 0], [0, 0, .08], [.8, 1.2, 4.8 * hs], bm('hdc', hm));   // hrebeň
                     if (fv % 2) for (const z of [-1, 1]) P.add('rbox', hcol, [HX + .9, HY - .9, z * 2.05 * hs], [0, 0, 0], [2.4, 2.2, .35], bm('hdc', hm)); }   // lícnice
             }
@@ -1507,6 +1518,7 @@ const B3 = (() => {
         if (B.mo) {
             const yell = shout || o.atk > .3 || u.wu > 0 || u.rout || (u.h && (C2.rd || (C2.swing && C2.swing.t > 0) || C2.cry > 840)), mT = yell ? 3.8 : o.hit > .3 ? 2.6 : 1;
             o.mo = (o.mo || 1) + (mT - (o.mo || 1)) * Math.min(1, .3 * dt); B.mo.scale.set(1, o.mo, 1 + (o.mo - 1) * .12);
+            if (B.br) { const bt2 = yell ? -.3 : o.hit > .3 ? .35 : 0; o.br = (o.br || 0) + (bt2 - (o.br || 0)) * Math.min(1, .35 * dt); B.br.position.y = o.br; B.br.rotation.x = 0; }   // hnev: obočie dole; bolesť a prekvapenie: hore
             B.ey.scale.y = o.hit > .45 ? .4 : ((clock * .55 + o.id * .37) % 4) < .05 ? .15 : yell ? .8 : 1;
         }
         B.shR.rotation.set(0, aRy, aR); B.elR.rotation.z = Math.max(0, eR);
