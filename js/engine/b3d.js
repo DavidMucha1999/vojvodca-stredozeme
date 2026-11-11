@@ -901,7 +901,7 @@ const B3 = (() => {
             : kind === 'v' || kind === 'r' || u.uk === 'uR2' ? 'a_rohanska_kruzkova' : kind === 'a' || u.uk === 'uG2' ? 'a_kozeny_odev' : null;
         const wm = !good ? null : wpn === 'spear' ? 'w_rohanska_kopija' : wpn === 'elfblade' ? 'w_orcrist' : wpn === 'axe' && race === 'dwarf' ? 'w_sekera_erebor' : wpn === 'sword' ? (kind === 'v' ? 'w_mec_strazcu' : 'w_zelezny_mec') : null;
         const gon = u.uk === 'uG3' || (u.t ? u.fc === 0 : G.fac === 0), hm = sp.mount === 'horse' ? (gon ? 'gondor' : 'rohan') : sp.mount === 'darkhorse' ? 'mearas_d' : null;   // plemeno koňa jednotky: Gondor bojový kôň, inak rohanský; Nazgûl čierny
-        return { hm, mdl: modelOf(race) ? 1 : 0, race, fac, skin: SKIN[sp.skin] || SKIN.human, hair: race === 'elf' ? ['#e8d8a0', '#c8b070', '#d8d4c0', '#8a7a50'][fv & 3] : ['#3a2a1a', '#6a4a2a', '#2a1a10', '#8a6a3a', '#a07a3a', '#5a2a1a', '#1a1410', '#9a9a96'][fv], fv, rk: ELITE.has(kind) || ELITE.has(u.uk) ? 1 : 0, beard: sp.beard || (race === 'human' && (fv === 0 || fv === 3 || fv === 5 || fv === 7)) ? 1 : 0, armor: (fu && fu.col) || sp.armor, helm: bare ? 'none' : sp.helm, helmCol: fu && fu.hel, weapon: wpn, wm: weaponModel(wm) ? wm : null, am: armorModel(am) ? am : null, shield: sp.shield, mount: sp.mount, beast: sp.beast, big: sp.big, team, quiver: sp.weapon === 'bow' || sp.weapon === 'xbow', scale: race === 'troll' ? 1.55 : sp.big ? 1.6 : 1 };
+        return { hm, mdl: modelOf(race) ? 1 : 0, race, fac, skin: SKIN[sp.skin] || SKIN.human, hair: race === 'elf' ? ['#e8d8a0', '#c8b070', '#d8d4c0', '#8a7a50'][fv & 3] : ['#3a2a1a', '#6a4a2a', '#2a1a10', '#8a6a3a', '#a07a3a', '#5a2a1a', '#1a1410', '#9a9a96'][fv], fv, rk: ELITE.has(kind) || ELITE.has(u.uk) ? 1 : 0, wg: sp.weapon === 'bow' || sp.weapon === 'xbow' || sp.helm === 'hood' ? 0 : ELITE.has(kind) || ELITE.has(u.uk) || kind === 'c' || sp.big ? 2 : 1, beard: sp.beard || (race === 'human' && (fv === 0 || fv === 3 || fv === 5 || fv === 7)) ? 1 : 0, armor: (fu && fu.col) || sp.armor, helm: bare ? 'none' : sp.helm, helmCol: fu && fu.hel, weapon: wpn, wm: weaponModel(wm) ? wm : null, am: armorModel(am) ? am : null, shield: sp.shield, mount: sp.mount, beast: sp.beast, big: sp.big, team, quiver: sp.weapon === 'bow' || sp.weapon === 'xbow', scale: race === 'troll' ? 1.55 : sp.big ? 1.6 : 1 };
     }
     const keyOf = s => JSON.stringify(s);
     /** Šablóna (geometrie a kostra) pre popis s; zdieľajú ju všetky rovnaké jednotky. */
@@ -924,7 +924,7 @@ const B3 = (() => {
     /** Humanoid ako jedna kostrová sieť: trup, hlava s tvárou a prilbou, ruky s lakťami, zbraň, štít, nohy s kolenami, plášť, tulec. */
     function humanoid(s) {
         const MM = s.mdl ? modelRace(s.race) : null, rc0 = MM || RACE[s.race] || RACE.human, rc = !MM && !s.hero && s.fv && s.race !== 'troll' && s.race !== 'wraith' ? varRace(rc0, s.fv) : rc0, { W, D, H, lt, ls, a1, a2, hs } = rc, foot = rc.foot ?? 1.1, hipY = lt + ls + foot;
-        const fv = s.fv ?? 0, armor = s.armor || '#7d7f80', team = s.team || '#d9a441', skin = s.race === 'human' || s.race === 'dwarf' ? sh(s.skin || SKIN.human, [1, .93, 1.05, .86, .97, 1.02, .9, 1.07][fv]) : s.skin || SKIN.human, rim = s.rim || sh(armor, 1.25), pants = sh(armor, .55), boots = '#3a2a1c', leather = '#5a3e26';
+        const fv = s.fv ?? 0, trimC = [0, 1, 5, 8].includes(s.fac) ? '#d8b450' : '#a07a3c', armor = s.armor || '#7d7f80', team = s.team || '#d9a441', skin = s.race === 'human' || s.race === 'dwarf' ? sh(s.skin || SKIN.human, [1, .93, 1.05, .86, .97, 1.02, .9, 1.07][fv]) : s.skin || SKIN.human, rim = s.rim || sh(armor, 1.25), pants = sh(armor, .55), boots = '#3a2a1c', leather = '#5a3e26';
         const mA = metalish(armor), mR = metalish(rim), hair = s.hair || '#4a3020';
         const hc = rc.hc || [.15, H + 2.3 * hs, 0], HX = hc[0], HY = hc[1], nhc = [-hc[0], -hc[1], 0];
         const shZ = rc.shZ ?? W / 2 + .7, shX = rc.shX || 0, legZ = rc.legZ ?? W * .2, mz = v => [v[0], v[1], -v[2]];
@@ -970,7 +970,7 @@ const B3 = (() => {
         if (!noTab && !s.hero && s.race !== 'wraith') {   // šerpa vo farbe frakcie cez hruď, náramenná páska a spona opasku: rozpoznanie strany už z diaľky
             P.add('rbox', team, [D * .52, H * .5, 0], [.62, 0, 0], [.4, H * 1.0, 1.7], bt('ch', 2)).add('rbox', sh(team, 1.2), [-D * .52, H * .5, 0], [.62, 0, 0], [.4, H * 1.0, 1.7], bt('ch', 2))
                 .add('cyl12', team, [0, -a1 * .45, 0], [0, 0, 0], [2.75, 1.1, 2.75], bt('shR', 2)).add('cyl12', team, [0, -a1 * .45, 0], [0, 0, 0], [2.75, 1.1, 2.75], bt('shL', 2));
-            P.add('box', '#d8b450', [D * .5 + .25, .35, 0], [0, 0, 0], [.2, 1.4, 1.8], bm('ch', 1));
+            P.add('box', trimC, [D * .5 + .25, .35, 0], [0, 0, 0], [.2, 1.4, 1.8], bm('ch', 1));
         }
         if (!noTab && s.rk && s.race !== 'wraith') {   // elitná jednotka: plátové náramenníky so zlatým lemom, šošy a zdobený pás
             for (const z of [-1, 1]) P.add('sph2', mA ? sh(armor, 1.12) : sh(rim, 1.05), [-.1, H - 1.3, z * (W / 2 + .75)], [0, 0, z * .3], [3.4, 2.2, 3], bm('ch', 1)).add('torus', '#d8b450', [-.1, H - 1.3, z * (W / 2 + .75)], [0, 0, z * .3 + Math.PI / 2], [3.1, 1, 2.8], bm('ch', 1));
@@ -979,6 +979,14 @@ const B3 = (() => {
         if (!noTab && (s.race === 'orc' || s.race === 'uruk' || s.race === 'troll') && !s.hero) {   // hrubé hroty na ramenách, handrový pás a pásy z kože
             for (const z of [-1, 1]) { P.add('cone', '#6a6458', [-.1, H - .2, z * (W / 2 + .9)], [z * .55, 0, 0], [.9, 2.4 + (fv % 3) * .6, .9], bm('ch', 1)); if (fv & 1) P.add('cone', '#6a6458', [.9, H - .5, z * (W / 2 + .5)], [z * .8, 0, .3], [.7, 1.8, .7], bm('ch', 1)); }
             P.add('rbox', sh(pants, .8), [D * .5, -2.6, 0], [0, 0, 0], [.3, 4.2, W * .5], { b: 'hip', t: 2, cl: [-.2, 4.2, .5], rigid: 1 }).add('rbox', leather, [0, -.1, 0], [0, 0, 0], [D * 1.05, .9, W * .85], bt('ch', 3));
+        }
+        if (!MM && !noTab && s.race !== 'wraith' && s.race !== 'troll') {   // váha brnenia: ľahké (kožený kyrys a remene), ťažké (plátový kyrys, nákrčník, ochrany predlaktí)
+            if (s.wg === 0) P.add('taperU', sh(leather, 1.05), [.4, (H - .8) / 2 + .3, 0], [0, 0, 0], [D * 1.06, H * .62, W * .94], bt('ch', 3)).add('rbox', sh(leather, .8), [D * .54, H * .5, 0], [-.62, 0, 0], [.35, H * .95, 1.1], bt('ch', 3)).add('box', '#c8a040', [D * .54 + .2, H * .55, W * .18], [-.62, 0, 0], [.3, 1.1, 1.1], bm('ch', 1));
+            if (s.wg === 2 || (s.hero && mA)) {
+                if (s.wg === 2) P.add('taperU', sh(armor, 1.1), [.5, (H - .8) / 2 + .45, 0], [0, 0, 0], [D * 1.1, H - 1.5, W * 1.0], bt('ch', 4, 1)).add('box', trimC, [D * .56 + .3, H * .45, 0], [0, 0, 0], [.25, H * .55, .5], bm('ch', 1));   // kyrys s rebrom
+                P.add('torus', sh(armor, 1.12), [-.1, H - .5, 0], [0, 0, .05], [D * .95, 1.6, W * .56], bt('ch', 4, 1));   // nákrčník
+                for (const bn of ['elR', 'elL']) P.add('cyl12', sh(armor, 1.04), [0, -a2 * .5, 0], [0, 0, 0], [2.35, a2 * .62, 2.35], bt(bn, 4, 1)).add('torus', trimC, [0, -a2 * .85, 0], [0, 0, 0], [2.4, .35, 2.4], bm(bn, 1));   // ochrany predlaktí
+            }
         }
         if (!MM && !noTab && mA && !s.hero && s.race !== 'wraith') P.add('torus', sh(armor, .72), [HX - .6 * hs, HY - 2.9 * hs, 0], [0, 0, .12], [3.3 * hs, 2.4, 3.3 * hs], bt('ch', 1, 1));   // kolčugová kapucňa na krku
         if (!MM && (rc.tusks || s.race === 'orc' || s.race === 'troll')) P.add('rbox', skin, [HX + 1.1 * hs, HY - 1.5 * hs, 0], [0, 0, 0], [2.4 * hs, 1.7 * hs, 3.4 * hs], b('hdc'));   // čeľusť
@@ -1076,7 +1084,7 @@ const B3 = (() => {
                     if (fv % 2) for (const z of [-1, 1]) P.add('rbox', hcol, [HX + .9, HY - .9, z * 2.05 * hs], [0, 0, 0], [2.4, 2.2, .35], bm('hdc', hm)); }   // lícnice
             }
             if (!s.hero && s.team && !['orc', 'troll', 'uruk', 'dwarf', 'elf', 'mask', 'easterling', 'plume', 'rohan'].includes(hk))   // chochol vo farbe frakcie
-                for (let i = 0; i < 3; i++) P.add('box', s.rk ? '#d8b450' : s.team, [HX - 1.5 - i * .6, HY + 3.1 * hs - i * 1.1, 0], [0, 0, .4 + i * .15], [.7, 2.6, 1 + (s.rk ? .9 : 0)], b('det'));
+                for (let i = 0; i < 3; i++) P.add('box', s.rk ? trimC : s.team, [HX - 1.5 - i * .6, HY + 3.1 * hs - i * 1.1, 0], [0, 0, .4 + i * .15], [.7, 2.6, 1 + (s.rk ? .9 : 0)], b('det'));
         } else if (!(MM && MM.md.tex)) hairOn();   // textúrované modely majú vlasy v sebe
         // tulec na chrbte (lukostrelci)
         if (s.quiver) { P.add('cyl12', leather, [-D / 2 - .8, H * .55, 1.4], [.35, 0, 0], [1.8, 7.4, 1.8], bt('ch', 3)); for (let i = 0; i < 4; i++) P.add('box', '#e8e4dc', [-D / 2 - .8 + (i % 2) * .5, H * .55 + 4.2, 1.4 + (i - 1.5) * .35 + 1.3], [.35, 0, 0], [.3, 1.4, .25], b('det')); }
@@ -1100,8 +1108,8 @@ const B3 = (() => {
             if (gm) WP.add(gm, '#ffffff', [0, 0, 0], [0, 0, 0], [1, 1, 1], { vc: 1, m: 1, t: 0, lod: lm || gm });
             tipY = WMd.land.tip;
         }
-        else if (wt === 'spear') { WP.add('cyl6', (Wg && Wg.shaft) || '#7a5a34', [0, -6, 0], [0, 0, 0], [.75, 38, .75], b('wp')).add('sph2', wb, [0, -27.5, 0], [0, 0, 0], [1.1, 5.6, .3], bm('wp', 1)).add('cone6', '#6a6a6a', [0, -24.6, 0], [Math.PI, 0, 0], [1, 1.6, 1], bm('wp', 1)).add('cyl6', '#8a8a8e', [0, -24.2, 0], [0, 0, 0], [1.3, 1.1, 1.3], bm('wp', 1)); if (!s.hero) for (let i = 0; i < 3; i++) WP.add('cone6', s.rk ? '#d8b450' : s.team, [0, -22.4 - i * 1.4, i % 2 ? .45 : -.45], [0, 0, 0], [.5, 2.8, .5], b('wp')); tipY = -30; }
-        else if (wt === 'axe') { for (let i = 0; i < 3; i++) WP.add('cyl6', '#7a7a7e', [0, -1.5 - i * 4.3, 0], [0, 0, 0], [1, .5, 1], bm('wp', 1)); WP.add('sph', '#7a7a7e', [0, 3.2, 0], [0, 0, 0], [.9, .9, .9], bm('wp', 1)).add('cyl6', (Wg && Wg.haft) || '#5a3a1a', [0, -5.5, 0], [0, 0, 0], [.85, 16, .85], b('wp')).add('box', wb, [1.7, -12, 0], [0, 0, 0], [3, 3.6, .4], bm('wp', 1)).add('box', wb, [2.6, -13.4, 0], [0, 0, .55], [1.6, 2.4, .35], bm('wp', 1)).add('cone6', wb, [-1, -12, 0], [0, 0, Math.PI / 2], [.7, 1.8, .4], bm('wp', 1)); tipY = -14; }
+        else if (wt === 'spear') { WP.add('cyl6', (Wg && Wg.shaft) || '#7a5a34', [0, -6, 0], [0, 0, 0], [.75, 38, .75], b('wp')).add('sph2', wb, [0, -27.5, 0], [0, 0, 0], [1.1, 5.6, .3], bm('wp', 1)).add('cone6', '#6a6a6a', [0, -24.6, 0], [Math.PI, 0, 0], [1, 1.6, 1], bm('wp', 1)); if (fv % 3 === 1) WP.add('box', wb, [0, -25.2, 0], [0, 0, 0], [.3, .5, 4.2], bm('wp', 1)); else if (fv % 3 === 2) for (const z of [-1, 1]) WP.add('cone6', wb, [0, -25.4, z * 1.1], [z * 2.4, 0, 0], [.4, 2, .4], bm('wp', 1)); WP.add('cyl6', '#8a8a8e', [0, -24.2, 0], [0, 0, 0], [1.3, 1.1, 1.3], bm('wp', 1)); if (!s.hero) for (let i = 0; i < 3; i++) WP.add('cone6', s.rk ? trimC : s.team, [0, -22.4 - i * 1.4, i % 2 ? .45 : -.45], [0, 0, 0], [.5, 2.8, .5], b('wp')); tipY = -30; }
+        else if (wt === 'axe') { for (let i = 0; i < 3; i++) WP.add('cyl6', '#7a7a7e', [0, -1.5 - i * 4.3, 0], [0, 0, 0], [1, .5, 1], bm('wp', 1)); if (fv & 1) WP.add('box', wb, [-1.7, -12, 0], [0, 0, 0], [3, 3.6, .4], bm('wp', 1)).add('box', wb, [-2.6, -13.4, 0], [0, 0, -.55], [1.6, 2.4, .35], bm('wp', 1)); WP.add('sph', '#7a7a7e', [0, 3.2, 0], [0, 0, 0], [.9, .9, .9], bm('wp', 1)).add('cyl6', (Wg && Wg.haft) || '#5a3a1a', [0, -5.5, 0], [0, 0, 0], [.85, 16, .85], b('wp')).add('box', wb, [1.7, -12, 0], [0, 0, 0], [3, 3.6, .4], bm('wp', 1)).add('box', wb, [2.6, -13.4, 0], [0, 0, .55], [1.6, 2.4, .35], bm('wp', 1)).add('cone6', wb, [-1, -12, 0], [0, 0, Math.PI / 2], [.7, 1.8, .4], bm('wp', 1)); tipY = -14; }
         else if (wt === 'club' || wt === 'mace') { WP.add('taperU', '#5a4030', [0, -6.5, 0], [0, 0, 0], [2, 15, 2], b('wp')).add('sph2', wt === 'mace' ? '#7a7c80' : '#4a3424', [0, -14.5, 0], [0, 0, 0], [4.4, 5.2, 4.4], bm('wp', wt === 'mace')); for (let i = 0; i < 5; i++) WP.add('cone6', '#8a8a8a', [Math.cos(i * 1.26) * 2.2, -14.5 + (i % 2) * 1.5, Math.sin(i * 1.26) * 2.2], [Math.sin(i * 1.26) * 1.57, 0, -Math.cos(i * 1.26) * 1.57], [.6, 1.6, .6], bm('wp', 1)); tipY = -16; }
         else if (wt === 'bow' || wt === 'xbow' || wt === 'none') { }
         else {   // meče: rovný, široký obojručný, zakrivená šabľa, štíhla elfská čepeľ
