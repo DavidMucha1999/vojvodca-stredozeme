@@ -1039,7 +1039,7 @@ const B3 = (() => {
                 if (wr === 1) SP.add('box', sh(scol, .55), [2.2, 2.2, 1.2], [0, 0, 0], [.14, 2.6, 2.4], b('shd')).add('box', sh(scol, .7), [2.22, 1.6, .7], [.3, 0, 0], [.1, 1.4, 1.2], b('shd'));
                 else if (wr === 2) SP.add('box', '#1a1410', [2.3, -.5, -.3], [.4, 0, .25], [.1, 6.5, .22], b('shd')).add('box', '#1a1410', [2.3, -2.8, 1.4], [-.5, 0, .1], [.1, 3, .2], b('shd'));
                 else if (wr === 3) SP.add('box', '#4a3a28', [1.65, 3.4, 4.1], [.3, 0, 0], [.9, 1.8, 1.7], b('shd')).add('box', sh(scol, .5), [2.2, -2.4, -2.8], [0, 0, 0], [.14, 1.8, 2.6], b('shd')); }
-            if (shape === 'kite') SP.add('box', '#c8b060', [2.35, 0, -.3], [0, 0, 0], [.25, 10, .6], bm('shd', 1)).add('sph2', '#c8b060', [2.5, 1.5, -.3], [0, 0, 0], [1.2, 1.2, 1.2], bm('shd', 1));   // stredový hrebeň a puklica kopijovitého štítu
+            if (shape === 'kite') SP.add('box', '#b89848', [2.27, 0, -.3], [0, 0, 0], [.08, 10.4, .4], bm('shd', 1));   // stredový hrebeň a puklica kopijovitého štítu
         }
         if (wt === 'bow') { const Rb = 8.5; for (let i = 0; i < 9; i++) { const th = -1.05 + i * .2625, x = Rb * Math.sin(th), y = Rb * (1 - Math.cos(th)) * .55; P.add('cyl6', '#6a4a2a', [x, y - .6, 0], [0, 0, -th * .55 + Math.PI / 2], [.65, 2.4, .65], b('hL')); } P.add('box', '#e8e4d0', [0, Rb * (1 - Math.cos(1.05)) * .55 - .6, 0], [0, 0, 0], [Rb * 2 * Math.sin(1.05), .12, .12], b('hL')); }
         if (wt === 'xbow') P.add('box', '#5a3a1a', [0, -3.5, 0], [0, 0, 0], [1, 9, 1.2], b('hL')).add('box', '#7a7e86', [0, -7.4, 0], [0, 0, 0], [11, .6, .6], bm('hL', 1));
