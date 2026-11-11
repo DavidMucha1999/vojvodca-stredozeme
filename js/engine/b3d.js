@@ -361,6 +361,26 @@ const B3 = (() => {
         const R = Math.max(D, W) * .8 + 3.2, M = sdfMesh(segs, ex, [-R, 0, -R], [R, hip[1] + .8 + H + 1.4, R], .42, BN);
         SDFC.set(key, M); return M;
     }
+    /** Hlava zo SDF: lebka, stredná časť tváre, sánka, brada, lícne kosti, obočnicové oblúky a ušné chrupavky – hladko zliate, s variantom podľa fv a rasy. */
+    const HEADC = new Map();
+    function headSDF(race, rc, BN, fv, hs, HX, HY) {
+        const key = race + ':' + fv + ':' + hs + ':' + HX.toFixed(2) + ':' + HY.toFixed(2); if (HEADC.has(key)) return HEADC.get(key);
+        const jw = [1, 1.1, .9, 1.22, 1, .9, 1.16, 1.05][fv], cb = [1, 1.1, .95, 1, 1.15, .9, 1, 1.05][fv], brow = [1, 1.15, .9, 1.3, 1, .9, 1.2, 1.1][fv];
+        const orc = race === 'orc' || race === 'uruk' || race === 'troll', dw = race === 'dwarf', el = race === 'elf';
+        const k = hs, ex = [];
+        ex.push(['hdc', [HX - .2, HY + .35 * k, 0], [2.05 * k, 2.1 * k, 1.95 * k], .5]);   // lebka
+        ex.push(['hdc', [HX + .35, HY - .5 * k, 0], [1.75 * k, 1.75 * k, (1.75 + (jw - 1) * .35) * k], .5]);   // stredná časť tváre
+        ex.push(['hdc', [HX + (orc ? .55 : .35), HY - 1.3 * k, 0], [1.55 * k, 1.15 * k, 1.3 * jw * k * (el ? .88 : 1) * (orc ? 1.12 : 1)], .55]);   // sánka
+        ex.push(['hdc', [HX + (orc ? 1.5 : 1.2) * k, HY - 1.85 * k, 0], [.7 * k * (dw ? 1.1 : 1), .62 * k, (orc ? .95 : .7) * k * jw], .4]);   // brada
+        for (const z of [-1, 1]) {
+            ex.push(['hdc', [HX + 1.1 * k, HY - .45 * k, z * 1.4 * k * (el ? .9 : 1)], [.8 * k * cb, .52 * k, .6 * k], .4]);   // lícna kosť
+            ex.push(['hdc', [HX + .5 * k, HY - 1.05 * k, z * 1.45 * k * jw], [1.1 * k, .85 * k, .5 * k], .45]);   // uhol sánky
+        }
+        ex.push(['hdc', [HX + 1.55 * k, HY + .78 * k, 0], [.5 * k * brow, .36 * k * brow, 1.55 * k], .35]);   // obočnicový oblúk
+        const segs = [['hdc', [HX - .2, HY, 0], [HX - .2, HY + .1, 0], 1, 1, 1]];
+        const R = 3.4 * k, M = sdfMesh(segs, ex, [HX - R - .2, HY - 3.1 * k, -R], [HX + R + .4, HY + 3 * k, R], .27, BN);   // krok .27: ~50 ms na hlavu, výsledok sa ukladá
+        HEADC.set(key, M); return M;
+    }
     /** Telo koňa zo SDF: trup, hruď, zadok, krk, hlava s nozdrami, nohy s kĺbmi. */
     function horseSDF(key, BN, up, lo) {
         if (SDFC.has(key)) return SDFC.get(key);
@@ -960,7 +980,8 @@ const B3 = (() => {
         if (!noTab) P.add('rbox', team, [D * .56, H * .44, 0], [0, 0, 0], [.5, H * .82, W * .44], bt('ch', 2)).add('rbox', team, [-D * .56, H * .44, 0], [0, 0, 0], [.5, H * .82, W * .44], bt('ch', 2))
             .add('cyl12', leather, [0, .35, 0], [0, 0, 0], [D * .98, 1.2, W * .8], bt('ch', 3)).add('box', '#c8a040', [D * .49, .35, 0], [0, 0, 0], [.35, 1, 1], bm('ch', 1))
             .add('sph2', rim, [-.1, H - 1.6, W / 2 - .2], [0, 0, -.1], [D * .95, 2.8, 3.4], bm('ch', mR)).add('sph2', rim, [-.1, H - 1.6, -W / 2 + .2], [0, 0, -.1], [D * .95, 2.8, 3.4], bm('ch', mR));
-        if (!MM) P.add('sph2', skin, hc, [0, 0, 0], [4.1 * hs, 4.9 * hs, 3.9 * hs], b('hdc'));
+        if (!MM && !rc.noFace) for (const [g, metal] of sdfGeos(headSDF(s.race || 'human', rc, BN, s.fv || 0, hs, HX, HY + chY), () => [skin, 0, false])) P.add(g, '#ffffff', [0, 0, 0], [0, 0, 0], [1, 1, 1], { pre: 1, m: metal });   // hlava zo SDF
+        else if (!MM) P.add('sph2', skin, hc, [0, 0, 0], [4.1 * hs, 4.9 * hs, 3.9 * hs], b('hdc'));
         if (fullTex && mA && !noTab) P.add('taperU', armor, [.3, (H - .8) / 2 + .3, 0], [0, 0, 0], [D * 1.05, H - 1.2, W * 1.02], bt('ch', fab(armor), mA));   // textúrovaný ork v plátovej zbroji: kyrys navrch
         if (!noTab) P.add('taper', mA ? sh(armor, .85) : sh(armor, .8), [0, -1.4, 0], [0, 0, 0], [MM ? D * 1.3 : D * 1.12, 3.4, MM ? Math.max(W * .9, rc.hipW * 1.06) : W * .9], bt('hip', fab(armor), mA));
         // vrstvená výstroj: chlopne kabátca vejú pri behu, mešec a dýka na opasku, druhá lamela náplecníkov
@@ -1023,8 +1044,6 @@ const B3 = (() => {
                 if (rc.tusks) P.add('cone', '#e8e0c8', [HX + 2.0 * hs, HY - 1.45 * hs, z * .85 * hs], [0, 0, 0], [.4, 1, .4], b('det'));
             }
             P.add('box', '#3a1410', [0, 0, 0], [0, 0, 0], [.24, .24, 1.2 * hs], b('mo')).add('rbox', lipU, [.06, .2, 0], [0, 0, 0], [.24, .2, 1.3 * hs], b('mo')).add('rbox', lipL, [.08, -.2, 0], [0, 0, 0], [.26, .22, 1.1 * hs], b('mo'));   // ústa a pery (otvoria sa pri pokriku a bolesti)
-            for (const z of [-1, 1]) P.add('sph2', sh(skin, .97), [HX + 1.4 * hs, HY - .6 * hs, z * 1.05 * hs], [0, 0, 0], [.95 * hs, .8 * hs, .75 * hs], b('det'));   // lícne kosti
-            P.add('sph2', skin, [HX + 1.55 * hs, HY - 1.7 * hs, 0], [0, 0, 0], [1.5 * hs, 1.1 * hs, 1.9 * hs], b('det'));   // brada
             if (s.race === 'orc' || s.race === 'uruk') {   // bojová maľba, rozdielne kly a hrubšie obočie podľa variantu
                 const pc = ['#c8c0a8', '#a83020', '#e8e0c8', '#2a2a2a'][fv & 3];
                 if (fv < 5) for (const z of [-1, 1]) P.add('box', pc, [HX + 1.75 * hs, HY - .1 * hs, z * .55 * hs], [z * .2, 0, 0], [.14, 1.9 * hs, .32], b('det'));   // pruhy cez tvár
