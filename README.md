@@ -266,6 +266,12 @@ Všetky modely z Meshy (telá postáv, kone, netvory, zbrane a brnenia dobra) s�
 - **Efekty:** **stopy šípov** vo vzduchu (salvy sú vidieť), pri nápore jazdy **valiace sa mračno prachu** (v daždi blato, v snehu prašan), **oheň sa šíri suchou trávou** (dážď ho hasí), triesky a kusy štítov aj zbrane ostávajú ležať.
 - **Krv:** predvolene **vypnutá** (Nastavenia → Krv v bitke); nové efekty krv nepoužívajú, na postavách sa hromadí len blato a prach. Spomalenie pri zásahu do hlavy a páde veliteľa ostáva.
 
+## Lukostrelci a ukazovateľ útokov (verzia 60)
+
+- **Lukostrelci AI netrafia každý šíp** (`aiShoot`, `aiBow` v `js/sim/warband.js`): najprv **mieria** asi pol sekundy (30 – 50 snímok), potom vystrelia a dlhšie dobíjajú (80 – 120 snímok namiesto 75). Rozptyl rastie so **vzdialenosťou**, s **behom cieľa** a pri streľbe z koňa; elfovia a zručnejší (`aiSkill`) strieľajú presnejšie. Vedenie pred bežiaci cieľ je nepresné (strelec len odhaduje, kam sa pohne). Test: pri stojacom hrdinovi na 100 jednotiek trafí asi 40 % šípov (predtým takmer všetky).
+- **Ukazovateľ útokov zo všetkých strán** (`js/engine/scenes/UIScene.js`, nastavenie „Ukazovateľ útokov okolo zameriavača“): okolo zameriavača sa v smere, odkiaľ ide úder, zobrazí **červený trojuholník**, ktorý rastie až do dopadu (až 5 útočníkov naraz, aj zozadu a zboku); lukostrelec, ktorý na teba mieri, má **oranžový trojuholník** so spojnicou k zameriavaču. Smer úderu (zľava, sprava, zhora, bod) ukazuje ako doteraz červená šípka pod zameriavačom a póza útočníka.
+- Ovládanie boja už zodpovedalo Warbandu (ľavé tlačidlo sek, pravé kryt, smer úderu pohybom myši, koliesko mení zbraň, F kopnutie, Q luk); zmena sa ho netýka.
+
 ## Boj bližšie k Warbandu (verzia 53)
 
 - **Čepeľ v pohybe** (`heroStrike` a `swingTick` v `js/sim/combat.js`): úder už nezasiahne všetkých naraz v okamihu stlačenia. Po uvoľnení nápriahu sa zbraň pohybuje – sek zľava/sprava prechádza oblúkom z jednej strany na druhú, úder zhora zasiahne v druhej polovici pohybu, bod sa postupne vysúva – a zasiahne len to, cez čo čepeľ prejde (každého raz za sek, najviac 3 – 4 v oblúku). Čepeľ je najrýchlejšia v strede seku a **hrot udiera silnejšie než rúčka**, takže záleží na vzdialenosti aj na načasovaní; mimo dosahu sa nič nestane. Zbraň sa zarazí o múr či vlastného vojaka ako doteraz.

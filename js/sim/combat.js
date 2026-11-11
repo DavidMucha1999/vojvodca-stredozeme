@@ -525,7 +525,7 @@ function holdSlot(u, b, bd, dt) {
     if (u.hx == null) { u.hx = u.x; u.hy = u.y; }
     const dx = u.hx - u.x, dy = u.hy - u.y, ds = Math.hypot(dx, dy), archer = u.k === 'a' || u.k === 'e';
     const sp = u.sp * (fmOf(u) === 'wall' && !u.t ? .75 : 1), step = () => { if (ds > 3) { u.x += dx / ds * Math.min(ds, sp * dt); u.y += dy / ds * Math.min(ds, sp * dt); } };
-    if (archer) { step(); u.f = dirTo(u, b); if (u.c <= 0 && bd < WX.r) { u.c = 75; aiShoot(u, b); } return true; }
+    if (archer) { step(); u.f = dirTo(u, b); if (u.c <= 0 && bd < WX.r) aiBow(u, b, 7); else u.aim = 0; return true; }
     if (bd > 45 || ds > 70) { step(); u.f = ds > 3 ? Math.atan2(dy, dx) : dirTo(u, b); u.run = 0; return true; }
     return false;
 }

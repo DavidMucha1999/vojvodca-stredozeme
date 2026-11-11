@@ -40,6 +40,7 @@ function optItems() {
         [() => 'Filmové zrno: ' + (OPT.grain ? 'áno' : 'nie'), () => set('grain', !OPT.grain)],
         [() => 'Nálet kamery na začiatku bitky: ' + (OPT.intro3d === false ? 'nie' : 'áno'), () => set('intro3d', OPT.intro3d === false)],
         [() => 'Mierenie v 3D: ' + (OPT.aimMode === 'ground' ? 'kurzorom na zem' : 'ako vo Warbande (myš otáča kameru, zameriavač v strede)'), () => set('aimMode', OPT.aimMode === 'ground' ? 'look' : 'ground')],
+        [() => 'Ukazovateľ útokov okolo zameriavača: ' + (OPT.tell !== false ? 'áno' : 'nie'), () => set('tell', OPT.tell === false)],
         [() => 'Výdrž v boji: ' + (OPT.noStam !== false ? 'bez výdrže (ako Warband)' : 'áno (ťažší boj)'), () => set('noStam', OPT.noStam === false)],
         [() => 'Smer krytu: ' + (OPT.blkDir === 'manual' ? 'myšou (ako Warband – pohni myšou k úderu)' : 'automatický'), () => set('blkDir', OPT.blkDir === 'manual' ? 'auto' : 'manual')],
         [() => 'Kvalita grafiky: ' + (lowFx() ? 'nízka (rýchlejšia)' : 'vysoká'), () => set('fx', lowFx() ? 'high' : 'low')],

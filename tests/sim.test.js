@@ -345,6 +345,11 @@ try {
         plated = () => false; tp.hp = 9999; hitZ(tp, 6, h, { zone: "torso", type: "c" }); var weakN = 9999 - tp.hp; plated = pl; Math.random = Rn;
         OPT.noStam = true; CMB.st = 10; h.c = 0; tick(1); var noSt = CMB.st === 100; OPT.noStam = undefined;`);
     check('Warband: čepeľ zasiahne počas seku (nie hneď), mimo dosahu nič; druhy zbraní; plát odráta pevnú hodnotu (slabý úder sa stratí, silný prejde); bez výdrže', run('swAct && late === 0 && swHit && far && stOk && weak < weakN * .85 && big > 33 && noSt'), run('[swAct, late, swHit, far, kS, weak, weakN, big, noSt].join(" ")'));
+    run(`startBattle({ n: 6, f: 2, nm: "T" }); var bwT = U[0]; bwT.x = 300; bwT.y = 300; bwT.vx3 = 0; bwT.vy3 = 0; var bwA = U.find(u => u.t); bwA.hp = bwA.mh = 99; bwA.k = "i"; bwA.uk = null; bwA.d = 5; bwA.x = 400; bwA.y = 300;
+        var bwM = Math.random; Math.random = (() => { let q = 12345; return () => (q = (q * 1664525 + 1013904223) % 4294967296) / 4294967296; })(); var bwS = '', firstShot = 0, bwH = 0, bwN = 300; for (let n = 0; n < bwN; n++) { AR.length = 0; bwA.c = 0; bwA.aim = 0; bwT.hp = 1e9; for (let k = 0; k < 80 && !AR.length; k++) { aiBow(bwA, bwT, 7); if (!firstShot && AR.length) firstShot = k + 1; }
+            const bwa = AR[0]; if (!bwa) continue; let bwt = 0; while (AR.includes(bwa) && bwt++ < 400) stepArrows(1); const dy = Math.abs(bwa.y - bwT.y), dx = Math.abs(bwa.x - bwT.x); if (dx < 12 && dy < 6) bwH++; if (n < 4) bwS += [bwa.x | 0, bwa.y | 0, bwT.x | 0, bwT.y | 0].join(',') + ' '; }
+        Math.random = bwM; var hitPct = bwH / bwN;`);
+    check('Warband: lukostrelec najprv mieri (napína) a netrafí každý šíp (stojaci cieľ do 100 jednotiek)', run('firstShot >= 25 && hitPct < .55 && hitPct > .05'), run('[firstShot, hitPct, bwH, bwN, bwS].join(" ")'));
     run(`var ai = U.find(u => u.t && u !== e); ai.uk = null; ai.k = "i"; ai.d = 5; ai.hp = ai.mh = 9999; ai.stun = 0; ai.rout = 0; ai.wu = 10; ai.wt = h; var R1 = Math.random; Math.random = () => .99; hitZ(ai, 8, h, { zone: "torso", type: "c" }); Math.random = R1; var flinch = ai.wu === 0 && ai.c >= 16;
         ai.wu = 10; ai.d = 15; ai.hp = ai.mh = 9999; Math.random = () => .1; hitZ(ai, 8, h, { zone: "torso", type: "c" }); Math.random = R1; var skilled = ai.wu === 10 - 0 || ai.wu > 0;
         ai.uk = "uG1"; var wkA = aiWpn(ai); ai.uk = "uE1"; var wkB = aiWpn(ai); ai.uk = null; var wOk = wkA === "spear" && wkB === "axe" && aiSkill({ d: 5 }) === 0 && aiSkill({ d: 15 }) === 1;`);
@@ -397,7 +402,7 @@ try {
     run(closeMenus + '; mode = "map"; ov.classList.add("hide"); for (const k in keys) keys[k] = false;');
     run(`G.eq.m = 2; G.own.m = [0, 2]; G.eq.r = 3; G.own.r = [0, 3]; startBattle({ n: 6, f: 7, nm: "T" }); var h = U[0]; CMB.mvA = 0; CMB.mvS = 0; var x0 = h.x; horseMove(h, 1, 0, 1, 1); var step1 = h.x - x0; for (let i = 0; i < 60; i++) horseMove(h, 1, 0, 1, 1); var x1 = h.x; horseMove(h, 1, 0, 1, 1); var stepN = h.x - x1; var horseOk = step1 < stepN * .5 && stepN > 0;
         G.eq.m = 0; CMB.bowC = 30; cmbHero(h, 1, 0); var b1 = CMB.bowC; cmbHero(h, 1, null); var xbOk = b1 === 30 && CMB.bowC < 30;
-        var ha = mk(1, "uN3"); ha.x = 600; ha.y = 400; U.push(ha); var tgtU = U[0]; tgtU.x = 600; tgtU.y = 500; ha.c = 0; AR.length = 0; for (let i = 0; i < 40; i++) haAI(ha, tgtU, Math.hypot(tgtU.x - ha.x, tgtU.y - ha.y), 1); var haOk = isHA(ha) && AR.some(a => a.by === ha);
+        var ha = mk(1, "uN3"); ha.x = 600; ha.y = 400; U.push(ha); var tgtU = U[0]; tgtU.x = 600; tgtU.y = 500; ha.c = 0; AR.length = 0; for (let i = 0; i < 90; i++) haAI(ha, tgtU, Math.hypot(tgtU.x - ha.x, tgtU.y - ha.y), 1); var haOk = isHA(ha) && AR.some(a => a.by === ha);
         for (const u of U) if (u.t) u.hp = 0; var kh = 0; while (mode === "battle" && kh < 60) { U[0].hp = 999; updBattle(1); kh++; } G.eq.r = 0; G.eq.m = 0;`);
     check('Kôň má zotrvačnosť, kuša sa nabíja len postojačky, jazdecký lukostrelec strieľa', run('horseOk && xbOk && haOk'), run('[horseOk, xbOk, haOk].join(" ")'));
     run(closeMenus + '; mode = "map"; ov.classList.add("hide");');

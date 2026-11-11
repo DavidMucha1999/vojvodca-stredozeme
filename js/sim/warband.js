@@ -131,14 +131,23 @@ function fireArrow(u, yaw, pitch, sp, o) {
     const a = { x: u.x + Math.cos(yaw) * 4, y: u.y + Math.sin(yaw) * 4, z, vx: Math.cos(yaw) * Math.cos(pitch) * sp, vy: Math.sin(yaw) * Math.cos(pitch) * sp, vz: Math.sin(pitch) * sp, l: o.l || 600, t: u.t, by: u, ...o };
     AR.push(a); return a;
 }
-/** Výstrel vojaka AI na cieľ b (s rozptylom; elfovia presnejší). */
+/** Výstrel vojaka AI na cieľ b. Presnosť klesá so vzdialenosťou, s behom cieľa a pri streľbe z koňa; elfovia a zručnejší strieľajú presnejšie.
+ *  Vedenie pred cieľ je nepresné (strelec odhaduje, kam sa cieľ pohne), takže bežiaceho hrdinu nezasiahne každý šíp. */
 function aiShoot(u, b, sp = 7) {
     const d = Math.hypot(b.x - u.x, b.y - u.y), z0 = elevSim(u.x, u.y) + seatH(u) + bodyH(u) * .72, zt = elevSim(b.x, b.y) + seatH(b) + bodyH(b) * .6;
-    const lead = d / sp, tx = b.x + (b.vx3 || 0) * lead * .5, ty = b.y + (b.vy3 || 0) * lead * .5;   // mierenie pred bežiaceho
-    const yaw = Math.atan2(ty - u.y, tx - u.x), acc = u.k === 'e' ? .5 : onMount(u) ? 1.8 : 1;
+    const lead = d / sp * (.3 + Math.random() * .55), tx = b.x + (b.vx3 || 0) * lead, ty = b.y + (b.vy3 || 0) * lead;
+    const yaw = Math.atan2(ty - u.y, tx - u.x), sk = typeof aiSkill === 'function' ? aiSkill(u) : .3, mvN = Math.min(2, Math.hypot(b.vx3 || 0, b.vy3 || 0));
+    const sig = (u.k === 'e' ? .03 : .058 + .045 * (1 - sk)) * (.7 + d / 110) * (1 + mvN * .3) * (onMount(u) ? 1.8 : 1);   // rozptyl (rad)
+    const g = () => (Math.random() + Math.random() + Math.random() - 1.5) / .75;   // ≈ normálne rozdelenie v rozsahu -2 … 2
     const p = ballistic(Math.hypot(tx - u.x, ty - u.y), zt - z0, sp);
-    fireArrow(u, yaw + (Math.random() - .5) * .07 * acc, p + (Math.random() - .5) * .035 * acc, sp, { d: u.k === 'e' ? 7 : 4.5 });
+    fireArrow(u, yaw + g() * sig, p + g() * sig * .45, sp, { d: u.k === 'e' ? 7 : 4.5 });
     snd('ar');
+}
+/** Lukostrelec AI: najprv mieri (napína asi pol sekundy, hrdina to vidí v ukazovateli útokov), potom vystrelí a dlhšie dobíja. */
+function aiBow(u, b, sp, dt = 1) {
+    if (!(u.aim > 0)) { u.aim = u.aim0 = 30 + Math.random() * 20; u.at = b; return; }
+    u.aim -= dt; if (u.aim > 0) return;
+    u.aim = 0; u.c = 80 + Math.random() * 40; aiShoot(u, u.at && u.at.hp > 0 ? u.at : b, sp);
 }
 const segD = (ax, ay, bx, by, px, py) => { const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy, k = L ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / L)) : 0; return Math.hypot(ax + dx * k - px, ay + dy * k - py); };
 /** Pohyb šípov: gravitácia, zásah do časti tela, do štítu, do hradieb, do zeme (tam ostane a dá sa zdvihnúť). */
@@ -239,7 +248,7 @@ function haAI(u, b, bd, dt) {
     u.x = Math.max(10, Math.min(BW - 10, u.x + Math.cos(mv) * u.sp * dt)); u.y = Math.max(22, Math.min(BH - 10, u.y + Math.sin(mv) * u.sp * dt));
     if (u.x < 30 || u.x > BW - 30 || u.y < 40 || u.y > BH - 30) u.cw = -u.cw;
     u.f = dirTo(u, b);
-    if (u.c <= 0 && bd < WX.r * 1.2) { u.c = 70; aiShoot(u, b, 7.5); }
+    if (u.c <= 0 && bd < WX.r * 1.2) aiBow(u, b, 7.5); else u.aim = 0;
 }
 /** Rýchlosť jednotiek (pre mierenie pred bežiaceho). */
 function trackVel(dt) { for (const u of U) { if (u.rear > 0) u.rear -= dt; if (u.px3 != null) { u.vx3 = (u.x - u.px3) / Math.max(.3, dt); u.vy3 = (u.y - u.py3) / Math.max(.3, dt); } u.px3 = u.x; u.py3 = u.y; } }
