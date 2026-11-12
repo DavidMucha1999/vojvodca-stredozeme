@@ -289,6 +289,7 @@ Všetky modely z Meshy (telá postáv, kone, netvory, zbrane a brnenia dobra) s�
 - **Výbava hrdinu (verzia 77):** hrdina bez prilby nosí koženú čelenku s kovovou ozdobou, a ak nemá hrudné brnenie, aj kožený ramenný popruh a váčok na opasku.
 - **Kúpená výbava v 3D boji (verzia 78):** brnenie hrdinu sa v boji mení podľa triedy – ľahké je kožené, stredné má pevnejšiu košeľu, ťažké plátový náprsník a najlepšie (Plát z Ereboru, Mithrilová košeľa) aj zlaté náramenníky a tassety. Kôň, varg, prilba, štít a zbraň sa v boji zobrazujú podľa toho, čo hrdina nosí.
 - **Prach pod nohami (verzia 79):** pri behu pechoty a jazdy sa z každého kroku zdvíha malý obláčik prachu vo farbe terénu (od strednej kvality vyššie).
+- **Zvieratá a nestvory (verzia 80):** **varg** má dolnú čeľusť so zubami a jazykom, nos, obočie, hrivu okolo krku, chrbtový hrebeň, rozstrapkané boky, pazúry a kožené popruhy so sedlovou podložkou; **olifant** je svetlejší, má chobot z článkov s koncom, uši s vnútornou stranou, kly s bronzovými prúžkami, záhyby kože, chvost so strapcom, štíty a lať na veži, zástavu a pokrývku vo farbe frakcie, nohy s nechtami.
 - Ovládanie boja už zodpovedalo Warbandu (ľavé tlačidlo sek, pravé kryt, smer úderu pohybom myši, koliesko mení zbraň, F kopnutie, Q luk); zmena sa ho netýka.
 
 ## Boj bližšie k Warbandu (verzia 53)
