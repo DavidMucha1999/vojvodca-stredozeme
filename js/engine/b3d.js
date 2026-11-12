@@ -1118,10 +1118,19 @@ const B3 = (() => {
             }
             if (!s.hero && s.team && !['orc', 'troll', 'uruk', 'dwarf', 'elf', 'mask', 'easterling', 'plume', 'rohan'].includes(hk))   // chochol vo farbe frakcie
                 for (let i = 0; i < 3; i++) P.add('box', s.rk ? trimC : s.team, [HX - 1.5 - i * .6, HY + 3.1 * hs - i * 1.1, 0], [0, 0, .4 + i * .15], [.7, 2.6, 1 + (s.rk ? .9 : 0)], b('det'));
-        } else if (!(MM && MM.md.tex)) hairOn();   // textúrované modely majú vlasy v sebe
+        } else if (!(MM && MM.md.tex)) {
+            hairOn();   // textúrované modely majú vlasy v sebe
+            if (s.hero && !MM) {   // hrdina bez prilby: kožená čelenka s kovovou ozdobou, aby bol rozpoznateľný aj z diaľky
+                P.add('torus', sh(leather, 1.0), [HX - .1, HY + .95 * hs, 0], [0, 0, .06], [4.75 * hs, 1.1, 4.55 * hs], bt('hdc', 3)).add('box', trimC, [HX + 2.28 * hs, HY + .95 * hs, 0], [0, 0, 0], [.22, .75, .75], bm('hdc', 1));
+            }
+        }
         // tulec na chrbte (lukostrelci)
         if (s.quiver) { P.add('cyl12', leather, [-D / 2 - .8, H * .55, 1.4], [.35, 0, 0], [1.8, 7.4, 1.8], bt('ch', 3)); for (let i = 0; i < 4; i++) P.add('box', '#e8e4dc', [-D / 2 - .8 + (i % 2) * .5, H * .55 + 4.2, 1.4 + (i - 1.5) * .35 + 1.3], [.35, 0, 0], [.3, 1.4, .25], b('det')); }
         // plášť (látka, ktorá sa vlní)
+        if (s.hero && !MM && !mA && !noTab) {   // kožený ramenný popruh a váčok na opasku
+            P.add('box', sh(leather, .85), [D * .02, H * .52, 0], [0, 0, .62], [.42, H * .82, W * .64], bt('ch', 3));
+            P.add('rbox', sh(leather, 1.1), [D * .1, -.8, -W * .52], [0, 0, 0], [1.6, 2.2, 1.9], bt('hip', 3)).add('box', trimC, [D * .1 + .9, -.5, -W * .52], [0, 0, 0], [.1, .5, .5], bm('hip', 1));
+        }
         if (s.cape || s.hero) { const cc = s.cape || team; P.add('capeBox', cc, [0, 0, 0], [0, 0, 0], [.5, H + 3.5, W * .95], { b: 'cape', cl: [0, H + 3.5, 1], t: 2, rigid: 1 });
             if (!noTab) { P.add('sph2', sh(cc, 1.08), [-.4, H - .6, 0], [0, 0, 0], [D * .95, 2.2, W * 1.02], bt('ch', 2)).add('sph', '#d8b450', [D * .5 + .15, H - .5, 0], [0, 0, 0], [.8, .8, .8], bm('ch', 1));   // golier plášťa a spona na krku
                 for (const z of [-1, 1]) P.add('sph2', sh(cc, .92), [-.7, H - 1.2, z * (W / 2 - .3)], [0, 0, z * .15], [D * .8, 1.9, 2.8], bt('ch', 2)); } }   // záhyby plášťa na pleciach
