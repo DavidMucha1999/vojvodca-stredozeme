@@ -1133,6 +1133,11 @@ const B3 = (() => {
         ; if (!MM) { P.add('sph2', mA ? sh(armor, .9) : skin, [.1, -.6, 0], [0, 0, 0], [1.5, 1.9, 1.3], { b: 'hR', m: mA }).add('sph2', mA ? sh(armor, .96) : sh(skin, .96), [.55, -.35, 0], [0, 0, 0], [.9, 1.1, 1.35], { b: 'hR', m: mA }).add('cyl12', mA ? sh(armor, .75) : sh(leather, 1.1), [0, .15, 0], [0, 0, 0], [1.75, 1.05, 1.75], { b: 'hR', t: mA ? 0 : 3, m: mA });
         for (let i = 0; i < 4; i++) P.add('cyl6', mA ? sh(armor, .9) : skin, [.62, -.25 - i * .42, 0], [Math.PI / 2, 0, 0], [.42, 1.35, .42], { b: 'hR', m: mA });   // prsty okolo rukoväte
         P.add('cyl6', mA ? sh(armor, .9) : skin, [.35, -.15, .65], [.5, 0, -.6], [.42, 1, .42], { b: 'hR', m: mA }); }   // palec
+        if (!MM) for (const hb of ['hR', 'hL']) {   // kĺby prstov, rukavica s manžetou a pásikom
+            const gl = s.wg !== 0 || mA, gc = mA ? sh(armor, .8) : sh(leather, 1.05);
+            for (let i = 0; i < 4; i++) P.add('sph2', mA ? sh(armor, .98) : sh(skin, .94), [.66, -.25 - i * .42, 0], [0, 0, 0], [.5, .5, .5], { b: hb, m: mA });
+            if (gl && !mA) P.add('cyl12', gc, [.05, -.28, 0], [0, 0, 0], [1.62, .55, 1.62], { b: hb, t: 3 }).add('box', sh(trimC, .8), [.55, -.28, 0], [0, 0, 0], [.18, .22, 1.7], { b: hb, t: 3 });
+        }
         const Wg = s.weaponG, wb = (Wg && (Wg.blade || (Wg.grad && Wg.grad[0]) || Wg.head)) || '#b8bec6', wt = s.weapon, guard = (Wg && Wg.guard) || '#6a6058';
         let tipY = -14; const WMd = weaponModel(s.wm);
         if (WMd) {   // zbraň z modelu (Meshy): drevo a koža s farbami vrcholov, kov s leskom; vo vzdialenom zástupe zjednodušená
@@ -1192,6 +1197,11 @@ const B3 = (() => {
         const greave = mA ? armor : null;
         for (const [lg, kn] of [['lgR', 'knR'], ['lgL', 'knL']]) {
             if (!MM) P.add('cyl12', boots, [0, -ls * .68, 0], [0, 0, 0], [2.6, ls * .64, 2.6], bt(kn, 3)).add('rbox', boots, [.9, -ls - .45, 0], [0, 0, 0], [4, 1.3, 2.4], bt(kn, 3));
+            if (!MM) {   // podrážka, päta, špička a remienky
+                const so = sh(boots, .55);
+                P.add('rbox', so, [.95, -ls - 1.08, 0], [0, 0, 0], [4.25, .42, 2.6], bt(kn, 3)).add('box', so, [-.7, -ls - 1.25, 0], [0, 0, 0], [1.3, .6, 2.3], bt(kn, 3)).add('sph2', sh(boots, 1.12), [2.55, -ls - .55, 0], [0, 0, 0], [1.1, .75, 1.15], bt(kn, 3));
+                for (const yy of [.38, .7]) P.add('cyl12', sh(boots, .7), [0, -ls * yy, 0], [0, 0, 0], [2.72, .22, 2.72], bt(kn, 3)).add('box', sh(trimC, .85), [1.35, -ls * yy, 0], [0, 0, 0], [.14, .3, .5], bt(kn, 3));
+            }
             if (greave) P.add('sph2', greave, [.7, 0, 0], [0, 0, 0], [1.6, 1.6, 1.6], bm(kn, 1)).add('box', greave, [.85, -ls * .4, 0], [0, 0, 0], [.4, ls * .55, 1.8], bm(kn, 1));
         }
         const geo = P.build(BN, mdef), geoLow = MM ? P.build(BN, mdef, true) : null;
