@@ -287,6 +287,7 @@ Všetky modely z Meshy (telá postáv, kone, netvory, zbrane a brnenia dobra) s�
 - **Ruky a nohy (verzia 75):** prsty majú **kĺby**, nekovové ruky nosia **koženú rukavicu** s manžetou a pásikom vo frakčnej farbe; čižmy majú **podrážku, pätu, zaoblenú špičku** a dva **remienky** s prackami.
 - **Plynulejšie načítanie a čistejšie látky (verzia 76):** pri načítaní bitky sa vopred vypočítajú varianty tvárí (SDF hláv) pre všetky druhy vojakov, takže noví bojovníci sa neskôr objavia bez zaseknutia; vzor látky a kože zblízka už nezrní.
 - **Výbava hrdinu (verzia 77):** hrdina bez prilby nosí koženú čelenku s kovovou ozdobou, a ak nemá hrudné brnenie, aj kožený ramenný popruh a váčok na opasku.
+- **Kúpená výbava v 3D boji (verzia 78):** brnenie hrdinu sa v boji mení podľa triedy – ľahké je kožené, stredné má pevnejšiu košeľu, ťažké plátový náprsník a najlepšie (Plát z Ereboru, Mithrilová košeľa) aj zlaté náramenníky a tassety. Kôň, varg, prilba, štít a zbraň sa v boji zobrazujú podľa toho, čo hrdina nosí.
 - Ovládanie boja už zodpovedalo Warbandu (ľavé tlačidlo sek, pravé kryt, smer úderu pohybom myši, koliesko mení zbraň, F kopnutie, Q luk); zmena sa ho netýka.
 
 ## Boj bližšie k Warbandu (verzia 53)
