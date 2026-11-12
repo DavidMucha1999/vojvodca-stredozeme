@@ -2143,8 +2143,8 @@ const B3 = (() => {
         if (!prints || o.sp < .3) return;
         o.stepD = (o.stepD || 0) + o.sp * dt;
         const ry = o.root.rotation.y, sx = Math.sin(ry), sz = Math.cos(ry), k = o.scaleH || 1;
-        if (o.mount) { if (o.stepD < 13 * o.mk.k) return; o.stepD = 0; for (const s2 of [-1, 1]) addPrint(u.x + sx * s2 * 2.6 * o.mk.k, u.y + sz * s2 * 2.6 * o.mk.k, ry, 1, o.mk.k); }
-        else { if (o.stepD < 7 * k) return; o.stepD = 0; o.stepS = -(o.stepS || 1); addPrint(u.x + sx * o.stepS * 1.5 * k, u.y + sz * o.stepS * 1.5 * k, ry, 0, k); }
+        if (o.mount) { if (o.stepD < 13 * o.mk.k) return; o.stepD = 0; for (const s2 of [-1, 1]) addPrint(u.x + sx * s2 * 2.6 * o.mk.k, u.y + sz * s2 * 2.6 * o.mk.k, ry, 1, o.mk.k); if (QN() >= 1 && o.sp > 1.1 && DUST) dust(u.x, u.y, 2, 5 * o.mk.k); }
+        else { if (o.stepD < 7 * k) return; o.stepD = 0; o.stepS = -(o.stepS || 1); addPrint(u.x + sx * o.stepS * 1.5 * k, u.y + sz * o.stepS * 1.5 * k, ry, 0, k); if (QN() >= 1 && o.sp > 1.4 && DUST && Math.random() < .6) dust(u.x + sx * o.stepS * 1.5 * k, u.y + sz * o.stepS * 1.5 * k, 1, 2.5 * k); }
     }
     function buildBirds() {
         birds = null; birdP = [];
