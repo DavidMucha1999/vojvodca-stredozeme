@@ -2478,6 +2478,14 @@ const B3 = (() => {
             at(new t.Mesh(new t.CircleGeometry(1, 8), new t.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .35, depthWrite: false })));
             at(arrowMesh(0, 0)); at(arrowMesh(1, 0));
             stepEnv(true);
+            try {   // predvýpočet variantov tvárí (SDF hlavy): ďalší bojovníci toho istého druhu sa potom objavia bez zaseknutia
+                const seen = new Set(), t0 = performance.now(); let made = 0;
+                for (const u of U) {
+                    if (u.fled || u.hero || made >= 24 || performance.now() - t0 > 4000) continue;
+                    const sp = specOf(u), kk = keyOf({ ...sp, fv: 0 }); if (seen.has(kk) || sp.boss || sp.beast || sp.mdl) continue; seen.add(kk);
+                    for (let fv = 0; fv < 8 && made < 24; fv++) { if (fv === sp.fv) continue; const sv = { ...sp, fv }; if (!TPL.has(keyOf(sv))) { template(sv); made++; await new Promise(r => setTimeout(r, 0)); } }
+                }
+            } catch (e) { }
             try { await atlas().ready; } catch (e) { }   // textúry modelov do atlasu
             if (R.compileAsync) await R.compileAsync(scene, cam); else R.compile(scene, cam);
         } catch (e) { try { R.compile(scene, cam); } catch (e2) { } }

@@ -285,6 +285,7 @@ Všetky modely z Meshy (telá postáv, kone, netvory, zbrane a brnenia dobra) s�
 - **Hlava zo SDF (verzia 73):** hlava už nie je guľa, ale **hladko zliaty tvar**: lebka, stredná časť tváre, sánka s uhlami, brada, lícne kosti a obočnicové oblúky; tvar sa líši podľa variantu (širšia/užšia čeľusť, výraznejšie lícne kosti a obočie) a rasy (ork má silnejšiu čeľusť, elf užšiu, trpaslík výraznejšiu bradu). Každá hlava sa vytvorí raz (~50 ms) a uloží do pamäte.
 - **Detailnejšia tvár (verzia 74):** **nos** (koreň, špička, krídla) a **uši** (ušnica s chrupavkou) sú súčasťou hlavy zo SDF; **očné jamky** (oko je zapustené, nad ním tieň viečka); obočie z dvoch častí (vnútorná a vonkajšia, vonkajšia sklopená); v ústach **zuby a jazyk** (vidno pri pokriku; orkovia žltšie zuby); odkrytá koža len na krku, nie na hrudi.
 - **Ruky a nohy (verzia 75):** prsty majú **kĺby**, nekovové ruky nosia **koženú rukavicu** s manžetou a pásikom vo frakčnej farbe; čižmy majú **podrážku, pätu, zaoblenú špičku** a dva **remienky** s prackami.
+- **Plynulejšie načítanie a čistejšie látky (verzia 76):** pri načítaní bitky sa vopred vypočítajú varianty tvárí (SDF hláv) pre všetky druhy vojakov, takže noví bojovníci sa neskôr objavia bez zaseknutia; vzor látky a kože zblízka už nezrní.
 - Ovládanie boja už zodpovedalo Warbandu (ľavé tlačidlo sek, pravé kryt, smer úderu pohybom myši, koliesko mení zbraň, F kopnutie, Q luk); zmena sa ho netýka.
 
 ## Boj bližšie k Warbandu (verzia 53)
