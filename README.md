@@ -291,6 +291,7 @@ Všetky modely z Meshy (telá postáv, kone, netvory, zbrane a brnenia dobra) s�
 - **Prach pod nohami (verzia 79):** pri behu pechoty a jazdy sa z každého kroku zdvíha malý obláčik prachu vo farbe terénu (od strednej kvality vyššie).
 - **Zvieratá a nestvory (verzia 80):** **varg** má dolnú čeľusť so zubami a jazykom, nos, obočie, hrivu okolo krku, chrbtový hrebeň, rozstrapkané boky, pazúry a kožené popruhy so sedlovou podložkou; **olifant** je svetlejší, má chobot z článkov s koncom, uši s vnútornou stranou, kly s bronzovými prúžkami, záhyby kože, chvost so strapcom, štíty a lať na veži, zástavu a pokrývku vo farbe frakcie, nohy s nechtami.
 - **Olifant, doladenie (verzia 81):** chobot je plynulá zahnutá reťaz s vráskami a hrubým koncom, kly klesajú dole a na konci sa zakrivujú nahor, záhyby kože sú plytké miesto výčnelkov.
+- **Drak a Balrog (verzia 82):** **drak** má zahnutý krk s brušnými plátmi, lebku s rohmi, zubami a obočím, šupiny a hrebeň na chrbte, mohutné nohy s pazúrmi a chvost s čepeľou; **krídla** (drak, Balrog, Nazgûlov zvierací tvar) majú kosti prstov, vykrojený okraj blany a sú osvetlené z oboch strán, takže už nie sú čierne. **Balrog** má svalnatý trup, ramená s ostňami, predlaktia s pazúrmi, rohatú hlavu s čeľusťou a zubami, kopytá a hrebeň; jeho ohnivé svetlo je slabšie, takže je vidno telo.
 - Ovládanie boja už zodpovedalo Warbandu (ľavé tlačidlo sek, pravé kryt, smer úderu pohybom myši, koliesko mení zbraň, F kopnutie, Q luk); zmena sa ho netýka.
 
 ## Boj bližšie k Warbandu (verzia 53)

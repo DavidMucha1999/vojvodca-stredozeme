@@ -405,10 +405,17 @@ const B3 = (() => {
     const chrMats = () => [B3G.chrMat('c'), B3G.chrMat('m'), B3G.chrMat('t', null, atlas().tex)];
     /** Krídlo: koreň v počiatku, rozpätie do +Z (druhé krídlo sa zrkadlí scale.z = -1). */
     function wingGeo(len, c1, c2) {
-        const t = T(), a = C(c1), b = C(c2), P = [], Cl = [];
-        const tri = (p, q, r, c) => { P.push(...p, ...q, ...r); for (let i = 0; i < 3; i++) Cl.push(c.r, c.g, c.b); };
-        const root = [0, 0, 0], el = [-2, len * .22, len * .45], tip = [-len * .18, len * .32, len], tr = [-len * .5, -len * .05, len * .72], back = [-len * .45, 0, len * .18];
-        tri(root, el, tip, a); tri(root, tip, tr, b); tri(root, tr, back, a);
+        const t = T(), a = C(c1), b = C(c2).clone().lerp(C('#ffffff'), .12), P = [], Cl = [], L = len;
+        const tri = (p, q, r, c) => { P.push(...p, ...q, ...r); for (let k = 0; k < 3; k++) Cl.push(c.r, c.g, c.b); P.push(...p, ...r, ...q); for (let k = 0; k < 3; k++) Cl.push(c.r, c.g, c.b); };   // oba smery: osvetlená je aj spodná strana
+        const add = (u, v) => [u[0] + v[0], u[1] + v[1], u[2] + v[2]], mid = (u, v, k = .5) => [u[0] + (v[0] - u[0]) * k, u[1] + (v[1] - u[1]) * k, u[2] + (v[2] - u[2]) * k];
+        const S = [0, 0, 0], E = [-L * .08, L * .2, L * .38], W = [-L * .12, L * .3, L * .62], F = [[-L * .05, L * .26, L], [-L * .3, L * .1, L * .95], [-L * .5, -L * .02, L * .76], [-L * .58, -L * .07, L * .48]], B = [-L * .55, 0, L * .12];
+        const bone = (u, v, w, c) => { const o = [0, w, 0], n = [0, 0, w * .6]; tri(add(u, [0, -w, 0]), add(u, o), v, c); tri(add(u, [0, 0, -w * .6]), add(u, n), v, c); };
+        tri(S, E, W, b); tri(S, W, F[3], b); tri(S, F[3], B, b);
+        const ms = []; for (let k = 0; k < 3; k++) ms.push(mid(mid(F[k], F[k + 1]), W, .16));   // vykrojený zadný okraj
+        for (let k = 0; k < 3; k++) { tri(W, F[k], ms[k], b); tri(W, ms[k], F[k + 1], b); }
+        bone(S, E, L * .035, a); bone(E, W, L * .03, a); for (const f of F) bone(W, f, L * .022, a);
+        bone(S, F[3], L * .016, a);
+        for (let k = 0; k < 2; k++) tri(add(F[0], [0, 0, L * .01]), add(F[0], [-L * .02, 0, -L * .06]), add(F[0], [L * .01, L * .02, -L * .03]), a);   // pazúr na vrchole
         const g = new t.BufferGeometry(); g.setAttribute('position', new t.Float32BufferAttribute(P, 3)); g.setAttribute('color', new t.Float32BufferAttribute(Cl, 3)); g.computeVertexNormals();
         return g;
     }
@@ -1325,14 +1332,41 @@ const B3 = (() => {
                 .add('box', '#ffb040', [26, 58, 22], [0, 0, -.5], [2.4, 40, 1.6]).add('box', '#ff5a10', [26, 58, 22], [0, 0, -.5], [4, 34, 3]).build();   // oči, žeravé pukliny a plamenný meč
             const fire = Part().add('sph2', '#ff6a10', [0, 42, 0], [0, 0, 0], [40, 66, 46]).add('sph2', '#ff9a30', [0, 74, 0], [0, 0, 0], [26, 30, 30]).build();
             b.add('taperU', '#24120a', [6, 56, 18], [0, 0, -.5], [8, 26, 8]).add('taperU', '#24120a', [4, 56, -18], [0, 0, .3], [8, 26, 8]);
-            return { boss: 'balrog', body: b.build(), wing: wingGeo(70, '#1a0c08', '#2a120a'), fire, glow };
+            // Balrog: svalnatý trup, ramená s ostňami, predlaktia a pazúry, rohatá hlava s čeľusťou a zubami, kopytá, hrebeň na chrbte
+            const sk = '#2e1710', dk2 = '#170a06', hn = '#0c0604', em = '#ff6a10';
+            for (const z of [-1, 1]) {
+                b.add('sph2', sk, [6, 52, z * 8.5], [0, 0, 0], [12, 12, 11]).add('sph2', sk, [2, 63, z * 17], [0, 0, 0], [17, 15, 15]).add('cone', hn, [2, 72, z * 19], [z * .3, 0, .2], [4, 10, 4]).add('cone', hn, [-3, 69, z * 24], [z * .8, 0, .5], [3, 8, 3])   // prsné svaly, plecia s ostňami
+                    .add('sph2', sk, [0, 28, z * 9], [0, 0, 0], [16, 32, 14]).add('cyl12', dk2, [2, 11, z * 9], [0, 0, 0], [8, 20, 8]).add('box', hn, [5, 1.4, z * 9], [0, 0, 0], [11, 2.8, 8]).add('cone6', hn, [10.5, 1.6, z * 9], [0, 0, -Math.PI / 2], [3.4, 4.6, 3.4])   // stehná, holene, kopytá
+                    .add('cone', hn, [6, 33, z * 17.6], [z * 1.1, 0, .3], [2.4, 9, 2.4]);
+            }
+            b.add('cyl12', sk, [14, 54.5, 20.5], [0, 0, -1.35], [6, 17, 6]).add('sph2', dk2, [24, 53, 22], [0, 0, 0], [9, 8, 9]).add('cyl12', sk, [10, 52, -23], [0, 0, -.5], [6, 16, 6]).add('sph2', dk2, [17, 45, -24], [0, 0, 0], [9, 8, 9]);   // predlaktia a ruky
+            for (const [x, y, z] of [[24, 53, 22], [17, 45, -24]]) for (const q of [-1, 0, 1]) b.add('cone6', hn, [x + 4.6, y - 1, z + q * 3], [0, 0, -1.3], [1.5, 5.4, 1.5]);   // pazúry
+            b.add('box', dk2, [8, 59.4, 0], [0, 0, 0], [8, 3.4, 10]).add('box', '#6a0c06', [11, 60.8, 0], [0, 0, 0], [1.2, .8, 8]).add('box', hn, [12, 71, 0], [0, 0, 0], [3, 2, 17]);   // dolná čeľusť, ústa, obočie
+            for (let i = 0; i < 5; i++) for (const sg of [-1, 1]) b.add('cone6', '#e8dcc0', [12.2, 61.6 + (sg > 0 ? 1.2 : -.2), (i - 2) * 1.8], [sg > 0 ? Math.PI : 0, 0, 0], [.7, 1.8, .7]);   // zuby
+            b.add('cone', hn, [-1, 80, 11], [.5, 0, -.6], [3.4, 18, 3.4]).add('cone', hn, [-1, 80, -11], [-.5, 0, -.6], [3.4, 18, 3.4]).add('cone', hn, [-6, 88, 15], [.8, 0, -1], [2.2, 12, 2.2]).add('cone', hn, [-6, 88, -15], [-.8, 0, -1], [2.2, 12, 2.2]);   // veľké zakrivené rohy
+            for (let i = 0; i < 9; i++) b.add('cone', i & 1 ? hn : dk2, [-11 - (i % 3) * .5, 72 - i * 4.4, 0], [0, 0, 1.9], [3.4 - i * .12, 9 - i * .3, 3.4 - i * .12]);   // chrbtový hrebeň
+            for (let i = 0; i < 4; i++) for (const z of [-1, 1]) b.add('rbox', sk, [8.6, 36 + i * 4.4, z * 6], [0, 0, 0], [2.4, 2.8, 10]);   // brušné ryhy
+            return { boss: 'balrog', body: b.build(), wing: wingGeo(70, '#120804', '#2a120a'), fire, glow };
         }
         if (k === 'dragon') {
-            const col = '#5a1e14', bel = '#9a5a2a', b = Part().add('sph2', col, [0, 0, 0], [0, 0, 0], [52, 26, 28]).add('sph2', bel, [0, -6, 0], [0, 0, 0], [40, 14, 20]).add('taperU', col, [30, 10, 0], [0, 0, -1.1], [10, 26, 10]).add('box', col, [46, 18, 0], [0, 0, 0], [20, 10, 12]).add('cone', '#3a120c', [57, 18, 0], [0, 0, -Math.PI / 2], [8, 8, 10]).add('box', '#ffe040', [52, 22, 4], [0, 0, 0], [1.4, 1.4, 1.4]).add('box', '#ffe040', [52, 22, -4], [0, 0, 0], [1.4, 1.4, 1.4]).add('cone', '#2a0c08', [42, 26, 4], [0, 0, .5], [2, 9, 2]).add('cone', '#2a0c08', [42, 26, -4], [0, 0, .5], [2, 9, 2]);
+            const col = '#5a1e14', bel = '#a8662e', rid = '#2a0c08', hrn = '#d8c8a0', tth = '#ece4cc', b = Part().add('sph2', col, [0, 0, 0], [0, 0, 0], [52, 26, 28]).add('sph2', bel, [0, -6, 0], [0, 0, 0], [40, 14, 20]);
+            for (let i = 0; i < 5; i++) b.add('sph2', sh(col, 1 - i * .02), [22 + i * 5.6, 6 + i * 3.1, 0], [0, 0, 0], [(13 - i * 1.3) * 1.4, (13 - i * 1.3) * 1.15, (13 - i * 1.3) * 1.05]);   // zahnutý krk
+            for (let i = 0; i < 5; i++) b.add('rbox', sh(bel, 1.1 - i * .03), [26 + i * 5.2, 2.5 + i * 2.8, 0], [0, 0, .5], [3.6, 2.2, 12 - i * 1.4]);   // brušné pláty krku
+            b.add('sph2', col, [50, 20, 0], [0, 0, 0], [16, 10, 10]).add('taperU', col, [59, 17.8, 0], [0, 0, -Math.PI / 2], [7, 12, 8]).add('taperU', sh(col, .72), [57, 13.8, 0], [0, 0, -Math.PI / 2 - .2], [5, 11, 6.4]).add('sph2', '#6a1010', [57, 15.4, 0], [0, 0, 0], [9, 1.2, 5]);   // lebka, papuľa, spodná čeľusť, jazyk
+            for (const z of [-1, 1]) {
+                for (let i = 0; i < 4; i++) b.add('cone6', tth, [53.5 + i * 2.6, 15.8, z * (3 + i * .1)], [Math.PI, 0, 0], [.6, i === 1 ? 2.8 : 1.8, .6]).add('cone6', tth, [53 + i * 2.5, 14.4, z * (2.8 + i * .1)], [0, 0, 0], [.5, 1.5, .5]);   // zuby
+                b.add('box', rid, [52.6, 24.6, z * 5], [0, 0, z * .1], [3.8, 1.2, 1.6]).add('cone', hrn, [45, 27, z * 4.6], [z * .3, 0, 1.0], [2.6, 15, 2.6]).add('cone', hrn, [43, 22, z * 7.4], [z * .8, 0, .9], [1.8, 8, 1.8]).add('sph2', '#0a0404', [64.6, 19.6, z * 1.8], [0, 0, 0], [1.2, 1, 1]);   // obočie, rohy, líce, nozdry
+            }
             for (let i = 0; i < 6; i++) b.add('sph2', col, [-30 - i * 9, -2 + i * .6, 0], [0, 0, 0], [16 - i * 2, 12 - i * 1.4, 12 - i * 1.4]);
-            for (let i = 0; i < 8; i++) b.add('cone6', '#2a0c08', [24 - i * 7, 13 - Math.abs(i - 3) * .6, 0], [0, 0, -.3], [2, 5, 1], {});
-            for (const [x, z] of [[14, 10], [14, -10], [-14, 10], [-14, -10]]) b.add('cyl12', col, [x, -16, z], [0, 0, 0], [6, 18, 6]);
-            return { boss: 'dragon', body: b.build(), wing: wingGeo(90, '#4a160e', '#2a0c08'), glow: Part().add('box', '#ffe040', [52.4, 22, 4], [0, 0, 0], [1.6, 1.6, 1.6]).add('box', '#ffe040', [52.4, 22, -4], [0, 0, 0], [1.6, 1.6, 1.6]).build() };
+            b.add('cone', rid, [-86, 1, 0], [0, 0, Math.PI / 2], [5, 12, 3]).add('cone', rid, [-84, 5, 0], [0, 0, 2.2], [3, 7, 2.4]).add('cone', rid, [-84, -3, 0], [0, 0, 1.0], [3, 7, 2.4]);   // koniec chvosta s čepeľou
+            for (let i = 0; i < 12; i++) b.add('cone6', i % 3 ? rid : sh(rid, 1.5), [30 - i * 6.6, 14 - Math.abs(i - 4) * .7 - (i > 6 ? (i - 6) * .5 : 0), 0], [0, 0, -.25], [2.2 + (i % 2) * .8, 5.4 + (i % 3), 1.2]);   // chrbtový hrebeň
+            for (let i = 0; i < 8; i++) for (const z of [-1, 1]) b.add('rbox', sh(col, .8 + (i & 1) * .3), [20 - i * 5.4, 7 - Math.abs(i - 3), z * 12.6], [0, 0, 0], [2.6, 3.4, 1.4]);   // šupiny na bokoch
+            for (let i = 0; i < 7; i++) b.add('rbox', sh(bel, 1.05), [24 - i * 7.6, -12.4, 0], [0, 0, 0], [5, .9, 15 - i * 1.2]);   // brušné pláty
+            for (const [x, z] of [[14, 10], [14, -10], [-14, 10], [-14, -10]]) {
+                const fr = x > 0; b.add('sph2', col, [x, -6, z * 1.1], [0, 0, 0], [fr ? 12 : 16, 17, 11]).add('cyl12', col, [x, -16, z], [0, 0, 0], [6, 18, 6]).add('box', sh(col, .7), [x + 2.5, -25, z], [0, 0, 0], [9, 2.6, 8]);   // stehno, holeň, chodidlo
+                for (const q of [-1, 0, 1]) b.add('cone6', hrn, [x + 8, -24.2, z + q * 2.6], [0, 0, -Math.PI / 2 - .3], [1.2, 4.4, 1.2]);   // pazúry
+            }
+            return { boss: 'dragon', body: b.build(), wing: wingGeo(90, '#3a100a', '#6a2214'), glow: Part().add('box', '#ffe040', [54.4, 21.6, 4.5], [0, 0, 0], [1.8, 1.8, 1.8]).add('box', '#ffe040', [54.4, 21.6, -4.5], [0, 0, 0], [1.8, 1.8, 1.8]).build() };
         }
         const b = Part().add('sph2', '#1a1a20', [0, 0, 0], [0, 0, 0], [36, 16, 16]).add('taperU', '#1a1a20', [20, 8, 0], [0, 0, -1], [6, 18, 6]).add('box', '#24242a', [30, 14, 0], [0, 0, 0], [14, 7, 7]).add('cone', '#0a0a10', [-4, 18, 0], [0, 0, 0], [7, 14, 7]).add('sph2', '#050508', [-4, 26, 0], [0, 0, 0], [5, 5, 5]).add('box', '#ff3020', [-1.6, 26, 0], [0, 0, 0], [.8, .8, 2]);
         for (let i = 0; i < 4; i++) b.add('sph2', '#1a1a20', [-20 - i * 8, -1, 0], [0, 0, 0], [10 - i * 2, 7 - i, 7 - i]);
@@ -1366,7 +1400,7 @@ const B3 = (() => {
             if (tp.body) { o.body = mesh(tp.body); root.add(o.body); }
             if (tp.wing) { o.wings = [1, -1].map(sd => { const w = mesh(tp.wing, 'vs'); w.scale.z = sd; w.position.set(tp.boss === 'balrog' ? -6 : 0, tp.boss === 'balrog' ? 62 : 6, sd * (tp.boss === 'balrog' ? 10 : 8)); w.userData.sd = sd; root.add(w); return w; }); }
             if (tp.glow) root.add(new t.Mesh(tp.glow, mat('glow')));
-            if (tp.fire) { o.fire = new t.Mesh(tp.fire, new t.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: .22, depthWrite: false, blending: t.AdditiveBlending })); root.add(o.fire); o.light = new t.PointLight(C('#ff7a20'), 120, 300, 1); o.light.position.y = 50; root.add(o.light); }
+            if (tp.fire) { o.fire = new t.Mesh(tp.fire, new t.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: .13, depthWrite: false, blending: t.AdditiveBlending })); root.add(o.fire); o.light = new t.PointLight(C('#ff7a20'), 50, 300, 1); o.light.position.y = 70; root.add(o.light); }
             if (tp.beast === 'oliphant') o.legs = [[18, 12], [18, -12], [-18, 12], [-18, -12]].map(([x, z]) => { const l = mesh(tp.leg); l.position.set(x, 22, z); root.add(l); return l; });
             if (tp.beast === 'ent') { o.legs = [7, -7].map(z => { const l = mesh(tp.leg); l.position.set(0, 12, z); root.add(l); return l; }); o.arms = [9, -9].map(z => { const a = mesh(tp.arm); a.position.set(0, 44, z); root.add(a); return a; }); }
             if (tp.humanoid) { Object.assign(o, humanRig(tp.humanoid, root, 0, o)); if (tp.crown) { const c = mesh(tp.crown); c.position.set(.2, (RACE.troll.H + 5) , 0); o.B.ch.add(c); } }
@@ -1424,7 +1458,7 @@ const B3 = (() => {
         const sw = Math.sin(o.ph) * Math.min(1, o.sp / 1.4);
         if (o.legs && o.tp.beast === 'ent') o.legs.forEach((l, i) => { l.rotation.z = (i ? -sw : sw) * .35; });
         if (o.wings) { const lift = (fly || u.boss === 'fell' ? .1 : .45) + Math.sin(clock * (u.boss === 'fell' || fly ? 5 : 1.6)) * (fly || u.boss === 'fell' ? .6 : .15); o.wings.forEach(w => { w.rotation.x = -w.userData.sd * lift; }); }
-        if (o.fire) { const s = 1 + Math.sin(clock * 7) * .06; o.fire.scale.set(s, s * (1 + Math.sin(clock * 5) * .05), s); o.light.intensity = 110 + Math.sin(clock * 11) * 25; }
+        if (o.fire) { const s = 1 + Math.sin(clock * 7) * .06; o.fire.scale.set(s, s * (1 + Math.sin(clock * 5) * .05), s); o.light.intensity = 48 + Math.sin(clock * 11) * 12; }
         if (o.legs && o.tp.beast === 'oliphant') o.legs.forEach((l, i) => { l.rotation.z = Math.sin(o.ph * .6 + i * 1.6) * .25 * Math.min(1, o.sp); });
         if (o.arms) o.arms.forEach((a, i) => { a.rotation.z = (o.atk > 0 ? 1.8 - (1 - o.atk) * 1.6 : .2) + (i ? .1 : 0); });
     }
