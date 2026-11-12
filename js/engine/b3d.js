@@ -1290,14 +1290,14 @@ const B3 = (() => {
         for (const [x, z] of [[-6, 5], [4, -4], [-9, -6]]) b.add('box', '#8a3a24', [x, 70, z], [0, 0, 0], [2.6, 5, 2.4]).add('sph2', '#8a5a3a', [x, 74, z], [0, 0, 0], [2, 2.2, 2]).add('cyl6', '#5a3a1a', [x + 1.8, 71, z], [0, 0, .2], [.4, 9, .4]);   // lukostrelci vo vežičke
         // olifant: chobot s článkami a koncom, veľké uši, kly s bronzovými prúžkami, záhyby kože, chvost, bojové maľby, pancier a štíty na veži
         const dk = sh(c, .72), lt = sh(c, 1.14), br = '#b08a3a', tm = s.team || '#a03020';
-        for (let i = 0; i < 5; i++) b.add('cyl12', i & 1 ? dk : c, [36 + i * i * .55, 20 - i * 5, 0], [0, 0, -.25 - i * .22], [4.6 - i * .5, 5.4, 4.6 - i * .5]);   // chobot z článkov
-        b.add('sph2', dk, [43, 2, 0], [0, 0, 0], [3.4, 3.2, 3.2]).add('cone', dk, [47, 4, 0], [0, 0, 1.0], [1.7, 4.6, 1.7]);
+        for (let i = 0; i < 9; i++) { const t = i / 8, r = 5.4 - 2.8 * t; b.add('sph2', i & 1 ? dk : c, [35 + 12 * Math.pow(t, 2.1), 27 - 23 * t, 0], [0, 0, 0], [r * 1.25, r * 1.5, r * 1.25]); if (i > 1 && i < 8 && i % 2) b.add('torus', sh(c, .6), [35 + 12 * Math.pow(t, 2.1), 27 - 23 * t, 0], [Math.PI / 2, 0, 0], [r * 1.15, .5, r * 1.15]); }   // chobot: plynulá zahnutá reťaz s vráskami
+        b.add('sph2', sh(c, .55), [48.5, 3.6, 0], [0, 0, 0], [2, 2.4, 2]).add('cone', sh(c, .55), [50.5, 5.6, 0], [0, 0, 1.0], [1.4, 3.2, 1.4]);
         for (const z of [-1, 1]) {
             b.add('sph2', dk, [19, 40, z * 17], [0, z * .5, 0], [2.4, 15, 12]).add('sph2', sh('#b09890', 1), [19.8, 40, z * 17.5], [0, z * .5, 0], [1.2, 12.4, 9.4])   // ucho s vnútornou stranou
-             .add('cone', '#d8d0b0', [41, 26, z * 8], [z * .12, 0, -1.55], [2.8, 20, 2.8]).add('cone', '#d8d0b0', [51, 22, z * 8.4], [z * .12, 0, -.8], [2, 9, 2])   // kly (zalomené)
-             .add('torus', br, [34, 29, z * 7], [0, 0, 1.2], [3.4, 1, 3.4]).add('torus', br, [40, 24.5, z * 8], [0, 0, 1.4], [3, 1, 3]).add('sph', '#0a0806', [38, 41, z * 6.4], [0, 0, 0], [1, 1, 1])
+             .add('cone', '#d8d0b0', [41.5, 25.6, z * 8], [z * .1, 0, -1.9], [2.8, 20, 2.8]).add('cone', '#d8d0b0', [56, 25.5, z * 8.3], [z * .1, 0, -.9], [1.9, 9, 1.9])   // kly (zalomené)
+             .add('torus', br, [35.5, 28, z * 7], [0, 0, 1.2], [3.4, 1, 3.4]).add('torus', br, [44, 23.4, z * 8], [0, 0, 1.2], [3, 1, 3]).add('sph', '#0a0806', [38, 41, z * 6.4], [0, 0, 0], [1, 1, 1])
              .add('box', '#8a4a2a', [30, 52, z * 12], [0, 0, 0], [.8, 10, 14]).add('sph', br, [30.6, 52, z * 12], [0, 0, 0], [2.4, 2.4, 2.4]);   // štít zavesený na veži
-            for (let i = 0; i < 4; i++) b.add('torus', dk, [-6 + i * 11, 34, z * 15.5], [Math.PI / 2, 0, 0], [20 - i * 2, 1.2, 12]);   // záhyby kože na bokoch
+            for (let i = 0; i < 5; i++) b.add('sph2', dk, [-12 + i * 9, 36 + (i % 2) * 3, z * 15.6], [0, 0, .3], [.7, 7, 1.2]);   // záhyby kože na bokoch
             b.add('box', sh(tm, .8), [-4, 33, z * 16.2], [0, 0, 0], [24, 9, .8]).add('box', br, [-4, 28, z * 16.6], [0, 0, 0], [24, .9, .6]);   // pokrývka vo farbe frakcie
         }
         b.add('cyl12', dk, [-27, 38, 0], [0, 0, .7], [2.6, 20, 2.6]).add('sph2', '#2a2420', [-33, 24, 0], [0, 0, 0], [5, 6, 5]);   // chvost so strapcom
