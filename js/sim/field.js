@@ -29,7 +29,7 @@ function battleTerrain(x, y) {
     // stromy: zhluky podľa hustoty lesa (0 až 1), deterministicky podľa polohy
     let seed = Math.floor(x / 7 + y / 11) + 13; const rnd = () => (seed = seed * 16807 % 2147483647) / 2147483647;
     const trees = [], groves = Math.round(2 + forest * 14);
-    for (let i = 0; i < groves; i++) { const cx = 120 + rnd() * (BW - 240), cy = 60 + rnd() * (BH - 120), r = 40 + rnd() * 50 + forest * 40; if (river && cx > 660 && cx < 780) continue; trees.push({ x: cx, y: cy, r }); }
+    for (let i = 0; i < groves; i++) { const cx = 100 + rnd() * (BFW - 200), cy = 50 + rnd() * (BFH - 100), r = 40 + rnd() * 50 + forest * 40; if (river && cx > 660 && cx < 780) continue; if (Math.abs(cy - BFH / 2) < 160 && cx > 400 && cx < BFW - 400) continue; trees.push({ x: cx, y: cy, r }); }
     return { forest, river, hill, trees, reg, mountain: hill && hill.kind === 'mountain' };
 }
 /** Spomalenie jednotky podľa terénu (les, voda) a bonus z kopca. */
@@ -40,4 +40,4 @@ function fieldSlow(u) {
     if (FIELD.reg === 's' || FIELD.reg === 'd') s *= .92;   // sneh a piesok
     return s;
 }
-const onHill = u => FIELD.hill && Math.hypot(u.x - BW * .62, u.y - BH * .5) < 170;
+const onHill = u => FIELD.hill && Math.hypot(u.x - BFW * .62, u.y - BFH * .5) < 170;

@@ -181,10 +181,17 @@ class IsoRoom extends Phaser.Scene {
     /* ---------- postavy, miesta, hráč ---------- */
     setupRoom(r) {
         this.room = r;
-        this.add.text(W / 2, 72, r.title, txtStyle(17, '#f0d9a8', { fontFamily: TITLE_FONT, stroke: '#000', strokeThickness: 4 })).setOrigin(.5).setDepth(2000);
-        this.hint = this.add.text(W / 2, H - 14, r.hint || 'Klik na zem alebo šípky/WASD = chôdza  •  klik na postavu alebo miesto = akcia  •  medzerník = rozhovor s osobou pri tebe  •  Esc = odísť', txtStyle(10, '#d8c8a8', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5).setDepth(2000);
         const ui = this.scene.get('UI');
-        this.leaveBtn = ui.button.call(this, W - 128, H - 34, 118, 24, r.leave, () => this.leave(), { size: 11, icon: Icons.tex(this, 'door') });
+        const plaque = this.add.graphics().setDepth(1999);
+        const pwid = Math.max(260, r.title.length * 11 + 70);
+        ui.panelFrame(plaque, W / 2 - pwid / 2, 34, pwid, 32, false);
+        plaque.fillStyle(0xd9a441, .9).fillTriangle(W / 2 - pwid / 2 - 8, 50, W / 2 - pwid / 2 + 2, 44, W / 2 - pwid / 2 + 2, 56).fillTriangle(W / 2 + pwid / 2 + 8, 50, W / 2 + pwid / 2 - 2, 44, W / 2 + pwid / 2 - 2, 56);
+        this.add.text(W / 2, 50, r.title, txtStyle(17, '#f3dc9a', { fontFamily: TITLE_FONT, stroke: '#000', strokeThickness: 2 })).setOrigin(.5).setDepth(2000);
+        const rail = this.add.graphics().setDepth(1998);
+        rail.fillGradientStyle(0x1c140e, 0x1c140e, 0x0e0a08, 0x0e0a08, .72, .72, .92, .92).fillRect(0, H - 34, W, 34);
+        rail.fillStyle(0xc9a24a, .7).fillRect(0, H - 34, W, 1);
+        this.hint = this.add.text(W / 2 - 60, H - 17, r.hint || 'Klik / WASD = chôdza   ·   klik na postavu alebo miesto = akcia   ·   medzerník = rozhovor   ·   Esc = odísť', txtStyle(11, '#e8dcc0')).setOrigin(.5).setDepth(2000);
+        this.leaveBtn = ui.button.call(this, W - 150, H - 31, 142, 28, r.leave, () => this.leave(), { size: 11, icon: Icons.tex(this, 'door') });
         this.leaveBtn.forEach(o => o.setDepth(2001));
         const pk = Art.bigFigure(this, { ...G.eq, m: 0 }, { king: !!G.king, cape: heroSide() === 1 ? '#2a1414' : '#6a2a2a', ...Figures.lookOpts(Portraits.hero()) });
         const [wx, wy] = r.spawn || [this.FW / 2, this.FD - 30];
@@ -192,7 +199,7 @@ class IsoRoom extends Phaser.Scene {
         const [sx, sy] = this.P(wx, wy);
         this.pl = Art.image(this, sx, sy, pk).setScale((Art.scale[pk] || 1 / RES) * (r.scale || .9));
         this.plT = null; this.plDo = null; this.plStep = 0;
-        this.plLbl = this.add.text(sx, sy + 6, G.name, txtStyle(10, '#ffd24a', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5, 0).setDepth(1900);
+        this.plLbl = this.add.text(sx, sy + 6, G.name, txtStyle(10, '#ffd24a', { backgroundColor: 'rgba(14,10,8,.72)', padding: { x: 5, y: 2 } })).setOrigin(.5, 0).setDepth(1900);
         // klik na podlahu: celá scéna; postavy a miesta majú vlastné plochy nad ňou
         this.input.on('pointerup', p => { if (!ov.classList.contains('hide') || this.hitPerson) { this.hitPerson = false; return; } const [x, y] = this.W2(p.x / RES, p.y / RES); if (x >= 0 && y >= 0 && x <= this.FW && y <= this.FD) this.goTo(x, y, null); });
         this.keys = this.input.keyboard.addKeys('W,A,S,D,UP,LEFT,DOWN,RIGHT');
@@ -212,7 +219,7 @@ class IsoRoom extends Phaser.Scene {
         spr.setInteractive({ useHandCursor: true });
         const ring = this.add.graphics().setDepth(this.depth(x, y) - .3).setVisible(false);
         ring.lineStyle(2, 0xffd24a, .9).strokeEllipse(sx, sy + 2, 40 * sc, 20 * sc);
-        const lbl = this.add.text(sx, sy + 6, name, txtStyle(10, '#f4e8d0', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5, 0).setDepth(1900);
+        const lbl = this.add.text(sx, sy + 6, name, txtStyle(10, '#f4e8d0', { backgroundColor: 'rgba(14,10,8,.72)', padding: { x: 5, y: 2 } })).setOrigin(.5, 0).setDepth(1900);
         spr.on('pointerover', () => ring.setVisible(true)); spr.on('pointerout', () => ring.setVisible(false));
         spr.on('pointerup', () => { if (!ov.classList.contains('hide')) return; this.hitPerson = true; this.approach(x, y, onClick); });
         this.people.push({ spr, ring, lbl, name, x, y, t0: Math.random() * 6, fn: onClick, sy });
@@ -222,7 +229,7 @@ class IsoRoom extends Phaser.Scene {
     spot(x, y, w, h, name, fn, standAt) {
         const [sx, sy] = this.P(x, y);
         const z = this.add.rectangle(sx, sy - h / 2, w, h, 0xffd24a, 0).setInteractive({ useHandCursor: true }).setDepth(1800);
-        const lbl = this.add.text(sx, sy + 4, name, txtStyle(10, '#ffe8b0', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5, 0).setDepth(1900);
+        const lbl = this.add.text(sx, sy + 4, name, txtStyle(10, '#ffe8b0', { backgroundColor: 'rgba(14,10,8,.72)', padding: { x: 5, y: 2 } })).setOrigin(.5, 0).setDepth(1900);
         z.on('pointerover', () => z.setFillStyle(0xffd24a, .12)); z.on('pointerout', () => z.setFillStyle(0xffd24a, 0));
         const st = standAt || [x, y + 26];
         z.on('pointerup', () => { if (!ov.classList.contains('hide')) return; this.hitPerson = true; this.goTo(st[0], st[1], fn); });

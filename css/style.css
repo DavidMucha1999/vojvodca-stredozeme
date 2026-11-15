@@ -143,3 +143,14 @@ html.desktop body{overflow:hidden}
 .crs-foot .crs-back{font-size:1em}
 .crs-foot .crs-go{font-size:1.45em;padding:.45em 2.2em;color:#fff0c0;background:linear-gradient(#7a2a14,#3a1208 60%,#521a0c);border-color:#e8a050;animation:goGlow 2.4s ease-in-out infinite}
 @keyframes goGlow{50%{box-shadow:inset 0 0 0 2px rgba(10,6,3,.85),inset 0 0 0 3px rgba(255,200,110,.5),0 0 1.4em rgba(255,120,40,.45),0 .25em .8em rgba(0,0,0,.65)}}
+
+/* Návod: prehľadné sekcie */
+#mnPanel .help{max-height:62vh;overflow-y:auto;padding-right:.5em;text-align:left}
+#mnPanel .help .lead{font-size:1.05em;line-height:1.45;margin:.2em 0 .6em;color:#e8dcc0}
+#mnPanel .help h3{margin:.9em 0 .3em;font-size:.85em;letter-spacing:.16em;text-transform:uppercase;color:#d9a441;border-bottom:1px solid rgba(217,164,65,.35);padding-bottom:.2em}
+#mnPanel .help ul{margin:0;padding:0;list-style:none}
+#mnPanel .help li{position:relative;padding:.14em 0 .14em 1.2em;line-height:1.4;font-size:.98em}
+#mnPanel .help li::before{content:'◆';position:absolute;left:.15em;top:.5em;font-size:.5em;color:#b08a3a}
+#mnPanel .help b{color:#f3dc9a}
+#mnPanel .help::-webkit-scrollbar,#mnPanel .set::-webkit-scrollbar{width:7px}
+#mnPanel .help::-webkit-scrollbar-thumb,#mnPanel .set::-webkit-scrollbar-thumb{background:#8a6a2a;border-radius:4px}

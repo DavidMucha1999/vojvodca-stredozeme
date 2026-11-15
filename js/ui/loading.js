@@ -155,3 +155,76 @@ function loadInfo() {
     return { title, sub: (en.siege ? place : 'pri ' + place) + ' – proti: ' + who, line: 'Tvoje vojsko: ' + mine + '   ·   Nepriatelia: ' + foes + '   ·   ' + (WX && WX.night ? 'noc, ' : '') + wx,
         bi: typeof BI !== 'undefined' ? BI : 'g', siege: !!(en.siege || SGB), myC: (typeof FC !== 'undefined' && FC[G.fac]) || '#d9a441', foeC: (typeof FC !== 'undefined' && FC[en.f]) || '#8a2a2a', mine, foes, seed: Math.floor((G.x || 1) + (G.y || 1) * 7 + (G.day || 1) * 13) };
 }
+/**
+ * Načítanie uloženej hry z hlavného menu: rovnaký obraz ako pri zapnutí hry
+ * (Prsteň, zlatá lišta, vety). Kým je hore, skladá sa svet a mapa.
+ * BootLoad.show(hrdina) · BootLoad.set(podiel, text) · BootLoad.hide()
+ */
+const BootLoad = (() => {
+    let el = null, cv = null, raf = 0, t0 = 0, pct = 0, pctShown = 0, stage = '', sub = '', qi = 0, qAt = 0;
+    const QUOTES = ['„Kto drží meč, nech nezabudne, za koho ho drží.“', '„Aj najdlhšia noc nad Tieňom sa raz skončí pri brieždení.“', '„Hrad nepadá, keď sa zrúti brána, ale keď sa jeho ľudia vzdajú.“',
+        '„Na každej ceste je krčma a v každej krčme niekto, kto pozná cestu.“', '„Zástavy sa menia, kopce ostávajú.“',
+        'Tip: v tábore podrž medzerník a čas pobeží osemkrát rýchlejšie.', 'Tip: hladná družina dezertuje – zásoby jedla kúpiš na trhu v hrade aj v dedine.',
+        'Tip: červený oblúk nad nepriateľom znamená nápriah – vtedy sa kry.', 'Tip: padlý veliteľ v zlatom kruhu zlomí morálku celého nepriateľského vojska.'];
+    function ring(x, cx, cy, t, S) {
+        const bob = Math.sin(t * 1.15) * 6 * S, ry0 = cy + bob, spin = Math.cos(t * .55), R0 = 78 * S, th = 15 * S;
+        const rx = R0 * (.78 + .22 * Math.abs(spin)), ry = R0 * .65 * (1 + .04 * Math.sin(t * .8));
+        x.fillStyle = 'rgba(0,0,0,.35)'; x.beginPath(); x.ellipse(cx, cy + 112 * S, rx * 1.6, 14 * S, 0, 0, 6.283); x.fill();
+        for (let k = 0; k < 4; k++) { x.fillStyle = 'rgba(255,138,48,' + ((.05 + .025 * Math.sin(t * 2 + k)) * (1 - k * .2)) + ')'; x.beginPath(); x.ellipse(cx, ry0, rx * (2.2 + k * .35), ry * (2.6 + k * .35), 0, 0, 6.283); x.fill(); }
+        x.lineWidth = th + 4 * S; x.strokeStyle = '#2a1a08'; x.beginPath(); x.ellipse(cx, ry0, rx, ry, 0, 0, 6.283); x.stroke();
+        x.lineWidth = th; x.strokeStyle = '#d9a441'; x.beginPath(); x.ellipse(cx, ry0, rx, ry, 0, 0, 6.283); x.stroke();
+        x.lineWidth = th * .45; x.strokeStyle = 'rgba(255,230,160,' + (.55 + .3 * Math.abs(spin)) + ')'; x.beginPath(); x.ellipse(cx - spin * 3 * S, ry0 - 3 * S, rx - 3 * S, ry - 3 * S, 0, 0, 6.283); x.stroke();
+        for (let k = 0; k < 34; k++) {
+            const a = t * .5 + k * 6.283 / 34; if (Math.sin(a) <= -.2) continue;
+            const px = cx + Math.cos(a) * rx, py = ry0 + Math.sin(a) * ry, h = (3 + (k * 7) % 4) * S, al = (.55 + .45 * Math.sin(t * 3 + k)) * (.6 + .4 * Math.abs(spin));
+            x.fillStyle = 'rgba(255,122,32,' + al + ')'; x.fillRect(px - .8 * S, py - h / 2, 1.6 * S, h);
+        }
+        for (let k = 0; k < 18; k++) { const life = (t * .35 + k * .37) % 1, ex = cx + Math.sin(k * 12.9 + t * .3) * rx * 1.1 * (1 - life * .3), ey = ry0 + ry * .8 - life * 150 * S; x.fillStyle = 'rgba(255,' + (k % 3 ? 176 : 112) + ',' + (k % 3 ? 80 : 32) + ',' + ((1 - life) * .7) + ')'; x.beginPath(); x.arc(ex, ey, (1.6 - life) * S, 0, 6.283); x.fill(); }
+    }
+    function draw() {
+        if (!el) return;
+        const x = cv.getContext('2d'), W = cv.width, H = cv.height, t = (performance.now() - t0) / 1000, S = H / 640, cx = W / 2, cy = H / 2 - 30 * S;
+        x.fillStyle = '#0b0806'; x.fillRect(0, 0, W, H);
+        const g = x.createRadialGradient(cx, cy, 20 * S, cx, cy, 220 * S); g.addColorStop(0, 'rgba(58,36,16,.45)'); g.addColorStop(1, 'rgba(58,36,16,0)'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+        ring(x, cx, cy, t, S);
+        if (t - qAt > 4) { qAt = t; qi = (qi + 1 + Math.floor(Math.random() * 3)) % QUOTES.length; }
+        x.textAlign = 'center'; x.shadowColor = 'rgba(0,0,0,.9)'; x.shadowBlur = 8 * S;
+        x.fillStyle = '#e8c060'; x.font = Math.round(30 * S) + 'px "Uncial Antiqua", Georgia, serif'; x.fillText('Vojvodca Stredozeme', cx, cy - 150 * S);
+        x.fillStyle = '#b8a070'; x.font = Math.round(12 * S) + 'px "IM Fell English", Georgia, serif'; x.fillText(sub, cx, cy - 122 * S);
+        x.fillStyle = '#c8b890'; x.font = 'italic ' + Math.round(12 * S) + 'px "IM Fell English", Georgia, serif'; const q = QUOTES[qi]; x.fillText(q.length > 78 ? q.slice(0, 75) + '…' : q, cx, cy + 118 * S);
+        x.shadowBlur = 0;
+        pctShown += (pct - pctShown) * .18;
+        const bw = 420 * S, bh = 10 * S, bx = cx - bw / 2, by = cy + 148 * S, pw = Math.max(8 * S, bw * pctShown);
+        x.fillStyle = '#1a1208'; x.fillRect(bx - 2 * S, by - 2 * S, bw + 4 * S, bh + 4 * S);
+        x.strokeStyle = '#6a4a18'; x.lineWidth = 1.5 * S; x.strokeRect(bx - 2 * S, by - 2 * S, bw + 4 * S, bh + 4 * S);
+        const pg = x.createLinearGradient(bx, 0, bx + bw, 0); pg.addColorStop(0, '#d9a441'); pg.addColorStop(1, '#ffe6a0'); x.fillStyle = pg; x.fillRect(bx, by, pw, bh);
+        x.fillStyle = 'rgba(255,154,48,' + (.5 + .3 * Math.sin(t * 6)) + ')'; x.beginPath(); x.arc(bx + pw, by + bh / 2, 5 * S, 0, 6.283); x.fill();
+        x.fillStyle = '#d9a441'; x.font = 'italic ' + Math.round(11 * S) + 'px "IM Fell English", Georgia, serif'; x.fillText(stage + '  ' + Math.round(pctShown * 100) + ' %', cx, cy + 176 * S);
+        x.fillStyle = '#8a7a5a'; x.font = Math.round(10 * S) + 'px Georgia, serif'; x.fillText('Autor a vývojár hry: Dávid Mucha', cx, H - 14 * S);
+        raf = requestAnimationFrame(draw);
+    }
+    return {
+        get on() { return !!el; },
+        /** g: uložený hrdina (meno, deň, frakcia) alebo null. */
+        show(g) {
+            this.kill(); pct = pctShown = 0; stage = 'Otvarám kroniku…'; t0 = performance.now(); qAt = 0; qi = Math.floor(Math.random() * QUOTES.length);
+            const fac = g && typeof FN !== 'undefined' ? (g.kn || FN[g.fac] || '') : '';
+            sub = g ? (g.name || 'Vojvodca') + '  ·  deň ' + (g.day || 1) + (fac ? '  ·  ' + fac : '') : 'Uložená hra';
+            const host = (typeof game !== 'undefined' && game.canvas) || document.getElementById('game') || document.body, rc = host.getBoundingClientRect();
+            const full = rc.width < 200 || rc.height < 200;
+            const W = full ? innerWidth : Math.round(rc.width), H = full ? innerHeight : Math.round(rc.height);
+            el = document.createElement('div'); el.id = 'bootLoad';
+            el.style.cssText = 'position:fixed;left:' + (full ? 0 : rc.left) + 'px;top:' + (full ? 0 : rc.top) + 'px;width:' + W + 'px;height:' + H + 'px;z-index:100000;background:#0b0806;opacity:1;transition:opacity .4s;pointer-events:auto';
+            cv = document.createElement('canvas'); cv.width = W; cv.height = H; cv.style.cssText = 'width:100%;height:100%;display:block'; el.appendChild(cv); document.body.appendChild(el);
+            draw();
+        },
+        set(p, s) { pct = Math.max(pct, Math.max(0, Math.min(1, p))); if (s) stage = s; },
+        hide(cb) {
+            if (!el) { if (cb) cb(); return; }
+            pct = 1; stage = 'Brána sa otvára…';
+            const e = el, wait = Math.max(0, 1100 - (performance.now() - t0));
+            setTimeout(() => { if (el !== e) return; e.style.opacity = '0'; setTimeout(() => { if (el === e) this.kill(); if (cb) cb(); }, 420); }, wait);
+        },
+        kill() { if (raf) cancelAnimationFrame(raf); raf = 0; if (el) el.remove(); el = null; }
+    };
+})();

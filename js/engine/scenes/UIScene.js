@@ -24,8 +24,8 @@ class UIScene extends Phaser.Scene {
         this.g = this.add.graphics().setDepth(1);
         const t = (x, y, s, size, color, extra) => this.add.text(x, y, s, txtStyle(size, color, extra));
         this.toast = t(W / 2, 70, '', 13, UI_C.gold, { backgroundColor: 'rgba(18,14,12,.88)', padding: { x: 12, y: 4 } }).setOrigin(.5).setDepth(50);
-        this.pause = t(W / 2, H - 74, 'Pauza: klikni na mapu alebo sa utábor, aby čas plynul', 12, '#ffd24a', { backgroundColor: 'rgba(18,14,12,.85)', padding: { x: 10, y: 3 } }).setOrigin(.5).setDepth(5);
-        this.gateTxt = t(W / 2, 132, '', 13, UI_C.ink, { fontFamily: 'sans-serif', stroke: '#000', strokeThickness: 3 }).setOrigin(.5).setDepth(5);
+        this.pause = t(W / 2, H - 74, 'Pauza: klikni na mapu alebo sa utábor, aby čas plynul', 12, '#ffd24a', { backgroundColor: 'rgba(18,14,12,.7)', padding: { x: 12, y: 4 }, fontStyle: 'italic' }).setOrigin(.5).setDepth(5);
+        this.gateTxt = t(W / 2, 140, '', 13, UI_C.ink, { fontFamily: 'sans-serif', stroke: '#000', strokeThickness: 3 }).setOrigin(.5).setDepth(5);
         this.hudLayer = this.add.container(0, 0).setDepth(10);
         this.barLayer = this.add.container(0, 0).setDepth(20);
         this.tipLayer = this.add.container(0, 0).setDepth(30);
@@ -68,7 +68,7 @@ class UIScene extends Phaser.Scene {
     // ---------- Prekryvné efekty ----------------------------------------------------
     drawOverlay(scene, dt) {
         const g = this.g; g.clear();
-        if (TS && TS.l > 0 && G) { TS.l -= dt; this.toast.setVisible(!this.dlg).setText(TS.s).setAlpha(Math.min(1, TS.l / 40)).setY(scene === 'battle' ? (typeof bossAlive === 'function' && bossAlive() ? 172 : 114) : 70); }
+        if (TS && TS.l > 0 && G) { TS.l -= dt; this.toast.setVisible(!this.dlg).setText(TS.s).setAlpha(Math.min(1, TS.l / 40)).setY(scene === 'battle' ? (typeof bossAlive === 'function' && bossAlive() ? 104 : 84) : 70); }
         else this.toast.setVisible(false);
         this.pause.setVisible(scene === 'map' && mode === 'map' && !!PAUSE && !this.dlg && !this.menu && !this.big);
         if (scene === 'map') {
@@ -92,12 +92,10 @@ class UIScene extends Phaser.Scene {
         if (scene === 'battle' && U && U[0]) {
             if (!(typeof B3 !== 'undefined' && B3.isOn() && !lowFx())) this.drawWeather(g, WX.n, lowFx() ? .6 : 1.3);   // v 3D padá dážď a sneh priamo v scéne
             const h = U[0];
-            g.fillStyle(0x000000, .55).fillRect(W / 2 - 82, 58, 164, 10);
-            g.fillStyle(0xb8402a, 1).fillRect(W / 2 - 80, 60, 160 * Math.max(0, h.hp) / h.mh, 6);
             this.drawCombatHud(g);
             if (SGB) {
-                g.fillStyle(0x000000, .6).fillRect(W / 2 - 82, 114, 164, 8);
-                g.fillStyle(0xc08a3a, 1).fillRect(W / 2 - 80, 116, 160 * Math.max(0, SGB.gate) / SGB.mg, 4);
+                g.fillStyle(0x000000, .6).fillRect(W / 2 - 82, 120, 164, 8);
+                g.fillStyle(0xc08a3a, 1).fillRect(W / 2 - 80, 122, 160 * Math.max(0, SGB.gate) / SGB.mg, 4);
                 this.gateTxt.setVisible(true).setText(SGB.gate > 0 ? 'Brána hradu' : 'Brána je zničená!');
             }
         }
@@ -106,19 +104,40 @@ class UIScene extends Phaser.Scene {
     /** Bitka: výdrž a štít hrdinu pod zdravím, morálka oboch strán, stav (nápor, šípy, pokrik, prelomený kryt). */
     drawCombatHud(g) {
         if (typeof CMB === 'undefined') return;
-        const C = CMB, x = W / 2 - 80;
-        if (!this.cmbT) { const t = (s, c, ox) => this.add.text(0, 0, s, txtStyle(10, c, { stroke: '#000', strokeThickness: 3 })).setOrigin(ox, .5).setDepth(5); this.cmbT = [t('Tvoje vojsko', '#e8d8a8', 0), t('Nepriateľ', '#ffb0a0', 1), t('', '#ffd24a', .5)]; }
-        if (OPT.noStam === false) { g.fillStyle(0x000000, .5).fillRect(x - 2, 69, 164, 6);
-        g.fillStyle(C.gb > 0 ? (Math.floor(tm / 4) % 2 ? 0xff5030 : 0x802010) : 0xd9b84a, 1).fillRect(x, 70, 160 * Math.max(0, C.st) / 100, 4); }   // výdrž (len ak je zapnutá)
-        if (C.shMax) { g.fillStyle(0x000000, .5).fillRect(x - 2, 76, 164, 5); g.fillStyle(C.blk ? 0xd8e8ff : 0x8aa0c0, 1).fillRect(x, 77, 160 * C.shp / C.shMax, 3); }   // štít
-        if (!C.noRout) {   // morálka: vľavo tvoja (zlatá), vpravo nepriateľa (červená)
-            const mw = 120, y = 66, bar = (bx, v, col) => { g.fillStyle(0x000000, .55).fillRect(bx - 2, y - 2, mw + 4, 10); g.fillStyle(col, 1).fillRect(bx, y, mw * Math.max(0, v) / 100, 6); g.fillStyle(0xffffff, .5).fillRect(bx + mw * .35, y - 2, 1, 10); };
-            bar(18, C.M[0], C.M[0] < 35 ? 0xd07030 : 0xd9a441); bar(W - 18 - mw, C.M[1], C.M[1] < 35 ? 0xd07030 : 0xc0392b);
-            this.cmbT[0].setPosition(18, 81).setText('Morálka – tvoje vojsko').setVisible(true);
-            this.cmbT[1].setPosition(W - 18, 81).setText('Morálka – nepriateľ').setVisible(true);
-        }
+        const C = CMB, h = U[0], tx = (k, str, size, col, ox, oy) => { if (!this.cmbT[k]) this.cmbT[k] = this.add.text(0, 0, '', txtStyle(size, col, { stroke: '#000', strokeThickness: 3 })).setDepth(5); return this.cmbT[k].setOrigin(ox, oy).setText(str).setVisible(true); };
+        if (!this.cmbT) this.cmbT = [];
+        // horný pás: sila a morálka oboch strán (vľavo tvoja, vpravo nepriateľ)
+        if (!this.cnt || (this.cntT = (this.cntT || 0) + 1) % 8 === 0) { let a = 0, b = 0; for (const u of U) if (u.hp > 0 && !u.fled) (u.t ? b++ : a++); this.cnt = [a, b]; }
+        const cx0 = W / 2, sy = 6;
+        g.fillStyle(0x0e0a08, .72).fillRoundedRect(cx0 - 250, sy, 500, 26, 6); g.lineStyle(1, 0xc9a24a, .55).strokeRoundedRect(cx0 - 250, sy, 500, 26, 6);
+        const bar = (bx, v, col, right) => { const bw = 150, f = bw * Math.max(0, Math.min(100, v)) / 100; g.fillStyle(0x000000, .6).fillRect(bx, sy + 9, bw, 8); g.fillStyle(col, 1).fillRect(right ? bx + bw - f : bx, sy + 9, f, 8); g.fillStyle(0xffffff, .22).fillRect(right ? bx + bw - f : bx, sy + 9, f, 3); g.fillStyle(0xffffff, .5).fillRect(right ? bx + bw * .65 : bx + bw * .35, sy + 7, 1, 12); };
+        if (!C.noRout) { bar(cx0 - 170, C.M[0], C.M[0] < 35 ? 0xd07030 : 0xd9a441, 0); bar(cx0 + 20, C.M[1], C.M[1] < 35 ? 0xd07030 : 0xc0392b, 1); }
+        g.fillStyle(0xc9a24a, .7).fillRect(cx0 - 1, sy + 5, 2, 16);
+        tx(0, 'Tvoji ' + this.cnt[0], 11, '#f3dc9a', 1, .5).setPosition(cx0 - 178, sy + 14);
+        tx(1, this.cnt[1] + ' Nepriateľ', 11, '#ffb0a0', 0, .5).setPosition(cx0 + 178, sy + 14);
+        // panel hrdinu vľavo dole: zdravie, štít, kôň, výdrž, šípy
+        const px = 10, py = H - 98, ph = 62;
+        g.fillStyle(0x0e0a08, .74).fillRoundedRect(px, py, 188, ph, 6); g.lineStyle(1, 0xc9a24a, .55).strokeRoundedRect(px, py, 188, ph, 6);
+        const pb = (y, v, max, col, hh) => { const f = 172 * Math.max(0, Math.min(1, v / max)); g.fillStyle(0x000000, .6).fillRect(px + 8, y, 172, hh); g.fillStyle(col, 1).fillRect(px + 8, y, f, hh); g.fillStyle(0xffffff, .2).fillRect(px + 8, y, f, Math.max(2, hh / 3)); };
+        const hpv = Math.ceil(Math.max(0, h.hp)); pb(py + 8, h.hp, h.mh, h.hp < h.mh * .35 ? 0xd03020 : 0xb8402a, 12);
+        tx(4, hpv + ' / ' + Math.round(h.mh), 10, '#fff', .5, .5).setPosition(px + 94, py + 14);
+        let ry = py + 24;
+        if (C.shMax) { pb(ry, C.shp, C.shMax, C.blk ? 0xd8e8ff : 0x8aa0c0, 6); ry += 9; }
+        if (C.horse0) { pb(ry, C.horse, C.horse0, 0xa06a30, 6); ry += 9; }
+        if (OPT.noStam === false) { pb(ry, C.st, 100, C.gb > 0 ? (Math.floor(tm / 4) % 2 ? 0xff5030 : 0x802010) : 0xd9b84a, 5); ry += 8; }
+        tx(5, [C.ammo0 ? 'Šípy ' + C.ammo : '', C.ammo0 && C.km ? (C.wpn === 'r' ? 'v ruke: strelná' : 'v ruke: zbraň') : '', C.cry > 0 ? '' : 'pokrik (V)'].filter(Boolean).join('  ·  '), 9, '#c8b48a', 0, 0).setPosition(px + 8, py + ph - 14);
         const bo = bossAlive();   // boss: veľká lišta zdravia s menom
-        if (bo) { g.fillStyle(0x000000, .65).fillRect(W / 2 - 152, 102, 304, 12); g.fillStyle(0x8a1a10, 1).fillRect(W / 2 - 150, 104, 300 * bo.hp / bo.mh, 8); g.fillStyle(0xff8a40, .5).fillRect(W / 2 - 150, 104, 300 * bo.hp / bo.mh, 3); if (!this.cmbT[3]) this.cmbT[3] = this.add.text(0, 0, '', txtStyle(12, '#ffb090', { stroke: '#000', strokeThickness: 3 })).setOrigin(.5).setDepth(5); this.cmbT[3].setPosition(W / 2, 124).setText(BOSSES[bo.boss].n).setVisible(true); }
+        if (bo) { g.fillStyle(0x000000, .65).fillRect(W / 2 - 152, 40, 304, 12); g.fillStyle(0x8a1a10, 1).fillRect(W / 2 - 150, 42, 300 * bo.hp / bo.mh, 8); g.fillStyle(0xff8a40, .5).fillRect(W / 2 - 150, 42, 300 * bo.hp / bo.mh, 3); tx(3, BOSSES[bo.boss].n, 12, '#ffb090', .5, 0).setPosition(W / 2, 54); }
+        // cieľ pod zameriavačom: meno a zdravie (ako vo Warbande)
+        if (h.hp > 0) {
+            if (!this.tgSig || (this.tgT = (this.tgT || 0) + 1) % 3 === 0) {
+                const ya = C.km && C.aim3 ? C.aim3.yaw : h.f; let best = null, bs = 1e9;
+                for (const u of U) if (u.t && u.hp > 0 && !u.fled) { const dx = u.x - h.x, dy = u.y - h.y, d = Math.hypot(dx, dy); if (d > 160 || d < 1) continue; const da = angD(ya, Math.atan2(dy, dx)); if (da > .1 + 12 / d) continue; const sc = d + da * 220; if (sc < bs) { bs = sc; best = u; } }
+                this.tgSig = 1; this.tgU = best;
+            }
+            const u = this.tgU;
+            if (u && u.hp > 0) { const ty = H / 2 + 36; g.fillStyle(0x000000, .6).fillRect(W / 2 - 41, ty + 13, 82, 6); g.fillStyle(0xc0392b, 1).fillRect(W / 2 - 40, ty + 14, 80 * Math.max(0, u.hp) / u.mh, 4); tx(6, unitName(u), 10, '#f4e8d0', .5, 0).setPosition(W / 2, ty); }
+        }
         // smer úderu: zlatá šípka = tvoj nápriah, červená = úder, ktorý ide na teba (ako vo Warbande)
         const chev = (d, col, k) => { const cx = W / 2, cy = H * .56, o = 34 * k, s = 9 * k; g.fillStyle(col, .85);
             if (d === 'l') g.fillTriangle(cx - o - s, cy, cx - o + s * .6, cy - s, cx - o + s * .6, cy + s); else if (d === 'r') g.fillTriangle(cx + o + s, cy, cx + o - s * .6, cy - s, cx + o - s * .6, cy + s);
@@ -147,18 +166,22 @@ class UIScene extends Phaser.Scene {
             }
         }
         if (C.blk && OPT.blkDir === 'manual' && !(C.shp > 0)) chev(C.bd, 0xc8d8ff, .7);
-        const st = [C.charging ? 'NÁPOR!' : '', C.couch ? 'Sklopená kopija!' : '', C.rd ? 'Nápriah ' + DIR_N[C.rd.d] + (C.rd.t > C.rd.ready + 4 ? ' ' + Math.round(100 + 45 * Math.min(1, (C.rd.t - C.rd.ready) / 30)) + ' %' : '') : '', C.draw > 0 ? 'Napínaš: ' + Math.round(Math.min(1, C.draw / 26) * 100) + ' %' : '', C.gb > 0 ? 'Kryt prelomený' : '', C.ammo0 ? 'Šípy: ' + C.ammo : '', C.ammo0 && C.km ? (C.wpn === 'r' ? 'V ruke: strelná zbraň' : 'V ruke: zbraň na blízko') : '', C.cry > 0 ? '' : 'Pokrik (V) pripravený', 'Skupina: ' + GRP_N[C.sel]].filter(Boolean).join('   ');
-        this.cmbT[2].setPosition(W / 2, 90).setText(st).setVisible(true);
+        const st = [C.charging ? 'NÁPOR!' : '', C.couch ? 'Sklopená kopija!' : '', C.rd ? 'Nápriah ' + DIR_N[C.rd.d] + (C.rd.t > C.rd.ready + 4 ? ' ' + Math.round(100 + 45 * Math.min(1, (C.rd.t - C.rd.ready) / 30)) + ' %' : '') : '', C.draw > 0 ? 'Napínaš: ' + Math.round(Math.min(1, C.draw / 26) * 100) + ' %' : '', C.gb > 0 ? 'Kryt prelomený' : ''].filter(Boolean).join('   ');
+        if (st) tx(2, st, 12, '#ffd24a', .5, .5).setPosition(W / 2, H * .64);
         // hlásenia ako vo Warbande (zásahy, zabitia) vľavo dole
         if (!this.msgT) this.msgT = Array.from({ length: 7 }, () => this.add.text(10, 0, '', txtStyle(10, '#e8d8a8', { stroke: '#000', strokeThickness: 3 })).setOrigin(0, 1).setDepth(5));
         const M = (C.msgs || []).filter(m => (m.t -= 1) > 0); C.msgs = M;
-        this.msgT.forEach((t, i) => { const m = M[M.length - 1 - i]; if (!m) { t.setVisible(false); return; } t.setText(m.s); if (t._c !== m.c) { t._c = m.c; t.setColor(m.c); } t.setAlpha(Math.min(1, m.t / 60)).setPosition(10, H - 2 * 26 - 14 - i * 13).setVisible(true); });
-        // zameriavač v strede (mierenie ako vo Warbande)
-        if (typeof B3 !== 'undefined' && B3.isOn() && B3.look && !B3.photo) {
-            const cx = W / 2, cy = H / 2, dr = C.draw > 0 ? Math.min(1, C.draw / 26) : 0, bow = C.wpn === 'r' || C.draw > 0;
-            const gap = bow ? 3 + (1 - dr) * 13 + (C.draw > 110 ? Math.sin(tm * 1.7) * 2 + 2 : 0) : 2.5, L = bow ? 6 : 4;
+        this.msgT.forEach((t, i) => { const m = M[M.length - 1 - i]; if (!m) { t.setVisible(false); return; } t.setText(m.s); if (t._c !== m.c) { t._c = m.c; t.setColor(m.c); } t.setAlpha(Math.min(1, m.t / 60)).setPosition(10, H - 102 - i * 13).setVisible(true); });
+        // zameriavač v strede (mierenie ako vo Warbande): bodka a krátke čiarky; rozšíri sa v pohybe, pri dosahu zbrane zčervenie
+        if (typeof B3 !== 'undefined' && B3.isOn() && B3.look && !B3.photo && OPT.xhair !== 'off') {
+            const cx = W / 2, cy = H / 2, dr = C.draw > 0 ? Math.min(1, C.draw / 26) : 0, bow = C.wpn === 'r' || C.draw > 0, ks = OPT.xhair === 's' ? .75 : 1;
+            const mvK = Math.min(1, Math.hypot(C.vx || 0, C.vy || 0) / 2.2), gap = (bow ? 3 + (1 - dr) * 13 + (C.draw > 110 ? Math.sin(tm * 1.7) * 2 + 2 : 0) : 2.5 + mvK * 3) * ks, L = (bow ? 6 : 4) * ks;
+            let col = bow && dr >= 1 ? 0xffd24a : 0xf4ead0;
+            const tgu = this.tgU;
+            if (!bow && tgu && tgu.hp > 0 && typeof wpnTimes === 'function' && Math.hypot(tgu.x - h.x, tgu.y - h.y) < wpnTimes().reach + (tgu.r || 6)) col = 0xff7a50;
+            g.fillStyle(0x000000, .55).fillCircle(cx, cy, 2.1 * ks); g.fillStyle(col, .95).fillCircle(cx, cy, 1.3 * ks);
             g.lineStyle(1.4, 0x000000, .55); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) g.lineBetween(cx + dx * gap, cy + dy * gap, cx + dx * (gap + L), cy + dy * (gap + L));
-            g.lineStyle(1, bow && dr >= 1 ? 0xffd24a : 0xf4ead0, .95); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) g.lineBetween(cx + dx * gap, cy + dy * gap, cx + dx * (gap + L), cy + dy * (gap + L));
+            g.lineStyle(1, col, .95); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) g.lineBetween(cx + dx * gap, cy + dy * gap, cx + dx * (gap + L), cy + dy * (gap + L));
         }
         // málo zdravia: červený okraj obrazovky
         const hp = U[0] ? U[0].hp / U[0].mh : 1;
@@ -182,50 +205,58 @@ class UIScene extends Phaser.Scene {
 
     // ---------- Horná lišta (zrkadlo #hud) -----------------------------------------
     syncHud() {
-        const on = !!G && hud.style.visibility !== 'hidden' && !ov.classList.contains('intro');
+        const on = !!G && hud.style.visibility !== 'hidden' && !ov.classList.contains('intro') && mode !== 'battle';
         const sig = on ? hud.innerHTML : '';
         if (sig === this.sig.hud) return;
         this.sig.hud = sig;
         this.hudLayer.removeAll(true);
         if (!on) return;
-        // Každá položka je „štítok“: ikona vo vysokom rozlíšení + hodnota a pod ňou drobný popis.
-        const RH = 27, GAP = 12;
-        let x = 10, y = 4;
-        const items = [], seps = [];
+        // Slabá jednoradová lišta: ikona + hodnota; názov položky sa ukáže, keď na ňu ukážeš myšou.
+        const RH = 22, GAP = 14;
+        let x = 10, y = 0;
+        const items = [], seps = [], zones = [];
         for (const span of hud.children) {
             const val = span.querySelector('b');                 // nulové položky (napr. Elfovia 0) lištu zbytočne zahlcujú
             if (val && val.textContent.trim() === '0' && !/Zlato|Sláva/.test(span.textContent)) continue;
             const full = span.textContent.replace(/\s+/g, ' ').trim();
-            const icon = Icons.forHud(full, span === hud.children[0]);
+            const first = span === hud.children[0];
+            const icon = Icons.forHud(full, first);
             const vcol = span.style.color || UI_C.gold;
-            let label = '', value = full;
+            let value = full, label = full;
             if (val && icon) {
-                value = val.textContent.replace(/\s+/g, ' ').trim(); label = full.replace(value, '').replace(/^[,:\s]+|[:\s]+$/g, '').trim();
-                const m = !label && value.match(/^([^:]+):\s*(.+)$/); if (m) { label = m[1]; value = m[2]; }   // „Body: 5“
+                value = val.textContent.replace(/\s+/g, ' ').trim();
+                label = full.replace(value, '').replace(/^[,:\s]+|[:\s]+$/g, '').trim() || full;
+                const m = value.match(/^([^:]+):\s*(.+)$/); if (m) { label = m[1]; value = m[2]; }   // „Body: 5“
             }
-            const group = [];
-            let w = 0;
-            if (icon) { const im = this.add.image(0, 0, Icons.tex(this, icon)).setDisplaySize(20, 20).setOrigin(0, .5); group.push(im); w = 23; }
-            const tv = this.add.text(0, 0, value, txtStyle(12, icon ? vcol : UI_C.ink, { fontStyle: icon ? 'bold' : 'normal' }));
-            const tl = label ? this.add.text(0, 0, label, txtStyle(8, UI_C.dim)) : null;
-            const tw = Math.max(tv.width, tl ? tl.width : 0);
-            if (x + w + tw > W - 10 && x > 10) { x = 10; y += RH; }
-            if (group[0]) group[0].setPosition(x, y + RH / 2 - 1);
-            if (tl) { tv.setPosition(x + w, y + 1); tl.setPosition(x + w, y + 15); group.push(tv, tl); }
-            else { tv.setPosition(x + w, y + RH / 2 - tv.height / 2 - 1); group.push(tv); }
-            items.push(...group);
-            x += w + tw + GAP;
+            if (first) label = full;
+            const w = icon ? 19 : 0;
+            const tv = this.add.text(0, 0, value, txtStyle(11, icon ? vcol : UI_C.ink, { fontStyle: icon ? 'bold' : 'normal' }));
+            const iw = w + tv.width;
+            if (x + iw > W - 10 && x > 10) { x = 10; y += RH; }
+            if (icon) items.push(this.add.image(x, y + RH / 2, Icons.tex(this, icon)).setDisplaySize(15, 15).setOrigin(0, .5).setAlpha(.9));
+            tv.setPosition(x + w, y + RH / 2 - tv.height / 2); items.push(tv);
+            zones.push([x - 4, y, iw + 8, RH, label + (label !== value && !first ? ': ' + value : '')]);
+            x += iw + GAP;
             seps.push([x - GAP / 2, y]);
         }
-        const hb = y + RH + 3;
+        const hb = y + RH + 2;
         const bg = this.add.graphics();
-        bg.fillGradientStyle(0x2a1e14, 0x2a1e14, 0x120e0c, 0x120e0c, .94, .94, .9, .9).fillRect(0, 0, W, hb);
-        bg.fillStyle(0xc9a24a, .9).fillRect(0, hb - 1, W, 1);          // zlatý lem
-        bg.fillStyle(0x5a3a12, .9).fillRect(0, hb + 1, W, 1);
-        bg.fillStyle(0xffffff, .05).fillRect(0, 0, W, 1);
-        bg.fillStyle(0x6a5a46, .5);
-        for (const [sx, sy] of seps.slice(0, -1)) bg.fillRect(sx, sy + 4, 1, RH - 8);   // jemné oddeľovače
+        bg.fillGradientStyle(0x1c140e, 0x1c140e, 0x120e0c, 0x120e0c, .72, .72, .5, .5).fillRect(0, 0, W, hb);
+        bg.fillStyle(0xc9a24a, .55).fillRect(0, hb - 1, W, 1);          // tenký zlatý lem
+        bg.fillStyle(0x6a5a46, .4);
+        for (const [sx, sy] of seps.slice(0, -1)) bg.fillRect(sx, sy + 6, 1, RH - 12);   // jemné oddeľovače
         this.hudLayer.add([bg, ...items]);
+        for (const [zx, zy, zw, zh, tip] of zones) {   // popis položky po ukázaní myšou
+            const z = this.add.rectangle(zx, zy, zw, zh, 0, 0).setOrigin(0).setInteractive();
+            let tb = null;
+            z.on('pointerover', () => {
+                const t = this.add.text(0, 0, tip, txtStyle(11, '#f3dc9a')), tw = t.width + 14, tx = Math.max(4, Math.min(W - tw - 4, zx));
+                const g = this.add.graphics().fillStyle(0x120e0c, .95).fillRoundedRect(tx, hb + 3, tw, 20, 4).lineStyle(1, UI_C.line, .9).strokeRoundedRect(tx, hb + 3, tw, 20, 4);
+                t.setPosition(tx + 7, hb + 6); tb = this.add.container(0, 0, [g, t]); this.hudLayer.add(tb);
+            });
+            z.on('pointerout', () => { if (tb) { tb.destroy(true); tb = null; } });
+            this.hudLayer.add(z);
+        }
     }
 
     // ---------- Panel tlačidiel a rozkazy (zrkadlo tb a od) --------------------------
@@ -278,7 +309,10 @@ class UIScene extends Phaser.Scene {
             // tlačidlá, ktoré nepatria do žiadnej skupiny ani nie sú vyššie (nové položky), ostanú viditeľné
             all.filter(b => { const t = b.textContent.trim(); return b.style.display !== 'none' && !/^[−+]$/.test(t) && !/tábor|pobyt/i.test(t) && ![...grouped].some(n => t.startsWith(n)); })
                .forEach(b => put(b.textContent, Icons.forButton(b.textContent), () => b.click()));
-            this.barLayer.add(out);
+            const plate = this.add.graphics(), pw = x + 3;
+            plate.fillStyle(0x120e0a, .78).fillRoundedRect(2, y - 4, pw, BH + 8, { tl: 0, tr: 8, bl: 0, br: 0 });
+            plate.lineStyle(1, 0xc9a24a, .55).lineBetween(2, y - 4, pw + 2, y - 4);
+            this.barLayer.add([plate, ...out]);
             if (this.pause) this.pause.y = y - 14;
         }
         if (vis(od)) {   // dolný rad rozkazy, nad ním skupiny vojska
@@ -321,22 +355,43 @@ class UIScene extends Phaser.Scene {
     measure(s, size) { const t = this.add.text(0, 0, s, txtStyle(size, '#fff')); const w = t.width; t.destroy(); return w; }
 
     /** Tlačidlo v štýle hry; vráti pole objektov. */
+    /** Rám okna: light = pergamen (tmavé písmo), inak tmavé drevo so zlatým rámom. */
+    panelFrame(g, x, y, w, h, light) {
+        if (light) {
+            g.fillStyle(0x000000, .28).fillRoundedRect(x + 2, y + 3, w, h, 5);
+            g.fillStyle(0xe6d2a6, .98).fillRoundedRect(x, y, w, h, 5);
+            g.lineStyle(1.5, 0x8a6230, 1).strokeRoundedRect(x, y, w, h, 5);
+            g.lineStyle(1, 0xb08a3a, .5).strokeRoundedRect(x + 3, y + 3, w - 6, h - 6, 3);
+        } else {
+            g.fillStyle(0x000000, .35).fillRoundedRect(x + 2, y + 3, w, h, 5);
+            g.fillStyle(UI_C.panel, .96).fillRoundedRect(x, y, w, h, 5);
+            g.lineStyle(1.5, UI_C.line, 1).strokeRoundedRect(x, y, w, h, 5);
+            g.lineStyle(1, UI_C.line, .3).strokeRoundedRect(x + 3, y + 3, w - 6, h - 6, 3);
+        }
+        return g;
+    }
+
     button(x, y, w, h, label, fn, o = {}) {
         const off = !!o.disabled, size = o.size || 14;
         // jednotný štýl okien (ako hlavné menu): tmavé drevo, zlatý rám, svetlé zlaté písmo; vybrané tlačidlo svieti
-        const fill = off ? UI_C.btnOff : o.sel ? UI_C.btnSel : UI_C.btn, edge = off ? 0x5a4a3a : o.sel ? 0xffe08a : 0xb08a3a;
+        const fill = off ? UI_C.btnOff : (o.sel || o.primary) ? UI_C.btnSel : UI_C.btn, edge = off ? 0x5a4a3a : (o.sel || o.primary) ? 0xffe08a : 0xb08a3a;
         const r = this.add.rectangle(x, y, w, h, fill).setOrigin(0).setStrokeStyle(1.5, edge, 1).setAlpha(o.alpha ?? 1);
         const deco = this.add.graphics().setAlpha(o.alpha ?? 1);
-        deco.fillStyle(0xffe0a0, off ? .05 : .16).fillRect(x + 1.5, y + 1.5, w - 3, 1);          // svetlá horná hrana
-        deco.fillStyle(0x000000, .35).fillRect(x + 1.5, y + h - 2.5, w - 3, 1);                 // tieň dole
-        if (!off && h >= 20) deco.lineStyle(.8, 0xd9a441, .28).strokeRect(x + 3, y + 3, w - 6, h - 6);   // vnútorná linka
+        deco.fillStyle(0xffe0a0, off ? .03 : .10).fillRect(x + 1.5, y + 1.5, w - 3, Math.max(2, (h - 3) * .45));   // lesk v hornej polovici
+        deco.fillStyle(0x000000, .28).fillRect(x + 1.5, y + h - 3.5, w - 3, 2);                                   // tieň dole
+        if (!off && h >= 22) deco.lineStyle(.8, 0xd9a441, .30).strokeRect(x + 3, y + 3, w - 6, h - 6);           // vnútorná linka
+        const is = Math.min(h - 6, o.iconSize || 22), iw = o.icon ? (o.bare ? 0 : is + 10) : 0;
+        if (o.icon && !o.bare) {   // ikonka v zapustenom rámčeku
+            const sx = x + 4, sy = y + (h - is - 4) / 2;
+            deco.fillStyle(0x0e0a06, off ? .35 : .55).fillRoundedRect(sx, sy, is + 4, is + 4, 3);
+            deco.lineStyle(1, 0xb08a3a, off ? .25 : .6).strokeRoundedRect(sx, sy, is + 4, is + 4, 3);
+        }
         if (!off && w >= 110 && !o.icon) { deco.fillStyle(0xd9a441, .75); for (const dx of [7, w - 7]) deco.fillTriangle(x + dx, y + h / 2 - 3, x + dx + 3, y + h / 2, x + dx, y + h / 2 + 3).fillTriangle(x + dx, y + h / 2 - 3, x + dx - 3, y + h / 2, x + dx, y + h / 2 + 3); }   // kosoštvorčeky
-        const is = Math.min(h - 4, o.iconSize || 24), iw = o.icon ? (o.bare ? 0 : is + 6) : 0;
         const t = this.add.text(x + iw + (w - iw) / 2, y + h / 2, label, txtStyle(size, off ? UI_C.dim : o.sel ? '#fff4d0' : '#f3dc9a', { align: 'center', wordWrap: { width: Math.max(10, w - 12 - iw), useAdvancedWrap: true } })).setOrigin(.5);
         const out = [r, deco, t];
         if (o.icon) {
-            const cx = o.bare ? x + w / 2 : x + 3 + is / 2;
-            const im = this.add.image(cx, y + h / 2, o.icon).setDisplaySize(is - 2, is - 2).setAlpha(off ? .6 : 1);
+            const cx = o.bare ? x + w / 2 : x + 6 + is / 2;
+            const im = this.add.image(cx, y + h / 2, o.icon).setDisplaySize(o.bare ? is : is - 2, o.bare ? is : is - 2).setAlpha(off ? .6 : 1);
             out.push(im);
         }
         if (!off && fn) {

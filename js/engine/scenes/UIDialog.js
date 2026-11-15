@@ -24,12 +24,16 @@ Object.assign(UIScene.prototype, {
     },
 
     buildDialog(scroll) {
-        const PW = 440, IW = PW - 32, root = this.add.container(0, 0).setDepth(40);
+        const root = this.add.container(0, 0).setDepth(40);
         const shade = this.add.rectangle(0, 0, W, H, 0x0c0907, .35).setOrigin(0).setInteractive();
         const h1 = ov.querySelector('h1'), title = h1 ? h1.textContent : '';
-        const letter = /^List /.test(title), LC = letter ? { gold: '#6a2a10', ink: '#2e2014', dim: '#6a5a48' } : UI_C;   // list = pergamen s tmavým atramentom
+        const letter = /^List /.test(title), LC = letter ? { gold: '#6a2a10', ink: '#2e2014', dim: '#6a5a48' } : { gold: '#7a4a14', ink: '#2a1c12', dim: '#6a5840' };   // pergamen: tmavý atrament
         const bt = ov.querySelector('#bt'), kids = bt ? [...bt.children] : [];
-        const nBtn = kids.filter(k => k.tagName === 'BUTTON').length, cols = nBtn > 8 || /^Trh:/.test(title) ? 3 : 2, bw = (IW - (cols - 1) * 6) / cols;
+        const nBtn = kids.filter(k => k.tagName === 'BUTTON').length, cols = nBtn > 14 || /^Trh:/.test(title) ? 3 : nBtn >= 5 ? 2 : 1;
+        const PW = cols === 3 ? 620 : cols === 2 ? 540 : 460, GP = 8;
+        let sb = 0, IW, bw;   // sb: miesto vpravo pre posuvník, keď je obsah dlhší ako okno
+        const dims = () => { IW = PW - 32 - sb; bw = (IW - (cols - 1) * GP) / cols; };
+        dims();
         this.dlgButtons = [];
         // rozloženie obsahu okna (nadpis, text, tlačidlá a riadky) od y = 0
         const layout = list => {
@@ -51,24 +55,40 @@ Object.assign(UIScene.prototype, {
             if (title) { const t = this.add.text(pimg ? px0 : PW / 2, y, title, txtStyle(19, LC.gold, { fontFamily: TITLE_FONT, align: pimg ? 'left' : 'center', wordWrap: { width: pw0 } })).setOrigin(pimg ? 0 : .5, 0); items.push(t); y += t.height + 5; }
             ov.querySelectorAll(':scope > p').forEach(p => {
                 if (!p.textContent.trim()) return;
-                const t = this.add.text(pimg ? px0 : PW / 2, y, p.textContent, txtStyle(letter ? 12.5 : 12, p.style.color ? LC.gold : LC.ink, { fontStyle: letter ? 'italic' : 'normal', align: pimg ? 'left' : 'center', lineSpacing: 2, wordWrap: { width: pw0 } })).setOrigin(pimg ? 0 : .5, 0);
+                const t = this.add.text(pimg ? px0 : PW / 2, y, p.textContent, txtStyle(letter ? 13 : 13, p.style.color ? LC.gold : LC.ink, { fontStyle: letter ? 'italic' : 'normal', align: pimg ? 'left' : 'center', lineSpacing: 2, wordWrap: { width: pw0 } })).setOrigin(pimg ? 0 : .5, 0);
                 items.push(t); y += t.height + 6;
             });
             if (pimg) { y = Math.max(y, py0 + 84); px0 = 16; }
             y += 4;
-            const flush = () => { if (col) { y += rowH + 5; col = 0; rowH = 0; } };
+            const flush = () => { if (col) { y += rowH + GP; col = 0; rowH = 0; } };
+            // v mriežke majú všetky tlačidlá rovnakú výšku (podľa najvyššieho), aby riadky boli rovné
+            let uh = 0;
+            if (cols > 1) list.forEach(k => { if (k.tagName === 'BUTTON' && !(UI_EXIT.test(k.textContent.trim()) && k === list[list.length - 1])) uh = Math.max(uh, this.dialogButton(k, -999, -999, bw, () => 0, false, 0, true).h); });
             list.forEach(k => {
                 if (k.tagName === 'BUTTON') {
-                    const parts = this.dialogButton(k, 16 + col * (bw + 6), y, bw, () => this.inDialog());
-                    items.push(...parts);
-                    rowH = Math.max(rowH, parts.h); col++;
-                    if (col === cols) flush();
+                    const exit = UI_EXIT.test(k.textContent.trim()), last = k === list[list.length - 1];
+                    if (exit && last) {
+                        flush();
+                        const parts = this.dialogButton(k, 16, y, IW, () => this.inDialog(), true);
+                        items.push(...parts); y += parts.h + GP; col = 0; rowH = 0;
+                    } else {
+                        const parts = this.dialogButton(k, 16 + col * (bw + GP), y, bw, () => this.inDialog(), cols === 1 && exit, uh);
+                        items.push(...parts);
+                        rowH = Math.max(rowH, parts.h); col++;
+                        if (col === cols) flush();
+                    }
                 } else {
                     flush();
                     const ik = this.iconFor(k), ix = ik ? 40 : 0;   // riadok s ikonkou/portrétom vľavo
                     if (ik) items.push(this.add.image(16, y, ik).setOrigin(0).setDisplaySize(34, 34));
-                    const t = this.add.text(16 + ix, y, k.textContent, txtStyle(k.dataset.kind === 'gold' ? 12.5 : 11.5, k.dataset.kind === 'gold' ? LC.gold : k.dataset.kind === 'dim' ? LC.dim : LC.ink, { wordWrap: { width: IW - 26 - ix } }));
-                    items.push(t); y += Math.max(t.height, ik ? 34 : 0) + 3;
+                    const t = this.add.text(16 + ix, y, k.textContent, txtStyle(k.dataset.kind === 'gold' ? 14 : 13, k.dataset.kind === 'gold' ? LC.gold : k.dataset.kind === 'dim' ? LC.dim : LC.ink, { wordWrap: { width: IW - 26 - ix } }));
+                    items.push(t);
+                    const block = Math.max(t.height, ik ? 34 : 0);
+                    if (k.dataset.kind === 'gold') {
+                        const rule = this.add.graphics();
+                        rule.lineStyle(1, 0x8a6230, .55).lineBetween(16, y + block + 2, 16 + IW - 4, y + block + 2);
+                        items.push(rule); y += block + 7;
+                    } else y += block + 3;
                 }
             });
             flush();
@@ -76,6 +96,7 @@ Object.assign(UIScene.prototype, {
         };
         const maxH = H - 110;
         let L = layout(kids), foot = [];
+        if (L.CH > maxH) { sb = 14; dims(); L.items.forEach(o => o.destroy()); this.dlgButtons = []; L = layout(kids); }
         if (L.CH > maxH) {
             // dlhé okno: tlačidlá na odchod (Späť, Zavrieť…) budú vždy viditeľné dole
             let n = kids.length;
@@ -97,9 +118,9 @@ Object.assign(UIScene.prototype, {
         maskG.fillStyle(0xffffff).fillRect(px, py + 14, PW, viewH + 12);
         const d = this.dlg = { root, content, mask: maskG, px, py, PW, PH, CH, maxH: viewH, scroll: 0, title, vy0: py + 14, vy1: py + 26 + viewH };
         if (foot.length) {
-            const fy = py + 26 + viewH + 4, fw = (IW - (foot.length - 1) * 6) / foot.length;
+            const fy = py + 26 + viewH + 4, fw = (IW - (foot.length - 1) * GP) / foot.length;
             panel.lineStyle(1, UI_C.line, .4).lineBetween(px + 14, fy - 4, px + PW - 14, fy - 4);
-            foot.forEach((k, i) => root.add(this.dialogButton(k, px + 16 + i * (fw + 6), fy, fw, () => true)));
+            foot.forEach((k, i) => root.add(this.dialogButton(k, px + 16 + i * (fw + GP), fy, fw, () => true, UI_EXIT.test(k.textContent.trim()))));
         }
         if (CH > viewH) {
             content.setMask(maskG.createGeometryMask());
@@ -138,8 +159,12 @@ Object.assign(UIScene.prototype, {
         }
         const evil = G && heroSide() === 1, line = evil ? 0x9a2a1a : UI_C.line, line2 = evil ? 0x5a1a12 : 0x8a6a2a;
         panel.fillStyle(evil ? 0x14100f : UI_C.panel, .97).fillRoundedRect(px, py, PW, PH, 6);
+        panel.fillStyle(evil ? 0xdcc6ae : 0xe6d2a6, 1).fillRoundedRect(px + 8, py + 8, PW - 16, PH - 16, 3);
+        let stain = Math.round(px * 3 + py);
+        const rndS = () => (stain = stain * 16807 % 2147483647) / 2147483647;
+        panel.fillStyle(0xc8b080, .3); for (let k = 0; k < 16; k++) panel.fillEllipse(px + 16 + rndS() * (PW - 32), py + 16 + rndS() * (PH - 32), 8 + rndS() * 26, 3 + rndS() * 8);
         panel.lineStyle(2, line, 1).strokeRoundedRect(px, py, PW, PH, 6);
-        panel.lineStyle(1, line, .35).strokeRoundedRect(px + 5, py + 5, PW - 10, PH - 10, 4);
+        panel.lineStyle(1, line, .55).strokeRoundedRect(px + 5, py + 5, PW - 10, PH - 10, 4);
         // rohy
         for (const [cx, cy, sx, sy] of [[px, py, 1, 1], [px + PW, py, -1, 1], [px, py + PH, 1, -1], [px + PW, py + PH, -1, -1]]) {
             if (evil) { panel.fillStyle(line, 1).fillTriangle(cx, cy, cx + sx * 14, cy, cx, cy + sy * 14); panel.fillStyle(line2, 1).fillTriangle(cx + sx * 4, cy + sy * 4, cx + sx * 10, cy + sy * 4, cx + sx * 4, cy + sy * 10); }
@@ -166,13 +191,14 @@ Object.assign(UIScene.prototype, {
     },
 
     /** Tlačidlo okna podľa pôvodného HTML tlačidla k (aj s ikonkou výbavy). Vráti pole objektov s výškou .h. */
-    dialogButton(k, x, y, w, allow) {
+    dialogButton(k, x, y, w, allow, primary, minH = 0, measure = false) {
         const label = k.textContent.trim() || '•', dn = Icons.forDialog(label), icon = this.iconFor(k) || (dn && label !== '•' ? Icons.tex(this, dn) : null);
-        const unit = icon && /^ico_(u|por)_/.test(icon), is = unit ? 34 : 24, iw = icon ? is + 6 : 0;   // ikonky vojakov sú väčšie
-        const probe = this.add.text(0, 0, label, txtStyle(12, '#000', { wordWrap: { width: w - 12 - iw, useAdvancedWrap: true } }));
-        const bh = Math.max(icon ? is + 4 : 24, probe.height + 8); probe.destroy();
+        const unit = icon && /^ico_(u|por)_/.test(icon), is = unit ? 32 : 22, iw = icon ? is + 8 : 0;   // ikonky vojakov sú väčšie
+        const probe = this.add.text(0, 0, label, txtStyle(primary ? 14 : 13, '#000', { wordWrap: { width: Math.max(10, w - 12 - (icon ? Math.min(is, 24) + 6 : 0)), useAdvancedWrap: true } }));
+        const bh = Math.max(minH, icon ? is + 8 : 28, probe.height + 12) + (primary ? 4 : 0); probe.destroy();
+        if (measure) return { h: bh };
         const swatch = k.style.background && k.textContent.trim() === '' ? k.style.background : null;
-        const parts = this.button(x, y, w, bh, label, () => { if (allow()) k.click(); }, { disabled: k.disabled, icon, iconSize: is, size: 12, sel: !!(k.dataset.sel || k.style.outline) });
+        const parts = this.button(x, y, w, bh, label, () => { if (allow()) k.click(); }, { disabled: k.disabled, icon, iconSize: is, size: primary ? 14 : 13, sel: !!(k.dataset.sel || k.style.outline), primary: !!primary && !k.disabled });
         if (swatch) parts[0].setFillStyle(hex(swatch));
         this.dlgButtons.push(k);
         parts.h = bh;

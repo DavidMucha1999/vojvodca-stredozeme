@@ -1,9 +1,12 @@
 /*
  * Bitka: tvorba jednotiek, začiatok a koniec bitky, boj, šípy, rozkazy a hradby pri obliehaní.
  */
+/** Rýchlosť na bojisku: pešiaci ~5 m/s, jazda do ~12 m/s (pôvodné hodnoty boli príliš veľké a pohyb nepôsobil prirodzene). */
+const BSPD = { i: .85, o: .85, a: .85, e: .85, v: .8, c: .64, r: .64, w: .75, z: .8, t: .9, x: .9, n: .9 };
+const bsp = (k, v) => v * (BSPD[k] || .85);
 function mkBase(t, k, f) {
     const P = { i: [30, 1.2, 5, 6], c: [45, 1.9, 7, 8], o: [24 + Math.min(20, G.day * 1.5), 1.1, 4, 6], a: [24, 1.1, 5, 6], e: [26, 1.3, 6, 6], r: [60, 2.1, 9, 9], t: [120, .8, 14, 11], w: [18, 2.2, 5, 5], x: [220, .7, 20, 15], v: [50, 1.25, 8, 7], z: [150, 1.5, 13, 10], n: [260, .8, 22, 13] }[k], hp = P[0];
-    return { bn: Math.random() < .1, fc: f, k, t, x: t ? BW - 120 - Math.random() * 140 : 100 + Math.random() * 140, y: 140 + Math.random() * (BH - 280), hp, mh: hp, sp: P[1], d: P[2], c: 0, r: P[3], f: t ? Math.PI : 0 };
+    return { bn: Math.random() < .1, fc: f, k, t, x: t ? BW - 120 - Math.random() * 140 : 100 + Math.random() * 140, y: 140 + Math.random() * (BH - 280), hp, mh: hp, sp: bsp(k, P[1]), d: P[2], c: 0, r: P[3], f: t ? Math.PI : 0 };
 }
 function startBattleBase(en, al) {
     LB = en;
@@ -12,7 +15,7 @@ function startBattleBase(en, al) {
     AR = [];
     en.n = Math.max(1, Math.round(en.n));
     PT = [];
-    U = [{ h: 1, t: 0, x: 140, y: BH / 2, hp: G.hp, mh: mh(), sp: 1.2 * it('m').v * (1 + .08 * G.s.ob) * (G.eq.m && perk('jazda') ? 1.1 : 1), c: 0, r: 9, k: 'h', f: 0 }];
+    U = [{ h: 1, t: 0, x: 140, y: BH / 2, hp: G.hp, mh: mh(), sp: (G.eq.m ? .45 + .6 * it('m').v : .8 * it('m').v) * (1 + .08 * G.s.ob) * (G.eq.m && perk('jazda') ? 1.1 : 1), c: 0, r: 9, k: 'h', f: 0 }];
     const cap = n => Math.round(n * (perk('vojvodca') ? 1.5 : 1) * BSZ());   // perk Vojvodca: viac vojakov v bitke
     for (let i = 0; i < Math.min(G.inf, cap(40)); i++)
         U.push(mk(0, 'i'));
@@ -153,7 +156,7 @@ function mk(t, k, f) {
     if (!F)
         return mkBase(t, k, f);
     const u = mkBase(t, F.b, F.f);
-    Object.assign(u, { uk: k, hp: F.hp, mh: F.hp, d: F.d, sp: F.sp, r: F.r, fc: F.f });
+    Object.assign(u, { uk: k, hp: F.hp, mh: F.hp, d: F.d, sp: bsp(F.b, F.sp), r: F.r, fc: F.f });
     return u;
 }
 let SGB = null, PAUSE = 0, KD = 0, SHAKE = 0;
@@ -314,7 +317,7 @@ function endBattle(win) {
                 G.ren++;
                 G.xp += Math.round(LB.n * 5 * (G.twise ? 1.1 : 1));
                 G.hp = Math.max(20, U[0].hp);
-                while (G.xp >= G.lv * 30) {
+                while (G.lv >= 1 && G.xp >= G.lv * 30 && up < 200) {
                     G.xp -= G.lv * 30;
                     G.lv++;
                     up++;
@@ -469,6 +472,7 @@ function updBattle(dt) {
                 cmbHero(u, dt, mv);   // mierenie, kryt, sek, bod, luk, pokrik, nápor (js/sim/combat.js)
             }
             else {
+                if (u.ride > 0) { u.ride -= dt; u.f = u.rideA; u.x += Math.cos(u.rideA) * u.sp * dt; u.y += Math.sin(u.rideA) * u.sp * dt; continue; }   // jazda po nápore prejde cez nepriateľa a otočí sa (ako vo Warbande)
                 let b = null, bd = 1e9;
                 if (U.length > 150 && u.tg && u.tg.hp > 0 && (u.tgT -= dt) > 0) { b = u.tg; bd = Math.hypot(b.x - u.x, b.y - u.y); }   // veľká bitka: najbližší nepriateľ sa hľadá len občas
                 else {

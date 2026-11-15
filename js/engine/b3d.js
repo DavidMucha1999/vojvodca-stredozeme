@@ -20,6 +20,7 @@ const B3 = (() => {
     let arrowPool = [], stuck = [], pts = null, ptsPos = null, ptsCol = null, decals = [], torches = [], wx = null, siege = {}, clock = 0, drag = null;
     let hTex = null, trTex = null, trData = null, trDirty = 0, grassM = null, waterM = null, blobs = null, flashL = [], fires = [], trails = [], grade = null, frameN = 0;
     let intro = null, slow = null, photo = null, sunDir = null, braziers = [], lp = -.12, fpv = false;
+    const FPP = { aR: 1.25, eR: .9, aRy: .15, aL: 1.0, eL: 1.0 };   // póza rúk v prvej osobe (zbraň a štít v zábere)
     const lookOn = () => on && (typeof OPT === 'undefined' || OPT.aimMode !== 'ground');
     const MAT = {};
     const T = () => window.THREE;
@@ -921,7 +922,7 @@ const B3 = (() => {
             return { hero: 1, hm: ['', 'ponik', 'rohan', 'gondor', 'mearas', '', '', 'gondor_d', 'mearas_d'][G.eq.m] || null, mdl: modelOf(raceOf(L)) ? 1 : 0, race: raceOf(L), fac, skin: lo.skin || SKIN.human, hair: lo.hcol || '#4a3020', beard: lo.beard ? 1 : 0, longHair: lo.hstyle === 'long', armor: S.armorG.col, rim: S.armorG.rim, helmG: S.helmG, shieldG: rng || broken ? null : S.shieldG, weaponG: rng ? null : S.weaponG, wm: rng ? null : weaponOf(G.eq.w), am: armorOf(G.eq.a), wg: (av => av >= .4 ? 2 : av >= .2 ? 1 : 0)((shOf('a')[G.eq.a] || {}).v || 0), rk: ((shOf('a')[G.eq.a] || {}).v || 0) >= .49 ? 1 : 0, weapon: rng ? (RW && RW.rt === 'xbow' ? 'xbow' : RW && RW.rt === 'jav' ? 'spear' : 'bow') : S.weaponG.t, quiver: !!C.ammo0, horse: G.eq.m && !(u.dis) ? S.horse : null, team, cape: heroSide() ? '#2a1414' : '#6a2a2a' }; }
         const kind = Art.unitArt(u), sp = (Soldiers.UNITS[kind] || Soldiers.UNITS.i);
         if (u.cp) { const c = compDef(u.cp); if (c && c.eq) { const S = Soldiers.heroSpec(c.eq), L = c.look || {}, lo = Figures.lookOpts(L); return { hero: 1, mdl: modelOf(raceOf(L)) ? 1 : 0, hm: u.mnt ? ['', 'ponik', 'rohan', 'gondor', 'mearas', '', '', 'gondor_d', 'mearas_d'][u.mnt] || null : null, race: raceOf(L), fac, skin: lo.skin || SKIN.human, hair: lo.hcol || '#4a3020', beard: lo.beard ? 1 : 0, longHair: lo.hstyle === 'long', armor: S.armorG.col, rim: S.armorG.rim, helmG: L.helm || c.eq.h ? S.helmG : null, shieldG: S.shieldG, weaponG: S.weaponG, wm: weaponOf(c.eq.w), am: armorOf(c.eq.a), weapon: S.weaponG.t, horse: u.mnt ? Soldiers.GEAR.m[u.mnt] : null, team, cape: '#4a3a2a' }; } }
-        const fu = u.uk && FU[u.uk], fv = u.fv ?? (u.fv = Math.random() * 8 | 0), race = { orc: 'orc', uruk: 'uruk', troll: 'troll', dwarf: 'dwarf', elf: 'elf', none: 'wraith' }[sp.skin] || 'human';
+        const fu = u.uk && FU[u.uk], fv = u.fv ?? (u.fv = Math.random() * 4 | 0), race = { orc: 'orc', uruk: 'uruk', troll: 'troll', dwarf: 'dwarf', elf: 'elf', none: 'wraith' }[sp.skin] || 'human';
         // rozmanitosť: časť pešiakov nesie sekeru alebo kyjak namiesto meča, niektorí bojujú bez prilby
         const vr = u.vr ?? (u.vr = Math.random()), plainW = !sp.weapon || sp.weapon === 'sword' || sp.weapon === 'scimitar', bare = (race === 'human' || race === 'orc') && sp.helm && sp.helm !== 'hood' && !fu && vr > .86;
         const wpn = plainW && !sp.mount && vr < .22 ? 'axe' : plainW && !sp.mount && vr > .9 && race !== 'elf' ? 'mace' : sp.weapon || 'sword';
@@ -1433,9 +1434,11 @@ const B3 = (() => {
     /** Pózy pravej ruky pre smer úderu z pohľadu útočníka: [nápriah zdvih, švih, koniec zdvih, švih, lakeť pri nápriahu, lakeť na konci]. AI_D prevádza smer z pohľadu obrancu. */
     const DPOSE = { u: [2.95, 0, .7, 0, 1.25, .1], r: [1.9, -1.45, 1.45, 1.1, .75, .2], l: [1.8, 1.25, 1.45, -1.1, 1.3, .35], t: [.8, -1, 1.6, 0, 1.9, 0] }, AI_D = { l: 'r', r: 'l', u: 'u', t: 't' };
     /** Póza jednotky podľa simulácie: chôdza/beh s kolenami, dýchanie, nápriah, úder, kryt, streľba, zásah, zapotácanie, útek, pád podľa smeru; jazda. */
+    /** Chod koňa podľa rýchlosti (jednotky/tik): krok, klus, cval; dĺžka kroku = vzdialenosť na jeden cyklus nôh (stále rovnaká, aby kopytá nešmýkali). */
+    const gaitOf = s => s < .7 ? 0 : s < 1.5 ? 1 : 2, STRIDE = [24, 40, 54];
     function pose(o, u, dt) {
         const r = o.root, moved = Math.hypot(u.x - o.px, u.y - o.py); o.px = u.x; o.py = u.y;
-        o.sp += (Math.min(3.4, moved / Math.max(.3, dt)) - o.sp) * .25;
+        o.sp += (Math.min(3.0, moved / Math.max(.3, dt)) - o.sp) * .18;   // vyhladená skutočná rýchlosť (plynulý prechod medzi chodmi)
         if (u.c > o.lc + 5) o.atk = 1; o.lc = u.c;
         if (o.atk > 0) o.atk = Math.max(0, o.atk - dt * .07);
         const fly = u.fly > 0 ? 70 + Math.sin(clock * 4) * 6 : u.boss === 'fell' ? 34 + Math.sin(clock * 2) * 4 : 0;
@@ -1448,14 +1451,14 @@ const B3 = (() => {
         if (o.own && o.own.flash) o.own.flash.value = Math.max(0, o.hit - .55) * 2.2;   // krátky záblesk po zásahu (hit začína na .5 – 1)
         o.dirt = Math.min(1, (o.dirt || 0) + moved * .00035 + (o.atk > 0 ? .0012 * dt : 0)); o.own.dirt.value = o.dirt * DIRT_K;   // blato a prach sa počas bitky nalepia na nohy, výstroj aj koňa
         if (u.hp <= 0) return poseDead(o, u, dt);
-        const yawT = -u.f; let d = yawT - r.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); r.rotation.y += d * Math.min(1, .35 * dt);
+        const yawT = -(u.h && CMB.couch && CMB.mvA != null ? CMB.mvA : u.f); let d = yawT - r.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); r.rotation.y += d * Math.min(1, (o.mount ? .13 : u.boss || o.tp.beast ? .15 : .3) * dt);   // kôň, zver a boss sa otáčajú pomalšie a plynulejšie
         r.rotation.z = u.stun > 0 ? Math.sin(clock * 9) * .12 : 0; r.rotation.x = 0;
         if (o.lance > 0 && (o.lance -= dt) <= 0 && o.B) o.B.wp.scale.setScalar(1);
-        if (o.far) { o.ph += o.sp * dt * .2; if (o.mount) o.mph += o.sp * dt * (o.sp >= 2.1 ? .085 : .11); o.rout = u.rout; return; }   // vzdialený vojak: hromadná sieť, animuje ho grafická karta
+        if (o.far) { o.ph += o.sp * dt * .2; if (o.mount) o.mph += o.sp * dt / STRIDE[gaitOf(o.sp)]; o.rout = u.rout; return; }   // vzdialený vojak: hromadná sieť, animuje ho grafická karta
         if (o.B) return poseHuman(o, u, dt);
         // bossovia a zvieratá z dielov
         o.ph += o.sp * dt * .18;
-        const sw = Math.sin(o.ph) * Math.min(1, o.sp / 1.4);
+        const sw = Math.sin(o.ph) * Math.min(1, o.sp / 1.1);
         if (o.legs && o.tp.beast === 'ent') o.legs.forEach((l, i) => { l.rotation.z = (i ? -sw : sw) * .35; });
         if (o.wings) { const lift = (fly || u.boss === 'fell' ? .1 : .45) + Math.sin(clock * (u.boss === 'fell' || fly ? 5 : 1.6)) * (fly || u.boss === 'fell' ? .6 : .15); o.wings.forEach(w => { w.rotation.x = -w.userData.sd * lift; }); }
         if (o.fire) { const s = 1 + Math.sin(clock * 7) * .06; o.fire.scale.set(s, s * (1 + Math.sin(clock * 5) * .05), s); o.light.intensity = 48 + Math.sin(clock * 11) * 12; }
@@ -1554,7 +1557,7 @@ const B3 = (() => {
             return;
         }
         o.ph += o.sp * dt * .2;
-        const amt = Math.min(1, o.sp / 1.2), run = u.rout ? 1.3 : 1, breath = Math.sin(clock * 2.2 + o.id) * .5 + .5;
+        const amt = Math.min(1, o.sp / 1.0), run = u.rout ? 1.3 : 1, breath = Math.sin(clock * 2.2 + o.id) * .5 + .5;
         if (!o.mount) {
             [[B.lgR, B.knR, 0], [B.lgL, B.knL, Math.PI]].forEach(([lg, kn, off]) => { const p = o.ph + off; lg.rotation.set(0, 0, Math.sin(p) * .62 * amt * run + (1 - amt) * .04); kn.rotation.z = -(Math.max(0, Math.cos(p)) * 1.15 * amt * run + .06 + (1 - amt) * .05); });
             B.hip.position.y = H.hipY + Math.abs(Math.sin(o.ph)) * .55 * amt - (1 - amt) * .12 - breath * .05;
@@ -1590,7 +1593,7 @@ const B3 = (() => {
             if (C2.draw > 0 && H.bow) { aL = 1.55; eL = 0; aR = 1.5; eR = 2.3 * Math.min(1, C2.draw / 20); aRy = .32; }
         }
         if (H.bow && !(o.atk > 0) && !(u.h && C2.draw > 0)) { aL = .5 + sw * .3; eL = .4; }
-        if (u.h && fpv && lookOn() && !C2.rd && !(C2.swing && C2.swing.t > 0) && !C2.blk && !(C2.draw > 0)) { aR = .7; eR = 1.05; aRy = .15; if (!H.bow) { aL = .75; eL = 1.1; } }   // prvá osoba: zbraň a štít pred sebou
+        if (u.h && fpv && lookOn() && !C2.rd && !(C2.swing && C2.swing.t > 0) && !C2.blk && !(C2.draw > 0)) { aR = FPP.aR; eR = FPP.eR; aRy = FPP.aRy; if (!H.bow) { aL = FPP.aL; eL = FPP.eL; } }   // prvá osoba: zbraň a štít pred sebou
         if (!u.t && !u.h && u.hx != null && typeof fmOf === 'function' && fmOf(u) === 'wall' && !(o.atk > 0) && !(u.wu > 0)) { aL = 1.2; eL = 1; }   // štítový val: štíty vpred
         if (u.boss && u.atk) { const p = 1 - u.atk.t / u.atk.t0; wind('u', Math.min(1, p * 1.3)); }   // Kráľ trollov dvíha kyjak
         if (u.rout) { aR = 2.4 + sw * .4; eR = 1.2; aL = 2.4 - sw * .4; eL = 1.2; }
@@ -1697,8 +1700,8 @@ const B3 = (() => {
     }
     /** Kôň a varg: krok (štvortakt), klus (diagonálne páry), cval (s hojdaním tela); hlava, krk a chvost. */
     function poseMount(o, u, dt) {
-        const M = o.MB, s = o.sp, gait = s < 1.1 ? 0 : s < 2.1 ? 1 : 2, offs = [[0, .5, .75, .25], [0, .5, .5, 0], [.1, 0, .6, .5]][gait], A = [.32, .5, .78][gait] * Math.min(1, s / .6);
-        o.mph += s * dt * (gait === 2 ? .085 : .11);
+        const M = o.MB, s = o.sp, gait = gaitOf(s), offs = [[0, .5, .75, .25], [0, .5, .5, 0], [.1, 0, .6, .5]][gait], A = [.32, .5, .78][gait] * Math.min(1, s / .6);
+        o.mph += s * dt / STRIDE[gait];
         const P = o.mph * 6.283;
         ['FR', 'FL', 'BR', 'BL'].forEach((L, i) => { const p = P + offs[i] * 6.283, front = L[0] === 'F'; M[L].rotation.z = Math.sin(p) * A * (front ? 1 : .85); M[L + 'k'].rotation.z = front ? -Math.max(0, Math.cos(p)) * (1.1 * A + .05) : Math.max(0, Math.cos(p)) * (.9 * A + .05); });
         M.mb.position.y = o.mk.h + Math.abs(Math.sin(P * (gait === 2 ? 1 : 2))) * (gait === 2 ? 1.6 : .7) * Math.min(1, s);
@@ -1959,8 +1962,8 @@ const B3 = (() => {
             else if (u.c > 0 && (frameN + o.id) % 20 === 0) trample(u.x, u.y, 4, 5);
             if (dc > 520) continue;
             if (inRiver && mov && Math.random() < .3) splash(u.x, u.y, o.mount ? 3 : 1);
-            else if (o.mount && o.sp > 1.6 && Math.random() < .35 * QN()) { const a = -o.root.rotation.y; dust(u.x - Math.cos(a) * 10, u.y - Math.sin(a) * 10, 1, 6); }   // prach za jazdou
-            if (o.mount && o.sp > 2.2 && QN() >= 1 && dc < 420 && Math.random() < (U.length > 150 ? .12 : .25)) {   // nápor jazdy: valiace sa mračno prachu, v daždi blato, v snehu prašan
+            else if (o.mount && o.sp > 1.2 && Math.random() < .35 * QN()) { const a = -o.root.rotation.y; dust(u.x - Math.cos(a) * 10, u.y - Math.sin(a) * 10, 1, 6); }   // prach za jazdou
+            if (o.mount && o.sp > 1.8 && QN() >= 1 && dc < 420 && Math.random() < (U.length > 150 ? .12 : .25)) {   // nápor jazdy: valiace sa mračno prachu, v daždi blato, v snehu prašan
                 const a = -o.root.rotation.y, wet = WX.n === 'rain' || WX.n === 'storm', x = u.x - Math.cos(a) * 16 + (Math.random() - .5) * 8, z = u.y - Math.sin(a) * 16 + (Math.random() - .5) * 8;
                 if (wet && BI !== 's') DUST.add({ x, y: heightAt(x, z) + 2, z, vx: -Math.cos(a) * .8 + (Math.random() - .5), vy: 1 + Math.random(), vz: -Math.sin(a) * .8 + (Math.random() - .5), g: .1, l: 26, c: '#3a2e20', s0: 2, s1: 1.4, a0: .9 });
                 else DUST.add({ x, y: heightAt(x, z) + 4, z, vx: -Math.cos(a) * .3 + (Math.random() - .5) * .3, vy: .2 + Math.random() * .3, vz: -Math.sin(a) * .3 + (Math.random() - .5) * .3, l: 90 + Math.random() * 50, c: BI === 's' ? '#eef2f6' : BI === 'a' ? '#5a4a42' : BI === 'd' ? '#d8c08a' : '#b0a080', s0: 14, s1: 44, a0: .22 });
@@ -2043,7 +2046,8 @@ const B3 = (() => {
         let pos;
         if (fpv && h.hp > 0) {
             pos = head.clone().addScaledVector(F, 1.4); pos.y += .5;
-            if (o && !o.mount) pos.y += Math.sin(o.ph * 2) * .35 * Math.min(1, o.sp);   // krok
+            if (o && !o.mount) pos.y += Math.sin(o.ph * 2) * .35 * Math.min(1, o.sp);
+            else if (o && o.mount) pos.y += Math.sin((o.ph || 0) * 2.2) * .3 * Math.min(1, o.sp || 0);   // krok
             if (cam.near !== .4) { cam.near = .4; cam.updateProjectionMatrix(); }
             cam.position.copy(pos);
         } else {
@@ -2085,7 +2089,7 @@ const B3 = (() => {
         if (hitT) { ptr.x = P.x - bc.x; ptr.y = P.z - bc.y; } else { ptr.x = h.x + Math.cos(yaw) * 200 - bc.x; ptr.y = h.y + Math.sin(yaw) * 200 - bc.y; }
     }
     function lookMove(dx, dy) { if (!on || photo) return; yaw += dx * .0026; lp = Math.max(-1.15, Math.min(.95, lp - dy * .0026)); }
-    function toggleFP() { if (!on) return; fpv = !fpv; if (typeof wbMsg === 'function') wbMsg(fpv ? 'Pohľad z prvej osoby' : 'Pohľad z tretej osoby', '#e8d8a8'); }
+    function toggleFP() { if (!on) return; fpv = !fpv; if (typeof OPT !== 'undefined') { OPT.view = fpv ? 'fp' : 'tp'; if (typeof saveOpt === 'function') saveOpt(); } if (typeof wbMsg === 'function') wbMsg(fpv ? 'Pohľad z prvej osoby' : 'Pohľad z tretej osoby', '#e8d8a8'); }
     function lightsFollow(x, y, dt) {
         const h = U[0];
         sun.position.set(x + sunDir.x * 500, sunDir.y * 500, y + sunDir.z * 500); sun.target.position.set(x, 0, y);
@@ -2208,7 +2212,7 @@ const B3 = (() => {
         o.stepD = (o.stepD || 0) + o.sp * dt;
         const ry = o.root.rotation.y, sx = Math.sin(ry), sz = Math.cos(ry), k = o.scaleH || 1;
         if (o.mount) { if (o.stepD < 13 * o.mk.k) return; o.stepD = 0; for (const s2 of [-1, 1]) addPrint(u.x + sx * s2 * 2.6 * o.mk.k, u.y + sz * s2 * 2.6 * o.mk.k, ry, 1, o.mk.k); if (QN() >= 1 && o.sp > 1.1 && DUST) dust(u.x, u.y, 2, 5 * o.mk.k); }
-        else { if (o.stepD < 7 * k) return; o.stepD = 0; o.stepS = -(o.stepS || 1); addPrint(u.x + sx * o.stepS * 1.5 * k, u.y + sz * o.stepS * 1.5 * k, ry, 0, k); if (QN() >= 1 && o.sp > 1.4 && DUST && Math.random() < .6) dust(u.x + sx * o.stepS * 1.5 * k, u.y + sz * o.stepS * 1.5 * k, 1, 2.5 * k); }
+        else { if (o.stepD < 7 * k) return; o.stepD = 0; o.stepS = -(o.stepS || 1); addPrint(u.x + sx * o.stepS * 1.5 * k, u.y + sz * o.stepS * 1.5 * k, ry, 0, k); if (QN() >= 1 && o.sp > 1.0 && DUST && Math.random() < .6) dust(u.x + sx * o.stepS * 1.5 * k, u.y + sz * o.stepS * 1.5 * k, 1, 2.5 * k); }
     }
     function buildBirds() {
         birds = null; birdP = [];
@@ -2388,9 +2392,9 @@ const B3 = (() => {
     }
     function farUnit(o) {
         o.root.updateMatrix(); const tp = o.tp;
-        const dead = !!o.dead, amt = dead ? 0 : Math.min(1, o.sp / 1.2) * (o.rout ? 1.3 : 1);
+        const dead = !!o.dead, amt = dead ? 0 : Math.min(1, o.sp / 1.0) * (o.rout ? 1.3 : 1);
         if (o.sm && o.sm.visible) { o.sm.updateMatrix(); M1.multiplyMatrices(o.root.matrix, o.sm.matrix); farPut(tp.humanoid.geoLow || tp.humanoid.geo, chrMats(), M1, o.ph, o.mount && !dead ? -1 : amt, dead ? 0 : o.atk || 0, 0); }
-        if (o.mount) { const s = o.sp, gait = s < 1.1 ? 0 : s < 2.1 ? 1 : 2; o.mount.updateMatrix(); M1.multiplyMatrices(o.root.matrix, o.mount.matrix); farPut(tp.mount.geo, chrMats(), M1, 0, dead ? 0 : [.32, .5, .78][gait] * Math.min(1, s / .6), 0, o.mph); }
+        if (o.mount) { const s = o.sp, gait = gaitOf(s); o.mount.updateMatrix(); M1.multiplyMatrices(o.root.matrix, o.mount.matrix); farPut(tp.mount.geo, chrMats(), M1, 0, dead ? 0 : [.32, .5, .78][gait] * Math.min(1, s / .6), 0, o.mph); }
     }
     function stepAQ() {
         const now = performance.now(); AQ.n++;
@@ -2452,6 +2456,7 @@ const B3 = (() => {
     /** Začiatok 3D bitky (volá BattleScene.build). */
     function start() {
         try {
+            fpv = typeof OPT === 'undefined' || OPT.view !== 'tp';
             ensureRenderer();
             const t = T(), q = QN();
             R.setPixelRatio(Math.min(window.devicePixelRatio || 1, [1, 1.25, 1.5, 2][q]));
@@ -2552,11 +2557,11 @@ const B3 = (() => {
             at(arrowMesh(0, 0)); at(arrowMesh(1, 0));
             stepEnv(true);
             try {   // predvýpočet variantov tvárí (SDF hlavy): ďalší bojovníci toho istého druhu sa potom objavia bez zaseknutia
-                const seen = new Set(), t0 = performance.now(); let made = 0;
+                const seen = new Set(), t0 = performance.now(), cap = window.__FVCAP != null ? window.__FVCAP : 4; let made = 0;
                 for (const u of U) {
-                    if (u.fled || u.hero || made >= 24 || performance.now() - t0 > 4000) continue;
+                    if (u.fled || u.hero || made >= cap || performance.now() - t0 > 400) continue;
                     const sp = specOf(u), kk = keyOf({ ...sp, fv: 0 }); if (seen.has(kk) || sp.boss || sp.beast || sp.mdl) continue; seen.add(kk);
-                    for (let fv = 0; fv < 8 && made < 24; fv++) { if (fv === sp.fv) continue; const sv = { ...sp, fv }; if (!TPL.has(keyOf(sv))) { template(sv); made++; await new Promise(r => setTimeout(r, 0)); } }
+                    for (let fv = 0; fv < 4 && made < cap; fv++) { if (fv === sp.fv) continue; const sv = { ...sp, fv }; if (!TPL.has(keyOf(sv))) { template(sv); made++; await new Promise(r => setTimeout(r, 0)); } }
                 }
             } catch (e) { }
             try { await atlas().ready; } catch (e) { }   // textúry modelov do atlasu
@@ -2581,5 +2586,5 @@ const B3 = (() => {
     const TPLgeo = g => { for (const tp of TPL.values()) for (const v of Object.values(tp)) { if (v === g) return true; if (v && typeof v === 'object') { if (v.geo === g) return true; for (const w of Object.values(v)) if (w === g) return true; } } return (PR && Object.values(PR).includes(g)) || (AGEO && Object.values(AGEO).includes(g)); };
     /** Kontrola nasadenia brnenia (testy): pozície odevu a tela v pokojovej póze pre jednotku u. */
     function garmentDebug(k, u) { const sp = specOf(u), H = template(sp).humanoid, rc = modelRace(sp.race), g = garmentGeos(k, H.BN, rc), B = modelBody(H.BN, rc, false); return { g: Array.from((g[0] || g[1]).attributes.position.array), b: Array.from(B.P), main: B.main }; }
-    return { garmentDebug, specOf, rigOf: u => units.get(u), want, start, prep, warm, frame, stop, pick, rel, wheel, dragStart, dragMove, dragEnd, isOn, heightAt, skipIntro, timeK, photoToggle, get photo() { return !!photo; }, get scene() { return scene; }, photoAt(x, y, z, yw, pt) { if (!photo) photoToggle(); photo.pos.set(x, y, z); photo.yaw = yw; photo.pitch = pt; }, get renderer() { return R; }, get intro() { return !!intro; }, get yaw() { return yaw; }, get look() { return lookOn(); }, get fp() { return fpv; }, lookMove, toggleFP, get pitch() { return lp; }, get aq() { return AQ.lvl; }, get fps() { return AQ.fps; } };
+    return { FPP, garmentDebug, specOf, rigOf: u => units.get(u), want, start, prep, warm, frame, stop, pick, rel, wheel, dragStart, dragMove, dragEnd, isOn, heightAt, skipIntro, timeK, photoToggle, get photo() { return !!photo; }, get scene() { return scene; }, photoAt(x, y, z, yw, pt) { if (!photo) photoToggle(); photo.pos.set(x, y, z); photo.yaw = yw; photo.pitch = pt; }, get renderer() { return R; }, get intro() { return !!intro; }, get yaw() { return yaw; }, get look() { return lookOn(); }, get fp() { return fpv; }, lookMove, toggleFP, get pitch() { return lp; }, get aq() { return AQ.lvl; }, get fps() { return AQ.fps; } };
 })();

@@ -2,6 +2,11 @@
  * Základ: plátno, rozmery sveta, náhodný generátor, globálny stav hry a denník.
  */
 const cv = document.getElementById('c'), ctx = cv.getContext('2d'), W = 720, H = 480, WW = 14400, WH = 9600, K = 8, BW = 1440, BH = 960, ov = document.getElementById('ov'), hud = document.getElementById('hud');
+let BFW = BW, BFH = BH;   // poľná bitka 2200×1500, hradby a aréna ostanú na 1440×960
+function useField() {
+    const open = !(typeof SGB !== 'undefined' && SGB) && !(typeof LB !== 'undefined' && LB && LB.ar);
+    BFW = open ? 2200 : BW; BFH = open ? 1500 : BH;
+}
 cv.width = W;
 cv.height = H;
 let seed = 11;

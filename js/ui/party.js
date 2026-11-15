@@ -49,6 +49,7 @@ function party(back, tab) {
         const up = Math.floor((G.inf + G.cav * 2) / 3);
         show('Správa družiny – vojsko', 'Vojsko spolu: ' + ar() + ' mužov, sila ' + Math.round(pw()) + '. Denný žold: ' + up + ' zlata (pešiaci a jazdci). Zajatci: ' + G.cap + ', skúsenosti na povýšenie: ' + G.txp + '.');
         tabs();
+        row('Úroveň ' + G.lv + ' (' + G.xp + '/' + (G.lv * 30) + '), sláva ' + (G.ren || 0) + ', česť ' + (G.hon || 0) + ', strach ' + (G.fear || 0) + (QS[G.q] ? '. Kapitola ' + (G.q + 1) + '/' + QS.length : '') + (G.ring === 1 ? '. Jeden prsteň, skazenosť ' + G.cor + ' %' : '') + '.', { dim: 1 });
         const list = [['inf', 'Pešiaci', 'i'], ['arc', 'Lukostrelci', 'a'], ['cav', 'Jazdci', 'c'], ['vet', 'Veteráni', 'v'], ['elf', 'Elfovia', 'e'], ['roh', 'Rohirimi', 'r']];
         Object.keys(FU).filter(k => k[0] === 'u' && G[k]).forEach(k => list.push([k, FU[k].n, k]));
         if (G.ent) list.push(['ent', 'Enti (pastieri stromov)', 'n']);

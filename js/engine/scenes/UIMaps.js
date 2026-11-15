@@ -12,10 +12,10 @@ Object.assign(UIScene.prototype, {
             this.mmImg = this.add.image(MM.x, MM.y, 'minimap').setOrigin(0).setDisplaySize(MM.w, MM.h);
             this.mmG = this.add.graphics();
             this.mmFrame = this.add.graphics();
-            this.mmFrame.fillStyle(0x120e0c, .9).fillRoundedRect(MM.x - 5, MM.y - 5, MM.w + 10, MM.h + 10, 4);
-            this.mmFrame.lineStyle(2, UI_C.line, 1).strokeRoundedRect(MM.x - 4, MM.y - 4, MM.w + 8, MM.h + 8, 4);
-            this.mmFrame.lineStyle(1, 0x8a6a2a, .8).strokeRect(MM.x - 1, MM.y - 1, MM.w + 2, MM.h + 2);
-            for (const [cx, cy] of [[MM.x - 4, MM.y - 4], [MM.x + MM.w + 4, MM.y - 4], [MM.x - 4, MM.y + MM.h + 4], [MM.x + MM.w + 4, MM.y + MM.h + 4]]) this.mmFrame.fillStyle(UI_C.line, 1).fillCircle(cx, cy, 2.2);
+            this.mmFrame.fillStyle(0x120e0c, .92).fillRoundedRect(MM.x - 6, MM.y - 6, MM.w + 12, MM.h + 12, 4);
+            this.mmFrame.lineStyle(2, UI_C.line, 1).strokeRoundedRect(MM.x - 5, MM.y - 5, MM.w + 10, MM.h + 10, 3);
+            this.mmFrame.lineStyle(1, 0x8a6a2a, .75).strokeRoundedRect(MM.x - 1, MM.y - 1, MM.w + 2, MM.h + 2, 2);
+            for (const [cx, cy, sx, sy] of [[MM.x - 5, MM.y - 5, 1, 1], [MM.x + MM.w + 5, MM.y - 5, -1, 1], [MM.x - 5, MM.y + MM.h + 5, 1, -1], [MM.x + MM.w + 5, MM.y + MM.h + 5, -1, -1]]) { this.mmFrame.lineStyle(1.3, UI_C.line, .95); this.mmFrame.beginPath(); this.mmFrame.moveTo(cx + sx * 2, cy + sy * 9); this.mmFrame.lineTo(cx + sx * 2, cy + sy * 3); this.mmFrame.lineTo(cx + sx * 6, cy + sy * 2); this.mmFrame.lineTo(cx + sx * 10, cy + sy * 2); this.mmFrame.strokePath(); this.mmFrame.fillStyle(UI_C.line, 1).fillCircle(cx + sx * 5, cy + sy * 5, 1.7); }
             this.mmLayer.add([this.mmFrame, this.mmImg, this.mmG]);
         }
         if (this.mmImg.texture.key !== 'minimap') this.mmImg.setTexture('minimap').setDisplaySize(MM.w, MM.h);
@@ -48,8 +48,7 @@ Object.assign(UIScene.prototype, {
         const mh = H - 76, mw = mh * 1.5, mx = (W - mw) / 2, my = 38, sx = mw / WW, sy = mh / WH;
         const g = this.add.graphics();
         g.fillStyle(0x0a0806, .78).fillRect(0, 0, W, H);
-        g.fillStyle(0x2a1e14, 1).fillRoundedRect(mx - 10, my - 30, mw + 20, mh + 46, 8);
-        g.lineStyle(2, UI_C.line, 1).strokeRoundedRect(mx - 10, my - 30, mw + 20, mh + 46, 8);
+        this.panelFrame(g, mx - 10, my - 30, mw + 20, mh + 46, false);
         const items = [g];
         const shade = this.add.rectangle(mx, my, mw, mh, 0, 0).setOrigin(0).setInteractive({ useHandCursor: true });
         shade.on('pointerup', p => {                              // klik = cieľ cesty
@@ -95,7 +94,7 @@ Object.assign(UIScene.prototype, {
     drawTooltip(scene) {
         this.tipLayer.removeAll(true);
         const ms = scene === 'map' && this.scene.get('Map');
-        if (!ms || !ms.hover || mode !== 'map' || this.dlg || !G) return;
+        if (!ms || !ms.hover || mode !== 'map' || this.dlg || this.big || !G) return;
         const w = ms.hover, s = ms.hoverScreen;
         let L = null;
         for (const e of E) if (Math.hypot(e.x - w.x, e.y - w.y) < 26) { per(e); L = [e.nm, FN[e.f] + (e.kr ? ', panovník' : '') + (e.nz ? ', prisluhovač Saurona' : ''), 'Vojakov: ' + Math.ceil(e.n), e.f !== 9 && !e.nz ? 'Povaha: ' + TR[e.tr][0] : '', hos(e.f, G.fac) ? 'Nepriateľ – kliknutím zaútočíš' : 'Priateľ – kliknutím sa porozprávaš']; break; }
@@ -104,13 +103,15 @@ Object.assign(UIScene.prototype, {
         if (!L && Math.hypot(G.x - w.x, G.y - w.y) < 24) L = [G.name, rank() + ', ' + FN[G.fac], 'Vojsko: ' + ar(), G.ring === 1 ? 'Nesie Jeden prsteň' : 'Zdravie ' + Math.ceil(G.hp)];
         if (!L) return;
         L = L.filter(Boolean);
-        const texts = L.map((l, i) => this.add.text(0, 0, l, txtStyle(i ? 11 : 12.5, i ? UI_C.ink : '#ffd24a', { fontFamily: i ? 'sans-serif' : FONT })));
-        const tw = Math.max(...texts.map(t => t.width)) + 16, th = texts.length * 14 + 8;
-        let x = s.x + 14, y = s.y + 14;
-        if (x + tw > W) x = s.x - tw - 10;
-        if (y + th > H) y = s.y - th - 10;
-        const bg = this.add.graphics().fillStyle(0x120e0c, .93).fillRect(x, y, tw, th).lineStyle(1, UI_C.line, 1).strokeRect(x, y, tw, th);
-        texts.forEach((t, i) => t.setPosition(x + 8, y + 5 + i * 14));
+        const texts = L.map((l, i) => this.add.text(0, 0, l, txtStyle(i ? 12 : 14, i ? '#2a1c12' : '#7a4a14', { fontFamily: i ? FONT : TITLE_FONT })));
+        const tw = Math.max(120, Math.max(...texts.map(t => t.width)) + 22), th = texts.length * 16 + 16;
+        let x = s.x + 16, y = s.y + 16;
+        if (x + tw > W - 4) x = Math.max(4, s.x - tw - 12);
+        if (y + th > H - 4) y = Math.max(50, s.y - th - 12);
+        const bg = this.add.graphics();
+        this.panelFrame(bg, x, y, tw, th, true);
+        bg.lineStyle(1, 0x8a6230, .45).lineBetween(x + 10, y + 22, x + tw - 10, y + 22);
+        texts.forEach((t, i) => t.setPosition(x + 10, y + (i ? 8 + i * 16 : 6)));
         this.tipLayer.add([bg, ...texts]);
     },
 
@@ -122,9 +123,9 @@ Object.assign(UIScene.prototype, {
         this.legLayer.removeAll(true);
         if (!on) return;
         // malá legenda v ľavom hornom rohu: frakcie v dvoch stĺpcoch, pod nimi značky
-        const F = [0, 1, 5, 8, 6, 2, 3, 4, 7, 9], x = 6, y = 48, w = 196, RH = 14, items = [], ts = 10.5;
+        const F = [0, 1, 5, 8, 6, 2, 3, 4, 7, 9], x = 6, y = 54, w = 196, RH = 14, items = [], ts = 10.5;
         const txt = (tx, ty, s, col) => this.add.text(tx, ty, s, txtStyle(ts, col || UI_C.ink));
-        items.push(txt(x + 8, y + 5, 'Legenda', UI_C.gold));
+        items.push(this.add.text(x + 8, y + 4, 'Legenda', txtStyle(13, UI_C.gold, { fontFamily: TITLE_FONT })));
         F.forEach((f, k) => {
             const cx = x + 8 + (k % 2) * 94, cy = y + 24 + Math.floor(k / 2) * RH;
             items.push(Art.image(this, cx + 2, cy - 4, Art.banner(this, f)).setScale((Art.scale['banner_' + f] || 1 / RES) * .42));
@@ -138,7 +139,7 @@ Object.assign(UIScene.prototype, {
         row('Slabší nepriateľ', (g, a, b) => g.lineStyle(1.5, 0x6fbf5a, 1).strokeEllipse(a, b, 14, 6));
         items.push(txt(x + 8, yy - 1, '★★', '#ffd24a'), txt(x + 30, yy - 1, 'Prosperita hradu')); yy += RH;
         row('Vypálená dedina', (g, a, b) => g.fillStyle(0xff7a22, 1).fillCircle(a, b, 3));
-        const bg = this.add.graphics().fillStyle(0x120e0c, .82).fillRoundedRect(x, y, w, yy - y + 4, 4).lineStyle(1, UI_C.line, .7).strokeRoundedRect(x, y, w, yy - y + 4, 4);
+        const bg = this.add.graphics(); this.panelFrame(bg, x, y, w, yy - y + 6, false);
         items.unshift(bg);
         this.legLayer.add(items);
     }

@@ -2,6 +2,11 @@
  * Simulácia sveta: pohyb armád, AI, dni, prosperita, Prsteň, strategická AI, pauza a tábor.
  */
 function worldTick(dt) {
+    if (G.iq) {
+        G.iq = 0;
+        introDone();
+        return;
+    }
     if (G.qd) {
         G.qd = 0;
         qDone();
@@ -126,7 +131,7 @@ function worldTick(dt) {
         }
         upd();
     }
-    E = E.filter(e => !e.dead);
+    for (let i = E.length - 1; i >= 0; i--) if (E[i].dead) E.splice(i, 1);   // bez nového poľa každý snímok, kým nikto nezomrie
     sp -= dt;
     if (sp <= 0) {
         sp = 150;

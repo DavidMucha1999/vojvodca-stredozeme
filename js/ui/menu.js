@@ -43,12 +43,13 @@ function mnSettings() {
         ['Späť', () => mnShow('mn')]]);
 }
 function mnHelp() {
-    mnPanel('Návod', '<p>Veď svoju družinu po veľkej mape Stredozeme, pridaj sa ku Gondoru, Rohanu, Mordoru alebo Isengardu a dobýjaj hrady. Najímaj vojakov, kupuj zbrane, brnenie, štít a koňa, porážaj nepriateľov, plň kapitoly príbehu a prepracuj sa až na kráľa.</p>'
-        + '<p><b>Mapa:</b> klikni, kam chceš ísť; v tábore podrž medzerník a čas pobeží rýchlejšie.</p>'
-        + '<p><b>Bitka:</b> WASD alebo šípky pohyb, myš mieri. Ľavé tlačidlo alebo medzerník = sek (oblúk, až traja nepriatelia), E = bod (ďalej a silnejšie), pravé tlačidlo alebo Shift = kryt (so štítom široký; kryt tesne pred úderom nepriateľa ho zapotáca). Q = výstrel z luku či kuše alebo hod oštepom (strelná zbraň u kováča), V = bojový pokrik, B = na hradbách zhodiť rebrík, vyliať olej pri bráne alebo hodiť kameň. Obojručná zbraň seká široko, ale bez štítu; kôň môže v bitke padnúť a kopijníci v šíku zastavia nápor jazdy. Klávesy zmeníš v Nastaveniach, ide aj ovládač. Na koni rovný cval = nápor. Sleduj červený oblúk – nepriateľ sa napriahol. Úder zboku +25 %, zozadu +50 %.</p>'
-        + '<p><b>Velenie:</b> 1 Všetci, 2 Pechota, 3 Lukostrelci, 4 Jazda; potom T Útok, H Držať, F Za mnou, G Šík, R Ústup. Keď morálka klesne, vojaci utekajú – padlý veliteľ (zlatý kruh) zlomí nepriateľa.</p>'
-        + '<p><b>Družina:</b> muži jedia – zásoby kupuj na trhu v hrade alebo v dedine (pestrá strava dvíha morálku, hlad vedie k dezerciám). Po víťazstve sa časť padlých len zraní a vráti sa. Za každú úroveň dostaneš bod perku (Družina → Perky).</p>'
-        + '<p><b>Dotykový displej:</b> drž prst tam, kam chceš bežať, a hrdina útočí sám.</p>', [['Späť', () => mnShow('mn')]]);
+    const sec = (t, items) => '<h3>' + t + '</h3><ul>' + items.map(i => '<li>' + i + '</li>').join('') + '</ul>';
+    mnPanel('Návod', '<div class="help"><p class="lead">Veď svoju družinu po veľkej mape Stredozeme, pridaj sa ku Gondoru, Rohanu, Mordoru alebo Isengardu a dobýjaj hrady. Najímaj vojakov, kupuj výbavu, porážaj nepriateľov, plň kapitoly príbehu a prepracuj sa až na kráľa.</p>'
+        + sec('Mapa', ['Klikni, kam chceš ísť.', 'V tábore podrž medzerník a čas pobeží rýchlejšie.', 'Klávesom M otvoríš veľkú mapu.'])
+        + sec('Bitka', ['<b>WASD</b> alebo šípky = pohyb, myš = mierenie.', '<b>Ľavé tlačidlo / medzerník</b> = sek (oblúk, až traja nepriatelia); <b>E</b> = bod (ďalej a silnejšie).', '<b>Pravé tlačidlo / Shift</b> = kryt; kryt tesne pred úderom nepriateľa ho zapotáca.', '<b>Q</b> = výstrel alebo hod oštepom, <b>V</b> = bojový pokrik, <b>B</b> = na hradbách rebrík, olej alebo kameň.', 'Úder zboku +25 %, zozadu +50 %; sleduj červený oblúk – nepriateľ sa napriahol.', 'Na koni rovný cval = nápor; kôň môže padnúť a kopijníci v šíku zastavia jazdu.', 'Klávesy zmeníš v Nastaveniach, ide aj ovládač.'])
+        + sec('Velenie', ['<b>1</b> Všetci, <b>2</b> Pechota, <b>3</b> Lukostrelci, <b>4</b> Jazda.', '<b>T</b> Útok, <b>H</b> Držať, <b>F</b> Za mnou, <b>G</b> Šík, <b>R</b> Ústup.', 'Keď morálka klesne, vojaci utekajú – padlý veliteľ (zlatý kruh) zlomí nepriateľa.'])
+        + sec('Družina', ['Muži jedia – zásoby kupuj na trhu v hrade alebo v dedine; pestrá strava dvíha morálku, hlad vedie k dezerciám.', 'Po víťazstve sa časť padlých len zraní a vráti sa.', 'Za každú úroveň dostaneš bod perku (Družina → Perky).'])
+        + sec('Dotykový displej', ['Drž prst tam, kam chceš bežať, a hrdina útočí sám.']) + '</div>', [['Späť', () => mnShow('mn')]]);
 }
 /** Prepojí tlačidlá menu (raz, po načítaní stránky). */
 function buildMenu() {

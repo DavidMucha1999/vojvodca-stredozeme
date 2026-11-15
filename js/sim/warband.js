@@ -242,14 +242,14 @@ function pickups(u) {
 }
 /** Kôň hrdinu: zotrvačnosť (rozbeh, dobeh) a obratnosť podľa plemena. Vráti smer pohybu alebo null. */
 function horseMove(u, mx, my, k, dt) {
-    const C = CMB, H = typeof Soldiers !== 'undefined' ? Soldiers.GEAR.m[G.eq.m] || {} : {}, man = .16 - (H.s || 1) * .06, acc = .03 + it('m').v * .01;
+    const C = CMB, H = typeof Soldiers !== 'undefined' ? Soldiers.GEAR.m[G.eq.m] || {} : {}, man = .11 - (H.s || 1) * .04, acc = .013 + it('m').v * .004;   // obratnosť a rozbeh: kôň sa rozbieha asi 1 s a v plnom cvale zatáča pomalšie
     if (C.rear > 0) { C.rear -= dt; C.mvS = 0; return null; }
     if (C.mvA == null) C.mvA = u.f;
     if (mx || my) {
         const want = Math.atan2(my, mx); let d = want - C.mvA; d = Math.atan2(Math.sin(d), Math.cos(d));
-        C.mvA += Math.max(-man * dt, Math.min(man * dt, d)) * (Math.abs(d) > 2.4 && C.mvS < .4 ? 3 : 1);
+        C.mvA += Math.max(-man * dt, Math.min(man * dt, d)) * (Math.abs(d) > 2.4 && C.mvS < .4 ? 3 : 1) * (1 - .45 * Math.min(1, (C.mvS || 0) / Math.max(.6, u.sp)));
         C.mvS = Math.min(u.sp * k, (C.mvS || 0) + acc * dt * (Math.abs(d) > 1.6 ? .3 : 1));
-    } else C.mvS = Math.max(0, (C.mvS || 0) - .08 * dt);
+    } else C.mvS = Math.max(0, (C.mvS || 0) - .05 * dt);
     if (C.mvS < .02) return null;
     u.x = Math.max(8, Math.min(BW - 8, u.x + Math.cos(C.mvA) * C.mvS * dt));
     u.y = Math.max(20, Math.min(BH - 8, u.y + Math.sin(C.mvA) * C.mvS * dt));

@@ -43,24 +43,31 @@ const GarmentFit = (() => {
         // rukávy: natočiť okolo ramena na smer ruky (rameno → zápästie), dĺžku pritiahnuť k zápästiu
         for (const sd of [1, -1]) {
             const J = [L.shX, L.shY, sd * L.shZ], Wr = [L.wr[0], L.wr[1], sd * Math.abs(L.wr[2])], arm = [];
-            for (let i = 0; i < n; i++) if (ARM[sd].includes(B.main[nb[i]]) && out[i * 3 + 1] < J[1] + .5 * hs && out[i * 3 + 2] * sd > 0) arm.push(i);
+            for (let i = 0; i < n; i++) {
+                const y = out[i * 3 + 1], z = out[i * 3 + 2];
+                const boneArm = ARM[sd].includes(B.main[nb[i]]) && y < J[1] + .8 * hs && y > J[1] - 8 * hs && z * sd > L.shZ * .35;
+                const outArm = z * sd > L.shZ * 1.15 && y > J[1] - 5 * hs && y < J[1] + hs;   // rukáv v T-póze trčí do strany, nie po ruke
+                if (boneArm || outArm) arm.push(i);
+            }
             if (arm.length < 8) continue;
-            let yMin = 1e9, yMax = -1e9; for (const i of arm) { yMin = Math.min(yMin, out[i * 3 + 1]); yMax = Math.max(yMax, out[i * 3 + 1]); }
-            const E = [0, 0, 0]; let c = 0; for (const i of arm) if (out[i * 3 + 1] < yMin + (yMax - yMin) * .15) { E[0] += out[i * 3]; E[1] += out[i * 3 + 1]; E[2] += out[i * 3 + 2]; c++; }
-            E[0] /= c; E[1] /= c; E[2] /= c;
+            let side = 0; for (const i of arm) side = Math.max(side, out[i * 3 + 2] * sd);
+            const E = [0, 0, 0]; let c = 0; for (const i of arm) if (out[i * 3 + 2] * sd > side * .86) { E[0] += out[i * 3]; E[1] += out[i * 3 + 1]; E[2] += out[i * 3 + 2]; c++; }
+            if (!c) continue; E[0] /= c; E[1] /= c; E[2] /= c;
             const ag = [E[0] - J[0], E[1] - J[1], E[2] - J[2]], ab = [Wr[0] - J[0], Wr[1] - J[1], Wr[2] - J[2]], Lg = Math.hypot(...ag), Lb = Math.hypot(...ab);
             if (Lg < 1e-3) continue;
             const u = ag.map(v => v / Lg), w = ab.map(v => v / Lb), ax = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]], sn = Math.hypot(...ax), cs = u[0] * w[0] + u[1] * w[1] + u[2] * w[2];
             const kk = sn > 1e-6 ? ax.map(v => v / sn) : [1, 0, 0], ang = Math.atan2(sn, cs), sAx = Lg > .72 * Lb ? Math.max(.8, Math.min(1.3, .97 * Lb / Lg)) : 1;
             const rot = (d, a) => { const c2 = Math.cos(a), s2 = Math.sin(a), kd = kk[0] * d[0] + kk[1] * d[1] + kk[2] * d[2], cr = [kk[1] * d[2] - kk[2] * d[1], kk[2] * d[0] - kk[0] * d[2], kk[0] * d[1] - kk[1] * d[0]]; return [0, 1, 2].map(j => d[j] * c2 + cr[j] * s2 + kk[j] * kd * (1 - c2)); };
             for (const i of arm) {
-                const y = out[i * 3 + 1], t = Math.max(0, Math.min(1, (J[1] - y) / (2.2 * hs))), wgt = t * t * (3 - 2 * t); if (wgt <= 0) continue;
+                let d0 = [out[i * 3] - J[0], out[i * 3 + 1] - J[1], out[i * 3 + 2] - J[2]]; const along = d0[0] * u[0] + d0[1] * u[1] + d0[2] * u[2], t = Math.max(0, Math.min(1, along / Math.max(1, Lg))), wgt = t < .12 ? 0 : Math.min(1, (t - .12) / .4); if (wgt <= 0) continue;
                 let d = [out[i * 3] - J[0], out[i * 3 + 1] - J[1], out[i * 3 + 2] - J[2]]; const du = d[0] * u[0] + d[1] * u[1] + d[2] * u[2], s2 = 1 + (sAx - 1) * wgt;
                 d = d.map((v, j) => v + (s2 - 1) * du * u[j]); const r = rot(d, ang * wgt);
                 for (let j = 0; j < 3; j++) out[i * 3 + j] = J[j] + r[j];
             }
         }
         findAll();
+        const slim = L.shZ * 1.25;
+        for (let i = 0; i < n; i++) { const y = out[i * 3 + 1], z = out[i * 3 + 2], az = Math.abs(z); if (az < slim || y < L.shY - 3 || y > L.shY + 1) continue; out[i * 3 + 2] = Math.sign(z) * (slim + (az - slim) * .3); }
         // odsadenie od kože a váhy kostí z najbližšieho vrcholu tela
         const off = .2 * hs, si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
         for (let pass = 0; pass < 2; pass++) {

@@ -38,7 +38,7 @@ class BattleScene extends Phaser.Scene {
             await B3.warm(); if (!alive()) return B3.stop();
         }
         await step(.94, 'Rohy zvolávajú do boja…'); if (!alive()) { if (d3) B3.stop(); return; }
-        const wait = fast ? 0 : Math.max(0, 2200 - LoadScr.elapsed);
+        const wait = fast ? 0 : Math.max(0, 1200 - LoadScr.elapsed);
         if (wait) await new Promise(r => setTimeout(r, wait));
         if (!alive()) { if (d3) B3.stop(); LoadScr.kill(); return; }
         this.build(d3);
@@ -46,7 +46,7 @@ class BattleScene extends Phaser.Scene {
     }
 
     build(d3) {
-        this.ready = true;
+        this.ready = true; this.bAcc = 0;
         if (d3) return this.build3d();   // 3D bojisko (js/engine/b3d.js); 2D ostáva ako voľba v Nastaveniach
         this.d3 = false;
         this.buildField();
@@ -74,7 +74,7 @@ class BattleScene extends Phaser.Scene {
         }
         if (w.aura) this.aura = this.add.graphics().setBlendMode('ADD');   // aura najlepšej zbrane (Andúril)
 
-        this.cameras.main.setBounds(0, 0, BW, BH).setZoom(RES * BZ).setBackgroundColor(WX.night ? '#0c1018' : '#22301a');
+        this.cameras.main.setBounds(0, 0, BFW, BFH).setZoom(RES * BZ).setBackgroundColor(WX.night ? '#0c1018' : '#22301a');
         // simulácia počíta cieľ ako ptr + bc, preto ukladáme bod na bojisku mínus bc
         const set = p => { const w = this.cameras.main.getWorldPoint(p.x, p.y); ptr.x = w.x - bc.x; ptr.y = w.y - bc.y; };
         // myš: ľavé tlačidlo útok (po prvom pohybe klávesnicou), pravé kryt; dotyk: drž prst, kam bežať (js/sim/combat.js)
@@ -140,7 +140,7 @@ class BattleScene extends Phaser.Scene {
      *  kopec s výhodou pre obrancu pri horách, skaly; pri obliehaní hrad. */
     buildField() {
         const b = { g: 'g', a: 'a', d: 'd', s: 's' }[BI] || 'g', F = FIELD || { trees: [] };
-        this.add.tileSprite(0, 0, BW, BH, 'ground_' + b).setOrigin(0).setTileScale(.5).setDepth(-10);
+        this.add.tileSprite(0, 0, BFW, BFH, 'ground_' + b).setOrigin(0).setTileScale(.5).setDepth(-10);
         let seed = 7 + BW + Math.floor((F.forest || 0) * 97);
         const rnd = () => (seed = seed * 16807 % 2147483647) / 2147483647;
         if (F.hill) {   // kopec / úpätie hory: svetlejšia vyvýšenina so šikmým tieňom
@@ -184,7 +184,13 @@ class BattleScene extends Phaser.Scene {
 
     update(time, delta) {
         if (!this.ready) { if (mode !== 'battle') this.scene.start('Map'); return; }
-        if (mode === 'battle') { const k = this.d3 ? B3.timeK() : 1; if (HITSTOP > 0 && !OPT.hitstop) HITSTOP = 0; if (HITSTOP > 0) HITSTOP -= delta / 16.67; else if (k > 0) updBattle(Math.min(2, delta / 16.67) * k); }   // zastavenie obrazu pri ťažkom údere; 3D: spomalenie, fotorežim   // 3D: spomalenie pri páde bossa, fotorežim zastaví hru
+        if (mode === 'battle') {   // pevný krok simulácie; zastavenie obrazu len pri ťažkom údere, spomalenie a fotorežim v 3D
+            const k = this.d3 ? B3.timeK() : 1;
+            if (HITSTOP > 0 && !OPT.hitstop) HITSTOP = 0;
+            if (HITSTOP > 0) { HITSTOP -= delta / 16.67; this.bAcc = 0; }
+            // tempo boja (Nastavenia): všetko v boji beží pomalšie, ako vo Warbande
+            else if (k > 0) { this.bAcc = (this.bAcc || 0) + Math.min(2.5, delta / 16.67) * k * ({ s: .6, n: .72, r: 1 }[OPT.tempo] || .72); let n = 0; while (this.bAcc >= 1 && n < 3) { updBattle(1); this.bAcc -= 1; n++; } }
+        }
         if (mode !== 'battle') { if (this.input.mouse && this.input.mouse.locked) this.input.mouse.releasePointerLock(); fpsBox(null); this.scene.start('Map'); return; }
         fpsBox(this.game.loop.actualFps);
         if (this.d3) { if (!B3.look) this.repick(); B3.frame(Math.min(3, delta / 16.67)); return; }
@@ -214,7 +220,7 @@ class BattleScene extends Phaser.Scene {
         for (const [u, o] of this.units) if (o.flag && u.hp <= 0) { o.flag.destroy(); o.flag = null; }
         if (this.water) this.water.tilePositionY -= delta * .02;
         const vw = W / BZ / 2, vh = H / BZ / 2, h = U[0];
-        this.cameras.main.centerOn(Math.max(vw, Math.min(BW - vw, h.x)), Math.max(vh, Math.min(BH - vh, h.y)));
+        this.cameras.main.centerOn(Math.max(vw, Math.min(BFW - vw, h.x)), Math.max(vh, Math.min(BFH - vh, h.y)));
         this.drawAura();
         this.drawNight();
         this.drawFx();
@@ -224,7 +230,7 @@ class BattleScene extends Phaser.Scene {
     drawNight() {
         if (!this.night) return;
         const n = this.night, t = this.torch;
-        n.clear().fillStyle(0x060a1c, .55).fillRect(0, 0, BW, BH);
+        n.clear().fillStyle(0x060a1c, .55).fillRect(0, 0, BFW, BFH);
         t.clear();
         for (let i = 0; i < U.length; i++) {
             const u = U[i];
@@ -233,7 +239,7 @@ class BattleScene extends Phaser.Scene {
             for (let k = 5; k >= 1; k--) t.fillStyle(k > 3 ? 0xff8a20 : 0xffc060, .035 + (5 - k) * .012).fillCircle(u.x, u.y, R * k / 5);   // mäkký prechod svetla
             t.fillStyle(0xfff0b0, .9).fillCircle(u.x - Math.sin(u.f) * 6, u.y + Math.cos(u.f) * 6 - 4, 1.8);
         }
-        if (WX.n === 'storm' && Math.floor(tm) % 160 < 3) n.fillStyle(0xffffff, .35).fillRect(0, 0, BW, BH);
+        if (WX.n === 'storm' && Math.floor(tm) % 160 < 3) n.fillStyle(0xffffff, .35).fillRect(0, 0, BFW, BFH);
     }
 
     /** Stopa po padlom vojakovi: kaluž krvi (u orkov tmavá) a padlá zbraň. Šípy, ktoré minuli, sa zapichnú do zeme (viď update). */

@@ -111,7 +111,7 @@ function town(i) {
     qChk('v', t.n);
     questEvent('v', t.n);
     show(t.n + ' (' + FN[t.f] + ')', 'Zlato ' + G.gold + ', vojsko ' + ar() + ', zdravie ' + Math.ceil(G.hp) + '/' + mh() + '. Posádka hradu: ' + t.g + (t.lord ? ', léno drží ' + t.lord : '') + '.');
-    if (roomsOk()) btn('Vstúpiť na nádvorie (prejsť sa po hrade)', () => enterCastle(i, 'yard'), 0, 'castle');
+    if (roomsOk()) btn('Vstúpiť na nádvorie', () => enterCastle(i, 'yard'), 0, 'castle');
     [['r', 'Verbovanie vojakov', 'recruit'], ['e', 'Kováč a zbrojnica', 'anvil'], ['v', 'Vojsko, zajatci a odpočinok', 'rest'], ...(t.mine ? [['h', 'Správa hradu', 'castle']] : []), ['d', 'Dvor a diplomacia', 'court']].forEach(([c, n, ic]) => btn(n, () => tsub(i, c), 0, ic));
     btn('Trh', () => market(t, () => town(i)), 0, 'scales');
     btn('Krčma' + (compsAt(t).length ? ' (niekto tu čaká)' : ''), () => enterTavern(i), 0, 'mug');

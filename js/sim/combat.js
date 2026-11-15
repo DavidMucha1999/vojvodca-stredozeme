@@ -78,7 +78,7 @@ const cmbSay = (id, s, l = 180) => { if (CMB.said[id]) return; CMB.said[id] = 1;
 /** Začiatok bitky: morálka podľa síl, veliteľ nepriateľa, výdrž, štít a šípy hrdinu. */
 function cmbStart(en) {
     const C = CMB;
-    Object.assign(C, { blk: 0, blkT: 99, gb: 0, st: 100, run: 0, lastA: null, chg: 0, charging: 0, bowC: 0, cry: 0, swing: null, rd: null, draw: 0, aim: null, couch: 0, wpn: 'm', msgs: [], kick: 0, kickT: 0, rear: 0, mvA: null, mvS: 0, aim3: null, fm: { p: 'line', l: 'line', j: 'line' }, at: {}, place: null, prev: null, mkT: 0, hist: [], bd: 't', mdx: 0, mdy: 0, px: null, py: null, vx: 0, vy: 0, sel: 'all', endT: 0, lmb: 0, rmb: 0, said: {}, noRout: en && en.ar ? 1 : 0 });
+    Object.assign(C, { lanceN: 0, lanceBr: 0, blk: 0, blkT: 99, gb: 0, st: 100, run: 0, lastA: null, chg: 0, charging: 0, bowC: 0, cry: 0, swing: null, rd: null, draw: 0, aim: null, couch: 0, wpn: 'm', msgs: [], kick: 0, kickT: 0, rear: 0, mvA: null, mvS: 0, aim3: null, fm: { p: 'line', l: 'line', j: 'line' }, at: {}, place: null, prev: null, mkT: 0, hist: [], bd: 't', mdx: 0, mdy: 0, px: null, py: null, vx: 0, vy: 0, sel: 'all', endT: 0, lmb: 0, rmb: 0, said: {}, noRout: en && en.ar ? 1 : 0 });
     const mine = U.filter(u => !u.t), foe = U.filter(u => u.t), pw = s => s.reduce((a, u) => a + u.mh * (u.d || 5), 0) + 1, r = pw(mine) / pw(foe);
     const cl = v => Math.max(-18, Math.min(18, v));
     const m0 = 62 + cl((r - 1) * 12) + Math.min(12, G.lv || 1) + (G.king ? 5 : 0) + Math.min(6, (G.ren || 0) / 3) + ((G.pm ?? 60) - 50) * .3 + (perk('vodca') ? 8 : 0) + (hasRole('velitel') ? 6 : 0);   // morálka družiny, Charizma, spoločník veliteľ
@@ -127,7 +127,7 @@ function cmbHero(u, dt, mv) {
     if (C.charging) {
         const hits = U.filter(v => v.t && v.hp > 0 && Math.hypot(v.x - u.x, v.y - u.y) < u.r + v.r + 10 && angD(mv, dirTo(u, v)) < .8).slice(0, 2);
         if (hits.length) {
-            const lance = it('w').r ? 1 : 0, spd = Math.min(1.5, u.sp / 2.4) * (perk('kopija') ? 1.4 : 1);
+            const lance = it('w').r ? 1 : 0, spd = Math.min(1.5, u.sp / 1.7) * (perk('kopija') ? 1.4 : 1);
             hits.forEach(v => { if (meleeHit(u, v, dmg() * (1.6 + lance) * spd, 'charge') && v.hp > 0) { v.x += Math.cos(mv) * 16; v.y += Math.sin(mv) * 16; v.stun = 25; } });
             SHAKE = Math.max(SHAKE, 2.5); C.run = 0; C.chg = 40; C.swing = { t: 12, a: mv, k: 'c', r: u.r + 22 };
             cmbSay('chg', 'Nápor! Rovný cval na koni drví nepriateľov – s kopijou ešte viac.');
@@ -197,13 +197,16 @@ function heroDirectional(u, dt, mv, slow, cost, rg) {
     if (C.sw) swingTick(u, dt, WT);   // čepeľ práve letí: zasiahne to, cez čo prejde
     // sklopená kopija: kopija + rovný cval + drž bod (E) → každý v ceste dostane zásah podľa rýchlosti koňa
     const spd = Math.hypot(C.vx || 0, C.vy || 0);
-    if (heroMounted() && WT.spear && kd('thrust') && C.run > 18 && spd > (u.bs || u.sp) * .55) {
+    if (C.lanceBr > 0) { C.lanceBr -= dt; if (C.lanceBr <= 0) { C.lanceN = 0; wbMsg('Máš novú kopiju.', '#e8d8a8'); } }
+    if (heroMounted() && WT.spear && !(C.lanceBr > 0) && kd('thrust') && C.run > 18 && spd > (u.bs || u.sp) * .55) {
         if (!C.couch) { C.couch = 1; C.rd = null; cmbSay('couch', 'Sklopená kopija! Drž bod (E) v rovnom cvale – kto stojí v ceste, ten padne.'); }
         const a = Math.atan2(C.vy, C.vx);
         for (const v of U) if (v.t && v.hp > 0 && !(v.couchT > 0) && Math.hypot(v.x - u.x, v.y - u.y) < WT.reach * 1.2 + v.r && angD(a, dirTo(u, v)) < .3 && !wallBlocked(u, v)) {
             v.couchT = 50;
             if (meleeHit(u, v, dmg() * (2 + spd / (u.bs || u.sp) * 1.2) * (perk('kopija') ? 1.3 : 1), 'charge') && v.hp > 0) { v.x += Math.cos(a) * 18; v.y += Math.sin(a) * 18; v.stun = 30; }
             SHAKE = Math.max(SHAKE, 2); C.swing = { t: 10, a, k: 't', d: 't', r: WT.reach * 1.2 };
+            C.lanceN = (C.lanceN || 0) + 1;
+            if (C.lanceN >= 4) { C.lanceBr = 420; C.couch = 0; wbMsg('Kopija sa zlomila! Dočasne bojuj inak.', '#e0a070'); break; }
         }
         for (const v of U) if (v.couchT > 0) v.couchT -= dt;
         return;
@@ -232,7 +235,7 @@ function heroStrike(u, R, slow, cost, rg) {
     const P = { u: { arc: .5, n: 1, m: 1.2 * S.sw, r: 1 }, l: { arc: a2, n: n2, m: S.sw, r: 1 }, r: { arc: a2, n: n2, m: S.sw, r: 1 }, t: { arc: .42, n: 1, m: 1.35 * S.th, r: WT.spear ? 1.5 : 1.35 } }[d];
     C.hist = (C.hist || []).concat(d).slice(-4);
     const reach = WT.reach * P.r;
-    C.sw = { vis: R.t, d, t: 0, dur: (d === 't' ? 6 : WT.t2 ? 10 : 8) / S.sp * slow, P, pow, reach, hit: [], bl: 0, pitch: C.aim3 ? C.aim3.pitch : null };
+    C.sw = { vis: R.t, d, t: 0, dur: (d === 't' ? 8 : WT.t2 ? 14 : 11) / S.sp * slow, P, pow, reach, hit: [], bl: 0, pitch: C.aim3 ? C.aim3.pitch : null };
     u.c = WT.rec * slow * (d === 't' ? .85 : 1); C.st -= (d === 't' ? 7 : WT.t2 ? 13 : 10) * cost * (pow > 1.2 ? 1.2 : 1); if (C.st < 0) C.st = 0;
     fx = 10; C.swing = { t: 10, a: u.f, k: d === 't' ? 't' : 's', d, r: reach, w: P.arc, pow };
     C.rd = null;
@@ -406,7 +409,7 @@ function aiMelee(u, b, bd, dt) {
     if (u.wu > 0) {
         u.wu -= dt; u.f = dirTo(u, u.wt || b);
         if (u.wu <= 3 && !u.fnt && sk > .35 && u.wt && u.wt.h && Math.random() < sk * .25 * dt) { u.fnt = 1; const o = ['l', 'r', 'u'].filter(x => x !== u.wd); u.wd = o[Math.floor(Math.random() * o.length)]; u.wu += 3; }   // klam: zručný vojak v poslednej chvíli zmení smer úderu
-        if (u.wu <= 0) { const t = u.wt; u.lwd = u.wd; if (t && t.hp > 0 && Math.hypot(t.x - u.x, t.y - u.y) < 22 * S.len + (t.r || 6) * .5) meleeHit(u, t, u.d * S[u.wd === 't' ? 'th' : 'sw'] * (.7 + Math.random() * .6), 'ai'); u.c = (heavy(u) ? 40 : 33) / S.sp; u.wt = null; u.fnt = 0; u.atkN = (u.atkN || 0) + 1; }
+        if (u.wu <= 0) { const t = u.wt; u.lwd = u.wd; if (t && t.hp > 0 && Math.hypot(t.x - u.x, t.y - u.y) < 22 * S.len + (t.r || 6) * .5) meleeHit(u, t, u.d * S[u.wd === 't' ? 'th' : 'sw'] * (.7 + Math.random() * .6), 'ai'); u.c = (heavy(u) ? 58 : 48) / S.sp; u.wt = null; u.fnt = 0; u.atkN = (u.atkN || 0) + 1; }
         return true;
     }
     if (bd > 13 * (WK === 'spear' ? 1.3 : WK === 'axe' ? .95 : 1)) { if (mounted(u)) u.run = (u.run || 0) + dt; return false; }
@@ -415,13 +418,14 @@ function aiMelee(u, b, bd, dt) {
         const a = dirTo(u, b);
         if (meleeHit(u, b, u.d * 2.2, 'charge') && b.hp > 0) { b.x += Math.cos(a) * 12; b.y += Math.sin(a) * 12; if (!b.h) b.stun = 20; }
         if (b.h) SHAKE = Math.max(SHAKE, 1.5);
-        u.run = 0; u.c = 45; return true;
+        u.run = 0; u.c = 45; { u.ride = 55 + Math.random() * 25; u.rideA = a + (Math.random() - .5) * .5; }
+        return true;
     }
     u.run = 0;
     // smer úderu (ako ho vidí obranca): zľava, sprava, zhora, bod; trollovia a obri bijú zhora, kopijníci bodajú, sekerníci len sekajú
     const sp = WK === 'spear', r = Math.random();
     u.wd = heavy(u) ? 'u' : sp ? (r < .6 ? 't' : r < .8 ? 'l' : 'r') : WK === 'axe' ? (r < .4 ? 'l' : r < .75 ? 'r' : 'u') : r < .34 ? 'l' : r < .68 ? 'r' : r < .86 ? 'u' : 't';
-    u.wu = u.wu0 = ((heavy(u) ? 22 : 12) * (1.2 - .35 * sk) / S.sp) + (b.h && OPT.blkDir === 'manual' ? 9 : 0); u.wt = b; u.fnt = 0;
+    u.wu = u.wu0 = ((heavy(u) ? 28 : 16) * (1.2 - .35 * sk) / S.sp) + (b.h && OPT.blkDir === 'manual' ? 9 : 0); u.wt = b; u.fnt = 0;
     return true;
 }
 

@@ -5,8 +5,8 @@
  */
 class BootScene extends Phaser.Scene {
     constructor() { super('Boot'); }
-    /** Najkratšie trvanie načítavacej obrazovky (ms): 5 s len pri prvom spustení hry; pri návrate do menu (znovunačítanie stránky v tom istom okne) bez čakania. */
-    static get MIN_LOAD() { return BootScene.again ? 0 : 5000; }
+    /** Najkratšie trvanie načítavacej obrazovky (ms): pri prvom spustení aspoň chvíľa na Prsteň, pri návrate do menu bez čakania. */
+    static get MIN_LOAD() { return BootScene.again ? 0 : 1800; }
 
     create() {
         ov.classList.add('intro'); ov.classList.add('hide');   // úvodný formulár sa ukáže až po načítaní

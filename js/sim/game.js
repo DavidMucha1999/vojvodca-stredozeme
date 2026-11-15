@@ -97,6 +97,12 @@ function newGame() {
                     x.f = f0;
             });
         }
+        // nezávislý hrdina dobra začína v Kraji: najprv lupiči na dohľad, potom Bree
+        if (G.fac === 6 && heroSide() !== 1) {
+            G.intro = 0;
+            E.push({ id: ++NID, x: G.x + 300, y: G.y - 140, f: 9, kind: 'bandit', n: 7, vx: 0, vy: 0, w: 0, nm: 'Lupiči z Kraja' });
+        }
+        else G.intro = 2;
         dayT = 0;
         mode = 'map';
         ov.classList.add('hide');
@@ -104,8 +110,18 @@ function newGame() {
     }
 }
 function load(slot) {
+    if (typeof BootLoad !== 'undefined' && !BootLoad.on) {
+        let g = null; try { g = slotData(slot); } catch (e) { }
+        BootLoad.show(g && g.g);
+        requestAnimationFrame(() => requestAnimationFrame(() => loadNow(slot)));
+        return;
+    }
+    loadNow(slot);
+}
+function loadNow(slot) {
     initA();
     try {
+        if (typeof BootLoad !== 'undefined' && BootLoad.on) BootLoad.set(.12, 'Otvarám kroniku…');
         const raw = JSON.parse(STORE.getItem(slotKey(slot)));
         if (raw) {
             const s = migrateSave(raw);
@@ -130,10 +146,11 @@ function load(slot) {
             dayT = 0;
             mode = 'map';
             ov.classList.add('hide');
+            if (typeof BootLoad !== 'undefined' && BootLoad.on) BootLoad.set(.24, 'Svet sa prebúdza…');
             upd();
-        }
+        } else if (typeof BootLoad !== 'undefined') BootLoad.kill();
     }
-    catch (x) { console.warn('Načítanie zlyhalo', x); }
+    catch (x) { console.warn('Načítanie zlyhalo', x); if (typeof BootLoad !== 'undefined') BootLoad.kill(); }
     if (G) {
         ov.classList.remove('intro');
         tb.style.display = 'flex';

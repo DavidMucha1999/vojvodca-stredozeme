@@ -13,11 +13,32 @@ class MapScene extends Phaser.Scene {
     constructor() { super('Map'); }
 
     create() {
+        this.booting = typeof BootLoad !== 'undefined' && BootLoad.on;
+        if (this.booting) {
+            BootLoad.set(.36, 'Kreslím mapu Stredozeme…');
+            setTimeout(() => { if (this.scene.isActive()) this.buildWorld(); else this.finishBoot(); }, 40);
+            return;
+        }
+        this.buildWorld();
+    }
+
+    /** Načítavacia obrazovka sa zatvorí a mapa sa rozbehne, aj keď niektorý krok kresby spadol. */
+    finishBoot() {
+        this.booting = false;
+        this.ready = true;
+        if (typeof BootLoad !== 'undefined' && BootLoad.on) { BootLoad.set(1, 'Brána sa otvára…'); BootLoad.hide(); }
+    }
+
+    /** Svet mapy. Pri pokračovaní v uloženej hre sa stavia po častiach, aby lišta išla ďalej od 24 %. */
+    buildWorld() {
         this.armies = new Map();
         this.hover = null;
         // scéna sa po bitke spúšťa znova: objekty z minulého spustenia sú zničené, preto sa vytvoria nanovo
         this.sgTxt = new Map(); this.musterTxt = null; this.spaceKey = null;
-        const worldObjs = this.buildTerrain();
+        try { this.buildTerrain(); }
+        catch (e) { console.error('Mapa', e); }
+        const places = () => {
+        try {
         this.vill = VL.map(v => ({
             v, key: '',
             spr: this.add.image(v.x, v.y, 'map_village_g1').setOrigin(.5, .8).setScale(.36).setDepth(v.y - 1),
@@ -38,6 +59,10 @@ class MapScene extends Phaser.Scene {
 
         this.cameras.main.setBounds(0, 0, WW, WH).setBackgroundColor('#1e2a16');
         this.mmCam = { ignore() { } };                       // minimapu kreslí UIScene z textúry 'minimap'
+        this.ready = true;
+        const chart = () => {
+        try {
+        if (typeof BootLoad !== 'undefined' && BootLoad.on) BootLoad.set(.9, 'Kreslím minimapu…');
         this.minimapTexture();
         this.mmCam.ignore([this.fx, this.heroTxt, this.heroCrown, this.hero, ...this.vill.flatMap(o => [o.spr, o.txt]), ...this.towns.flatMap(o => [o.spr, o.txt, o.stars])]);
 
@@ -46,6 +71,13 @@ class MapScene extends Phaser.Scene {
         this.input.on('gameout', () => this.hover = null);
         this.input.on('wheel', (p, o, dx, dy) => { if (mode === 'map') Z = Math.max(.45, Math.min(1.5, Z - Math.sign(dy) * .1)); });
         this.events.once('shutdown', () => this.input.removeAllListeners());
+        } catch (e) { console.error('Mapa', e); }
+        this.finishBoot();
+        };
+        if (this.booting) setTimeout(() => { if (this.scene.isActive()) chart(); else this.finishBoot(); }, 30); else chart();
+        } catch (e) { console.error('Mapa', e); this.finishBoot(); }
+        };
+        if (this.booting) { BootLoad.set(.68, 'Staviam dediny a hrady…'); setTimeout(() => { if (this.scene.isActive()) places(); else this.finishBoot(); }, 30); } else places();
     }
 
     /** Je bod blízko cesty? (cesty sú prepočítané body kriviek) */
@@ -81,42 +113,47 @@ class MapScene extends Phaser.Scene {
     /** Reliéf krajiny: výškové pole zo šumu, hôr a lesov, tieňované svetlom zo severozápadu (svetlé hrebene, tmavšie údolia),
      *  tmavšia vlhká zem pri rieke. Jedna textúra 720 × 480 položená pod stromy – mapa prestane byť plochá. */
     buildRelief(T) {
-        if (this.textures.exists('relief')) return this.add.image(0, 0, 'relief').setOrigin(0).setScale(WW / 720).setDepth(-9.3).setAlpha(.85);
-        const Wc = 720, Hc = 480, cv = document.createElement('canvas'); cv.width = Wc; cv.height = Hc;
+        const place = () => { const im = this.textures.get('relief').getSourceImage(); return this.add.image(0, 0, 'relief').setOrigin(0).setScale(WW / im.width).setDepth(-9.3).setAlpha(.85); };
+        if (this.textures.exists('relief')) return place();
+        // polovičné rozlíšenie stačí: vrstva je rozmazaná a len tónuje svetlom. Hory a rieka sa kreslia len do svojho okolia, nie cez každý bod.
+        const Wc = 360, Hc = 240, ns = 720 / Wc, cv = document.createElement('canvas'); cv.width = Wc; cv.height = Hc;
         const c = cv.getContext('2d'), img = c.createImageData(Wc, Hc), d = img.data;
         const hash = (x, y) => { const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return n - Math.floor(n); };
         const noise = (x, y) => { const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy); return (hash(ix, iy) * (1 - u) + hash(ix + 1, iy) * u) * (1 - v) + (hash(ix, iy + 1) * (1 - u) + hash(ix + 1, iy + 1) * u) * v; };
         const M = T.mountains.map(([mx, my, sz]) => [mx / 1800 * Wc, my / 1200 * Hc, sz / 1800 * Wc]);
-        const rp = riverPoints().map(([x, y]) => [x / WW * Wc, y / WH * Hc]);
         const H = new Float32Array((Wc + 1) * (Hc + 1));
         for (let y = 0; y <= Hc; y++) for (let x = 0; x <= Wc; x++) {
-            let h = noise(x / 38, y / 38) * .6 + noise(x / 13, y / 13) * .3 + noise(x / 5, y / 5) * .1;
-            for (const [mx, my, r] of M) { const dd = Math.hypot(x - mx, y - my); if (dd < r * 1.6) h += (1 - dd / (r * 1.6)) * 1.2; }
-            const fi = Math.floor(x / Wc * T.cols), fj = Math.floor(y / Hc * T.rows);
-            if (T.forest[fj * T.cols + fi] >= 33) h += .08;
-            H[y * (Wc + 1) + x] = h;
+            const h = noise(x / 38 * ns, y / 38 * ns) * .6 + noise(x / 13 * ns, y / 13 * ns) * .3 + noise(x / 5 * ns, y / 5 * ns) * .1;
+            const fi = Math.min(T.cols - 1, Math.floor(x / Wc * T.cols)), fj = Math.min(T.rows - 1, Math.floor(y / Hc * T.rows));
+            H[y * (Wc + 1) + x] = h + (T.forest[fj * T.cols + fi] >= 33 ? .08 : 0);
+        }
+        for (const [mx, my, r] of M) {
+            const R = r * 1.6, x0 = Math.max(0, mx - R | 0), x1 = Math.min(Wc, mx + R + 1 | 0), y0 = Math.max(0, my - R | 0), y1 = Math.min(Hc, my + R + 1 | 0);
+            for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const dd = Math.hypot(x - mx, y - my); if (dd < R) H[y * (Wc + 1) + x] += (1 - dd / R) * 1.2; }
+        }
+        const wet = new Float32Array(Wc * Hc), rad = 10 * Wc / 720, rad2 = rad * rad;
+        for (const [qx, qy] of riverPoints().map(([x, y]) => [x / WW * Wc, y / WH * Hc])) {
+            const x0 = Math.max(0, qx - rad | 0), x1 = Math.min(Wc - 1, qx + rad | 0), y0 = Math.max(0, qy - rad | 0), y1 = Math.min(Hc - 1, qy + rad | 0);
+            for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const dd = (qx - x) * (qx - x) + (qy - y) * (qy - y); if (dd < rad2) { const w = .18 * (1 - dd / rad2), i = y * Wc + x; if (w > wet[i]) wet[i] = w; } }
         }
         for (let y = 0; y < Hc; y++) for (let x = 0; x < Wc; x++) {
             const h = H[y * (Wc + 1) + x], dx = H[y * (Wc + 1) + x + 1] - h, dy = H[(y + 1) * (Wc + 1) + x] - h;
             const sh = (-dx - dy) * 38;   // svetlo zo severozápadu
-            let a = Math.min(.45, Math.abs(sh)) * (sh > 0 ? .55 : 1), col = sh > 0 ? 255 : 0;
-            let wet = 0; if (rp.length && (x % 2 === 0) && (y % 2 === 0)) { let bd = 1e9; for (let i = 0; i < rp.length; i += 3) { const q = rp[i], dd = (q[0] - x) * (q[0] - x) + (q[1] - y) * (q[1] - y); if (dd < bd) bd = dd; } wet = bd < 100 ? .18 * (1 - bd / 100) : 0; }
-            const i = (y * Wc + x) * 4;
+            const a = Math.min(.45, Math.abs(sh)) * (sh > 0 ? .55 : 1), col = sh > 0 ? 255 : 0, i = (y * Wc + x) * 4, w = wet[y * Wc + x];
             d[i] = col; d[i + 1] = col; d[i + 2] = col; d[i + 3] = Math.round(a * 255 * .55);
-            if (wet) { d[i] = 20; d[i + 1] = 30; d[i + 2] = 20; d[i + 3] = Math.max(d[i + 3], Math.round(wet * 255)); }
+            if (w) { d[i] = 20; d[i + 1] = 30; d[i + 2] = 20; d[i + 3] = Math.max(d[i + 3], Math.round(w * 255)); }
         }
         c.putImageData(img, 0, 0);
         c.filter = 'blur(1px)'; c.drawImage(cv, 0, 0); c.filter = 'none';
         this.textures.addCanvas('relief', cv);
-        return this.add.image(0, 0, 'relief').setOrigin(0).setScale(WW / 720).setDepth(-9.3).setAlpha(.85);
+        return place();
     }
 
     /** Les ako jednotlivé stromy: hustý vnútri, pri okraji redší a s náhodne vysunutými stromami, aby hranica nebola kockatá. */
     buildForest(T) {
         const ts = WW / T.cols, rnd = n => { const x = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
         const isF = (i, j) => i >= 0 && j >= 0 && i < T.cols && j < T.rows && T.forest[j * T.cols + i] >= 33;
-        const layer = this.add.layer().setDepth(-8);
-        // všetky stromy v jednej textúre (jedna dávka pre grafickú kartu namiesto tisícov prepnutí)
+        // všetky stromy v jednej textúre, potom zložené do štvorcov mapy (nie jeden objekt na strom)
         const KEYS = ['tree_0', 'tree_1', 'tree_2', 'deadtree'];
         if (!this.textures.exists('map_trees')) {
             const srcs = KEYS.map(k => this.textures.get(k).getSourceImage()), fw = Math.max(...srcs.map(i => i.width)), fh = Math.max(...srcs.map(i => i.height));
@@ -125,13 +162,26 @@ class MapScene extends Phaser.Scene {
             const tex = this.textures.addCanvas('map_trees', cv);
             KEYS.forEach((k, i) => tex.add(i, 0, i * fw, 0, fw, fh));
         }
+        // mriežka prekážok: pri desaťtisícoch stromov sa cesty a hrady neprezerajú po jednom
+        const CELL = 36 * K, box = new Map();
+        const put = (x, y, r) => { const k = (x / CELL | 0) + (y / CELL | 0) * 4096; let a = box.get(k); if (!a) box.set(k, a = []); a.push(x, y, r * r); };
+        TW.forEach(t => put(t.x, t.y, 36 * K)); VL.forEach(v => put(v.x, v.y, 21 * K));
+        for (const p of this.roadPts || []) put(p.x, p.y, 7 * K);
+        const blocked = (x, y) => {
+            const gx = x / CELL | 0, gy = y / CELL | 0;
+            for (let j = gy - 1; j <= gy + 1; j++) for (let i = gx - 1; i <= gx + 1; i++) {
+                const a = box.get(i + j * 4096); if (!a) continue;
+                for (let k = 0; k < a.length; k += 3) { const dx = a[k] - x, dy = a[k + 1] - y; if (dx * dx + dy * dy < a[k + 2]) return true; }
+            }
+            return false;
+        };
         const trees = [];
         for (let j = 0; j < T.rows; j++) for (let i = 0; i < T.cols; i++) {
             const f = T.forest[j * T.cols + i]; if (f < 33) continue;
             const dead = f >= 37;
             let nb = 0; for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) if ((di || dj) && isF(i + di, j + dj)) nb++;
             const edge = nb < 8, seed = j * T.cols + i;
-            const n = dead ? 4 + (nb > 5 ? 1 : 0) : (edge ? 5 + Math.round(rnd(seed) * 4) : 10 + Math.round(rnd(seed) * 4));
+            const n = dead ? 3 : (edge ? 4 + Math.round(rnd(seed) * 3) : 8 + Math.round(rnd(seed) * 4));
             for (let k = 0; k < n; k++) {
                 let x = (i + rnd(seed * 7 + k * 3 + 1)) * ts, y = (j + rnd(seed * 7 + k * 3 + 2)) * ts;
                 // pri okraji sa strom občas vysunie von z lesa – rozstrapkaná hranica
@@ -142,20 +192,53 @@ class MapScene extends Phaser.Scene {
             // samostatné stromy kúsok za okrajom lesa (riedky lem)
             if (edge && !dead && rnd(seed * 23) < .35) { const a = rnd(seed * 29) * 6.283, d = ts * (1 + rnd(seed * 31) * .8); trees.push([(i + .5) * ts + Math.cos(a) * d, (j + .5) * ts + Math.sin(a) * d, .22 + rnd(seed * 37) * .1, rnd(seed * 41) < .5 ? 'tree_1' : 'tree_2']); }
         }
-        const kept = trees.filter(([x, y]) => !this.clearZone(x, y));
-        kept.sort((a, b) => a[1] - b[1]);
-        // stromy podľa kraja: mallorny so zlatými korunami okolo Lothlórienu, modrasté borovice na severe, popolavé kmene v Mordore
-        const lor = TW.find(t => t.n === 'Lothlórien');
-        for (const [x, y, sc, key] of kept) {
-            const im = this.add.image(x, y, 'map_trees', KEYS.indexOf(key)).setOrigin(.5, .89).setScale(sc);
+        const kept = [];
+        for (const t of trees) if (!blocked(t[0], t[1])) kept.push(t);
+        const CHUNK = 720, lor = TW.find(t => t.n === 'Lothlórien'), chunks = new Map();
+        for (const [x, y, sc0, key] of kept) {
+            let sc = sc0, frame = KEYS.indexOf(key), tint = 0;
             const reg = regionAt(x, y);
-            if (lor && Math.hypot(x - lor.x, y - lor.y) < 150 * K) im.setTint(0xffc830).setScale(sc * 1.3);
-            else if (reg === 's') { im.setTint(0xa8c8d0); if (key !== 'deadtree') im.setFrame(KEYS.indexOf('tree_2')); }
-            else if (reg === 'a') im.setTint(0x7a6a62);
-            else if (reg === 'd') im.setTint(0xc8c070);
-            layer.add(im);
+            if (lor && (x - lor.x) * (x - lor.x) + (y - lor.y) * (y - lor.y) < (150 * K) * (150 * K)) { tint = 0xffc830; sc *= 1.3; }
+            else if (reg === 's') { tint = 0xa8c8d0; if (key !== 'deadtree') frame = KEYS.indexOf('tree_2'); }
+            else if (reg === 'a') tint = 0x7a6a62;
+            else if (reg === 'd') tint = 0xc8c070;
+            const id = Math.floor(x / CHUNK) + ',' + Math.floor(y / CHUNK);
+            let list = chunks.get(id); if (!list) chunks.set(id, list = []);
+            list.push(x, y, sc, frame, tint);
         }
-        return [layer];
+        // stromy ostanú ostré, ale na scéne je len okolie kamery. Vzdialený les sa doplní, až keď sa k nemu pochod priblíži.
+        this.forestChunk = CHUNK;
+        this.forestData = chunks;
+        this.forestBoxes = new Map();
+        this.syncForest(1);
+        return [];
+    }
+
+    /** Doplní alebo skryje štvorce lesa podľa toho, kde je družina. Najviac `budget` nových štvorcov za snímok, aby pochod nesekol. */
+    syncForest(budget) {
+        if (!this.forestData || !G) return;
+        const CHUNK = this.forestChunk, hx = G.x, hy = G.y, hw = W / Z / 2 + CHUNK, hh = H / Z / 2 + CHUNK;
+        const vx0 = cam.x - 30, vy0 = cam.y - 40, vx1 = cam.x + W / Z + 30, vy1 = cam.y + H / Z + 50;
+        let built = 0, cap = budget == null ? 1 : budget;
+        for (const [id, list] of this.forestData) {
+            const [cx, cy] = id.split(',').map(Number), x = cx * CHUNK, y = cy * CHUNK;
+            const near = Math.abs(x + CHUNK / 2 - hx) < hw && Math.abs(y + CHUNK / 2 - hy) < hh;
+            let box = this.forestBoxes.get(id);
+            if (!near) { if (box && box.visible) box.setVisible(false); continue; }
+            if (!box) {
+                if (built >= cap) continue;
+                built++;
+                box = this.add.container(0, 0).setDepth(-8);
+                for (let i = 0; i < list.length; i += 5) {
+                    const im = this.make.image({ x: list[i], y: list[i + 1], key: 'map_trees', frame: list[i + 3], add: false }).setOrigin(.5, .89).setScale(list[i + 2]);
+                    if (list[i + 4]) im.setTint(list[i + 4]);
+                    box.add(im);
+                }
+                this.forestBoxes.set(id, box);
+            } else if (!box.visible) box.setVisible(true);
+            const kids = box.list;
+            for (let i = 0; i < kids.length; i++) { const im = kids[i], on = im.x > vx0 && im.x < vx1 && im.y > vy0 && im.y < vy1; if (im.visible !== on) im.setVisible(on); }
+        }
     }
 
     /** Terén z editora Tiled: dlaždice zeme a lesov, voda, cesty a hory. Vráti objekty sveta. */
@@ -232,19 +315,21 @@ class MapScene extends Phaser.Scene {
         return out;
     }
 
-    /** Minimapa ako jeden obrázok (360 × 240) z dát terénu. */
-    /** Minimapa vo vysokom rozlíšení (1440 × 960): tieňovaný terén, lesy, hory so snehom a tieňom, rieka s brehmi, jazero, cesty. */
+    /** Minimapa 720 × 480: terén, lesy, hory, rieka a cesty. Na obrazovke je menšia, väčšie plátno by štart len spomaľovalo. */
     minimapTexture() {
         if (this.textures.exists('minimap')) return 'minimap';
-        const T = MAPDATA.terrain, MW2 = 1440, MH2 = 960, c = document.createElement('canvas'); c.width = MW2; c.height = MH2;
+        const T = MAPDATA.terrain, MW2 = 720, MH2 = 480, c = document.createElement('canvas'); c.width = MW2; c.height = MH2;
         const x = c.getContext('2d'), sx = MW2 / T.cols, sy = MH2 / T.rows, s = MW2 / 1800;
-        const col = ['#4f7238', '#5e6e3a', '#716c42', '#7a6442', '#3c2c28', '#bf9c60', '#dde3ea', '#26546c'];
+        const col = [[0x4f, 0x72, 0x38], [0x5e, 0x6e, 0x3a], [0x71, 0x6c, 0x42], [0x7a, 0x64, 0x42], [0x3c, 0x2c, 0x28], [0xbf, 0x9c, 0x60], [0xdd, 0xe3, 0xea], [0x26, 0x54, 0x6c]];
         const rnd = n => { const v = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return v - Math.floor(v); };
+        const img = x.createImageData(MW2, MH2), px = img.data;
         for (let j = 0; j < T.rows; j++) for (let i = 0; i < T.cols; i++) {
-            const n = j * T.cols + i, base = col[Math.floor((T.ground[n] - 1) / 4)] || col[0];
-            x.fillStyle = base; x.fillRect(i * sx, j * sy, sx + .5, sy + .5);
-            x.fillStyle = 'rgba(' + (rnd(n) < .5 ? '255,255,255' : '0,0,0') + ',' + (rnd(n * 3) * .07).toFixed(3) + ')'; x.fillRect(i * sx, j * sy, sx + .5, sy + .5);   // zrno
+            const n = j * T.cols + i, base = col[Math.floor((T.ground[n] - 1) / 4)] || col[0], g = (rnd(n) < .5 ? 16 : -12);
+            const r = Math.max(0, Math.min(255, base[0] + g)), gg = Math.max(0, Math.min(255, base[1] + g)), b = Math.max(0, Math.min(255, base[2] + g));
+            const x0 = i * sx | 0, y0 = j * sy | 0, x1 = Math.min(MW2, (i + 1) * sx + .5 | 0), y1 = Math.min(MH2, (j + 1) * sy + .5 | 0);
+            for (let yy = y0; yy < y1; yy++) { let p = (yy * MW2 + x0) * 4; for (let xx = x0; xx < x1; xx++) { px[p] = r; px[p + 1] = gg; px[p + 2] = b; px[p + 3] = 255; p += 4; } }
         }
+        x.putImageData(img, 0, 0);
         // lesy: mäkké tmavozelené škvrny so svetlejšími korunami
         for (let j = 0; j < T.rows; j++) for (let i = 0; i < T.cols; i++) {
             const n = j * T.cols + i, f = T.forest[n]; if (!(f >= 33)) continue;
@@ -292,14 +377,24 @@ class MapScene extends Phaser.Scene {
     }
 
     update(time, delta) {
-        if (!G) return;
+        if (!G || !this.ready) return;
         if (mode === 'map') {
             // čakanie (tábor, obliehanie, obrana): čas sa dá zrýchliť – svet sa v jednom snímku prepočíta viackrát
-            if (!this.spaceKey) this.spaceKey = this.input.keyboard.addKey('SPACE', false);
-            HOLD_FAST = this.spaceKey.isDown && ov.classList.contains('hide');
+            if (!this.spaceKey && this.input.keyboard) this.spaceKey = this.input.keyboard.addKey('SPACE', false);
+            HOLD_FAST = !!(this.spaceKey && this.spaceKey.isDown && ov.classList.contains('hide'));
             const n = timeMul(), dt = Math.min(2, delta / 16.67);
-            for (let k = 0; k < n && mode === 'map'; k++) updMap(dt);
+            try { for (let k = 0; k < n && mode === 'map'; k++) updMap(dt); this.errN = 0; }
+            catch (e) {   // chyba v simulácii nesmie zmraziť mapu: zalogujeme ju a hra ide ďalej
+                this.errN = (this.errN || 0) + 1;
+                if (this.errN === 1) console.error('updMap', e);
+                if (this.errN > 120) { G.dest = -1; G.vd = -1; G.chase = 0; G.tx = G.x; G.ty = G.y; this.errN = 0; }
+            }
+        } else if (mode === 'town' && ov.classList.contains('hide')) {
+            // poistka: režim „mesto“ bez zobrazeného okna = zaseknutá mapa → návrat na mapu
+            this.stuckN = (this.stuckN || 0) + 1;
+            if (this.stuckN > 90) { mode = 'map'; this.stuckN = 0; }
         }
+        if (mode !== 'town') this.stuckN = 0;
         if (mode === 'battle') { this.scene.start('Battle'); return; }
 
         const c = this.cameras.main;
@@ -308,19 +403,24 @@ class MapScene extends Phaser.Scene {
         cam.y = Math.max(0, Math.min(WH - H / Z, G.y - H / Z / 2));
         c.centerOn(cam.x + W / Z / 2, cam.y + H / Z / 2);
 
-        this.syncTowns();
-        this.syncArmies();
-        this.syncHero();
-        this.drawFx();
+        try {
+            this.syncForest(1);
+            if (this.towns) this.syncTowns();
+            this.syncArmies();
+            if (this.hero) this.syncHero();
+            this.drawFx();
+        } catch (e) {
+            if (!this.drawErr) { this.drawErr = 1; console.error('Mapa', e); }
+        }
     }
 
     syncTowns() {
         for (const o of this.towns) {
             const t = o.t, L = lvl(t);
             if (o.f !== t.f) { o.f = t.f; o.spr.setTexture('map_castle_' + t.f); }
-            o.spr.setScale(.32 * (.85 + L * .08));
-            o.txt.setText(t.n + '  ⚔' + t.g);
-            o.stars.setText('★'.repeat(L));
+            if (o.lv !== L) { o.lv = L; o.spr.setScale(.32 * (.85 + L * .08)); o.stars.setText('★'.repeat(L)); }
+            const lab = t.n + '  ⚔' + t.g;
+            if (o.lab !== lab) { o.lab = lab; o.txt.setText(lab); }
         }
         for (const o of this.vill) {
             const f = TW[o.v.t].f, b = o.v.st > 0, L = lvl(o.v), key = f + (b ? 'b' : '') + L;
@@ -335,7 +435,8 @@ class MapScene extends Phaser.Scene {
     }
 
     syncArmies() {
-        const seen = new Set();
+        const seen = this._seen || (this._seen = new Set());
+        seen.clear();
         for (const e of E) {
             seen.add(e.id);
             let o = this.armies.get(e.id);
@@ -350,12 +451,16 @@ class MapScene extends Phaser.Scene {
                 this.mmCam.ignore([o.spr, o.txt, o.crown, o.flag]);
                 this.armies.set(e.id, o);
             }
-            const fk = Figures.key(...Figures.lordEq(e));
-            if (o.f !== fk) { o.f = fk; const k = Art.figure(this, ...Figures.lordEq(e)); o.spr.setTexture(k, 0).setScale((Art.scale[k] || 1 / RES) * 1.2).play({ key: k + ':wave', startFrame: e.id % 4 }); }
-            o.spr.setPosition(e.x, e.y).setDepth(e.y);
+            const sig = e.f + '|' + (e.kind || '') + '|' + (e.nz ? 1 : 0) + '|' + (e.kr ? 1 : 0) + '|' + (e.cp || '') + '|' + (e.nm || '');
+            if (o.sig !== sig) { o.sig = sig; const eq = Figures.lordEq(e); o.fk = Figures.key(eq[0], eq[1]); }
+            if (o.f !== o.fk) { o.f = o.fk; const k = Art.figure(this, ...Figures.lordEq(e)); o.spr.setTexture(k, 0).setScale((Art.scale[k] || 1 / RES) * 1.2).play({ key: k + ':wave', startFrame: e.id % 4 }); }
+            o.spr.setPosition(e.x, e.y);
+            if (o._y !== (e.y | 0)) { o._y = e.y | 0; o.spr.setDepth(e.y); }
             if (e.vx) o.spr.setFlipX(e.vx < 0);
-            o.txt.setPosition(e.x, e.y + 19).setText(e.nm + ' ' + Math.ceil(e.n))
-                .setColor(hos(e.f, G.fac) ? '#ff8a70' : (AL[G.fac][e.f] || e.f === G.fac) ? '#9fe08a' : '#ecdfc6');
+            const lab = e.nm + ' ' + Math.ceil(e.n), col = hos(e.f, G.fac) ? '#ff8a70' : (AL[G.fac][e.f] || e.f === G.fac) ? '#9fe08a' : '#ecdfc6';
+            o.txt.setPosition(e.x, e.y + 19);
+            if (o.lab !== lab) { o.lab = lab; o.txt.setText(lab); }
+            if (o.col !== col) { o.col = col; o.txt.setColor(col); }
             o.crown.setVisible(!!e.kr).setPosition(e.x + 17, e.y - 46);
             // kolóna: za veliteľom veľkého vojska kráčajú ďalšie postavičky (1 za každých 10 mužov, najviac 3)
             const nf = Math.min(3, Math.floor(e.n / 10));
@@ -378,7 +483,9 @@ class MapScene extends Phaser.Scene {
         const moving = Math.hypot(G.tx - G.x, G.ty - G.y) > 3;
         if (moving) this.hero.setFlipX(G.tx < G.x);
         this.hero.setPosition(G.x, G.y + (moving ? Math.sin(tm * .4) * 1.2 : 0)).setDepth(G.y + 1);
-        this.heroTxt.setPosition(G.x, G.y + 38).setText(G.name + ' ' + ar());
+        const ht = G.name + ' ' + ar();
+        this.heroTxt.setPosition(G.x, G.y + 38);
+        if (this._ht !== ht) { this._ht = ht; this.heroTxt.setText(ht); }
         this.heroCrown.setVisible(!!G.king).setPosition(G.x + 17, G.y - 46);
     }
 
@@ -391,7 +498,12 @@ class MapScene extends Phaser.Scene {
             if (!tx) { tx = this.add.text(0, 0, '', { fontFamily: 'sans-serif', fontSize: '11px', fontStyle: 'bold', color: '#ffd27a', backgroundColor: 'rgba(40,12,8,.82)', padding: { x: 5, y: 1 }, resolution: RES }).setOrigin(.5, 0).setDepth(9003); this.mmCam.ignore(tx); this.sgTxt.set(i, tx); }
             const parts = ['lad', 'ram', 'tow'].filter(k => s[k]).map(k => SIEGE_NAME[k]);
             const k = s.lead === 'G' ? s.build : aiBuild(t);
-            tx.setPosition(t.x, t.y + 44).setText('Obliehanie ' + (G.day - s.d0 + 1) + '. deň · ' + (parts.length ? parts.join(', ') : 'stavia ' + (k ? SIEGE_NAME[k] + ' ' + pct(siegeProg(s, k)) : '')) + ' · zásoby ' + Math.max(0, s.food) + ' d.');
+            const line = 'Obliehanie ' + (G.day - s.d0 + 1) + '. deň · ' + (parts.length ? parts.join(', ') : 'stavia ' + (k ? SIEGE_NAME[k] + ' ' + pct(siegeProg(s, k)) : '')) + ' · zásoby ' + Math.max(0, s.food) + ' d.';
+            tx.setPosition(t.x, t.y + 44);
+            if (tx._l !== line) { tx._l = line; tx.setText(line); }
+            const on = t.x > cam.x - 80 && t.x < cam.x + W / Z + 80 && t.y > cam.y - 80 && t.y < cam.y + H / Z + 80;
+            tx.setVisible(on);
+            if (!on) return;
             const col = BF[s.f] ? Phaser.Display.Color.HexStringToColor(BF[s.f]).color : 0xc8a870;
             for (let a = 0; a < 7; a++) {   // stany v kruhu pred hradbami
                 const an = a / 7 * 6.283 + .4, x = t.x + Math.cos(an) * 30 * K * .55, y = t.y + Math.sin(an) * 18 * K * .55 + 10;
@@ -409,11 +521,14 @@ class MapScene extends Phaser.Scene {
 
     drawFx() {
         const g = this.fx; g.clear();
+        const x0 = cam.x - 220, y0 = cam.y - 220, x1 = cam.x + W / Z + 220, y1 = cam.y + H / Z + 220;
+        const see = (x, y) => x > x0 && x < x1 && y > y0 && y < y1;
         const moving = Math.hypot(G.tx - G.x, G.ty - G.y) > 3;
         if (moving) for (let k = 1; k < 5; k++) g.fillStyle(0xc8b48c, .22 - k * .04).fillCircle(G.x - Math.cos(G.f || 0) * k * 7, G.y - Math.sin(G.f || 0) * k * 7 + 8, 5 - k * .6);
         g.lineStyle(2, 0xd9a441, .7).strokeEllipse(G.x, G.y + 8, 38, 16);
         if (moving) g.lineStyle(1.5, 0xecdfc6, .6).strokeRect(G.tx - 5, G.ty - 5, 10, 10);
         for (const e of E) {
+            if (!see(e.x, e.y)) continue;
             if (e.nz) g.fillStyle(0x780000, .28).fillCircle(e.x, e.y, 26 + Math.sin(tm / 6) * 3);
             if (hos(e.f, G.fac)) g.lineStyle(2, e.n > pw() ? 0xe0442a : 0x6fbf5a, 1).strokeEllipse(e.x, e.y + 8, 34, 14);
             if (e.fo) { g.lineStyle(3, 0xffd27a, 1); g.lineBetween(e.x - 9, e.y - 36, e.x + 9, e.y - 20); g.lineBetween(e.x + 9, e.y - 36, e.x - 9, e.y - 20); }
@@ -425,9 +540,11 @@ class MapScene extends Phaser.Scene {
             const mp = musterPoint(mm, TW[mm.mu.t]), r = 70 + Math.sin(tm / 8) * 10;
             g.lineStyle(4, 0xffd24a, .8).strokeCircle(mp.x, mp.y + 10, r); g.lineStyle(2, 0xffd24a, .35).strokeCircle(mp.x, mp.y + 10, r + 14);
             g.lineStyle(3, 0xffd24a, .9).lineBetween(mm.x, mm.y - 10, mp.x, mp.y + 10);
-            this.musterTxt.setVisible(true).setPosition(mp.x, mp.y - r - 4).setText('Zraz vojska: ' + mm.nm + ' → ' + TW[mm.mu.t].n);
+            const mt = 'Zraz vojska: ' + mm.nm + ' → ' + TW[mm.mu.t].n;
+            this.musterTxt.setVisible(true).setPosition(mp.x, mp.y - r - 4);
+            if (this._mt !== mt) { this._mt = mt; this.musterTxt.setText(mt); }
         } else this.musterTxt.setVisible(false);
-        for (const v of VL) if (v.st > 0) {
+        for (const v of VL) if (v.st > 0 && see(v.x, v.y)) {
             // horiaca dedina: plamene pri domoch a stúpajúci dym
             for (let k = 0; k < 5; k++) { const fx = v.x - 18 + k * 9, fl = 3 + Math.sin(tm / 2 + k * 1.3) * 1.5; g.fillStyle(0xff7a20, .8).fillTriangle(fx - 3, v.y - 6, fx, v.y - 10 - fl * 2, fx + 3, v.y - 6); g.fillStyle(0xffd060, .9).fillTriangle(fx - 1.5, v.y - 6, fx, v.y - 8 - fl, fx + 1.5, v.y - 6); }
             for (let k = 0; k < 6; k++) { const s = (tm * .5 + k * 14) % 84; g.fillStyle(0x3c322d, .45 - s / 200).fillCircle(v.x - 10 + k * 4 + Math.sin(s * .15 + k) * 6, v.y - 14 - s * .7, 4 + s * .13); }
@@ -435,7 +552,7 @@ class MapScene extends Phaser.Scene {
         }
         // Oko Mordoru nad Barad-dûrom: plamenné oko hľadí za hrdinom; po zničení Prsteňa ostane rozpadnutá veža a dym
         const bd = this.baradDur || (this.baradDur = TW.find(t => t.n === 'Barad-dûr'));
-        if (bd) {
+        if (bd && see(bd.x, bd.y - 80)) {
             const ex = bd.x + 10, ey = bd.y - 150;
             if (G.ring !== 2) {
                 const a = Math.atan2(G.y - ey, G.x - ex), pulse = 1 + Math.sin(tm / 6) * .06;

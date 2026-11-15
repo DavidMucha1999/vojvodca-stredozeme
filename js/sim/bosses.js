@@ -23,7 +23,7 @@ function bossBattle(k) {
 /** Boss na bojisku (volá startBattle). */
 function makeBoss(k) {
     const B = BOSSES[k], u = mkBase(1, 't', 9);
-    Object.assign(u, { boss: k, hp: B.hp, mh: B.hp, d: B.d, sp: B.sp, bs: B.sp, r: B.r, x: BW - 260, y: BH / 2, cd: 90, nAtk: 0, f: Math.PI });
+    Object.assign(u, { boss: k, hp: B.hp, mh: B.hp, d: B.d, sp: B.sp * .88, bs: B.sp * .88, r: B.r, x: BW - 260, y: BH / 2, cd: 90, nAtk: 0, f: Math.PI });
     return u;
 }
 const bossAlive = () => U && U.find(u => u.boss && u.hp > 0);
@@ -45,13 +45,13 @@ function bossAI(u, b, dt) {
     if (!b) return true;
     const bd = Math.hypot(b.x - u.x, b.y - u.y), a = dirTo(u, b);
     u.f = a; u.cd -= dt;
-    if (bd > u.r + 30) { u.x += Math.cos(a) * u.sp * dt; u.y += Math.sin(a) * u.sp * dt; }
+    if (bd > u.r + 30) { u.x += Math.cos(a) * u.sp * .65 * dt; u.y += Math.sin(a) * u.sp * .65 * dt; }
     if (u.cd > 0) return true;
     u.nAtk++;
     const k = u.boss, T = (t, o) => { u.atk = { t, t0: t, ...o }; };
     if (k === 'balrog') { if (u.nAtk % 3 === 0) T(55, { k: 'circle', x: u.x, y: u.y, r: 95, dmg: u.d * 1.2, fire: 1 }); else T(42, { k: 'cone', x: u.x, y: u.y, a, len: 150, w: .45, dmg: u.d * 1.3, fire: 1 }); }
     else if (k === 'trollking') { if (bd < 90 || u.nAtk % 2) T(45, { k: 'circle', x: u.x, y: u.y, r: 85, dmg: u.d, kb: 22 }); else T(36, { k: 'cone', x: u.x, y: u.y, a, len: 95, w: .6, dmg: u.d * 1.3, kb: 12 }); }
-    else if (k === 'fell') { const len = Math.min(320, bd + 80); T(48, { k: 'line', x: u.x, y: u.y, x2: Math.max(30, Math.min(BW - 30, u.x + Math.cos(a) * len)), y2: Math.max(30, Math.min(BH - 30, u.y + Math.sin(a) * len)), w: 34, dmg: u.d * 1.4, kb: 14 }); }
+    else if (k === 'fell') { const len = Math.min(320, bd + 80); T(48, { k: 'line', x: u.x, y: u.y, x2: Math.max(30, Math.min(BFW - 30, u.x + Math.cos(a) * len)), y2: Math.max(30, Math.min(BFH - 30, u.y + Math.sin(a) * len)), w: 34, dmg: u.d * 1.4, kb: 14 }); }
     else if (k === 'dragon') { if (u.nAtk % 4 === 0) { u.fly = 130; TS = { s: 'Drak vzlietol – sleduj, kam dopadne!', l: 140 }; } else if (u.nAtk % 2) T(50, { k: 'cone', x: u.x, y: u.y, a, len: 230, w: .32, dmg: u.d * 1.5, fire: 1 }); else T(38, { k: 'circle', x: u.x, y: u.y, r: 80, dmg: u.d, kb: 16 }); }
     return true;
 }

@@ -21,16 +21,17 @@ class TavernScene extends IsoRoom {
         this.cameras.main.setZoom(RES).setOrigin(0, 0);
         const t = TW[this.ti], th = this.theme(), seed = this.ti * 7 + 3, R = n => { const x = Math.sin((seed + n) * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
         this.th = th; this.R = R;
-        const C = {
-            human: { wall: '#5a4432', floor: '#6b4a2e', beam: 0x3a2818, light: 0xffb060, bar: '#4a3018', table: '#7a5230' },
-            hobbit: { wall: '#8a6a48', floor: '#7a5634', beam: 0x4a3018, light: 0xffc070, bar: '#5a3a1a', table: '#8a6236' },
-            elf: { wall: '#3a4a44', floor: '#4a5a4e', beam: 0x8a9a80, light: 0xc8e8ff, bar: '#5a6a5a', table: '#8aa090' },
-            dwarf: { wall: '#4a4a52', floor: '#3e3a3a', beam: 0x8a7a50, light: 0xffa040, bar: '#5a5250', table: '#6a6262' },
-            evil: { wall: '#2a2224', floor: '#2a2020', beam: 0x3a1a14, light: 0xff6030, bar: '#3a2a24', table: '#3a2a24' },
-            harad: { wall: '#7a4a2a', floor: '#8a6a3a', beam: 0x3a2010, light: 0xffc050, bar: '#5a3a1a', table: '#8a5a30' }
+        const C = {   // jasná paleta ako v sieni a na nádvorí hradu: čisté plochy, výrazný lem (trim), mäkké svetlo
+            human: { wall: '#b49468', floor: '#94724a', beam: 0x5a3a1c, light: 0xffd090, bar: '#6e4a28', table: '#8e6638' },
+            hobbit: { wall: '#c4a470', floor: '#a08050', beam: 0x6a4824, light: 0xffd898, bar: '#7a5230', table: '#9a6e3c' },
+            elf: { wall: '#a8b8a4', floor: '#8a9a84', beam: 0xd8d0a0, light: 0xdff0ff, bar: '#8a9a80', table: '#b4ac8c' },
+            dwarf: { wall: '#80808a', floor: '#625e60', beam: 0xd9a441, light: 0xffb868, bar: '#7a6e68', table: '#8e7c70' },
+            evil: { wall: '#4e4244', floor: '#3c3436', beam: 0x6a2a1a, light: 0xff7a40, bar: '#4a3a34', table: '#54423a' },
+            harad: { wall: '#cca472', floor: '#bc9c6c', beam: 0xd9a441, light: 0xffd080, bar: '#8a5a30', table: '#a8703c' }
         }[th];
         this.C = C;
         this.setIso(320, 230, 120);
+        this.candles = [];
         const wallKind = th === 'dwarf' ? 'bricks' : th === 'evil' ? 'dark' : th === 'elf' ? 'bark' : 'planksV', floorKind = th === 'dwarf' || th === 'evil' || th === 'elf' ? 'flags' : 'planks';
         this.floor(floorKind, C.floor, this.ti + 2);
         this.wallL(wallKind, C.wall, this.ti + 1); this.wallR(wallKind, C.wall, this.ti + 1);
@@ -51,16 +52,17 @@ class TavernScene extends IsoRoom {
         for (let k = 0; k < 3; k++) this.cyl(22, 30 + k * 28, 11, 26, '#5a3a1e', { hoops: 1 });
         // okná na pravej stene (obloha sa kreslí každý snímok)
         this.windows = [60, bx - 70].map(u => ({ u, v: 56, w: 34, h: 30 }));
-        this.onWallR(c => { for (const w of this.windows) { c.fillStyle = beam; c.fillRect(w.u - 4, w.v - 4, w.w + 8, w.h + 8); } });
+        this.onWallR(c => { for (const w of this.windows) { c.fillStyle = beam; c.fillRect(w.u - 5, w.v - 5, w.w + 10, w.h + 10); } });
         this.sky = this.add.graphics().setDepth(.5);
         // zástava frakcie na ľavej stene
         this.sprite(2, 50, Art.banner(this, t.f), 1.7).setDepth(.6);
-        // stoly so stoličkami, sviečkou a korbeľom
-        this.tables = [[100, 110], [205, 140], [95, 185]].slice(0, 2 + Math.floor(R(1) * 2));
-        this.tables.forEach(([x, y]) => {
-            this.cyl(x, y, 20, 20, C.table);
-            for (const [dx, dy] of [[-30, 4], [30, -4], [0, 30], [0, -30]]) this.cyl(x + dx, y + dy, 6, 11, this.shade(C.table, .8));
-            this.prop(x + 6, y + 6, (g, sx, sy) => { g.fillStyle(0xf0e0c0, 1).fillRect(sx - 1.5, sy - 30, 3, 8); g.fillStyle(0xd9b060, 1).fillRect(sx + 8, sy - 26, 6, 7); g.fillStyle(0xfff4dc, 1).fillRect(sx + 8, sy - 27, 6, 2); }, 1);
+        // dlhé stoly s lavicami a sviečkami (ako v sieni hradu); this.tables = stredy stolov
+        const spots = [[50, 92], [160, 124], [44, 164]].slice(0, 2 + Math.floor(R(1) * 2));
+        this.tables = spots.map(([x, y]) => [x + 45, y + 13]);
+        spots.forEach(([x, y]) => {
+            this.box(x, y, 90, 26, 17, C.table, { top: this.shade(C.table, 1.2) });
+            this.box(x + 4, y - 12, 82, 9, 9, this.shade(C.table, .78)); this.box(x + 4, y + 29, 82, 9, 9, this.shade(C.table, .78));
+            for (let k = 0; k < 3; k++) { this.candles.push([x + 16 + k * 29, y + 13, 17]); this.prop(x + 16 + k * 29, y + 13, (g, sx, sy) => { g.fillStyle(0xf0e0c0, 1).fillRect(sx - 1.2, sy - 25, 2.4, 8); g.fillStyle(0xd9b060, 1).fillRect(sx + 6, sy - 22, 5, 6); g.fillStyle(0xfff4dc, 1).fillRect(sx + 6, sy - 23, 5, 2); }, 1); }
         });
         this.decor(th);
         this.fx = this.add.graphics().setDepth(1700);
@@ -89,7 +91,7 @@ class TavernScene extends IsoRoom {
         const list = compsAt(t);
         list.forEach((c, k) => {
             const tb = this.tables[k % this.tables.length], side = k % 2 ? 1 : -1;
-            this.person(tb[0] + side * 34, tb[1] + (side > 0 ? -6 : 8), Figures.compEq(c, true), c.n, () => tavTalk(this.ti, c), .95);
+            this.person(tb[0] + (Math.floor(k / 2) % 2 ? 22 : -22), tb[1] + side * 33, Figures.compEq(c, true), c.n, () => tavTalk(this.ti, c), .95);
         });
         this.comps = list;
     }
@@ -124,14 +126,15 @@ class TavernScene extends IsoRoom {
         for (let k = 0; k < 5; k++) { const a = (t * .8 + k * 23) % 60; f.fillStyle(col2, .8 - a / 80).fillRect(fx - 6 + ((k * 7 + a * .3) % 14), fy - 20 - a, 1.5, 1.5); }
         // svetlo: tmavé rohy, žiara krbu a sviečok
         const L = this.light; L.clear();
-        L.fillStyle(0x000000, .22 + nn * .3).fillRect(0, 0, W, H);
+        L.fillStyle(0x000000, .2 + nn * .25).fillRect(0, 0, W, H);
         if (!this.glows) {
             this.glows = [this.glow(this.fire[0] + 20, this.fire[1], 30, 260, C.light, .55), this.glow(this.fire[0] + 10, this.fire[1], 20, 110, 0xffe0a0, .5), this.glow(this.barX + 60, this.barY + 10, 30, 140, 0xffe0a0, .22)];
-            for (const [tx, ty] of this.tables) this.glows.push(this.glow(tx + 6, ty + 6, 30, 80, 0xffd090, .35));
+            for (const [tx, ty] of this.tables) this.glows.push(this.glow(tx, ty, 26, 90, 0xffe0a0, .3));
         }
         const flick = .08 + Math.sin(t / 2.2) * .02 + Math.sin(t / 1.3) * .015;
-        this.glows[0].setAlpha(.5 + flick * 1.5); this.glows[1].setAlpha(.45 + Math.sin(t / 1.3) * .08);
-        for (let k = 3; k < this.glows.length; k++) this.glows[k].setAlpha(.3 + Math.sin(t / 1.7 + k) * .06);
+        this.glows[0].setAlpha(.42 + flick * 1.2); this.glows[1].setAlpha(.38 + Math.sin(t / 1.3) * .06);
+        for (let k = 3; k < this.glows.length; k++) this.glows[k].setAlpha(.28 + Math.sin(t / 1.7 + k) * .05);
+        for (const [cx, cy, cz] of this.candles) { const [sx, sy] = this.P(cx, cy, cz), ph = t / 2 + cx; f.fillStyle(0xffd060, .95).fillEllipse(sx + Math.sin(ph) * .4, sy - 10, 1.6, 3.2); }
         this.people.forEach(p => { if (!p.spot) p.spr.y = p.sy + Math.sin(t / 9 + p.t0) * .8; });
         this.movePlayer(dt);
     }

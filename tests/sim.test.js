@@ -24,10 +24,11 @@ function el(id) {
     return e;
 }
 const sandbox = {
+    performance: { now: () => Date.now() },
     console, Math, JSON, Date, Object, Array, String, Number, Proxy, Set, Map, isFinite, parseInt,
-    document: { getElementById: id => reg[id] || (reg[id] = el(id)), createElement: () => el(), head: el('head'), querySelector: () => null, querySelectorAll: () => [] },
+    document: { body: el('body'), getElementById: id => reg[id] || (reg[id] = el(id)), createElement: () => el(), head: el('head'), querySelector: () => null, querySelectorAll: () => [] },
     localStorage: { _: {}, setItem(k, v) { this._[k] = v; }, getItem(k) { return this._[k] || null; } },
-    addEventListener: noop, requestAnimationFrame: noop, setTimeout: f => f(), setInterval: noop,
+    addEventListener: noop, requestAnimationFrame: f => { global.__d = (global.__d || 0); if (global.__d < 3) { global.__d++; try { f(); } finally { global.__d--; } } }, setTimeout: f => f(), setInterval: noop,
 };
 sandbox.window = sandbox;
 vm.createContext(sandbox);
