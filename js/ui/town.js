@@ -7,6 +7,7 @@ function skills(i) {
     show('Hrdina ' + G.name, 'Rasa: ' + raceName() + ', povaha: ' + traitName() + '. Úroveň ' + G.lv + ', voľné body: ' + G.sk + '. Každá schopnosť môže mať až 5 stupňov.');
     [['st', 'Sila (+3 útok)'], ['od', 'Odolnosť (+15 zdravie)'], ['ob', 'Obratnosť (+8 % rýchlosť)'], ['pr', 'Presviedčanie (+6 pri prehováraní)'], ['ls', 'Lukostrelba (+1 zranenie šípov)']].forEach(([k, n]) => btn(n + ' [' + G.s[k] + ']', () => { G.sk--; G.s[k]++; upd(); skills(i); }, !G.sk || G.s[k] >= 5));
     btn('Perky' + (G.pp > 0 ? ' (voľné: ' + G.pp + ')' : ''), () => party(() => skills(i), 'p'), 0, 'crown');
+    btn('Bojové schopnosti' + (G.bk > 0 ? ' (voľné: ' + G.bk + ')' : ''), () => party(() => skills(i), 'b'), 0, 'sword');
     btn('Späť', () => town(i));
 }
 function dip(i) {

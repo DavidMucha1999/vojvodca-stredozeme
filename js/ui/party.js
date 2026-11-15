@@ -25,7 +25,7 @@ function party(back, tab) {
     mode = 'town';
     tab = tab || 'c';
     const C = myComps(), re = t => party(fromMap ? null : back, t);
-    const tabs = () => { [['c', 'Spoločníci', 'hero'], ['a', 'Vojsko', 'recruit'], ['z', 'Zásoby a zajatci', 'mug'], ['p', 'Perky' + (G.pp > 0 ? ' (' + G.pp + ')' : ''), 'crown'], ['o', 'Rozkazy', 'sword']].forEach(([k, n, ic]) => { const b = btn(n, () => re(k), 0, ic); if (k === tab) select(b); }); };
+    const tabs = () => { [['c', 'Spoločníci', 'hero'], ['a', 'Vojsko', 'recruit'], ['z', 'Zásoby a zajatci', 'mug'], ['p', 'Perky' + (G.pp > 0 ? ' (' + G.pp + ')' : ''), 'crown'], ['b', 'Schopnosti' + (G.bk > 0 ? ' (' + G.bk + ')' : ''), 'sword'], ['o', 'Rozkazy', 'sword']].forEach(([k, n, ic]) => { const b = btn(n, () => re(k), 0, ic); if (k === tab) select(b); }); };
     if (tab === 'c') {
         show('Správa družiny – spoločníci', C.length ? 'Tvoji spoločníci (' + C.length + '/4). V bitke bojujú po tvojom boku, zbierajú skúsenosti (každých 40 = nová úroveň, +6 % zdravia a útoku) a ranený sa pár dní zotavuje.' : 'Zatiaľ cestuješ sám. Spoločníkov nájdeš v krčmách hradov: hrdinovia dobra v Bree, Lothlóriene, Erebore, Minas Tirith, Edorase, Osgiliathe a Hobitove; služobníci Tieňa v Isengarde, Minas Morgul, Edorase, Barad-dûre, Umbare a pri Morannone.');
         tabs();
@@ -74,6 +74,15 @@ function party(back, tab) {
             rowHead(bn);
             list.forEach(([id, n, d], ti) => { const st = perkState(bi, ti); const b = btn((st === 'has' ? '✔ ' : '') + n + ' – ' + d + (st !== 'has' && st !== 'ok' ? ' (' + st + ')' : ''), () => { takePerk(bi, ti); upd(); re('p'); }, st !== 'ok', PERKS[bi][2]); if (st === 'has') select(b); });
         });
+    }
+    if (tab === 'b') {   // zdatnosti so zbraňami a bojové schopnosti (js/sim/mastery.js)
+        wpInit();
+        show('Bojové schopnosti', 'Voľné body: ' + G.bk + '. Za každú novú úroveň získaš bod, každá schopnosť má až ' + CS_MAX + ' stupňov. Zdatnosti so zbraňami (' + WP0 + ' – ' + WPMAX + ') rastú samy: keď danou zbraňou v bitke zasahuješ.');
+        tabs();
+        rowHead('Zdatnosti so zbraňami');
+        Object.keys(WP_N).forEach(k => { const f = wpF(k), rg = k === 'bow' || k === 'xbow' || k === 'jav'; row(WP_N[k] + ': ' + Math.floor(G.wp[k]) + ' – ' + (rg ? 'zranenie +' + Math.round(20 * f) + ' %, presnosť +' + Math.round(40 * f) + ' %' : 'zranenie +' + Math.round(30 * f) + ' %, rýchlosť +' + Math.round(20 * f) + ' %')); });
+        rowHead('Bojové schopnosti');
+        CS.forEach(([k, n, d]) => btn(n + ' [' + csLv(k) + '/' + CS_MAX + '] – ' + d, () => { csTake(k); upd(); re('b'); }, !(G.bk > 0) || csLv(k) >= CS_MAX, 'sword'));
     }
     if (tab === 'o') {
         show('Správa družiny – rozkazy', 'Východzí rozkaz, s ktorým vojsko vstupuje do bitky (v bitke vyberieš skupinu klávesmi 1–4 a rozkaz T Útok, H Držať, F Za mnou, G Šík, R Ústup).');

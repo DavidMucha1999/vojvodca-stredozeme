@@ -190,7 +190,7 @@ function hit(b, d, from) {
     if (from && onHill(from) && !onHill(b)) d *= 1.15;   // útok z kopca
     if (from && !from.t && !from.h && perk('taktik')) d *= 1.1;   // perk Taktik
     if (!b.t) d *= DIFF_MUL();   // obťažnosť (js/ui/settings.js)
-    if (b.h && CMB.horse > 0 && !b.dis) { const hd = d * .35; CMB.horse -= hd; d -= hd; if (CMB.horse <= 0) horseDown(b); }   // časť úderov schytá kôň
+    if (b.h && CMB.horse > 0 && !b.dis) { const hd = d * .35; CMB.horse -= hd; d -= hd; if (CMB.horse <= 0) horseDown(b); else horseHurt(hd); }   // časť úderov schytá kôň
     b.hp -= d * (b.h ? red() : !b.t && temple() ? .9 : 1);
     if (from) { from.dmg = (from.dmg || 0) + d; if (was && b.hp <= 0) from.kills = (from.kills || 0) + 1; }
     if (was && b.hp <= 0) cmbDeath(b);
@@ -372,12 +372,14 @@ function endBattle(win) {
                 G.ren++;
                 G.xp += Math.round(LB.n * 5 * (G.twise ? 1.1 : 1));
                 G.hp = Math.max(20, U[0].hp);
+                wpInit();   // body bojových schopností (js/sim/mastery.js)
                 while (G.lv >= 1 && G.xp >= G.lv * 30 && up < 200) {
                     G.xp -= G.lv * 30;
                     G.lv++;
                     up++;
                     G.sk++;
                     G.pp = (G.pp || 0) + 1;   // bod perku (perks.js)
+                    G.bk++;   // bod bojovej schopnosti
                 }
                 if (up)
                     G.hp = mh();
@@ -496,7 +498,7 @@ function updBattle(dt) {
             u.x = Math.max(10, Math.min(BW - 10, u.x));
             u.y = Math.max(20, Math.min(BH - 10, u.y));
             u.bs = u.bs || u.sp;
-            u.sp = u.bs * fieldSlow(u) * (u.h ? loadSpeed() : 1);   // ťažká výbava spomalí hrdinu (js/sim/warband.js)
+            u.sp = u.bs * fieldSlow(u) * (u.h ? heroSpeedK() : 1);   // ťažká výbava spomalí hrdinu (js/sim/warband.js)
             if (u.rout) { u.as = null; cmbFlee(u, dt); continue; }
             if (u.stun > 0) { u.stun -= dt; u.as = null; continue; }   // zapotácaný vojak nedokončí úder
             if (u.boss) { let bt = null, bd2 = 1e9; for (const v of U) if (v.t !== u.t && v.hp > 0) { const d = Math.hypot(v.x - u.x, v.y - u.y) * (v.h ? .8 : 1); if (d < bd2) { bd2 = d; bt = v; } } bossAI(u, bt, dt); continue; }

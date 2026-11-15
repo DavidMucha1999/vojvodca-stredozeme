@@ -85,7 +85,7 @@ function heroLoad() {
     return Math.max(0, Math.min(1, raw)) * Math.max(.4, 1 - .1 * ((G.s && G.s.ob) || 0));
 }
 /** Násobok rýchlosti pohybu (pešo až −22 %, na koni −5 %) a času nápriahu (až +15 %) podľa hmotnosti výbavy. */
-const loadSpeed = () => 1 - (heroMounted() ? .05 : .22) * heroLoad();
+const loadSpeed = () => 1 - (heroMounted() ? .05 : .22 * (1 - .1 * csLv('at'))) * heroLoad();   // Atletika zmenšuje postih
 const loadSwing = () => 1 + .15 * heroLoad();
 /** Hodnota brnenia cieľa (0 – .5): odráta sa od zranenia ako pevná hodnota (hrdina má vlastné zníženie red()). */
 function armV(b) { if (b.cp) return .3; if (b.boss || heavy(b)) return .5; return plated(b) ? .4 : .1; }
@@ -114,9 +114,10 @@ function hitZ(b, d, from, o) {
     const was = b.hp > 0, hp0 = b.hp;
     b.lz = zone; if (from) b.lhA = Math.atan2(b.y - from.y, b.x - from.x);
     if (lethal) d = Math.max(d, b.hp / ((b.t ? 1 : DIFF_MUL() * (!b.t && temple() ? .9 : 1)) || 1) + 1);
-    if (zone === 'horse' && b.h && CMB.horse > 0) { CMB.horse -= d; if (CMB.horse <= 0) horseDown(b); d *= .2; }
+    if (zone === 'horse' && b.h && CMB.horse > 0) { CMB.horse -= d; if (CMB.horse <= 0) horseDown(b); else horseHurt(d); d *= .2; }
     WB_SND = plated(b) ? 'sw' : 'hb'; hit(b, d, from); WB_SND = '';
     const dealt = Math.max(0, hp0 - Math.max(0, b.hp));
+    if (from && from.h && !o.noWp && typeof wpGain === 'function') wpGain(o.ranged ? wpRanged((rangedW() || {}).rt) : wpMelee(), dealt, was && b.hp <= 0);   // zdatnosť rastie používaním (js/sim/mastery.js)
     if (b.hp > 0 && (b.wu > 0 || (b.as && !b.as.done)) && !b.h && !big && typeof aiSkill === 'function' && Math.random() > aiSkill(b) * .6 && dealt > 0) { b.wu = 0; b.wt = null; b.as = null; b.c = Math.max(b.c || 0, 16); }   // zásah preruší nápriah aj rozbehnutý úder (zručný vojak vydrží)
     if (was && b.hp <= 0 && o.type === 'b' && !big && Math.random() < .7) b.ko = 1;   // tupá zbraň: omráčený (zajatie po bitke)
     if (from && from.h) {
@@ -230,7 +231,7 @@ function heroKick(u) {
     if (!t) return;
     if (heavy(t)) { wbMsg('Kopnúť trolla? Ani sa nepohol.', '#ff9a80'); return; }
     const a = dirTo(u, t); t.x += Math.cos(a) * 7; t.y += Math.sin(a) * 7; t.stun = 34; t.wu = 0;
-    hitZ(t, 2, u, { zone: 'torso', type: 'b' });
+    hitZ(t, 2, u, { zone: 'torso', type: 'b', noWp: 1 });
     wbMsg('Kopnutie! Nepriateľ sa zapotácal – kryt má prelomený.', '#e8d8a8');
 }
 /** Sek zboku sa zarazí o hradby alebo o vlastného vojaka v ceste. */
@@ -260,7 +261,7 @@ function pickups(u) {
 }
 /** Kôň hrdinu: zotrvačnosť (rozbeh, dobeh) a obratnosť podľa plemena. Vráti smer pohybu alebo null. */
 function horseMove(u, mx, my, k, dt) {
-    const C = CMB, H = typeof Soldiers !== 'undefined' ? Soldiers.GEAR.m[G.eq.m] || {} : {}, man = .11 - (H.s || 1) * .04, acc = .013 + it('m').v * .004;   // obratnosť a rozbeh: kôň sa rozbieha asi 1 s a v plnom cvale zatáča pomalšie
+    const C = CMB, H = typeof Soldiers !== 'undefined' ? Soldiers.GEAR.m[G.eq.m] || {} : {}, ri = 1 + .08 * csLv('ri'), man = (.11 - (H.s || 1) * .04) * ri, acc = (.013 + it('m').v * .004) * ri;   // Jazda: obratnejší kôň   // obratnosť a rozbeh: kôň sa rozbieha asi 1 s a v plnom cvale zatáča pomalšie
     if (C.rear > 0) { C.rear -= dt; C.mvS = 0; return null; }
     if (C.mvA == null) C.mvA = u.f;
     if (mx || my) {

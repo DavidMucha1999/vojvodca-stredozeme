@@ -381,6 +381,22 @@ try {
         Object.assign(G, sv2); OPT.bsize = undefined;`);
     run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
     check('Bitka ako vo Warbande: zálohy prídu vo vlnách, po páde hrdinu bitka pokračuje (výhra aj prehra), zásahy vlastných šípom aj úderom (dajú sa vypnúť), počty strán pre morálku', run('resF === 120 && resM > 200 && n0ok && waved && stepOk === true && goes && wonDown && lostDown && ffArrow && ffOff && ffMelee'), run('[resF, resM, n0ok, waved, stepOk, goes, wonDown, lostDown, ffArrow, ffOff, ffMelee].join(" ")'));
+    // etapa 3 (rozvoj ako vo Warbande): zdatnosti so zbraňami, bojové schopnosti, kôň ako bojovník
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
+    run(`var sv3 = { wp: G.wp, cs: G.cs, bk: G.bk, lv: G.lv, eq: { ...G.eq }, hp: G.hp, inf: G.inf };
+        G.wp = null; G.cs = null; G.bk = null; G.lv = 5; wpInit(); var initOk = G.wp.one === 40 && G.wp.bow === 40 && G.bk === 4;
+        G.eq.w = 0; G.eq.m = 0; G.eq.a = 0; G.eq.s = 0; G.eq.h = 0; var d0 = heroMeleeDmg(), t0 = wpnTimes().ready; G.wp.one = 300; var d1 = heroMeleeDmg(), t1 = wpnTimes().ready; var profOk = d1 > d0 * 1.25 && t1 < t0 * .85;
+        G.wp.one = 40; startBattle({ n: 3, f: 9, nm: "T" }); var gv = U.find(u => u.t); gv.hp = gv.mh = 9999; var w0 = G.wp.one; hitZ(gv, 30, U[0], { zone: "torso", type: "c" }); var grow = G.wp.one > w0; var wk = G.wp.one; hitZ(gv, 2, U[0], { zone: "torso", type: "b", noWp: 1 }); var noKick = G.wp.one === wk;
+        var bk0 = G.bk, ps0 = heroMeleeDmg(), mh0 = mh(); var took = csTake("ps") && csTake("ir") && G.bk === bk0 - 2; var csOk = took && heroMeleeDmg() > ps0 * 1.07 && mh() === mh0 + 8; G.cs.ps = 5; var capOk = !csTake("ps");
+        G.cs.at = 5; var spAt = heroSpeedK(); G.cs.at = 0; var spOk = spAt > heroSpeedK() * 1.15;
+        var lvB = G.bk; G.xp = 9999; G.lv = 5; endBattle(true); var lvUp = G.bk > lvB;`);
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
+    run(`G.eq.m = 1; startBattle({ n: 4, f: 9, nm: "T" }); var hr = U[0]; U.filter(u => u.t).forEach(u => { u.x = 3000; u.y = 3000; u.stun = 999; }); var pz = U.find(u => u.t); pz.k = "i"; pz.uk = null; pz.hp = pz.mh = 999; pz.stun = 0; pz.f = 0;
+        hr.x = 400; hr.y = 300; pz.x = 418; pz.y = 300; CMB.mvA = 0; CMB.mvS = hr.sp; CMB.charging = 0; CMB.rear = 0; CMB.run = 0; hr.tt = 100; horseBump(hr); var bumped = pz.hp < 999 && pz.stun > 0 && CMB.mvS < hr.sp;
+        var R4 = Math.random; Math.random = () => .1; CMB.rear = 0; CMB.horse = 100; horseHurt(10); var reared = CMB.rear > 0; Math.random = R4;
+        Object.assign(G, { wp: sv3.wp, cs: sv3.cs, bk: sv3.bk, eq: sv3.eq, hp: sv3.hp, inf: sv3.inf }); wpInit();`);
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
+    check('Rozvoj ako vo Warbande: zdatnosti so zbraňami rastú používaním a zrýchlia a posilnia údery; bojové schopnosti za body z úrovní; kôň zrazí pešiaka a po zásahu sa vzopne', run('initOk && profOk && grow && noKick && csOk && capOk && spOk && lvUp && bumped && reared'), run('[initOk, profOk, grow, noKick, csOk, capOk, spOk, lvUp, bumped, reared].join(" ")'));
     run(`startBattle({ n: 6, f: 2, nm: "T" }); var bwT = U[0]; bwT.x = 300; bwT.y = 300; bwT.vx3 = 0; bwT.vy3 = 0; var bwA = U.find(u => u.t); bwA.hp = bwA.mh = 99; bwA.k = "i"; bwA.uk = null; bwA.d = 5; bwA.x = 400; bwA.y = 300;
         var bwM = Math.random; Math.random = (() => { let q = 12345; return () => (q = (q * 1664525 + 1013904223) % 4294967296) / 4294967296; })(); var bwS = '', firstShot = 0, bwH = 0, bwN = 300; for (let n = 0; n < bwN; n++) { AR.length = 0; bwA.c = 0; bwA.aim = 0; bwT.hp = 1e9; for (let k = 0; k < 80 && !AR.length; k++) { aiBow(bwA, bwT, 7); if (!firstShot && AR.length) firstShot = k + 1; }
             const bwa = AR[0]; if (!bwa) continue; let bwt = 0; while (AR.includes(bwa) && bwt++ < 400) stepArrows(1); const dy = Math.abs(bwa.y - bwT.y), dx = Math.abs(bwa.x - bwT.x); if (dx < 12 && dy < 6) bwH++; if (n < 4) bwS += [bwa.x | 0, bwa.y | 0, bwT.x | 0, bwT.y | 0].join(',') + ' '; }
