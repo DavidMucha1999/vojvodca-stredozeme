@@ -75,6 +75,18 @@ function wkind(w) {
     return 'sword';
 }
 const wstat = w => WSTAT[wkind(w)];
+/** Hmotnosť výbavy hrdinu 0 – 1 (ako vo Warbande): ťažké brnenie, štít, prilba a obojručná zbraň spomalia pohyb pešo aj údery.
+ *  Mithril a elfská výbava sú ľahké; Obratnosť (G.s.ob) postih zmierňuje. Na koni sa hmotnosť takmer neprejaví. */
+function heroLoad() {
+    if (typeof G === 'undefined' || !G || !G.eq) return 0;
+    const lt = x => x && /mithril|galadrim|elfsk/i.test(x.n || '') ? .35 : 1, t2 = twoHand();
+    const a = it('a'), s = t2 ? null : it('s'), h = it('h');
+    const raw = (a ? a.v * lt(a) : 0) + (s ? s.v * 1.2 * lt(s) : 0) + (h ? h.v * 1.5 * lt(h) : 0) + (t2 ? .1 : 0);
+    return Math.max(0, Math.min(1, raw)) * Math.max(.4, 1 - .1 * ((G.s && G.s.ob) || 0));
+}
+/** Násobok rýchlosti pohybu (pešo až −22 %, na koni −5 %) a času nápriahu (až +15 %) podľa hmotnosti výbavy. */
+const loadSpeed = () => 1 - (heroMounted() ? .05 : .22) * heroLoad();
+const loadSwing = () => 1 + .15 * heroLoad();
 /** Hodnota brnenia cieľa (0 – .5): odráta sa od zranenia ako pevná hodnota (hrdina má vlastné zníženie red()). */
 function armV(b) { if (b.cp) return .3; if (b.boss || heavy(b)) return .5; return plated(b) ? .4 : .1; }
 var SOAK = 5, SOAK_T = { c: 1, p: .8, b: .55 }, SOAK_MIN = { c: .3, p: .4, b: .5 }, SOAK_Z = { head: .8, arm: .6, legs: .5, horse: .3, torso: 1 };
@@ -105,7 +117,7 @@ function hitZ(b, d, from, o) {
     if (zone === 'horse' && b.h && CMB.horse > 0) { CMB.horse -= d; if (CMB.horse <= 0) horseDown(b); d *= .2; }
     WB_SND = plated(b) ? 'sw' : 'hb'; hit(b, d, from); WB_SND = '';
     const dealt = Math.max(0, hp0 - Math.max(0, b.hp));
-    if (b.hp > 0 && b.wu > 0 && !b.h && !big && typeof aiSkill === 'function' && Math.random() > aiSkill(b) * .6 && dealt > 0) { b.wu = 0; b.wt = null; b.c = Math.max(b.c || 0, 16); }   // zásah preruší nápriah (zručný vojak vydrží)
+    if (b.hp > 0 && (b.wu > 0 || (b.as && !b.as.done)) && !b.h && !big && typeof aiSkill === 'function' && Math.random() > aiSkill(b) * .6 && dealt > 0) { b.wu = 0; b.wt = null; b.as = null; b.c = Math.max(b.c || 0, 16); }   // zásah preruší nápriah aj rozbehnutý úder (zručný vojak vydrží)
     if (was && b.hp <= 0 && o.type === 'b' && !big && Math.random() < .7) b.ko = 1;   // tupá zbraň: omráčený (zajatie po bitke)
     if (from && from.h) {
         if (was && b.hp <= 0) { wbMsg((zone === 'head' ? 'Zásah do hlavy! ' : '') + (b.ko ? 'Omráčil si: ' : 'Zabil si: ') + unitName(b), zone === 'head' ? '#ffd24a' : '#e8d8a8'); if (zone === 'head' && o.ranged) fx3({ k: 'headshot', u: b }); }
@@ -200,7 +212,7 @@ function stepArrows(dt) {
 function chamber(att, def) {
     const C = CMB, sw = C.swing;
     if (!def.h || !sw || !att.lwd || sw.t < 6 || sw.d !== att.lwd) return false;
-    att.stun = 45; att.wu = 0; blockFx(def, dirTo(def, att), 0, att); fx3({ k: 'chamber', x: def.x, y: def.y });
+    att.stun = 45; att.wu = 0; att.as = null; blockFx(def, dirTo(def, att), 0, att); fx3({ k: 'chamber', x: def.x, y: def.y });
     wbMsg('Kryt útokom! Úder si odrazil vlastným úderom.', '#9fe08a'); HITSTOP = Math.max(HITSTOP, 5);
     return true;
 }

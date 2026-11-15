@@ -326,7 +326,7 @@ try {
     run(`OPT.keys = { atk: "j" }; keys.j = true; var kOk = kd("atk") && !kd("thrust"); keys.j = false; OPT.keys = {}; Portraits.canvas({ race: "human", blink: 1, mood: "angry" }); Portraits.canvas({ race: "elf", mood: "scared" }); var pOk = true;`);
     check('Zmena kláves a živé portréty', run('kOk && pOk'));
     // smerový boj (etapa 2 – ako Warband): smer z pohybu myši, držaný nápriah, kryt do smeru, klam, luk so zameriavačom, sklopená kopija
-    run(closeMenus + '; mode = "map"; ov.classList.add("hide"); for (const k in keys) keys[k] = false; G.eq.w = 0; G.eq.s = 0; G.eq.m = 0; G.eq.r = 0; G.s.ls = 2;');
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide"); for (const k in keys) keys[k] = false; G.eq.w = 0; G.eq.s = 0; G.eq.m = 0; G.eq.r = 0; G.eq.a = 0; G.eq.h = 0; G.s.ls = 2;');   // ľahká výbava: časovanie úderov bez postihu za hmotnosť
     run(`startBattle({ n: 6, f: 9, nm: "T" }); CMB.km = 1; var h = U[0], fq = U.filter(u => u.t); fq.forEach((u, i) => { u.x = 2000 + i * 40; u.y = 2000; u.stun = 999; }); var e = fq[0]; e.x = h.x + 18; e.y = h.y; e.hp = e.mh = 9999; e.f = Math.PI; e.stun = 999; h.f = 0; ptr.x = e.x - bc.x; ptr.y = e.y - bc.y; h.c = 0;
         var tick = n => { for (let i = 0; i < n; i++) cmbHero(h, 1, null); };
         CMB.mdx = -30; CMB.mdy = 0; var dL = mouseDir(); CMB.mdx = 0; CMB.mdy = -30; var dU = mouseDir(); CMB.mdy = 30; var dT = mouseDir(); CMB.mdx = 0; CMB.mdy = 0;
@@ -346,6 +346,21 @@ try {
         plated = () => false; tp.hp = 9999; hitZ(tp, 6, h, { zone: "torso", type: "c" }); var weakN = 9999 - tp.hp; plated = pl; Math.random = Rn;
         OPT.noStam = true; CMB.st = 10; h.c = 0; tick(1); var noSt = CMB.st === 100; OPT.noStam = undefined;`);
     check('Warband: čepeľ zasiahne počas seku (nie hneď), mimo dosahu nič; druhy zbraní; plát odráta pevnú hodnotu (slabý úder sa stratí, silný prejde); bez výdrže', run('swAct && late === 0 && swHit && far && stOk && weak < weakN * .85 && big > 33 && noSt'), run('[swAct, late, swHit, far, kS, weak, weakN, big, noSt].join(" ")'));
+    // etapa 1 (duel ako vo Warbande): úder AI v pohybe, uskočenie, rýchlosť oboch strán, zarazenie o kryt, hmotnosť výbavy
+    run(`startBattle({ n: 6, f: 2, nm: "T" }); var sh = U[0], sa = U.find(u => u.t); U.filter(u => u.t && u !== sa).forEach(u => { u.x = 3000; u.y = 3000; u.stun = 999; });
+        sh.x = 300; sh.y = 300; sh.hp = 5000; sh.vx3 = sh.vy3 = 0; sa.x = 312; sa.y = 300; sa.f = Math.PI; sa.hp = sa.mh = 9999; sa.stun = 0; sa.rout = 0; sa.c = 0; sa.wu = 0; sa.as = null; sa.uk = null; sa.k = "i"; sa.d = 10; sa.vx3 = sa.vy3 = 0;
+        CMB.blk = 0; CMB.swing = null; var S0 = Math.random; Math.random = () => .5;
+        aiMelee(sa, sh, 12, 1); var g = 0; while (sa.wu > 0 && g++ < 200) aiMelee(sa, sh, 12, 1); var atRel = sh.hp === 5000 && !!sa.as; g = 0; while (sa.as && g++ < 50) aiMelee(sa, sh, 12, 1); var landed = sh.hp < 5000;
+        sh.hp = 5000; sa.c = 0; aiMelee(sa, sh, 12, 1); g = 0; while (sa.wu > 0 && g++ < 200) aiMelee(sa, sh, 12, 1); sh.x = 260; g = 0; while (sa.as && g++ < 50) aiMelee(sa, sh, 52, 1); var dodged = sh.hp === 5000 && !sa.as;
+        Math.random = S0; var spdOk = speedK(2, false) > speedK(0, false) && speedK(0, false) > speedK(-2, false) && speedK(2, true) > speedK(2, false);
+        sh.x = 300; sa.x = 314; sa.y = 300; sa.f = Math.PI; sh.f = 0; sa.stun = 0; sa.wu = 0; sa.as = null; sa.hp = 9999; CMB.hist = []; CMB.sw = { hit: [] }; sh.c = 0;
+        Math.random = () => 0; var blocked = meleeHit(sh, sa, 10, "swing", { d: "l", pow: 1, vis: 2 }) === false; Math.random = S0; var bounced = blocked && CMB.sw.hit.length >= 99 && sh.c >= 8; CMB.sw = null;
+        var ia = shOf("a").findIndex(w => /plát/i.test(w.n)), im = shOf("a").findIndex(w => /Mithril/.test(w.n)), s0 = [G.eq.a, G.eq.s, G.eq.h, G.eq.m, G.s.ob];
+        G.eq.m = 0; G.s.ob = 0; G.eq.a = 0; G.eq.s = 0; G.eq.h = 0; var l0 = heroLoad();
+        G.eq.a = ia; G.eq.s = shOf("s").length - 1; G.eq.h = shOf("h").length - 1; var lH = heroLoad(), spH = loadSpeed(), swH = loadSwing();
+        G.eq.a = im; G.eq.s = 0; G.eq.h = 0; var lM = heroLoad(); G.eq.a = ia; G.s.ob = 4; var lOb = heroLoad();
+        G.eq.a = s0[0]; G.eq.s = s0[1]; G.eq.h = s0[2]; G.eq.m = s0[3]; G.s.ob = s0[4];`);
+    check('Duel ako vo Warbande: úder AI zasiahne až čepeľou v pohybe a dá sa mu uskočiť; rýchlosť oboch strán; úder zachytený krytom odskočí; ťažká výbava spomalí (mithril nie)', run('atRel && landed && dodged && spdOk && bounced && l0 === 0 && lH > .5 && spH < .9 && swH > 1.07 && lM < lH * .5 && lOb < lH'), run('[atRel, landed, dodged, spdOk, bounced, l0, lH, spH, swH, lM, lOb].join(" ")'));
     run(`startBattle({ n: 6, f: 2, nm: "T" }); var bwT = U[0]; bwT.x = 300; bwT.y = 300; bwT.vx3 = 0; bwT.vy3 = 0; var bwA = U.find(u => u.t); bwA.hp = bwA.mh = 99; bwA.k = "i"; bwA.uk = null; bwA.d = 5; bwA.x = 400; bwA.y = 300;
         var bwM = Math.random; Math.random = (() => { let q = 12345; return () => (q = (q * 1664525 + 1013904223) % 4294967296) / 4294967296; })(); var bwS = '', firstShot = 0, bwH = 0, bwN = 300; for (let n = 0; n < bwN; n++) { AR.length = 0; bwA.c = 0; bwA.aim = 0; bwT.hp = 1e9; for (let k = 0; k < 80 && !AR.length; k++) { aiBow(bwA, bwT, 7); if (!firstShot && AR.length) firstShot = k + 1; }
             const bwa = AR[0]; if (!bwa) continue; let bwt = 0; while (AR.includes(bwa) && bwt++ < 400) stepArrows(1); const dy = Math.abs(bwa.y - bwT.y), dx = Math.abs(bwa.x - bwT.x); if (dx < 12 && dy < 6) bwH++; if (n < 4) bwS += [bwa.x | 0, bwa.y | 0, bwT.x | 0, bwT.y | 0].join(',') + ' '; }

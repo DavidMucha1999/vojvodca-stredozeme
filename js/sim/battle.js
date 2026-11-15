@@ -436,9 +436,9 @@ function updBattle(dt) {
             u.x = Math.max(10, Math.min(BW - 10, u.x));
             u.y = Math.max(20, Math.min(BH - 10, u.y));
             u.bs = u.bs || u.sp;
-            u.sp = u.bs * fieldSlow(u);
-            if (u.rout) { cmbFlee(u, dt); continue; }
-            if (u.stun > 0) { u.stun -= dt; continue; }
+            u.sp = u.bs * fieldSlow(u) * (u.h ? loadSpeed() : 1);   // ťažká výbava spomalí hrdinu (js/sim/warband.js)
+            if (u.rout) { u.as = null; cmbFlee(u, dt); continue; }
+            if (u.stun > 0) { u.stun -= dt; u.as = null; continue; }   // zapotácaný vojak nedokončí úder
             if (u.boss) { let bt = null, bd2 = 1e9; for (const v of U) if (v.t !== u.t && v.hp > 0) { const d = Math.hypot(v.x - u.x, v.y - u.y) * (v.h ? .8 : 1); if (d < bd2) { bd2 = d; bt = v; } } bossAI(u, bt, dt); continue; }
             if (u.h) {
                 let mx = 0, my = 0;
