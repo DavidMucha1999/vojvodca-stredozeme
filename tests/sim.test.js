@@ -286,7 +286,7 @@ try {
     // výpravy (bosses.js, voyage.js, sidequests.js): bossovia, súboj, plavba, vedľajšie výpravy
     run(closeMenus + '; mode = "map"; ov.classList.add("hide"); G.relic = {}; G.inf = 20;');
     for (const bk of ['balrog', 'trollking', 'fell', 'dragon']) {
-        run(`mode = "map"; ov.classList.add("hide"); bossBattle("${bk}"); var bo = U.find(u => u.boss); var atkSeen = 0, flew = 0; for (let k = 0; k < 900 && mode === "battle"; k++) { U[0].hp = 999; updBattle(1); if (bo.atk) atkSeen = 1; if (bo.fly > 0) flew = 1; }
+        run(`mode = "map"; ov.classList.add("hide"); bossBattle("${bk}"); var bo = U.find(u => u.boss); var atkSeen = 0, flew = 0; for (let k = 0; k < 900 && mode === "battle"; k++) { U[0].hp = 999; bo.hp = Math.max(bo.hp, 500); updBattle(1); if (bo.atk) atkSeen = 1; if (bo.fly > 0) flew = 1; }
             var hp1 = bo.hp; bo.fly = 5; hit(bo, 100); var inv = bo.hp === hp1; bo.fly = 0; for (const u of U) if (u.t) u.hp = 0; var g0 = G.gold; var kb = 0; while (mode === "battle" && kb < 50) { U[0].hp = 999; updBattle(1); kb++; }`);
         check('Boss ' + bk + ': útoky, odmena a relikvia', run(`atkSeen && relic("${bk}") && G.gold > g0 && inv && ("${bk}" !== "dragon" || flew)`), run('atkSeen + " " + flew + " " + inv'));
         run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
@@ -327,7 +327,7 @@ try {
     check('Zmena kláves a živé portréty', run('kOk && pOk'));
     // smerový boj (etapa 2 – ako Warband): smer z pohybu myši, držaný nápriah, kryt do smeru, klam, luk so zameriavačom, sklopená kopija
     run(closeMenus + '; mode = "map"; ov.classList.add("hide"); for (const k in keys) keys[k] = false; G.eq.w = 0; G.eq.s = 0; G.eq.m = 0; G.eq.r = 0; G.eq.a = 0; G.eq.h = 0; G.s.ls = 2;');   // ľahká výbava: časovanie úderov bez postihu za hmotnosť
-    run(`startBattle({ n: 6, f: 9, nm: "T" }); CMB.km = 1; var h = U[0], fq = U.filter(u => u.t); fq.forEach((u, i) => { u.x = 2000 + i * 40; u.y = 2000; u.stun = 999; }); var e = fq[0]; e.x = h.x + 18; e.y = h.y; e.hp = e.mh = 9999; e.f = Math.PI; e.stun = 999; h.f = 0; ptr.x = e.x - bc.x; ptr.y = e.y - bc.y; h.c = 0;
+    run(`startBattle({ n: 6, f: 9, nm: "T" }); CMB.km = 1; var h = U[0], fq = U.filter(u => u.t); fq.forEach((u, i) => { u.x = 2000 + i * 40; u.y = 2000; u.stun = 999; }); U.filter(u => !u.t && !u.h).forEach(u => { u.x = 20; u.y = 30; u.stun = 999; }); var e = fq[0]; e.x = h.x + 18; e.y = h.y; e.hp = e.mh = 9999; e.f = Math.PI; e.stun = 999; h.f = 0; ptr.x = e.x - bc.x; ptr.y = e.y - bc.y; h.c = 0;
         var tick = n => { for (let i = 0; i < n; i++) cmbHero(h, 1, null); };
         CMB.mdx = -30; CMB.mdy = 0; var dL = mouseDir(); CMB.mdx = 0; CMB.mdy = -30; var dU = mouseDir(); CMB.mdy = 30; var dT = mouseDir(); CMB.mdx = 0; CMB.mdy = 0;
         var R0 = Math.random; Math.random = () => .999;
@@ -361,6 +361,26 @@ try {
         G.eq.a = im; G.eq.s = 0; G.eq.h = 0; var lM = heroLoad(); G.eq.a = ia; G.s.ob = 4; var lOb = heroLoad();
         G.eq.a = s0[0]; G.eq.s = s0[1]; G.eq.h = s0[2]; G.eq.m = s0[3]; G.s.ob = s0[4];`);
     check('Duel ako vo Warbande: úder AI zasiahne až čepeľou v pohybe a dá sa mu uskočiť; rýchlosť oboch strán; úder zachytený krytom odskočí; ťažká výbava spomalí (mithril nie)', run('atRel && landed && dodged && spdOk && bounced && l0 === 0 && lH > .5 && spH < .9 && swH > 1.07 && lM < lH * .5 && lOb < lH'), run('[atRel, landed, dodged, spdOk, bounced, l0, lH, spH, swH, lM, lOb].join(" ")'));
+    // etapa 2 (bitka ako vo Warbande): zálohy a posily vo vlnách, bitka po páde hrdinu, zásahy vlastných, počty strán pre morálku
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
+    run(`var sv2 = { inf: G.inf, cav: G.cav, arc: G.arc, vet: G.vet, elf: G.elf, roh: G.roh, gold: G.gold, x: G.x, y: G.y, tx: G.tx, ty: G.ty, hp: G.hp, ent: G.ent }; G.inf = 300; G.cav = G.arc = G.vet = G.elf = G.roh = G.ent = 0; OPT.bsize = "n";
+        startBattle({ n: 200, f: 2, nm: "T" }); var fe = U.filter(u => u.t && !u.src), resF = RES[1].length, resM = RES[0].length, n0ok = CMB.n0[0] > 20 && CMB.n0[1] > 20 && CMB.fc[1] === fe.length;
+        fe.slice(0, Math.ceil(fe.length * .6)).forEach(u => { u.hp = 0; }); CMB.M[1] = 60; CMB.rfT = 59; reinforce(1);
+        var waved = RES[1].length < resF && U.filter(u => u.t && u.hp > 0 && !u.src).length > fe.length * .45 && U.some(u => u.rf);
+        U[0].hp = 0; var stepOk = true; try { updBattle(1); } catch (er) { stepOk = String(er); } var goes = mode === "battle" && CMB.down === 1 && camUnit() !== U[0] && !camUnit().t;
+        RES[1] = []; for (const u of U) if (u.t) u.hp = 0; updBattle(1); var wonDown = mode !== "battle";`);
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
+    run(`G.inf = 5; startBattle({ n: 3, f: 9, nm: "T" }); for (const u of U) if (!u.t && !u.h) u.hp = 0; RES[0] = []; U[0].hp = 0; updBattle(1); var lostDown = mode !== "battle";`);
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
+    run(`G.inf = 10; startBattle({ n: 3, f: 9, nm: "T" }); var fa = U.find(u => !u.t && !u.h), fs2 = U.find(u => !u.t && !u.h && u !== fa); U.filter(u => u !== fa && u !== fs2 && !u.h).forEach(u => { u.x = 3000; u.y = 3000; u.stun = 999; });
+        fs2.x = 200; fs2.y = 300; fa.x = 260; fa.y = 300; fa.f = 0; fa.hp = fa.mh = 999; AR.length = 0; var R3 = Math.random; Math.random = () => .9;
+        fireArrow(fs2, 0, 0, 7, { d: 6 }); var k3 = 0; while (AR.length && k3++ < 100) stepArrows(1); var ffArrow = fa.hp < 999;
+        OPT.ff = false; fa.hp = 999; AR.length = 0; fireArrow(fs2, 0, 0, 7, { d: 6 }); k3 = 0; while (AR.length && k3++ < 100) stepArrows(1); var ffOff = fa.hp === 999; OPT.ff = undefined;
+        var hh = U[0]; hh.hp = 500; hh.x = 500; hh.y = 500; hh.f = 0; fa.x = 515; fa.y = 500; fa.hp = 999; CMB.sw = { vis: 10, d: "u", t: 0, dur: 11, P: { arc: .5, n: 1, m: 1.2, r: 1 }, pow: 1, reach: 34, hit: [], bl: 0, pitch: null };
+        for (let i = 0; i < 12 && CMB.sw; i++) swingTick(hh, 1, wpnTimes()); var ffMelee = fa.hp < 999; Math.random = R3;
+        Object.assign(G, sv2); OPT.bsize = undefined;`);
+    run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
+    check('Bitka ako vo Warbande: zálohy prídu vo vlnách, po páde hrdinu bitka pokračuje (výhra aj prehra), zásahy vlastných šípom aj úderom (dajú sa vypnúť), počty strán pre morálku', run('resF === 120 && resM > 200 && n0ok && waved && stepOk === true && goes && wonDown && lostDown && ffArrow && ffOff && ffMelee'), run('[resF, resM, n0ok, waved, stepOk, goes, wonDown, lostDown, ffArrow, ffOff, ffMelee].join(" ")'));
     run(`startBattle({ n: 6, f: 2, nm: "T" }); var bwT = U[0]; bwT.x = 300; bwT.y = 300; bwT.vx3 = 0; bwT.vy3 = 0; var bwA = U.find(u => u.t); bwA.hp = bwA.mh = 99; bwA.k = "i"; bwA.uk = null; bwA.d = 5; bwA.x = 400; bwA.y = 300;
         var bwM = Math.random; Math.random = (() => { let q = 12345; return () => (q = (q * 1664525 + 1013904223) % 4294967296) / 4294967296; })(); var bwS = '', firstShot = 0, bwH = 0, bwN = 300; for (let n = 0; n < bwN; n++) { AR.length = 0; bwA.c = 0; bwA.aim = 0; bwT.hp = 1e9; for (let k = 0; k < 80 && !AR.length; k++) { aiBow(bwA, bwT, 7); if (!firstShot && AR.length) firstShot = k + 1; }
             const bwa = AR[0]; if (!bwa) continue; let bwt = 0; while (AR.includes(bwa) && bwt++ < 400) stepArrows(1); const dy = Math.abs(bwa.y - bwT.y), dx = Math.abs(bwa.x - bwT.x); if (dx < 12 && dy < 6) bwH++; if (n < 4) bwS += [bwa.x | 0, bwa.y | 0, bwT.x | 0, bwT.y | 0].join(',') + ' '; }
@@ -391,7 +411,7 @@ try {
     check('Luk: držaním sa napína, zameriavač sa zúži, šíp dopadne k bodu pod kurzorom', run('early > full && arw && land < 30'), run('[early, full, land].join(" ")'));
     run(`for (const u of U) if (u.t) u.hp = 0; var kq = 0; while (mode === "battle" && kq < 50) { U[0].hp = 999; updBattle(1); kq++; }`);
     run(closeMenus + '; mode = "map"; ov.classList.add("hide"); for (const k in keys) keys[k] = false;');
-    run(`G.eq.w = 2; G.eq.m = 2; G.own.m = [0, 2]; startBattle({ n: 6, f: 9, nm: "T" }); CMB.km = 1; var h = U[0], fq = U.filter(u => u.t); fq.forEach((u, i) => { u.x = 2000 + i * 40; u.y = 2000; u.stun = 999; }); var e = fq[0]; e.hp = e.mh = 9999; e.stun = 999; e.uk = null; e.k = "o";
+    run(`G.eq.w = 2; G.eq.m = 2; G.own.m = [0, 2]; startBattle({ n: 6, f: 9, nm: "T" }); CMB.km = 1; var h = U[0], fq = U.filter(u => u.t); fq.forEach((u, i) => { u.x = 2000 + i * 40; u.y = 2000; u.stun = 999; }); U.filter(u => !u.t && !u.h).forEach(u => { u.x = 20; u.y = 30; u.stun = 999; }); var e = fq[0]; e.hp = e.mh = 9999; e.stun = 999; e.uk = null; e.k = "o";
         h.x = 300; h.y = 400; h.f = 0; e.x = 360; e.y = 400; CMB.run = 30; CMB.lastA = 0; CMB.chg = 99; CMB.px = 290; CMB.py = 400; keys.e = true; cmbHero(h, 1, 0); keys.e = false; var couchHit = 9999 - e.hp; var couchOk = couchHit > dmg() * 2;
         for (const u of U) if (u.t) u.hp = 0; var kc = 0; while (mode === "battle" && kc < 50) { U[0].hp = 999; updBattle(1); kc++; } G.eq.m = 0; G.eq.w = 0;`);
     check('Sklopená kopija v cvale: veľký zásah podľa rýchlosti koňa', run('couchOk'), run('couchHit'));

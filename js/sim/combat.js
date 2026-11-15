@@ -84,7 +84,10 @@ function cmbStart(en) {
     const m0 = 62 + cl((r - 1) * 12) + Math.min(12, G.lv || 1) + (G.king ? 5 : 0) + Math.min(6, (G.ren || 0) / 3) + ((G.pm ?? 60) - 50) * .3 + (perk('vodca') ? 8 : 0) + (hasRole('velitel') ? 6 : 0);   // morálka družiny, Charizma, spoločník veliteľ
     const m1 = 62 + cl((1 / r - 1) * 12) - Math.min(15, (G.fear || 0) * 1.2) + (en && en.nz ? 40 : 0) + (en && en.siege ? 10 : 0);
     C.M = [Math.min(95, m0), Math.max(25, Math.min(95, m1 - (relic('fell') ? 8 : 0)))];
-    if (G.duel && en && en.id === G.duel.id && !en.duel) { if (G.duel.win) C.M[1] = Math.max(10, C.M[1] - 30); else C.M[0] = Math.max(10, C.M[0] - 25); G.duel = null; }   // výsledok súboja veliteľov C.M0 = C.M.slice(); C.n0 = [mine.length, foe.length];
+    if (G.duel && en && en.id === G.duel.id && !en.duel) { if (G.duel.win) C.M[1] = Math.max(10, C.M[1] - 30); else C.M[0] = Math.max(10, C.M[0] - 25); G.duel = null; }   // výsledok súboja veliteľov
+    C.M0 = C.M.slice(); C.n0 = [mine.length, foe.length];
+    C.fc = [mine.filter(u => !u.h && !u.ally && !u.src && !u.garrison && !u.cp).length, foe.filter(u => !u.src && !u.boss).length];   // vlastné vojsko strán na bojisku (limit pre posily)
+    C.down = 0; C.camU = null; C.rfT = 0; C.endT0 = 0;
     C.shMax = heroShield() ? Math.round((70 + it('s').v * 500) * (perk('stit') ? 1.6 : 1)) : 0; C.shp = C.shMax;
     const RW = rangedW();   // strelná výbava (luk, kuša, oštepy), inak lovecký luk podľa lukostreľby
     C.ammo = C.ammo0 = RW ? RW.ammo + G.s.ls * 2 + (perk('konilu') ? 6 : 0) : G.s.ls >= 1 || G.race === 'elf' || perk('konilu') ? 6 + 4 * G.s.ls + (G.race === 'elf' ? 4 : 0) + (perk('konilu') ? 6 : 0) : 0;
@@ -254,11 +257,14 @@ function swingTick(u, dt, WT) {
     const tip = s.reach * (d === 't' ? Math.sin(Math.min(1, p * 1.6) * Math.PI / 2) : 1);   // bod: hrot sa vysúva
     const vel = d === 't' ? .7 + .5 * Math.min(1, p * 1.6) : .7 + .5 * Math.sin(p * Math.PI);   // rýchlosť čepele
     for (const v of U) {
-        if (!v.t || v.hp <= 0 || s.hit.includes(v) || s.hit.length >= P.n || wallBlocked(u, v)) continue;
+        if (v === u || v.hp <= 0 || s.hit.includes(v) || s.hit.length >= P.n || wallBlocked(u, v)) continue;
+        const fr = !v.t;   // vlastný vojak: sek zboku sa o neho zarazí (swingBlocked), úder zhora a bod ho zasiahnu
+        if (fr && (v.h || !ffOn() || (d !== 'u' && d !== 't'))) continue;
         const dist = Math.hypot(v.x - u.x, v.y - u.y), r = v.r || 6, ang = sa(v), wide = Math.atan2(r * .8, Math.max(8, dist));
         if (dist - r * .5 > tip) continue;
         if (d === 'l' || d === 'r') { if (Math.abs(ang - th) > .32 + wide || Math.abs(ang) > P.arc + wide) continue; }
         else { if (Math.abs(ang) > P.arc) continue; if (d === 'u' && p < .4) continue; }
+        if (fr) { s.hit = new Array(99); hitZ(v, dmg() * P.m * s.pow * vel * .6, null, { zone: 'torso', type: dmgType(u, 'swing', d) }); wbMsg(v.hp > 0 ? 'Zasiahol si vlastného vojaka!' : 'Zabil si vlastného vojaka!', '#ff9a80'); C.M[0] = Math.max(0, C.M[0] - 2); fx3({ k: 'bounce', x: v.x, y: v.y }); break; }
         if (!s.bl) { s.bl = 1; const bl = swingBlocked(u, d, s.reach); if (bl) { s.hit = new Array(99); C.st = Math.max(0, C.st - 6); fx3({ k: 'bounce', x: u.x + Math.cos(u.f) * 12, y: u.y + Math.sin(u.f) * 12 }); wbMsg('Zbraň sa zarazila o ' + bl + '!', '#ff9a80'); snd('sh'); break; } }
         const i = s.hit.length; s.hit.push(v);
         const a = dirTo(u, v), close = Math.max(-.5, Math.min(1.2, (((C.vx || 0) - (v.vx3 || 0)) * Math.cos(a) + ((C.vy || 0) - (v.vy3 || 0)) * Math.sin(a)) / Math.max(1, u.bs || u.sp || 2)));   // rýchlosť oboch strán: nepriateľ, ktorý beží proti tebe, dostane viac

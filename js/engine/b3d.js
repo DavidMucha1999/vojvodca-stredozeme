@@ -2011,11 +2011,11 @@ const B3 = (() => {
 
     // ---------- kamera a vstup ----------
     function camUpdate(dt) {
-        const h = U[0], t = T();
+        const h = typeof camUnit === 'function' ? camUnit() : U[0], t = T(), hm = h.h ? G.eq.m && !h.dis : typeof mounted === 'function' && mounted(h);   // po páde hrdinu kamera sleduje tvojich vojakov
         if (photo) return photoCam(dt);
         if (lookOn() && !intro) return lookCam(dt);
         if (keys.z) yaw -= .03 * dt; if (keys.c) yaw += .03 * dt;
-        const fx = Math.cos(yaw), fz = Math.sin(yaw), hy = heightAt(h.x, h.y) + (G.eq.m && !h.dis ? 28 : 19);
+        const fx = Math.cos(yaw), fz = Math.sin(yaw), hy = heightAt(h.x, h.y) + (hm ? 28 : 19);
         const want = new t.Vector3(h.x - fx * zoom * Math.cos(pitch), hy + zoom * Math.sin(pitch) + 6, h.y - fz * zoom * Math.cos(pitch));
         const gy = heightAt(want.x, want.z) + 8; if (want.y < gy) want.y = gy;
         let look = new t.Vector3(h.x + fx * 40, hy, h.y + fz * 40);
@@ -2041,10 +2041,10 @@ const B3 = (() => {
     }
     /** Kamera ako vo Warbande: myš otáča (yaw, lp), tretia osoba za plecom alebo prvá osoba z hlavy hrdinu. */
     function lookCam(dt) {
-        const h = U[0], t = T(), o = units.get(h), F = new t.Vector3(Math.cos(lp) * Math.cos(yaw), Math.sin(lp), Math.cos(lp) * Math.sin(yaw)), Rt = new t.Vector3(-Math.sin(yaw), 0, Math.cos(yaw));
-        const head = new t.Vector3(); if (o && o.B) o.B.hd.getWorldPosition(head); else head.set(h.x, heightAt(h.x, h.y) + (G.eq.m && !h.dis ? 40 : 22), h.y);
+        const h = typeof camUnit === 'function' ? camUnit() : U[0], t = T(), o = units.get(h), F = new t.Vector3(Math.cos(lp) * Math.cos(yaw), Math.sin(lp), Math.cos(lp) * Math.sin(yaw)), Rt = new t.Vector3(-Math.sin(yaw), 0, Math.cos(yaw));
+        const head = new t.Vector3(); if (o && o.B) o.B.hd.getWorldPosition(head); else head.set(h.x, heightAt(h.x, h.y) + ((h.h ? G.eq.m && !h.dis : typeof mounted === 'function' && mounted(h)) ? 40 : 22), h.y);
         let pos;
-        if (fpv && h.hp > 0) {
+        if (fpv && h.h && h.hp > 0) {
             pos = head.clone().addScaledVector(F, 1.4); pos.y += .5;
             if (o && !o.mount) pos.y += Math.sin(o.ph * 2) * .35 * Math.min(1, o.sp);
             else if (o && o.mount) pos.y += Math.sin((o.ph || 0) * 2.2) * .3 * Math.min(1, o.sp || 0);   // krok
@@ -2091,7 +2091,7 @@ const B3 = (() => {
     function lookMove(dx, dy) { if (!on || photo) return; yaw += dx * .0026; lp = Math.max(-1.15, Math.min(.95, lp - dy * .0026)); }
     function toggleFP() { if (!on) return; fpv = !fpv; if (typeof OPT !== 'undefined') { OPT.view = fpv ? 'fp' : 'tp'; if (typeof saveOpt === 'function') saveOpt(); } if (typeof wbMsg === 'function') wbMsg(fpv ? 'Pohľad z prvej osoby' : 'Pohľad z tretej osoby', '#e8d8a8'); }
     function lightsFollow(x, y, dt) {
-        const h = U[0];
+        const h = typeof camUnit === 'function' ? camUnit() : U[0];
         sun.position.set(x + sunDir.x * 500, sunDir.y * 500, y + sunDir.z * 500); sun.target.position.set(x, 0, y);
         if (skyM) skyM.position.copy(cam.position);
         stepAtmo(dt);
@@ -2482,7 +2482,7 @@ const B3 = (() => {
         fit(); stepAQ();
         if (sun && sun.castShadow) { const ev = AQ.lvl >= 3 ? 3 : U.length > 120 ? 2 : 1; sun.shadow.autoUpdate = ev === 1; if (ev > 1 && frameN % ev === 0) sun.shadow.needsUpdate = true; }   // veľká bitka: tiene sa prepočítajú každú druhú snímku
         // stav bitky pre zástup: víťazný jasot, šípy vo vzduchu (štíty nad hlavu)
-        FRX.win0 = !U.some(v => v.t && v.hp > 0 && !v.rout && !v.fled); FRX.win1 = U[0].hp <= 0 || !U.some(v => !v.t && v.hp > 0 && !v.fled);
+        FRX.win0 = !U.some(v => v.t && v.hp > 0 && !v.rout && !v.fled); FRX.win1 = (U[0].hp <= 0 && !(typeof CMB !== 'undefined' && CMB.down)) || !U.some(v => !v.t && v.hp > 0 && !v.fled);
         const fly = AR.filter(a => a.l > 0 && !a.land);
         const cx = cam ? cam.position.x : U[0].x, cz = cam ? cam.position.z : U[0].y, LD = lodD(); let dSum = 0, dN = 0;
         for (const b of FAR.values()) b.n = 0;

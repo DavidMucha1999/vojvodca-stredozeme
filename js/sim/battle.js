@@ -31,16 +31,21 @@ function startBattleBase(en, al) {
         U.push(mk(0, 'r'));
     for (let i = 0; i < Math.min(G.ent || 0, 3); i++)
         U.push(mk(0, 'n'));
+    // zálohy (ako vo Warbande): kto sa nezmestí na bojisko, príde v ďalšej vlne, keď vlastných ubudne
+    RES = [[], []];
+    if (!en.ar && !en.duel) [['i', G.inf, 40], ['c', G.cav, 20], ['a', G.arc, 20], ['v', G.vet, 20], ['e', G.elf, 15], ['r', G.roh, 12]].forEach(([k, n, c]) => { for (let i = cap(c); i < (n || 0); i++) RES[0].push([k]); });
     // kto sa pridá: spojenci hráča a priatelia nepriateľa v okolí (pri obliehaní celý tábor), posádka pri obrane hradu
     BSIDES = battleSides(en, al);
     U.push(...sideUnits(BSIDES.allies, 0, Math.round(ALLY_CAP * BSZ())));
     if (en.def != null) { const t = TW[en.def], gn = Math.min(Math.round(30 * BSZ()), Math.max(2, t.g)); BSIDES.gUnits = gn; for (let i = 0; i < gn; i++) { const u = mk(0, i % 3 === 2 ? 'a' : 'i', t.f); u.ally = 1; u.garrison = 1; U.push(u); } }
+    const nF = en.ar || en.duel ? en.n : Math.min(en.n, Math.round(FOE_FIELD * BSZ()));   // nepriatelia nad limit bojiska čakajú v zálohe
     for (let i = 0; i < en.n; i++)
-        U.push(mk(1, en.nz ? 'z' : en.trolls || en.beorn ? 't' : en.spiders ? 'w' : en.kind === 'wolves' ? (i % 3 ? 'w' : 'uI2') : en.kind === 'orcs' ? (i % 7 === 6 ? 't' : i % 4 === 3 ? 'uM1' : 'o') : en.kind === 'deserters' ? (i % 3 === 2 ? 'a' : i % 5 === 4 ? 'c' : 'i') : (i % 3 === 1 && FK[en.f] && FK[en.f].length ? FK[en.f][i % 2] : ek(en.f, i)), en.f));   // miesta: trollovia, Beorn (medveď), pavúky
-    U.push(...sideUnits(BSIDES.foes, 1, Math.max(0, Math.round(FOE_CAP * BSZ()) - en.n)));
+        if (i < nF) U.push(mk(1, foeKind(en, i), en.f)); else RES[1].push([foeKind(en, i), en.f]);
+    U.push(...sideUnits(BSIDES.foes, 1, Math.max(0, Math.round(FOE_CAP * BSZ()) - nF)));
+    RES.k = [en.def != null ? 1.25 : 1, 1];   // posilnenie zdravia, ktoré dostanú aj zálohy
     if (en.siege) {
         const sg = en.t.sg || {}, k = 1.3 + (en.t.wl || 0) * .15 - (sg.tow ? .15 : 0) - (en.sgFood != null && en.sgFood <= 0 ? .1 : 0);   // veža a hlad oslabujú obrancov
-        U.forEach(u => { if (u.t) u.hp = u.mh = u.mh * k; });
+        U.forEach(u => { if (u.t) u.hp = u.mh = u.mh * k; }); RES.k[1] = k;
     }
     if (en.def != null)   // obrana hradu: hradby pomáhajú hráčovej strane
         U.forEach(u => { if (!u.t) u.hp = u.mh = u.mh * 1.25; });
@@ -56,8 +61,58 @@ function startBattleBase(en, al) {
     if (BI === 's' && WX.n === 'clear')
         WX = { ...WX, n: 'snow', r: Math.round(WX.r * .85) };
 }
-/** Okruh, z ktorého sa do bitky pridávajú ďalšie armády, a najväčší počet ich vojakov na bojisku. */
-const JOIN_R = 300, ALLY_CAP = 30, FOE_CAP = 70;
+/** Druh i-teho vojaka nepriateľskej armády (miesta: trollovia, Beorn – medveď, pavúky; tlupy orkov, vargov a dezertérov). */
+const foeKind = (en, i) => en.nz ? 'z' : en.trolls || en.beorn ? 't' : en.spiders ? 'w' : en.kind === 'wolves' ? (i % 3 ? 'w' : 'uI2') : en.kind === 'orcs' ? (i % 7 === 6 ? 't' : i % 4 === 3 ? 'uM1' : 'o') : en.kind === 'deserters' ? (i % 3 === 2 ? 'a' : i % 5 === 4 ? 'c' : 'i') : (i % 3 === 1 && FK[en.f] && FK[en.f].length ? FK[en.f][i % 2] : ek(en.f, i));
+/** Okruh, z ktorého sa do bitky pridávajú ďalšie armády, a najväčší počet ich vojakov na bojisku.
+ *  FOE_FIELD: najviac vojakov hlavnej nepriateľskej armády naraz na bojisku (× veľkosť bitky); zvyšok príde vo vlnách. */
+const JOIN_R = 300, ALLY_CAP = 30, FOE_CAP = 70, FOE_FIELD = 80;
+/** Zálohy oboch strán: RES[0] tvoji, RES[1] nepriateľ – zoznam [druh, frakcia]; RES.k = násobok zdravia (hradby, obliehanie). */
+let RES = [[], []];
+/** Posily vo vlnách (ako vo Warbande): keď na bojisku ostane menej ako polovica vlastných vojakov strany, dobehne z jej okraja
+ *  ďalšia vlna zo zálohy (najviac do pôvodného počtu). Strana na úteku (morálka pod 15) posily nedostane. */
+function reinforce(dt) {
+    if (!RES[0].length && !RES[1].length) return;
+    if ((CMB.rfT = (CMB.rfT || 0) + dt) < 60) return;
+    CMB.rfT = 0;
+    for (const t of [0, 1]) {
+        if (!RES[t].length || CMB.M[t] < 15) continue;
+        const own = u => u.t === t && !u.h && !u.ally && !u.src && !u.garrison && !u.cp && !u.boss, cap = CMB.fc[t] || 1;
+        const alive = U.filter(u => own(u) && u.hp > 0 && !u.rout).length;
+        if (alive > cap * .5) continue;
+        const n = Math.min(RES[t].length, Math.max(1, cap - alive));
+        for (let i = 0; i < n; i++) {
+            const [k, f] = RES[t].shift(), u = mk(t, k, f);
+            u.x = t ? BW - 20 - Math.random() * 40 : 20 + Math.random() * 40;
+            if (SGB && SGB.att === 1) u.x = BW - u.x;   // obrana hradu: strany sú vymenené
+            u.hp = u.mh = u.mh * ((RES.k || [1, 1])[t] || 1); u.rf = 1; u.f = u.x > BW / 2 ? Math.PI : 0;
+            U.push(u);
+        }
+        CMB.n0[t] += n; CMB.M[t] = Math.min(100, CMB.M[t] + 6);
+        const left = RES[t].length ? ' (v zálohe ešte ' + RES[t].length + ')' : '';
+        if (t) { TS = { s: 'Nepriateľovi dorazili posily: ' + n + ' mužov' + left + '.', l: 160 }; wbMsg('Nepriateľské posily: +' + n, '#ff9a80'); }
+        else { TS = { s: 'Posily dorazili! ' + n + ' tvojich mužov vstupuje do boja' + left + '.', l: 160 }; wbMsg('Tvoje posily: +' + n, '#9fe08a'); snd('horn'); }
+    }
+}
+/** Padol hrdina: ak má strana ešte koho, bitka pokračuje (ako vo Warbande) – kamera sleduje tvojich vojakov,
+ *  podržaný medzerník bitku zrýchli. V aréne a v súboji veliteľov bitka končí hneď. */
+function heroFell() {
+    const C = CMB; if (C.down || !LB || LB.ar || LB.duel) return false;
+    if (!U.some(u => !u.t && !u.h && u.hp > 0 && !u.rout) && !RES[0].length) return false;
+    C.down = 1; C.blk = 0; C.rd = null; C.sw = null; C.camU = null;
+    C.M[0] = Math.max(0, C.M[0] - 10);
+    TS = { s: 'Padol si! Zranený ležíš na bojisku, ale tvoji muži bojujú ďalej. Drž medzerník – bitka pobeží rýchlejšie.', l: 420 };
+    wbMsg('Padol si – tvoji muži bojujú ďalej.', '#ff9a80');
+    return true;
+}
+/** Koho sleduje kamera: hrdinu, alebo po jeho páde najbližšieho živého vojaka tvojej strany. */
+function camUnit() {
+    const h = U && U[0]; if (!h || h.hp > 0 || !CMB.down) return h;
+    const c = CMB.camU; if (c && c.hp > 0 && !c.fled) return c;
+    const p = c || h; let best = null, bd = 1e9;
+    for (const u of U) if (!u.t && u.hp > 0 && !u.fled) { const d = Math.hypot(u.x - p.x, u.y - p.y); if (d < bd) { bd = d; best = u; } }
+    CMB.camU = best; return best || h;
+}
+let FFW = 0;
 /** Veľkosť bitiek (Nastavenia): normálna ×1 (do ~150 vojakov), veľká ×2,5 (do ~350), obrovská ×5 (500 a viac). */
 const BSZ = () => ({ n: 1, v: 2.5, o: 5 })[typeof OPT !== 'undefined' && OPT.bsize] || 2.5;
 let BSIDES = { allies: [], foes: [] };
@@ -170,8 +225,8 @@ function startBattle(en, al) {
         startBattleBase(en, al);
         for (const k in FU)
             if (k[0] === 'u' && G[k])
-                for (let i = 0; i < Math.min(G[k], 15); i++)
-                    U.push(mk(0, k));
+                for (let i = 0; i < G[k]; i++)
+                    if (i < 15) U.push(mk(0, k)); else RES[0].push([k]);   // vylepšené jednotky nad limit čakajú v zálohe
         U.push(...compUnits());    // spoločníci bojujú ako hrdinovia
     }
     if (en.siege) {
@@ -188,7 +243,7 @@ function startBattle(en, al) {
     }
     else
         SGB = null;
-    if (en.boss) { if (!BOSSES[en.boss].minions) U = U.filter(u => !u.t); U.push(makeBoss(en.boss)); }   // boss (js/sim/bosses.js)
+    if (en.boss) { if (!BOSSES[en.boss].minions) { U = U.filter(u => !u.t); RES[1] = []; } U.push(makeBoss(en.boss)); }   // boss (js/sim/bosses.js)
     cmbStart(en);   // morálka, veliteľ, výdrž, štít a šípy hrdinu (js/sim/combat.js)
 }
 function endBattle(win) {
@@ -340,7 +395,7 @@ function endBattle(win) {
                     afterBattleFlags(win, L);
                     return;
                 }
-                show('Víťazstvo', 'Padlo ' + (dI + dC) + ' tvojich mužov' + (wnd ? ' (z padlých ' + wnd + ' prežilo ranených – vrátia sa po vyliečení)' : '') + '. Korisť: ' + loot + ' zlata.' + lv + bossTxt);
+                show('Víťazstvo', (CMB.down ? 'Padol si zranený, ale tvoji muži bitku dobojovali. ' : '') + 'Padlo ' + (dI + dC) + ' tvojich mužov' + (wnd ? ' (z padlých ' + wnd + ' prežilo ranených – vrátia sa po vyliečení)' : '') + '. Korisť: ' + loot + ' zlata.' + lv + bossTxt);
                 battleReport(true);
                 const L = LB;
                 if (!L.siege)
@@ -408,14 +463,19 @@ function afterBattleFlags(win, L) {
 }
 function updBattle(dt) {
     pollPad();   // ovládač (js/sim/combat.js)
+    if (CMB.down && (keys[' '] || keys.Enter) && !FFW) {   // hrdina padol: podržaný medzerník bitku zrýchli (×4)
+        FFW = 1; for (let i = 0; i < 3 && mode === 'battle'; i++) updBattle(dt); FFW = 0;
+        if (mode !== 'battle') return;
+    }
     {
         if (Math.random() < .06 * dt)
             snd('cl');
         compBattleShout();
         if (fx > 0)
             fx -= dt;
-        bc.x = Math.max(0, Math.min(BW - W, U[0].x - W / 2));
-        bc.y = Math.max(0, Math.min(BH - H, U[0].y - H / 2));
+        const cu = camUnit();   // po páde hrdinu kamera sleduje tvojich vojakov
+        bc.x = Math.max(0, Math.min(BW - W, cu.x - W / 2));
+        bc.y = Math.max(0, Math.min(BH - H, cu.y - H / 2));
         for (const p of PT) {
             p.x += p.vx * dt;
             p.y += p.vy * dt;
@@ -530,18 +590,26 @@ function updBattle(dt) {
             }
         }
         cmbMorale(dt);
+        reinforce(dt);   // posily vo vlnách zo záloh
+        if (U[0].hp <= 0 && !CMB.down) heroFell();
         U[0].tt = (U[0].tt || 0) + dt;
+        const mineUp = U.some(u => !u.t && u.hp > 0) || (RES[0].length > 0 && CMB.M[0] >= 15);   // záloha na úteku už nepríde
         if (U[0].tt > 9000) {
             const s = t => U.filter(u => u.t === t && u.hp > 0).reduce((a, u) => a + u.hp, 0);
             endBattle(s(0) >= s(1));   // dlhá bitka: rozhodne zostávajúce zdravie
         }
-        else if (U[0].hp <= 0)
+        else if (U[0].hp <= 0 && (!CMB.down || !mineUp))   // hrdina padol a niet, kto by bojoval ďalej
             endBattle(false);
-        else if (!U.some(u => u.t && u.hp > 0))
+        else if (!U.some(u => u.t && u.hp > 0) && (!RES[1].length || CMB.M[1] < 15))
             endBattle(true);
-        else if (!U.some(u => u.t && u.hp > 0 && !u.rout) && (CMB.endT += dt) > 150) {   // všetci nepriatelia utekajú: bojisko je tvoje
+        else if (U.some(u => u.t && u.hp > 0) && !U.some(u => u.t && u.hp > 0 && !u.rout) && (CMB.endT += dt) > 150) {   // všetci nepriatelia utekajú: bojisko je tvoje (aj ich zálohy sa stiahnu)
             for (const u of U) if (u.t && u.hp > 0) { u.fled = 1; u.hp = 0; }
+            RES[1] = [];
             endBattle(true);
+        }
+        else if (CMB.down && !U.some(u => !u.t && u.hp > 0 && !u.rout) && (CMB.endT0 += dt) > 150) {   // po páde hrdinu utekajú všetci tvoji: prehra
+            for (const u of U) if (!u.t && u.hp > 0) { u.fled = 1; u.hp = 0; }
+            endBattle(false);
         }
     }
     if (!SGB || mode !== 'battle')

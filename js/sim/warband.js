@@ -127,6 +127,8 @@ function hitZ(b, d, from, o) {
     if (b.h) wbMsg('Dostal si zásah ' + ZONE_N[zone] + ': ' + Math.round(dealt) + ' zranenia', '#ff9a80');
     if (b.cp && was && b.hp <= 0) wbMsg(unitName(b) + ' padol!', '#ff9a80');
 }
+/** Zásahy vlastných (ako vo Warbande): šípy zasiahnu aj vlastných v ceste a úder zhora či bod hrdinu aj vlastného vojaka pred ním. Nastavenia → Zásahy vlastných. */
+const ffOn = () => typeof OPT === 'undefined' || OPT.ff !== false;
 /** Hlásenie v rohu obrazovky (ako vo Warbande). */
 function wbMsg(s, c) { const L = CMB.msgs = CMB.msgs || []; L.push({ s, c: c || '#e8d8a8', t: 260 }); if (L.length > 7) L.shift(); }
 
@@ -140,7 +142,7 @@ function ballistic(d, dh, v) {
 /** Výstrel: z výšky ramena strelca, smer (yaw) a náklon (pitch), rýchlosť sp. */
 function fireArrow(u, yaw, pitch, sp, o) {
     const z = elevSim(u.x, u.y) + seatH(u) + bodyH(u) * .72;
-    const a = { x: u.x + Math.cos(yaw) * 4, y: u.y + Math.sin(yaw) * 4, z, vx: Math.cos(yaw) * Math.cos(pitch) * sp, vy: Math.sin(yaw) * Math.cos(pitch) * sp, vz: Math.sin(pitch) * sp, l: o.l || 600, t: u.t, by: u, ...o };
+    const a = { x: u.x + Math.cos(yaw) * 4, y: u.y + Math.sin(yaw) * 4, z, vx: Math.cos(yaw) * Math.cos(pitch) * sp, vy: Math.sin(yaw) * Math.cos(pitch) * sp, vz: Math.sin(pitch) * sp, l: o.l || 600, t: u.t, by: u, sx: u.x, sy: u.y, ...o };
     AR.push(a); return a;
 }
 /** Výstrel vojaka AI na cieľ b. Presnosť klesá so vzdialenosťou, s behom cieľa a pri streľbe z koňa; elfovia a zručnejší strieľajú presnejšie.
@@ -187,19 +189,23 @@ function stepArrows(dt) {
         if (SGB && ev > 0 && elevSim(px, py) === 0 && a.z < 48) { a.l = 0; a.wall = 1; continue; }   // do múru
         if (a.z <= ev) { a.l = 0; a.land = 1; if (GA.length < 400) { a.ga = { x: a.x, y: a.y, k: a.jav ? 'jav' : a.bolt ? 'bolt' : 'arrow' }; GA.push(a.ga); } continue; }
         for (const v of U) {
-            if (v.hp <= 0 || v.fled || v.t === a.t) continue;
+            if (v.hp <= 0 || v.fled || v === a.by) continue;
+            const fr = v.t === a.t;   // vlastný vojak v ceste (zásahy vlastných, Nastavenia)
+            if (fr && (!ffOn() || Math.hypot(v.x - a.sx, v.y - a.sy) < 30 || (a.ps && a.ps.has(v)))) continue;
             if (segD(px, py, a.x, a.y, v.x, v.y) > (v.r || 6) * .85 + 1.5) continue;
             const base = elevSim(v.x, v.y), seat = seatH(v), H = bodyH(v), zr = a.z - base;
             if (zr < 0 || zr > seat + H * 1.02) continue;   // preletel nad hlavou
             let zone;
             if (seat && zr < seat) zone = 'horse';
             else { const k = (zr - seat) / H, sv = Math.hypot(a.vx, a.vy) || 1, lat = Math.abs((v.x - a.x) * a.vy - (v.y - a.y) * a.vx) / sv; zone = k > .83 ? 'head' : k > .42 ? (lat > (v.r || 6) * .55 ? 'arm' : 'torso') : 'legs'; }   // bočná odchýlka od stredu → ruka
+            if (fr && Math.random() < .5) { (a.ps = a.ps || new Set()).add(v); continue; }   // polovica šípov tesne minie vlastných (prikrčia sa)
             if (arrowBlocked(v, a)) { a.l = 0; a.shield = v; a.hz = zr; break; }
             if (SGB && v.t !== (SGB.att ?? 0) && v.x >= 1000 && v.x <= 1050 && zone !== 'head' && Math.random() < .55) { a.l = 0; a.wall = 1; break; }   // cimburie kryje obrancov
             let d = (a.d || 4.5) + (a.t ? 0 : G.s.ls);
             if (SGB && a.by && a.by.t !== (SGB.att ?? 0) && a.by.x >= 1000 && a.by.x <= 1050) d *= 1.3;   // výstrel z hradieb
             d *= Math.min(1.3, .55 + Math.hypot(a.vx, a.vy, a.vz) / 14);   // rýchlejšia strela zraní viac
             if (zone === 'horse' && !v.h) { d *= .6; zone = Math.random() < .5 ? 'legs' : 'horse'; }
+            if (fr) { hitZ(v, d, null, { zone, type: 'p', ranged: 1 }); if (a.by && a.by.h) wbMsg(v.hp > 0 ? 'Trafil si vlastného vojaka!' : 'Zabil si vlastného vojaka!', '#ff9a80'); a.l = 0; a.hitU = v; a.hz = zr; break; }
             hitZ(v, d, a.by, { zone, type: 'p', ranged: 1 });
             a.l = 0; a.hitU = v; a.hz = zr; break;
         }

@@ -35,6 +35,7 @@ function optGroups() {
             { l: 'Krv v bitke', v: () => yn(OPT.blood), fn: () => set('blood', !OPT.blood), tip: 'Krvavé stopy a škvrny v bitke.' },
             { l: 'Výdrž', v: () => OPT.noStam !== false ? 'vypnutá' : 'zapnutá', fn: () => set('noStam', OPT.noStam === false), tip: 'Bez výdrže ako vo Warbande; so zapnutou výdržou je boj ťažší.' },
             { l: 'Smer krytu', v: () => OPT.blkDir === 'manual' ? 'myšou' : 'auto', fn: () => set('blkDir', OPT.blkDir === 'manual' ? 'auto' : 'manual'), tip: 'Myšou: kryt smeruješ pohybom myši k úderu (ako Warband).' },
+            { l: 'Zásahy vlastných', v: () => yn(OPT.ff !== false), fn: () => set('ff', OPT.ff === false), tip: 'Ako vo Warbande: šípy aj tvoje údery zhora a body môžu zraniť vlastných vojakov v ceste.' },
             { l: 'Pauza pri údere', v: () => OPT.hitstop ? 'áno' : 'nie', fn: () => set('hitstop', !OPT.hitstop), tip: 'Krátke zastavenie obrazu pri ťažkom údere. Vypnuté = plynulejší boj.' }
         ] },
         { t: 'Bitka 3D', items: [

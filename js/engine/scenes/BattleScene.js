@@ -219,7 +219,7 @@ class BattleScene extends Phaser.Scene {
         }
         for (const [u, o] of this.units) if (o.flag && u.hp <= 0) { o.flag.destroy(); o.flag = null; }
         if (this.water) this.water.tilePositionY -= delta * .02;
-        const vw = W / BZ / 2, vh = H / BZ / 2, h = U[0];
+        const vw = W / BZ / 2, vh = H / BZ / 2, h = typeof camUnit === 'function' ? camUnit() : U[0];   // po páde hrdinu sleduje tvojich vojakov
         this.cameras.main.centerOn(Math.max(vw, Math.min(BFW - vw, h.x)), Math.max(vh, Math.min(BFH - vh, h.y)));
         this.drawAura();
         this.drawNight();
