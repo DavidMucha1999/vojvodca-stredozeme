@@ -67,7 +67,7 @@ const M3 = (() => {
             const x = i * CX, y = j * CY; let w = 0;
             if (GEO.still(x / K, y / K) || GEO.riverAt(x / K, y / K, 1.6)) { w = 1; for (const c of cr) if (Math.abs(c[0] - x) < 44 && Math.abs(c[1] - y) < 44 && Math.hypot(c[0] - x, c[1] - y) < 44) { w = 0; break; } }
             wet[j * NX + i] = w;
-            hg[j * NX + i] = 7 + (vn(x / 700, y / 700) * 2 - 1) * 14 + (vn(x / 210, y / 210) * 2 - 1) * 5 + (vn(x / 70, y / 70) * 2 - 1) * 1.5;
+            hg[j * NX + i] = 16 + (vn(x / 700, y / 700) * 2 - 1) * 10 + (vn(x / 210, y / 210) * 2 - 1) * 4 + (vn(x / 70, y / 70) * 2 - 1) * 1.5;   // nad hladinou vody (−3)
         }
         for (let pass = 0; pass < 2; pass++) { const c = wet.slice(); for (let j = 1; j < NY - 1; j++) for (let i = 1; i < NX - 1; i++) { let s = 0; for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) s += c[(j + dj) * NX + i + di]; wet[j * NX + i] = s / 9; } }
         for (const m of TR.mountains) {
@@ -77,10 +77,10 @@ const M3 = (() => {
                 hg[j * NX + i] += amp * Math.exp(-q * q * 1.3) * (.82 + .36 * vn(x / 55, y / 55));
             }
         }
-        for (let k = 0; k < hg.length; k++) { const s = sm(.12, .7, wet[k]); hg[k] = hg[k] * (1 - s) + -18 * s; }
+        for (let k = 0; k < hg.length; k++) { const s = sm(.14, .55, wet[k]); hg[k] = hg[k] * (1 - s) + -18 * s; }
         for (const t of TW) {   // hrad stojí na rovine
             const r1 = 150; for (let j = Math.max(0, Math.floor((t.y - r1) / CY)); j <= Math.min(GY, Math.ceil((t.y + r1) / CY)); j++) for (let i = Math.max(0, Math.floor((t.x - r1) / CX)); i <= Math.min(GX, Math.ceil((t.x + r1) / CX)); i++) {
-                const d = Math.hypot(i * CX - t.x, j * CY - t.y), k = j * NX + i; if (hg[k] < -2) continue; const q = 1 - sm(70, r1, d); hg[k] = hg[k] * (1 - q) + 9 * q;
+                const d = Math.hypot(i * CX - t.x, j * CY - t.y), k = j * NX + i; if (hg[k] < -2 && d > 130) continue; const q = d < 90 ? 1 : 1 - sm(90, r1, d); hg[k] = hg[k] * (1 - q) + 14 * q;
             }
         }
         // farby
@@ -152,7 +152,21 @@ const M3 = (() => {
         8: { wall: '#d8d4b8', wall2: '#bcb890', roof: '#b0a050', dark: '#7a8a5a', flag: '#e6d56a', gate: '#3a3a20' }
     };
     function flag(M, P, x, y0, z, h = 26) { M.cy('#3a2a1a', x, y0, z, .9, h); M.bx(P.flag, x + 5, y0 + h - 9, z, 10, 7, .6); }
-    function tower(M, P, x, y0, z, r, h, roof = true, rh = null) { M.cy(P.wall, x, y0, z, r, h); M.cy(P.wall2, x, y0 + h - 4, z, r + 1.6, 4); if (roof) M.cn(P.roof, x, y0 + h, z, r + 2.5, rh ?? r * 2.4); }
+    function slit(M, x, y, z, a, h = 5) { M.bx('#14100c', x, y, z, 1.4, h, 1.4, a); }
+    /** Okná na štyroch stranách kvádra (cx, cz stred, w × d pôdorys, výška h od y0). */
+    function windows(M, cx, y0, cz, w, d, h, cols, rows, col = '#2a2420') {
+        for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+            const u = (c + .5) / cols - .5, y = y0 + h * (r + .55) / (rows + .1);
+            M.bx(col, cx + u * w, y, cz + d / 2 + .2, 2.6, 4.2, .7); M.bx(col, cx + u * w, y, cz - d / 2 - .2, 2.6, 4.2, .7);
+            M.bx(col, cx + w / 2 + .2, y, cz + u * d, .7, 4.2, 2.6); M.bx(col, cx - w / 2 - .2, y, cz + u * d, .7, 4.2, 2.6);
+        }
+    }
+    function tower(M, P, x, y0, z, r, h, roof = true, rh = null) {
+        M.cy(P.wall, x, y0, z, r, h); M.cy(P.wall2, x, y0 + h - 4, z, r + 1.6, 4); M.cy(P.wall2, x, y0, z, r + 1.2, 5);
+        for (let i = 0; i < 4; i++) { const a = i * 1.5708 + .4; slit(M, x + Math.cos(a) * r, y0 + h * .55, z + Math.sin(a) * r, -a); }
+        if (roof) M.cn(P.roof, x, y0 + h, z, r + 2.5, rh ?? r * 2.4);
+        else for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283; M.bx(P.wall2, x + Math.cos(a) * (r + .6), y0 + h, z + Math.sin(a) * (r + .6), 2.6, 3.4, 2.6, -a); }
+    }
     function ringWall(M, P, R, h, n, y0 = 0, tw = 8, teeth = true, arc = null) {
         for (let i = 0; i < n; i++) {
             const a = (arc ? arc[0] + (arc[1] - arc[0]) * (i + .5) / n : (i + .5) / n * 6.283), len = 2 * R * Math.sin((arc ? (arc[1] - arc[0]) / n : 6.283 / n) / 2) + 1.5, x = Math.cos(a) * R, z = Math.sin(a) * R, ry = -a - Math.PI / 2;
@@ -167,6 +181,9 @@ const M3 = (() => {
         ringWall(M, P, R, 30, 12, 0, 8 * k);
         M.bx(P.wall, 0, 0, R, 24, 40, 16); M.bx(P.gate, 0, 0, R + 8.2, 11, 22, .6); M.bx(P.wall2, -12, 40, R, 4, 4, 16); M.bx(P.wall2, 12, 40, R, 4, 4, 16);
         M.bx(P.wall, 0, 0, 0, 32 * k, 46, 32 * k); M.bx(P.wall2, 0, 46, 0, 36 * k, 4, 36 * k);
+        windows(M, 0, 8, 0, 32 * k, 32 * k, 36, 3, 2); windows(M, 0, 2, R, 24, 16, 30, 2, 1);
+        M.cy(P.gate, 0, 0, R + 8.1, 6, 20); M.bx(P.gate, 0, 0, R + 8.1, 12, 14, .8);
+        for (const [x, z, ry] of [[-34, 22, .3], [30, 28, -.2], [-30, -26, .1], [32, -30, 0]]) { M.bx(P.wall2, x * k, 0, z * k, 13, 9, 10, ry); M.pr(P.roof, x * k, 9, z * k, 15, 7, 12, ry); }
         for (const [sx, sz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) tower(M, P, sx * 16 * k, 0, sz * 16 * k, 5, 62, true, 16);
         tower(M, P, 0, 46, 0, 9 * k, 40, true, 30); flag(M, P, 0, 116, 0, 24);
         if (f === 2 || f === 3) for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283; M.cn(P.roof, Math.cos(a) * R, 46, Math.sin(a) * R, 2.2, 26); }
@@ -181,11 +198,15 @@ const M3 = (() => {
                 const n = 22 - i * 2; for (let q = 0; q < n; q++) { const a = Math.PI * (.12 + .76 * q / (n - 1)); if (q % 2 === 0) M.bx('#cfcabb', Math.cos(a) * (r + 1), y0 + 37.5, z0 + Math.sin(a) * (r + 1), 5, 3, 5, -a); }
                 if (i < 6) for (let q = 0; q < 4; q++) { const a = Math.PI * (.2 + .2 * q); M.bx('#e8e4d8', Math.cos(a) * r * .75, y0 + 34, z0 + Math.sin(a) * r * .75, 16, 12 + (q % 2) * 6, 12, -a); M.pr('#4a78aa', Math.cos(a) * r * .75, y0 + 46 + (q % 2) * 6, z0 + Math.sin(a) * r * .75, 18, 6, 14, -a); }
             }
-            M.bx('#2a2622', 0, 0, 176, 22, 26, 4); M.cy('#2a2622', 0, 0, 175, 11, 26);   // Veľká brána
+            M.bx('#14100c', 0, 0, 176, 22, 30, 4); M.cy('#14100c', 0, 0, 175.5, 11, 30); M.bx('#e8e4d8', -22, 0, 172, 14, 50, 12); M.bx('#e8e4d8', 22, 0, 172, 14, 50, 12); M.cn('#4a78aa', -22, 50, 172, 9, 18); M.cn('#4a78aa', 22, 50, 172, 9, 18);   // Veľká brána s vežami
+            for (let i = 0; i < 7; i++) for (const sd of [-1, 1]) { const r = 175 - i * 19, a = Math.PI * (sd < 0 ? .92 : .08), x = Math.cos(a) * (r - 2), z = -i * 11 + Math.sin(a) * (r - 2); M.cy('#ece8dc', x, i * 30, z, 7, 46); M.cn('#4a78aa', x, i * 30 + 46, z, 8.5, 16); }   // bašty na koncoch stupňov
+            for (let i = 0; i < 7; i++) { const r = 175 - i * 19, z = -i * 11 + r * .98; M.bx('#14100c', 0, i * 30, z - 2, 10, 18, 1.6); }   // brány v každom stupni
             M.bx('#f0ecdf', 0, 0, 20, 10, 218, 14); M.bx('#f6f2e6', 0, 218, 20, 14, 5, 16);     // ostroha (múr, ktorý rozdeľuje mesto ako kýl lode)
             M.cy('#f4f0e4', 0, 214, -60, 11, 120); M.cy('#dcd8cb', 0, 330, -60, 13, 6); M.cn('#c8d6e8', 0, 336, -60, 12.5, 70); M.cy('#9a8a50', 0, 400, -60, .8, 22);   // Ecthelionova veža
             M.cy('#e8e4d8', 24, 214, -60, 5, 46); M.cn('#4a78aa', 24, 260, -60, 6.5, 14);
             M.bx('#f6f2e6', 0, 214, -34, 4, 14, 4); M.add('cone5', '#ffffff', [0, 236, -30], [0, 0, 0], [8, 14, 8]);   // Biely strom
+            for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; M.cy('#f4f0e4', Math.cos(a) * 12, 214, -60 + Math.sin(a) * 12, 1.6, 130 + (i % 2) * 14); }   // štíhle okrajové veže citadely
+            M.cy('#e8e4d8', 0, 214, -60, 15, 8); M.bx('#f6f2e6', 0, 330, -60, 3.5, 5, 3.5, .78); flag(M, { flag: '#f4f0e4' }, 0, 405, -60, 26);   // zástava Strážcov
         },
         Edoras(M, P) {   // pahorok so Zlatou sieňou Meduseld
             M.add('cone', '#5a7a34', [0, 36, 0], [0, 0, 0], [250, 72, 250]); M.cy('#6a8a3c', 0, 70, 0, 78, 4);
@@ -197,15 +218,26 @@ const M3 = (() => {
             flag(M, { flag: '#3a8a3a' }, 0, 120, 0, 28);
             for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283 + .2; M.add('hemi', '#4a6a2a', [Math.cos(a) * 128, 4, Math.sin(a) * 128], [0, 0, 0], [30, 18, 30]); }   // mohyly kráľov
         },
-        'Helmov žľab'(M, P) {   // Hornburg na skale a Hlboký múr cez žľab
-            M.add('cone', '#6a6660', [-70, 70, -60], [0, 0, 0], [220, 140, 180]);
-            M.bx('#9a9488', 0, 0, 40, 220, 50, 14); for (let q = -10; q <= 10; q++) M.bx('#837d72', q * 10, 50, 40, 6, 5, 15);
-            M.bx('#2a2622', -10, 0, 47.5, 20, 24, 2); M.bx('#8a8478', 0, 0, 62, 10, 12, 30);
-            tower(M, { wall: '#9a9488', wall2: '#837d72', roof: '#4a5a6a' }, -110, 0, 40, 14, 66, false); tower(M, { wall: '#9a9488', wall2: '#837d72', roof: '#4a5a6a' }, 110, 0, 40, 14, 66, false);
-            M.bx('#8e887c', -80, 70, -40, 56, 44, 56); M.cy('#9a9488', -80, 114, -40, 14, 44); M.cn('#4a5a6a', -80, 158, -40, 17, 34);   // Hornburg
-            for (const [x, z] of [[-110, -40], [-50, -42], [-110, -75], [-50, -78]]) tower(M, { wall: '#8e887c', wall2: '#757065', roof: '#4a5a6a' }, x, 70, z, 7, 44, true, 14);
-            flag(M, { flag: '#7aa84a' }, -80, 158, -40, 20);
-            M.bx('#787268', 180, 0, 60, 120, 38, 10, .1); M.bx('#787268', -170, 0, 60, 90, 38, 10, -.1);   // svahy žľabu a múr
+        'Helmov žľab'(M, P) {   // Hornburg na skalnom výbežku, Hlboký múr cez žľab, rampa a strmé svahy
+            const S = { wall: '#a8a296', wall2: '#8a8478', roof: '#4a5a6a' };
+            M.add('cone', '#7a746a', [-85, 85, -55], [0, 0, 0], [270, 170, 230]); M.add('cone', '#6a645a', [-30, 55, -20], [0, 0, 0], [210, 110, 170]);
+            M.add('cone', '#6e6860', [225, 62, 20], [0, 0, 0], [300, 125, 230]); M.add('cone', '#5e5850', [-240, 52, 50], [0, 0, 0], [260, 105, 200]);   // svahy žľabu
+            M.bx(S.wall, 0, 0, 48, 250, 58, 14);
+            for (let q = -12; q <= 12; q++) M.bx(S.wall2, q * 10, 58, 48, 6, 5, 15);
+            for (let q = -11; q <= 11; q += 2) M.bx(S.wall2, q * 10, 0, 56, 6, 64, 4);
+            for (let q = -12; q <= 12; q += 3) slit(M, q * 10, 30, 55.2, 0, 7);
+            M.bx('#14100c', -32, 0, 55.4, 20, 30, 1); M.bx('#4a3a26', -32, 0, 55.9, 18, 28, .6);   // brána
+            M.bx(S.wall2, 0, 58, 40, 250, 3, 4);                                                    // ochodza
+            tower(M, S, -125, 0, 48, 15, 80, false); tower(M, S, 125, 0, 48, 15, 80, false); tower(M, S, 0, 0, 48, 13, 76, false);
+            tower(M, S, -62, 0, 48, 11, 70, false); tower(M, S, 62, 0, 48, 11, 70, false);
+            M.bx('#7a8a8a', 118, 0, 52, 24, 3, 20);   // vodný kanál (Deeping Stream)
+            // Hornburg: nádvorie na skale, hradba, veža a rampa
+            M.bx(S.wall, -85, 88, -40, 78, 6, 70);
+            M.bx(S.wall, -85, 94, -40, 38, 46, 38); windows(M, -85, 98, -40, 38, 38, 36, 2, 2); M.cy(S.wall, -85, 140, -40, 14, 64); M.cy(S.wall2, -85, 200, -40, 16.5, 5); M.cn(S.roof, -85, 205, -40, 17, 42);
+            for (const [x, z] of [[-110, -62], [-60, -62], [-110, -18], [-60, -18]]) tower(M, S, x, 94, z, 7, 46, true, 16);
+            M.add('box', S.wall2, [-52, 56, 22], [-.62, 0, 0], [16, 3, 98]);   // rampa z nádvoria dolu k múru
+            flag(M, { flag: '#7aa84a' }, -85, 247, -40, 22);
+            for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283; M.bx('#8a8478', -85 + Math.cos(a) * 33, 94, -40 + Math.sin(a) * 33, 7, 6 + (i % 2) * 3, 7, -a); }
         },
         'Barad-dûr'(M, P) {   // čierna pevnosť Sauronova na skalnom výbežku, Oko
             M.add('cone', '#26201e', [0, 70, 0], [0, 0, 0], [300, 140, 300]);
@@ -222,10 +254,16 @@ const M3 = (() => {
             M.cy('#2a2a32', 0, 260, 0, 27, 6); for (let i = 0; i < 4; i++) { const a = i / 4 * 6.283 + .7; M.cn5('#14141a', Math.cos(a) * 22, 262, Math.sin(a) * 22, 4, 26); }
             for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283; M.cy('#3a3a40', Math.cos(a) * 100, 0, Math.sin(a) * 100, 6, 22 + (i % 3) * 6); }
         },
-        Erebor(M, P) {   // Osamelá hora s bránou
-            M.add('cone', '#6a6a70', [0, 120, -40], [0, 0, 0], [340, 240, 300]); M.add('cone', '#7e7e86', [-60, 80, -10], [0, 0, 0], [180, 160, 160]);
-            M.bx('#3a3a40', 0, 0, 100, 60, 56, 26); M.bx('#0e0e12', 0, 0, 113.2, 34, 40, 1); M.bx('#8a8a92', -24, 0, 112, 6, 62, 8); M.bx('#8a8a92', 24, 0, 112, 6, 62, 8); M.bx('#8a8a92', 0, 56, 112, 62, 8, 8);
-            for (let i = 0; i < 6; i++) { const a = Math.PI * (.2 + .12 * i); M.bx('#7a7a82', Math.cos(a) * 100, 0, Math.sin(a) * 100 + 20, 24, 10 + i * 3, 12, -a); }
+        Erebor(M, P) {   // Osamelá hora s hrebeňmi, snehovou čiapkou a bránou Trpaslíkov
+            M.add('cone', '#6a6a70', [0, 135, -50], [0, 0, 0], [300, 270, 260]); M.add('cone', '#fafcff', [0, 252, -50], [0, 0, 0], [84, 66, 76]);   // vrchol so snehom
+            for (let i = 0; i < 5; i++) { const a = Math.PI * (.15 + .175 * i) + .1, x = Math.cos(a) * 130, z = -50 - Math.sin(a) * 90 + 90; M.add('cone', i % 2 ? '#5e5e66' : '#74747c', [x, 55 + (i % 3) * 14, z - 60], [0, 0, .08 * (i - 2)], [110, 120 + (i % 3) * 30, 100]); }   // hrebene
+            M.add('cone', '#74747c', [-100, 50, 30], [0, 0, 0], [130, 100, 110]); M.add('cone', '#5e5e66', [105, 44, 36], [0, 0, 0], [120, 88, 100]);
+            M.bx('#8a8a92', 0, 0, 96, 92, 8, 46); M.bx('#8a8a92', 0, 8, 100, 80, 6, 34); M.bx('#9a9aa2', 0, 14, 104, 68, 6, 24);   // schody pred bránou
+            M.bx('#4a4a52', 0, 20, 100, 66, 62, 26); M.bx('#0c0c10', 0, 20, 113.4, 30, 44, 1);
+            for (const sx of [-1, 1]) { for (let q = 0; q < 3; q++) M.bx('#a8a8b0', sx * (22 + q * 7), 20, 114, 4, 58, 4); M.bx('#a8a8b0', sx * 33, 78, 113, 8, 6, 6); }
+            M.bx('#a8a8b0', 0, 64, 114, 34, 6, 5); M.add('cone5', '#d8b24a', [0, 74, 112], [0, 0, 0], [12, 14, 6]);   // zlatý erb nad bránou
+            for (let q = -2; q <= 2; q++) M.cy('#a0a0a8', q * 14, 0, 124, 3, 14); M.bx('#8a8a92', 0, 14, 124, 76, 3, 8);
+            for (let i = 0; i < 6; i++) { const a = Math.PI * (.12 + .15 * i); M.bx('#7a7a82', Math.cos(a) * 110, 0, Math.sin(a) * 110 + 30, 24, 10 + i * 3, 12, -a); }
         },
         Hobitov(M, P) {   // pahorok s okrúhlymi dverami
             M.dome('#5f8a3a', 0, 0, 0, 90, 56); M.dome('#6a9a42', 60, 0, 40, 42, 28); M.dome('#6a9a42', -64, 0, 30, 46, 30);
@@ -245,12 +283,18 @@ const M3 = (() => {
             M.bx('#aaa698', -26, 4, 0, 18, 6, 22); M.bx('#aaa698', 26, 4, 0, 18, 6, 22); M.cy('#b4b0a0', 0, 0, 0, 5, 18);
             M.bx('#6a6a70', 44, 0, 62, 20, 36, 20); M.cn5('#4a5a6a', 44, 36, 62, 14, 18);
         },
-        Rivendell(M, P) {   // terasy, strechy a most nad roklinou
-            M.add('cone', '#6a7a54', [0, 50, -30], [0, 0, 0], [240, 100, 200]);
-            for (let i = 0; i < 4; i++) { M.cy('#d8d0b0', 0, i * 22, -i * 8, 70 - i * 14, 24); }
-            for (const [x, y, z, r] of [[-30, 26, 10, 12], [34, 48, -6, 14], [0, 70, -24, 16], [-40, 4, 50, 10], [48, 4, 44, 12]]) { M.cy('#e6dfc0', x, y, z, r * .55, 22); M.cn('#b4903c', x, y + 22, z, r, 24); }
-            M.bx('#d8d0b0', 0, 0, 94, 110, 6, 10); for (let q = -4; q <= 4; q++) M.cy('#e6dfc0', q * 12, 0, 94, 1.4, 14);
-            for (let i = 0; i < 9; i++) { const a = i / 9 * 6.283; M.cy('#4a3a20', Math.cos(a) * 120, 0, Math.sin(a) * 100, 3, 36); M.dome('#c8782a', Math.cos(a) * 120, 36, Math.sin(a) * 100, 16, 14); }
+        Rivendell(M, P) {   // Elrondov dom: terasy nad roklinou, zlaté strechy, altánky, oblúkový most a vodopád
+            M.add('cone', '#6a7a54', [0, 26, -30], [0, 0, 0], [280, 52, 220]); M.cy('#d8d0b0', 0, 0, 0, 86, 14); M.cy('#e6dfc0', 0, 14, -8, 62, 8); M.cy('#ece6cc', 0, 22, -14, 40, 6);
+            const H = [[-46, 14, 4, 14, 30], [44, 14, 0, 16, 38], [0, 28, -20, 20, 54], [-10, 14, 40, 11, 24], [64, 14, 36, 9, 20], [-66, 14, 34, 10, 22], [-26, 28, -44, 9, 26], [30, 28, -44, 10, 30]];
+            for (const [x, y, z, r, h] of H) {
+                M.cy('#ece6cc', x, y, z, r * .75, h); M.cy('#d8d0b0', x, y + h - 3, z, r * .9, 3);
+                for (let q = 0; q < 6; q++) { const a = q / 6 * 6.283; M.cy('#f2ecd4', x + Math.cos(a) * r * .8, y, z + Math.sin(a) * r * .8, 1.1, h - 3); }
+                M.cn('#c19a3e', x, y + h, z, r * 1.15, r * 1.5); M.add('sph', '#e8c860', [x, y + h + r * 1.5, z], [0, 0, 0], [3, 3, 3]);
+            }
+            for (let i = -6; i <= 6; i++) { const y = 3 + (36 - i * i) * .22; M.bx('#d8d0b0', i * 9, y, 98, 10, 2.2, 10); if (i % 2 === 0) { M.cy('#ece6cc', i * 9, 0, 98, 1.6, y); M.bx('#e6dfc0', i * 9, y + 2, 93.2, 2, 6, 1.2); M.bx('#e6dfc0', i * 9, y + 2, 102.8, 2, 6, 1.2); } }
+            M.bx('#e6dfc0', -60, 0, 98, 14, 8, 14); M.bx('#e6dfc0', 60, 0, 98, 14, 8, 14);
+            M.bx('#cfe6f0', 92, 0, -30, 7, 44, 3); M.dome('#b8d8e4', 92, 0, -26, 10, 3);   // vodopád
+            for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283 + .2, r = 112 + (i % 3) * 8; M.cy('#4a3a20', Math.cos(a) * r, 0, Math.sin(a) * r * .85, 2.6, 28 + (i % 4) * 4); M.add('sph', ['#c8782a', '#d8a030', '#b85a22'][i % 3], [Math.cos(a) * r, 40 + (i % 4) * 4, Math.sin(a) * r * .85], [0, 0, 0], [26, 24, 26]); }
         }
     };
     function castleGeo(t) {
