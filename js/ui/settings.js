@@ -38,6 +38,9 @@ function optGroups() {
             { l: 'Zásahy vlastných', v: () => yn(OPT.ff !== false), fn: () => set('ff', OPT.ff === false), tip: 'Ako vo Warbande: šípy aj tvoje údery zhora a body môžu zraniť vlastných vojakov v ceste.' },
             { l: 'Pauza pri údere', v: () => OPT.hitstop ? 'áno' : 'nie', fn: () => set('hitstop', !OPT.hitstop), tip: 'Krátke zastavenie obrazu pri ťažkom údere. Vypnuté = plynulejší boj.' }
         ] },
+        { t: 'Mapa 3D', items: [
+            { l: 'Zobrazenie mapy', v: () => OPT.map3d === false ? '2D zhora' : '3D', fn: () => set('map3d', OPT.map3d === false), tip: '3D krajina, hrady a postavy, alebo klasická 2D mapa zhora (rýchlejšia na slabšom počítači). Otáčanie kamery: Q a E alebo pravé tlačidlo myši.' }
+        ] },
         { t: 'Bitka 3D', items: [
             { l: 'Zobrazenie', v: () => OPT.b3d === false ? '2D zhora' : '3D', fn: () => set('b3d', OPT.b3d === false), tip: '3D pohľad za hrdinom alebo klasický 2D pohľad zhora.' },
             { l: 'Grafika', v: () => ({ low: 'nízka', med: 'stredná', high: 'vysoká', ultra: 'ultra' }[OPT.gfx] || 'vysoká'), fn: () => set('gfx', { low: 'med', med: 'high', high: 'ultra', ultra: 'low' }[OPT.gfx] || 'ultra'), tip: 'Nízka je najrýchlejšia, ultra potrebuje silný počítač.' },

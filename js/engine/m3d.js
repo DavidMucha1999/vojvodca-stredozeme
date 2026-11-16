@@ -1,0 +1,424 @@
+/*
+ * ENGINE: 3D mapa (Three.js). Hra na mape ostáva rovnaká (js/sim, hľadanie cesty v nav.js), mení sa len zobrazenie:
+ *   – krajina: výškové pole z MAPDATA a GEO (hory z reťazí, rieky, jazerá a more vyhĺbené, hrady a cesty zarovnané), vrcholové farby podľa druhu zeme,
+ *     skaly a sneh podľa výšky, cesty ako vyšliapaná zem, voda s priehľadnou hladinou, lesy ako instancované stromy;
+ *   – hrdina a velitelia sú postavy z 3D bitky (B3.kit.rig): rovnaký avatar a výbava, kôň, zástava; chôdza a cval podľa rýchlosti;
+ *   – dediny sú domčeky, hrady modely z dielov: stavebnica podľa frakcie a vlastné modely (Minas Tirith v siedmich stupňoch, Edoras, Helmov žľab,
+ *     Barad-dûr, Isengard s Orthancom, Erebor, Hobitov, Minas Morgul, Osgiliath, Rivendell) podľa opisov v Tolkienových knihách;
+ *   – kamera: šikmo zhora, koliesko približuje (Z z mapy), Q a E alebo pravé tlačidlo otáčajú; klik na zem sa premieta lúčom do súradníc sveta.
+ * Phaser (MapScene) beží ďalej: počíta pohyb, hľadá objekty pod kurzorom a kreslí štítky, ktoré sa sem premietajú z 3D polohy.
+ * Súradnice: x sveta = X, y sveta = Z, výška = Y (jednotka je pixel sveta, postava ≈ 26 × 2,2 jednotiek).
+ */
+const M3 = (() => {
+    const T = () => window.THREE, FS = 2.6, GX = 300, GY = 200, CX = WW / GX, CY = WH / GY, NX = GX + 1;
+    let on = false, failed = false, R = null, canvas = null, scene3 = null, cam3 = null, hemi = null, sun = null, fogc = null, terrain = null, water = null;
+    let hg = null, castles = [], fig = new Map(), hero = null, yaw = 0, pitch = .95, fw = 0, fh = 0, clock = 0, route = null, mark = null, shadowG = null, shadowM = null, rings = {}, vills = null, treeM = [], drag = null, bud = 0, tgtKey = '';
+    const hs = (x, y) => { const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return n - Math.floor(n); };
+    const vn = (x, y) => { const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy); return (hs(ix, iy) * (1 - u) + hs(ix + 1, iy) * u) * (1 - v) + (hs(ix, iy + 1) * (1 - u) + hs(ix + 1, iy + 1) * u) * v; };
+    const sm = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+    const want = () => typeof OPT !== 'undefined' ? OPT.map3d !== false && !failed && typeof B3 !== 'undefined' && B3.want() : !failed;
+
+    /** Výška krajiny v bode sveta (dvojlineárne z mriežky). */
+    function heightAt(x, y) {
+        if (!hg) return 0;
+        x = Math.max(0, Math.min(WW - .01, x)); y = Math.max(0, Math.min(WH - .01, y));
+        const fx = x / CX, fy = y / CY, i = fx | 0, j = fy | 0, u = fx - i, v = fy - j, k = j * NX + i;
+        return (hg[k] * (1 - u) + hg[k + 1] * u) * (1 - v) + (hg[k + NX] * (1 - u) + hg[k + NX + 1] * u) * v;
+    }
+
+    // ---------- zlučovanie dielov do jednej siete s farbami vrcholov ----------
+    let SH = null;
+    function shapes() {
+        if (SH) return SH; const t = T();
+        const prism = (() => { const A = [-.5, -.5, -.5], B = [.5, -.5, -.5], C = [.5, -.5, .5], D = [-.5, -.5, .5], E = [-.5, .5, 0], F = [.5, .5, 0], tr = [[A, F, B], [A, E, F], [C, E, D], [C, F, E], [A, D, E], [C, B, F]];
+            const g = new t.BufferGeometry(); g.setAttribute('position', new t.Float32BufferAttribute(tr.flat(2), 3)); g.computeVertexNormals(); return g; })();
+        return (SH = { box: new t.BoxGeometry(1, 1, 1), cyl: new t.CylinderGeometry(.5, .5, 1, 10), cyl6: new t.CylinderGeometry(.5, .5, 1, 6), cone: new t.ConeGeometry(.5, 1, 10), cone5: new t.ConeGeometry(.5, 1, 5), sph: new t.SphereGeometry(.5, 12, 8), hemi: new t.SphereGeometry(.5, 14, 6, 0, Math.PI * 2, 0, Math.PI / 2), prism });
+    }
+    function Mesher() {
+        const t = T(), pos = [], nor = [], col = [], S = shapes();
+        const me = {
+            add(shape, color, p, r, s) {
+                const g0 = S[shape], m = new t.Matrix4().compose(new t.Vector3(...p), new t.Quaternion().setFromEuler(new t.Euler(...r)), new t.Vector3(...s)), g = g0.index ? g0.toNonIndexed() : g0.clone();
+                g.applyMatrix4(m); const P = g.attributes.position.array, N = g.attributes.normal.array, c = new t.Color(color);
+                for (let i = 0; i < P.length; i += 3) { pos.push(P[i], P[i + 1], P[i + 2]); nor.push(N[i], N[i + 1], N[i + 2]); col.push(c.r, c.g, c.b); }
+                g.dispose(); return me;
+            },
+            bx: (c, x, y0, z, w, h, d, ry = 0) => me.add('box', c, [x, y0 + h / 2, z], [0, ry, 0], [w, h, d]),
+            cy: (c, x, y0, z, rad, h, ry = 0) => me.add('cyl', c, [x, y0 + h / 2, z], [0, ry, 0], [rad * 2, h, rad * 2]),
+            cn: (c, x, y0, z, rad, h, ry = 0) => me.add('cone', c, [x, y0 + h / 2, z], [0, ry, 0], [rad * 2, h, rad * 2]),
+            cn5: (c, x, y0, z, rad, h, ry = 0) => me.add('cone5', c, [x, y0 + h / 2, z], [0, ry, 0], [rad * 2, h, rad * 2]),
+            pr: (c, x, y0, z, w, h, d, ry = 0) => me.add('prism', c, [x, y0 + h / 2, z], [0, ry, 0], [w, h, d]),
+            dome: (c, x, y0, z, rad, h) => me.add('hemi', c, [x, y0, z], [0, 0, 0], [rad * 2, h * 2, rad * 2]),
+            build() {
+                const g = new t.BufferGeometry(); g.setAttribute('position', new t.BufferAttribute(new Float32Array(pos), 3)); g.setAttribute('normal', new t.BufferAttribute(new Float32Array(nor), 3)); g.setAttribute('color', new t.BufferAttribute(new Float32Array(col), 3));
+                g.computeBoundingSphere(); return g;
+            }
+        };
+        return me;
+    }
+    const mkMesh = g => new (T().Mesh)(g, mat());
+    let MT = null; const mat = () => MT || (MT = new (T().MeshLambertMaterial)({ vertexColors: true }));
+
+    // ---------- krajina ----------
+    function buildField(sc) {
+        const TR = MAPDATA.terrain, NY = GY + 1; hg = new Float32Array(NX * NY);
+        const wet = new Float32Array(NX * NY), cr = GEO.CROSS.map(c => [c.x * K, c.y * K]);
+        for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
+            const x = i * CX, y = j * CY; let w = 0;
+            if (GEO.still(x / K, y / K) || GEO.riverAt(x / K, y / K, 1.6)) { w = 1; for (const c of cr) if (Math.abs(c[0] - x) < 44 && Math.abs(c[1] - y) < 44 && Math.hypot(c[0] - x, c[1] - y) < 44) { w = 0; break; } }
+            wet[j * NX + i] = w;
+            hg[j * NX + i] = 7 + (vn(x / 700, y / 700) * 2 - 1) * 14 + (vn(x / 210, y / 210) * 2 - 1) * 5 + (vn(x / 70, y / 70) * 2 - 1) * 1.5;
+        }
+        for (let pass = 0; pass < 2; pass++) { const c = wet.slice(); for (let j = 1; j < NY - 1; j++) for (let i = 1; i < NX - 1; i++) { let s = 0; for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) s += c[(j + dj) * NX + i + di]; wet[j * NX + i] = s / 9; } }
+        for (const m of TR.mountains) {
+            const mx = m[0] * K, my = m[1] * K, r = m[2] * K * .8, amp = m[2] * K * (m[3] === 'doom' ? 1.15 : m[3] === 'dark' ? .8 : .7) * (.85 + hs(m[0], m[1]) * .4), R2 = r * 1.8;
+            for (let j = Math.max(0, Math.floor((my - R2) / CY)); j <= Math.min(GY, Math.ceil((my + R2) / CY)); j++) for (let i = Math.max(0, Math.floor((mx - R2) / CX)); i <= Math.min(GX, Math.ceil((mx + R2) / CX)); i++) {
+                const x = i * CX, y = j * CY, d = Math.hypot(x - mx, y - my); if (d > R2) continue; const q = d / r;
+                hg[j * NX + i] += amp * Math.exp(-q * q * 1.3) * (.82 + .36 * vn(x / 55, y / 55));
+            }
+        }
+        for (let k = 0; k < hg.length; k++) { const s = sm(.12, .7, wet[k]); hg[k] = hg[k] * (1 - s) + -18 * s; }
+        for (const t of TW) {   // hrad stojí na rovine
+            const r1 = 150; for (let j = Math.max(0, Math.floor((t.y - r1) / CY)); j <= Math.min(GY, Math.ceil((t.y + r1) / CY)); j++) for (let i = Math.max(0, Math.floor((t.x - r1) / CX)); i <= Math.min(GX, Math.ceil((t.x + r1) / CX)); i++) {
+                const d = Math.hypot(i * CX - t.x, j * CY - t.y), k = j * NX + i; if (hg[k] < -2) continue; const q = 1 - sm(70, r1, d); hg[k] = hg[k] * (1 - q) + 9 * q;
+            }
+        }
+        // farby
+        const C = T().Color, pal = ['#4a6d33', '#5a6a36', '#6e6a3e', '#76603e', '#3a2a26', '#b8955a', '#d8dee6', '#24526a'].map(h => new C(h)), rock = new C('#5a5650'), rockD = new C('#2a2422'), snow = new C('#eef2f6'), sand = new C('#a8946a'), deep = new C('#0c2a38'), road = new C('#7e6a48'), tmp = new C();
+        const pos = new Float32Array(NX * NY * 3), col = new Float32Array(NX * NY * 3);
+        const rp = (sc && sc.roadPts) || [];
+        for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
+            const k = j * NX + i, x = i * CX, y = j * CY, h = hg[k], ti = Math.min(TR.cols - 1, x / (WW / TR.cols) | 0), tj = Math.min(TR.rows - 1, y / (WH / TR.rows) | 0), g = TR.ground[tj * TR.cols + ti] || 1, grp = Math.min(6, Math.floor((g - 1) / 4));
+            tmp.copy(pal[grp]); const vv = .88 + .24 * vn(x / 95, y / 95) + (hs(i, j) - .5) * .06; tmp.multiplyScalar(vv * 1.14);
+            const rg = regionAt(x, y), dk = rg === 'a';
+            const rk = sm(70, 150, h); if (rk > 0) tmp.lerp(dk ? rockD : rock, rk * .95);
+            if (!dk && rg !== 'd') { const sn = sm(170, 250, h + (rg === 's' ? 70 : 0)); if (sn > 0) tmp.lerp(snow, sn); }
+            const w = wet[k]; if (w > .03) { tmp.lerp(sand, sm(.03, .3, w) * .85); if (h < -2) tmp.lerp(deep, sm(-2, -16, h)); }
+            col[k * 3] = tmp.r; col[k * 3 + 1] = tmp.g; col[k * 3 + 2] = tmp.b; pos[k * 3] = x; pos[k * 3 + 1] = h; pos[k * 3 + 2] = y;
+        }
+        for (const p of rp) { const ci = Math.round(p.x / CX), cj = Math.round(p.y / CY); for (let j = cj - 1; j <= cj + 1; j++) for (let i = ci - 1; i <= ci + 1; i++) { if (i < 0 || j < 0 || i > GX || j > GY) continue; const k = j * NX + i; if (hg[k] < 0) continue; const d = Math.hypot(i * CX - p.x, j * CY - p.y), q = 1 - sm(10, 40, d); if (q <= 0) continue; col[k * 3] += (road.r - col[k * 3]) * q * .8; col[k * 3 + 1] += (road.g - col[k * 3 + 1]) * q * .8; col[k * 3 + 2] += (road.b - col[k * 3 + 2]) * q * .8; } }
+        const idx = new Uint32Array(GX * GY * 6); let n = 0;
+        for (let j = 0; j < GY; j++) for (let i = 0; i < GX; i++) { const a = j * NX + i, b = a + 1, c = a + NX, d = c + 1; idx[n++] = a; idx[n++] = c; idx[n++] = b; idx[n++] = b; idx[n++] = c; idx[n++] = d; }
+        const g = new (T().BufferGeometry)(); g.setAttribute('position', new (T().BufferAttribute)(pos, 3)); g.setAttribute('color', new (T().BufferAttribute)(col, 3)); g.setIndex(new (T().BufferAttribute)(idx, 1)); g.computeVertexNormals(); g.computeBoundingSphere();
+        terrain = new (T().Mesh)(g, new (T().MeshLambertMaterial)({ vertexColors: true })); scene3.add(terrain);
+        water = new (T().Mesh)(new (T().PlaneGeometry)(WW * 1.8, WH * 1.8).rotateX(-Math.PI / 2), new (T().MeshPhongMaterial)({ color: 0x2f6b8a, transparent: true, opacity: .84, shininess: 90, specular: 0x8fb0c0, depthWrite: false }));
+        water.position.set(WW / 2, -3, WH / 2); scene3.add(water);
+    }
+
+    function buildTrees(sc) {
+        const TR = MAPDATA.terrain, t = T(), cell = WW / TR.cols, road = new Set(); for (const p of (sc.roadPts || [])) road.add((p.x / 60 | 0) * 4096 + (p.y / 60 | 0));
+        const list = [];
+        for (let j = 0; j < TR.rows; j++) for (let i = 0; i < TR.cols; i++) {
+            const f = TR.forest[j * TR.cols + i]; if (f < 33) continue; const dead = f >= 37, n = dead ? 1 : 3 + (hs(i, j) * 2 | 0);
+            for (let q = 0; q < n; q++) {
+                const x = (i + hs(i * 3 + q, j)) * cell, y = (j + hs(i, j * 5 + q + 7)) * cell; if (heightAt(x, y) < -1 || road.has((x / 60 | 0) * 4096 + (y / 60 | 0))) continue;
+                if (TW.some(c => Math.abs(c.x - x) < 120 && Math.abs(c.y - y) < 120)) continue; list.push([x, y, dead, hs(x, y)]);
+            }
+        }
+        const cone = new t.ConeGeometry(1, 1, 7).translate(0, .5, 0), trunk = new t.CylinderGeometry(.5, .6, 1, 5).translate(0, .5, 0), m4 = new t.Matrix4(), q = new t.Quaternion(), e = new t.Euler(), c = new t.Color();
+        const A = new t.InstancedMesh(cone, new t.MeshLambertMaterial({ color: 0xffffff }), list.length), B = new t.InstancedMesh(trunk, new t.MeshLambertMaterial({ color: 0x4a3420 }), list.length);
+        list.forEach(([x, y, dead, r], k) => {
+            const h = heightAt(x, y), rad = 15 + r * 12, hh = (dead ? 40 : 66) + r * 40, rg = regionAt(x, y); e.set(0, r * 20, 0); q.setFromEuler(e);
+            m4.compose(new t.Vector3(x, h + 14, y), q, new t.Vector3(dead ? 6 : rad, hh, dead ? 6 : rad)); A.setMatrixAt(k, m4);
+            c.set(dead ? '#4a4038' : rg === 'a' ? '#3a3a32' : rg === 's' ? '#2c4a42' : ['#2c5a26', '#35672b', '#26501f', '#456e2c'][(r * 4) | 0]); c.multiplyScalar(.85 + r * .3); A.setColorAt(k, c);
+            m4.compose(new t.Vector3(x, h - 2, y), q, new t.Vector3(5 + r * 2, 22, 5 + r * 2)); B.setMatrixAt(k, m4);
+        });
+        A.instanceMatrix.needsUpdate = B.instanceMatrix.needsUpdate = true; A.frustumCulled = B.frustumCulled = false; scene3.add(A, B); treeM = [A, B];
+    }
+
+    function buildVillages() {
+        const M = Mesher();
+        for (const v of VL) {
+            const f = TW[v.t] ? TW[v.t].f : 0, evil = bloc(f) === 1 && f !== 4, burn = v.st > 0, n = 3 + (lvl(v) | 0);
+            for (let q = 0; q < n; q++) {
+                const a = q / n * 6.283 + hs(v.x, v.y) * 3, rr = q ? 12 + hs(q, v.x) * 16 : 0, x = v.x + Math.cos(a) * rr, z = v.y + Math.sin(a) * rr, y = Math.max(0, heightAt(x, z)), w = 13 + hs(q, v.y) * 6, d = 9 + hs(v.x, q) * 4, hh = 8 + hs(q + 3, v.x) * 3, ry = a;
+                M.bx(burn ? '#2a2420' : evil ? '#4a3a32' : ['#b8a888', '#c8b898', '#a89878'][q % 3], x, y, z, w, hh, d, ry);
+                M.pr(burn ? '#1a1410' : evil ? '#2a2420' : ['#8a6a3a', '#7a4a30', '#9a7a42'][q % 3], x, y + hh, z, w * 1.15, 7, d * 1.15, ry);
+            }
+        }
+        vills = mkMesh(M.build()); scene3.add(vills);
+    }
+
+    // ---------- hrady ----------
+    const PAL = {
+        0: { wall: '#e6e2d6', wall2: '#cfcabb', roof: '#4a78aa', dark: '#6a6a70', flag: '#e8e4da', gate: '#2a2622' },
+        1: { wall: '#8a6a44', wall2: '#6a4e30', roof: '#c4a850', dark: '#4a3a24', flag: '#7aa84a', gate: '#2a1c10' },
+        2: { wall: '#2e2a28', wall2: '#1c1a1a', roof: '#6a1a10', dark: '#1a1414', flag: '#b02a1a', gate: '#ff5a20' },
+        3: { wall: '#3c3c42', wall2: '#2a2a30', roof: '#22222a', dark: '#16161a', flag: '#8a8a94', gate: '#101014' },
+        4: { wall: '#cfa868', wall2: '#b08848', roof: '#b4361e', dark: '#8a6a38', flag: '#c98a2a', gate: '#3a2410' },
+        5: { wall: '#78787f', wall2: '#5e5e66', roof: '#3a5a8a', dark: '#3a3a40', flag: '#4a8fd0', gate: '#1a1a22' },
+        6: { wall: '#b8a888', wall2: '#9a8a6a', roof: '#8a4a30', dark: '#5a4a3a', flag: '#d9a441', gate: '#2a1c10' },
+        7: { wall: '#9a8a74', wall2: '#7a6a58', roof: '#7a2a5a', dark: '#4a3a34', flag: '#9a4a8a', gate: '#241818' },
+        8: { wall: '#d8d4b8', wall2: '#bcb890', roof: '#b0a050', dark: '#7a8a5a', flag: '#e6d56a', gate: '#3a3a20' }
+    };
+    function flag(M, P, x, y0, z, h = 26) { M.cy('#3a2a1a', x, y0, z, .9, h); M.bx(P.flag, x + 5, y0 + h - 9, z, 10, 7, .6); }
+    function tower(M, P, x, y0, z, r, h, roof = true, rh = null) { M.cy(P.wall, x, y0, z, r, h); M.cy(P.wall2, x, y0 + h - 4, z, r + 1.6, 4); if (roof) M.cn(P.roof, x, y0 + h, z, r + 2.5, rh ?? r * 2.4); }
+    function ringWall(M, P, R, h, n, y0 = 0, tw = 8, teeth = true, arc = null) {
+        for (let i = 0; i < n; i++) {
+            const a = (arc ? arc[0] + (arc[1] - arc[0]) * (i + .5) / n : (i + .5) / n * 6.283), len = 2 * R * Math.sin((arc ? (arc[1] - arc[0]) / n : 6.283 / n) / 2) + 1.5, x = Math.cos(a) * R, z = Math.sin(a) * R, ry = -a - Math.PI / 2;
+            M.bx(P.wall, x, y0, z, len, h, 6, ry);
+            if (teeth) for (let q = -2; q <= 2; q++) { const o = q * len / 5, tx = x + (-Math.sin(a)) * o, tz = z + Math.cos(a) * o; M.bx(P.wall2, tx, y0 + h, tz, len / 8, 3.2, 7, ry); }
+        }
+        for (let i = 0; i <= n; i++) { if (!arc && i === n) break; const a = arc ? arc[0] + (arc[1] - arc[0]) * i / n : i / n * 6.283; tower(M, P, Math.cos(a) * R, y0, Math.sin(a) * R, tw, h + 16); }
+    }
+    function generic(M, P, k, f) {
+        const R = 62 * k;
+        M.cy('#6a5a40', 0, 0, 0, R + 16, 2);
+        ringWall(M, P, R, 30, 12, 0, 8 * k);
+        M.bx(P.wall, 0, 0, R, 24, 40, 16); M.bx(P.gate, 0, 0, R + 8.2, 11, 22, .6); M.bx(P.wall2, -12, 40, R, 4, 4, 16); M.bx(P.wall2, 12, 40, R, 4, 4, 16);
+        M.bx(P.wall, 0, 0, 0, 32 * k, 46, 32 * k); M.bx(P.wall2, 0, 46, 0, 36 * k, 4, 36 * k);
+        for (const [sx, sz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) tower(M, P, sx * 16 * k, 0, sz * 16 * k, 5, 62, true, 16);
+        tower(M, P, 0, 46, 0, 9 * k, 40, true, 30); flag(M, P, 0, 116, 0, 24);
+        if (f === 2 || f === 3) for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283; M.cn(P.roof, Math.cos(a) * R, 46, Math.sin(a) * R, 2.2, 26); }
+    }
+    function mound(M, c, rad, h) { M.dome(c, 0, 0, 0, rad, h); }
+    const SPEC = {
+        'Minas Tirith'(M, P) {   // sedem kruhov hradieb na výbežku Mindolluinu, Biela veža, ostroha
+            M.add('cone', '#6a6660', [0, 130, -150], [0, 0, 0], [420, 260, 330]); M.add('cone', '#58544e', [-90, 90, -170], [0, 0, 0], [220, 180, 200]);
+            for (let i = 0; i < 7; i++) {
+                const r = 175 - i * 19, y0 = i * 30, z0 = -i * 11;
+                M.cy(i % 2 ? '#dcd8cb' : '#e8e4d8', 0, y0, z0, r, 34); M.cy('#c4c0b2', 0, y0 + 34, z0, r + 2.5, 3.5);
+                const n = 22 - i * 2; for (let q = 0; q < n; q++) { const a = Math.PI * (.12 + .76 * q / (n - 1)); if (q % 2 === 0) M.bx('#cfcabb', Math.cos(a) * (r + 1), y0 + 37.5, z0 + Math.sin(a) * (r + 1), 5, 3, 5, -a); }
+                if (i < 6) for (let q = 0; q < 4; q++) { const a = Math.PI * (.2 + .2 * q); M.bx('#e8e4d8', Math.cos(a) * r * .75, y0 + 34, z0 + Math.sin(a) * r * .75, 16, 12 + (q % 2) * 6, 12, -a); M.pr('#4a78aa', Math.cos(a) * r * .75, y0 + 46 + (q % 2) * 6, z0 + Math.sin(a) * r * .75, 18, 6, 14, -a); }
+            }
+            M.bx('#2a2622', 0, 0, 176, 22, 26, 4); M.cy('#2a2622', 0, 0, 175, 11, 26);   // Veľká brána
+            M.bx('#f0ecdf', 0, 0, 20, 10, 218, 14); M.bx('#f6f2e6', 0, 218, 20, 14, 5, 16);     // ostroha (múr, ktorý rozdeľuje mesto ako kýl lode)
+            M.cy('#f4f0e4', 0, 214, -60, 11, 120); M.cy('#dcd8cb', 0, 330, -60, 13, 6); M.cn('#c8d6e8', 0, 336, -60, 12.5, 70); M.cy('#9a8a50', 0, 400, -60, .8, 22);   // Ecthelionova veža
+            M.cy('#e8e4d8', 24, 214, -60, 5, 46); M.cn('#4a78aa', 24, 260, -60, 6.5, 14);
+            M.bx('#f6f2e6', 0, 214, -34, 4, 14, 4); M.add('cone5', '#ffffff', [0, 236, -30], [0, 0, 0], [8, 14, 8]);   // Biely strom
+        },
+        Edoras(M, P) {   // pahorok so Zlatou sieňou Meduseld
+            M.add('cone', '#5a7a34', [0, 36, 0], [0, 0, 0], [250, 72, 250]); M.cy('#6a8a3c', 0, 70, 0, 78, 4);
+            for (let i = 0; i < 20; i++) { const a = i / 20 * 6.283; M.cy('#6a4e30', Math.cos(a) * 80, 72, Math.sin(a) * 80, 2.3, 22 + (i % 2) * 4); M.cn5('#6a4e30', Math.cos(a) * 80, 94 + (i % 2) * 4, Math.sin(a) * 80, 2.3, 7); }
+            M.bx('#6a4a2a', 0, 74, 0, 70, 24, 30); M.pr('#c4a24a', 0, 98, 0, 76, 26, 38); M.pr('#d4b25a', 0, 108, 0, 78, 6, 30);   // Meduseld so zlatou slamenou strechou
+            for (const sx of [-1, 1]) { M.bx('#c4a24a', sx * 39, 120, 0, 1.8, 14, 1.8, 0.4 * sx); }
+            for (let q = -3; q <= 3; q++) M.cy('#8a6238', q * 9, 74, 15.5, 1.6, 24);
+            M.bx('#3a2a18', 0, 74, 15.4, 8, 14, 1); for (const [x, z] of [[-50, 40], [46, 36], [-44, -38], [52, -30]]) { M.bx('#7a5a38', x, 74, z, 18, 12, 14, x * .05); M.pr('#a88c44', x, 86, z, 20, 8, 16, x * .05); }
+            flag(M, { flag: '#3a8a3a' }, 0, 120, 0, 28);
+            for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283 + .2; M.add('hemi', '#4a6a2a', [Math.cos(a) * 128, 4, Math.sin(a) * 128], [0, 0, 0], [30, 18, 30]); }   // mohyly kráľov
+        },
+        'Helmov žľab'(M, P) {   // Hornburg na skale a Hlboký múr cez žľab
+            M.add('cone', '#6a6660', [-70, 70, -60], [0, 0, 0], [220, 140, 180]);
+            M.bx('#9a9488', 0, 0, 40, 220, 50, 14); for (let q = -10; q <= 10; q++) M.bx('#837d72', q * 10, 50, 40, 6, 5, 15);
+            M.bx('#2a2622', -10, 0, 47.5, 20, 24, 2); M.bx('#8a8478', 0, 0, 62, 10, 12, 30);
+            tower(M, { wall: '#9a9488', wall2: '#837d72', roof: '#4a5a6a' }, -110, 0, 40, 14, 66, false); tower(M, { wall: '#9a9488', wall2: '#837d72', roof: '#4a5a6a' }, 110, 0, 40, 14, 66, false);
+            M.bx('#8e887c', -80, 70, -40, 56, 44, 56); M.cy('#9a9488', -80, 114, -40, 14, 44); M.cn('#4a5a6a', -80, 158, -40, 17, 34);   // Hornburg
+            for (const [x, z] of [[-110, -40], [-50, -42], [-110, -75], [-50, -78]]) tower(M, { wall: '#8e887c', wall2: '#757065', roof: '#4a5a6a' }, x, 70, z, 7, 44, true, 14);
+            flag(M, { flag: '#7aa84a' }, -80, 158, -40, 20);
+            M.bx('#787268', 180, 0, 60, 120, 38, 10, .1); M.bx('#787268', -170, 0, 60, 90, 38, 10, -.1);   // svahy žľabu a múr
+        },
+        'Barad-dûr'(M, P) {   // čierna pevnosť Sauronova na skalnom výbežku, Oko
+            M.add('cone', '#26201e', [0, 70, 0], [0, 0, 0], [300, 140, 300]);
+            M.cy('#14100e', 0, 120, 0, 62, 70); for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283; M.cn5('#0c0a0a', Math.cos(a) * 62, 190, Math.sin(a) * 62, 6, 50); M.cy('#1c1816', Math.cos(a) * 86, 100, Math.sin(a) * 86, 12, 56); M.cn5('#0c0a0a', Math.cos(a) * 86, 156, Math.sin(a) * 86, 14, 40); }
+            M.cy('#1a1614', 0, 190, 0, 34, 120); M.cy('#100c0c', 0, 310, 0, 40, 16); M.cy('#1c1816', 0, 326, 0, 26, 70); M.cy('#100c0c', 0, 396, 0, 32, 10);
+            for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; M.add('cone5', '#0a0808', [Math.cos(a) * 30, 436, Math.sin(a) * 30], [Math.sin(a) * .5, 0, -Math.cos(a) * .5], [10, 70, 10]); }
+            M.add('sph', '#ff7a20', [0, 430, 0], [0, 0, 0], [26, 40, 26]); M.add('sph', '#ffe040', [0, 430, 0], [0, 0, 0], [8, 36, 8]);   // Oko
+        },
+        Isengard(M, P) {   // kruhový múr a Orthanc
+            M.cy('#4a5a3a', 0, 0, 0, 150, 4);
+            for (let i = 0; i < 24; i++) { const a = i / 24 * 6.283, len = 2 * 150 * Math.sin(Math.PI / 24) + 1; M.bx('#4a4a50', Math.cos(a) * 150, 0, Math.sin(a) * 150, len, 46, 8, -a - Math.PI / 2); }
+            M.bx('#1a1a1e', 0, 0, 150, 30, 36, 14); M.bx('#0c0c0e', 0, 0, 157.2, 14, 26, 1);
+            M.cy('#1c1c22', 0, 0, 0, 22, 260); for (let i = 0; i < 4; i++) { const a = i / 4 * 6.283 + .4; M.cn5('#14141a', Math.cos(a) * 18, 90 + i * 8, Math.sin(a) * 18, 7, 170 - i * 12); }
+            M.cy('#2a2a32', 0, 260, 0, 27, 6); for (let i = 0; i < 4; i++) { const a = i / 4 * 6.283 + .7; M.cn5('#14141a', Math.cos(a) * 22, 262, Math.sin(a) * 22, 4, 26); }
+            for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283; M.cy('#3a3a40', Math.cos(a) * 100, 0, Math.sin(a) * 100, 6, 22 + (i % 3) * 6); }
+        },
+        Erebor(M, P) {   // Osamelá hora s bránou
+            M.add('cone', '#6a6a70', [0, 120, -40], [0, 0, 0], [340, 240, 300]); M.add('cone', '#7e7e86', [-60, 80, -10], [0, 0, 0], [180, 160, 160]);
+            M.bx('#3a3a40', 0, 0, 100, 60, 56, 26); M.bx('#0e0e12', 0, 0, 113.2, 34, 40, 1); M.bx('#8a8a92', -24, 0, 112, 6, 62, 8); M.bx('#8a8a92', 24, 0, 112, 6, 62, 8); M.bx('#8a8a92', 0, 56, 112, 62, 8, 8);
+            for (let i = 0; i < 6; i++) { const a = Math.PI * (.2 + .12 * i); M.bx('#7a7a82', Math.cos(a) * 100, 0, Math.sin(a) * 100 + 20, 24, 10 + i * 3, 12, -a); }
+        },
+        Hobitov(M, P) {   // pahorok s okrúhlymi dverami
+            M.dome('#5f8a3a', 0, 0, 0, 90, 56); M.dome('#6a9a42', 60, 0, 40, 42, 28); M.dome('#6a9a42', -64, 0, 30, 46, 30);
+            for (const [x, z, a] of [[0, 54, 0], [58, 66, .5], [-62, 58, -.4]]) { M.add('cyl', '#3a6a2a', [x, 10, z + 8], [Math.PI / 2, 0, 0], [16, 1.4, 16]); M.add('cyl', ['#2a6a3a', '#7a2a1a', '#2a4a8a'][(a * 3 + 3 | 0) % 3], [x, 10, z + 8.9], [Math.PI / 2, 0, 0], [12, .6, 12]); }
+            M.cy('#4a3420', 36, 56, 2, 2.2, 16); M.dome('#3a6a28', 36, 70, 2, 14, 9);
+            M.bx('#c8b898', -90, 0, 76, 14, 8, 11); M.pr('#8a6a3a', -90, 8, 76, 17, 6, 13);
+        },
+        'Minas Morgul'(M, P) {   // bledá žiariaca veža v údolí
+            M.add('cone', '#3a3a38', [0, 70, -40], [0, 0, 0], [280, 140, 240]);
+            M.cy('#8a9a88', 0, 0, 0, 56, 36); M.cy('#7a8a78', 0, 36, 0, 46, 46); M.cy('#9aaa98', 0, 82, 0, 34, 60); M.cy('#7a8a78', 0, 142, 0, 24, 80);
+            M.cn5('#4a5a4a', 0, 222, 0, 26, 80); for (let i = 0; i < 5; i++) { const a = i / 5 * 6.283; M.cn5('#6a7a68', Math.cos(a) * 44, 82, Math.sin(a) * 44, 4, 56); M.add('sph', '#7aff9a', [Math.cos(a) * 44, 84, Math.sin(a) * 44], [0, 0, 0], [4, 4, 4]); }
+            M.bx('#0e1410', 0, 0, 56, 26, 30, 6); M.add('sph', '#9affb0', [0, 224, 0], [0, 0, 0], [8, 8, 8]);
+        },
+        Osgiliath(M, P) {   // zbúrané mesto na oboch brehoch s prerušeným mostom
+            const W2 = { wall: '#c4c0b0', wall2: '#a8a496', roof: '#6a6a70' };
+            for (const sx of [-1, 1]) { ringWall(M, W2, 54, 22, 6, 0, 7, true, sx > 0 ? [-1.2, 1.2] : [Math.PI - 1.2, Math.PI + 1.2]); for (let i = 0; i < 5; i++) M.bx('#b8b4a4', sx * (40 + i * 11), 0, -30 + i * 14, 12, 14 + (i % 3) * 8, 10, i); }
+            M.bx('#aaa698', -26, 4, 0, 18, 6, 22); M.bx('#aaa698', 26, 4, 0, 18, 6, 22); M.cy('#b4b0a0', 0, 0, 0, 5, 18);
+            M.bx('#6a6a70', 44, 0, 62, 20, 36, 20); M.cn5('#4a5a6a', 44, 36, 62, 14, 18);
+        },
+        Rivendell(M, P) {   // terasy, strechy a most nad roklinou
+            M.add('cone', '#6a7a54', [0, 50, -30], [0, 0, 0], [240, 100, 200]);
+            for (let i = 0; i < 4; i++) { M.cy('#d8d0b0', 0, i * 22, -i * 8, 70 - i * 14, 24); }
+            for (const [x, y, z, r] of [[-30, 26, 10, 12], [34, 48, -6, 14], [0, 70, -24, 16], [-40, 4, 50, 10], [48, 4, 44, 12]]) { M.cy('#e6dfc0', x, y, z, r * .55, 22); M.cn('#b4903c', x, y + 22, z, r, 24); }
+            M.bx('#d8d0b0', 0, 0, 94, 110, 6, 10); for (let q = -4; q <= 4; q++) M.cy('#e6dfc0', q * 12, 0, 94, 1.4, 14);
+            for (let i = 0; i < 9; i++) { const a = i / 9 * 6.283; M.cy('#4a3a20', Math.cos(a) * 120, 0, Math.sin(a) * 100, 3, 36); M.dome('#c8782a', Math.cos(a) * 120, 36, Math.sin(a) * 100, 16, 14); }
+        }
+    };
+    function castleGeo(t) {
+        const f = t.f, P = PAL[f] || PAL[6], L = lvl(t), k = .85 + L * .07, M = Mesher();
+        if (SPEC[t.n]) SPEC[t.n](M, P, k, f); else generic(M, P, k, f);
+        return M.build();
+    }
+    function syncCastles() {
+        castles.forEach((o, i) => {
+            const t = o.t, sig = t.f + '|' + lvl(t); if (o.sig === sig) return; o.sig = sig;
+            if (o.mesh) { scene3.remove(o.mesh); o.mesh.geometry.dispose(); }
+            try { o.mesh = mkMesh(castleGeo(t)); } catch (e) { if (!syncCastles.err) { syncCastles.err = 1; console.error('Hrad 3D', t.n, e); } return; }
+            o.mesh.position.set(t.x, Math.max(2, heightAt(t.x, t.y - 70)), t.y - 70); scene3.add(o.mesh);   // model stojí o kus za bodom mesta: družina a armády sú pred bránou
+        });
+    }
+
+    // ---------- postavy ----------
+    function lordUnit(e) {
+        const mounted = e.kr || e.id % 3 === 0, base = { t: 1, fc: e.f, x: e.x, y: e.y, c: 0, hp: 1, vr: (e.id * 37 % 100) / 100, fv: e.id % 4, cmd: e.kr ? 1 : 0, bn: e.kr ? 1 : 0 };
+        if (e.nz) return { ...base, boss: 'fell' };
+        return { ...base, k: e.kind ? 'i' : mounted ? 'c' : 'i' };
+    }
+    function mkFig(u, isHero) {
+        const o = B3.kit.rig(u); o.root.scale.setScalar(FS); scene3.add(o.root);
+        const sh = new (T().Mesh)(shadowG || (shadowG = new (T().CircleGeometry)(1, 14).rotateX(-Math.PI / 2)), shadowM || (shadowM = new (T().MeshBasicMaterial)({ color: 0x000000, transparent: true, opacity: .32, depthWrite: false })));
+        scene3.add(sh); o.sh = sh; o.hd = 0; o.mv = 0; o.isHero = isHero; o.fx = u.x; o.fy = u.y; o.ph = 0; o.mph = 0; return o;
+    }
+    function dropFig(o) { if (!o) return; scene3.remove(o.root); if (o.sh) scene3.remove(o.sh); if (o.ring) scene3.remove(o.ring); }
+    function ringFor(col) {
+        const t = T(); if (!rings[col]) rings[col] = new t.MeshBasicMaterial({ color: col, transparent: true, opacity: .85, side: t.DoubleSide, depthTest: false, depthWrite: false });
+        const m = new t.Mesh(rings.geo || (rings.geo = new t.RingGeometry(24, 30, 28).rotateX(-Math.PI / 2)), rings[col]); m.renderOrder = 5; return m;
+    }
+    function place(o, x, y, dt, lift = 0) {
+        const mv = Math.hypot(x - o.fx, y - o.fy); if (mv > .02) { const hd = Math.atan2(y - o.fy, x - o.fx); let d = hd - o.hd; d = Math.atan2(Math.sin(d), Math.cos(d)); o.hd += d * Math.min(1, .18 * dt); }
+        o.mv += (Math.min(60, mv / Math.max(.3, dt)) - o.mv) * .2; o.fx = x; o.fy = y;
+        const h = heightAt(x, y);
+        o.root.position.set(x, Math.max(0, h) + lift, y); o.root.rotation.y = -o.hd; o.sh.position.set(x, Math.max(0, h) + .8, y); o.sh.scale.setScalar(o.mount ? 20 : 11);
+        animate(o, mv, dt);
+    }
+    /** Chôdza a cval: nohy a kĺby kostry z bitky, rýchlosť z posunu na mape (jednotky sveta za tik / mierka postavy). */
+    function animate(o, mv, dt) {
+        const B = o.B, M = o.MB, s = o.mv / FS * .55;   // ekvivalent rýchlosti v bitke
+        if (o.mount && M) {
+            const gait = B3.kit.gaitOf(s), offs = [[0, .5, .75, .25], [0, .5, .5, 0], [.1, 0, .6, .5]][gait], A = [.32, .5, .78][gait] * Math.min(1, s / .6);
+            o.mph += mv / FS / B3.kit.STRIDE[gait]; const P = o.mph * 6.283;
+            ['FR', 'FL', 'BR', 'BL'].forEach((L, i) => { const p = P + offs[i] * 6.283, front = L[0] === 'F'; M[L].rotation.z = Math.sin(p) * A * (front ? 1 : .85); M[L + 'k'].rotation.z = front ? -Math.max(0, Math.cos(p)) * (1.1 * A + .05) : Math.max(0, Math.cos(p)) * (.9 * A + .05); });
+            M.mb.position.y = o.mk.h + Math.abs(Math.sin(P * (gait === 2 ? 1 : 2))) * (gait === 2 ? 1.6 : .7) * Math.min(1, s);
+            if (B) { B.lgR.rotation.set(-.42, 0, 1.15); B.lgL.rotation.set(.42, 0, 1.15); B.knR.rotation.z = B.knL.rotation.z = -1.45; B.hip.position.y = o.H.hipY; }
+        } else if (B) {
+            o.ph += mv / FS / 11; const p = o.ph, a = Math.min(1, s / .7) * .8;
+            B.lgR.rotation.z = Math.sin(p) * a; B.lgL.rotation.z = -Math.sin(p) * a;
+            B.knR.rotation.z = -Math.max(0, Math.cos(p)) * a * 1.3; B.knL.rotation.z = -Math.max(0, -Math.cos(p)) * a * 1.3;
+            B.hip.position.y = o.H.hipY + Math.abs(Math.sin(p)) * .9 * Math.min(1, s);
+            if (B.shL && B.shR) { B.shL.rotation.z = Math.sin(p) * a * .4 + .15; B.elL.rotation.z = .35; B.elR.rotation.z = .3; B.shR.rotation.z = -Math.sin(p) * a * .25 + .12; }
+        }
+    }
+    const heroSig = () => { try { return JSON.stringify([G.eq, G.fac, G.name, G.look]); } catch (e) { return '' + G.fac; } };
+    function syncFigs(sc, dt, vx, vz, vr) {
+        // hrdina
+        const hu = { h: 1, x: G.x, y: G.y, c: 0, hp: 1, f: 0 }, hsg = heroSig();
+        if (!hero || hero.sig !== hsg) { if (hero) dropFig(hero); try { hero = mkFig(hu, true); hero.sig = hsg; } catch (e) { console.warn('3D hrdina', e); hero = null; } }
+        if (hero) { hero.sig = hsg; place(hero, G.x, G.y, dt); }
+        // velitelia a armády
+        const seen = new Set(); bud = 1;
+        for (const e of E) {
+            seen.add(e.id); let o = fig.get(e.id);
+            const near = Math.abs(e.x - vx) < vr && Math.abs(e.y - vz) < vr;
+            if (!o) { if (!near || bud <= 0) continue; bud--; try { o = mkFig(lordUnit(e), false); o.ring = null; } catch (err) { console.warn('3D velitel', err); o = { bad: 1 }; } fig.set(e.id, o); }
+            if (o.bad) continue;
+            o.root.visible = o.sh.visible = near; if (o.ring) o.ring.visible = near; if (!near) { o.fx = e.x; o.fy = e.y; continue; }
+            place(o, e.x, e.y, dt, e.nz ? 40 + Math.sin(clock * 2 + e.id) * 4 : 0);
+            const col = hos(e.f, G.fac) ? 0xe05040 : (AL[G.fac] && AL[G.fac][e.f]) || e.f === G.fac ? 0x70d060 : 0xe0d8b8;
+            if (!o.ring || o.rc !== col) { if (o.ring) scene3.remove(o.ring); o.ring = ringFor(col); o.rc = col; scene3.add(o.ring); }
+            o.ring.position.set(e.x, Math.max(0, heightAt(e.x, e.y)) + 1.5, e.y); o.ring.scale.setScalar(o.mount ? 1.15 : .8);
+        }
+        for (const [id, o] of fig) if (!seen.has(id)) { dropFig(o); fig.delete(id); }
+    }
+
+    // ---------- scéna, kamera, klik ----------
+    function setup(sc) {
+        const t = T(), k = B3.kit.ensure(); R = k.R; canvas = k.canvas;
+        R.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5)); R.shadowMap.enabled = false; R.toneMapping = t.NoToneMapping; R.setClearColor(0x9fb4c8, 1);
+        scene3 = new t.Scene(); fogc = new t.Color('#aebfcf'); scene3.fog = new t.Fog(fogc, 1800, 9000); scene3.background = fogc;
+        cam3 = new t.PerspectiveCamera(40, W / H, 20, 20000);
+        hemi = new t.HemisphereLight(0xdfe8ff, 0x6a5a40, 1.05); sun = new t.DirectionalLight(0xfff0d0, 2.2); sun.position.set(-700, 1000, 500); scene3.add(hemi, sun);
+        buildField(sc); buildTrees(sc); buildVillages();
+        castles = TW.map(t => ({ t, mesh: null, sig: '' })); syncCastles();
+        route = new t.Line(new t.BufferGeometry().setAttribute('position', new t.BufferAttribute(new Float32Array(3 * 80), 3)), new t.LineBasicMaterial({ color: 0xffd24a, depthTest: false, transparent: true, opacity: .9 })); route.renderOrder = 6; route.frustumCulled = false; scene3.add(route);
+        mark = new t.Mesh(new t.TorusGeometry(14, 2.4, 6, 20).rotateX(Math.PI / 2), new t.MeshBasicMaterial({ color: 0xffd24a, depthTest: false })); mark.renderOrder = 6; scene3.add(mark);
+        yaw = 0; canvas.style.display = 'block';
+        const gc = game.canvas; if (gc) { gc.addEventListener('contextmenu', ctx); gc.addEventListener('mousedown', md); }
+        window.addEventListener('mousemove', mm); window.addEventListener('mouseup', mu); window.addEventListener('keydown', kd);
+    }
+    const ctx = e => { if (on) e.preventDefault(); };
+    const md = e => { if (on && e.button === 2) drag = e.clientX; };
+    const mm = e => { if (on && drag != null && (e.buttons & 2)) { yaw -= (e.clientX - drag) * .006; drag = e.clientX; } else drag = null; };
+    const mu = () => { drag = null; };
+    const kd = e => { if (!on || /INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || '')) return; if (e.key === 'q' || e.key === 'Q') yaw += .12; else if (e.key === 'e' || e.key === 'E') yaw -= .12; };
+    function fit() {
+        const pc = game.canvas; if (!pc) return; const r = pc.getBoundingClientRect(), hr = canvas.parentNode.getBoundingClientRect(), w = Math.round(r.width) || 720, h = Math.round(r.height) || 480;
+        canvas.style.left = (r.left - hr.left) + 'px'; canvas.style.top = (r.top - hr.top) + 'px'; canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+        if (fw !== w || fh !== h) { fw = w; fh = h; R.setSize(w, h, false); cam3.aspect = w / h; cam3.updateProjectionMatrix(); }
+    }
+    /** Súradnice sveta pod bodom obrazovky (sx, sy v logických pixeloch 720 × 480): lúč kamery krokuje po krajine. */
+    function pick(sx, sy) {
+        if (!on) return null; const t = T(), v = new t.Vector3(sx / W * 2 - 1, -(sy / H * 2 - 1), .5).unproject(cam3), o = cam3.position, d = v.sub(o).normalize();
+        let tt = 0, prev = 0; for (let n = 0; n < 400; n++) { tt += 30; const x = o.x + d.x * tt, y = o.y + d.y * tt, z = o.z + d.z * tt; if (y <= Math.max(0, heightAt(x, z))) { let a = prev, b = tt; for (let q = 0; q < 12; q++) { const m = (a + b) / 2; if (o.y + d.y * m <= Math.max(0, heightAt(o.x + d.x * m, o.z + d.z * m))) b = m; else a = m; } return { x: o.x + d.x * b, y: o.z + d.z * b }; } prev = tt; }
+        return null;
+    }
+    const pv = new Array(3);
+    /** Premietnutie bodu sveta na obrazovku (logické pixely) alebo null, ak je mimo záberu. */
+    function proj(x, y, up = 0) {
+        if (!on) return null; const v = (proj.v || (proj.v = new (T().Vector3)())).set(x, Math.max(0, heightAt(x, y)) + up, y).project(cam3);
+        if (v.z > 1 || Math.abs(v.x) > 1.15 || Math.abs(v.y) > 1.2) return null; return [(v.x + 1) / 2 * W, (1 - v.y) / 2 * H];
+    }
+    function updRoute() {
+        const a = route.geometry.attributes.position; let n = 0; const put = (x, y) => { if (n < 80) { a.setXYZ(n++, x, Math.max(0, heightAt(x, y)) + 6, y); } };
+        const far = Math.hypot(G.tx - G.x, G.ty - G.y) > 24;
+        mark.visible = route.visible = far;
+        if (far) { put(G.x, G.y); const nv = G._nv; if (nv && nv.p) for (let i = nv.i; i < nv.p.length; i++) put(nv.p[i][0], nv.p[i][1]); put(G.tx, G.ty); mark.position.set(G.tx, Math.max(0, heightAt(G.tx, G.ty)) + 4, G.ty); mark.rotation.y = clock * 1.5; }
+        route.geometry.setDrawRange(0, n); a.needsUpdate = true;
+    }
+    function light() {
+        const nt = typeof nightness === 'function' ? nightness() : 0, d = 1 - nt;
+        hemi.intensity = .5 + .65 * d; sun.intensity = .3 + 1.9 * d; sun.color.setRGB(1, .86 + .1 * d, .62 + .3 * d); hemi.color.setRGB(.55 + .4 * d, .6 + .35 * d, .85 + .1 * d);
+        fogc.setRGB(.05 + .6 * d, .08 + .68 * d, .14 + .66 * d); scene3.fog.color.copy(fogc); scene3.background.copy(fogc); R.setClearColor(fogc, 1);
+        water.material.color.setRGB(.1 + .08 * d, .22 + .2 * d, .3 + .24 * d);
+    }
+    function start(sc) {
+        try { setup(sc); on = true; return true; }
+        catch (e) { console.error('3D mapa sa nedá spustiť', e); failed = true; teardown(); return false; }
+    }
+    function teardown() {
+        on = false; drag = null;
+        const gc = game.canvas; if (gc) { gc.removeEventListener('contextmenu', ctx); gc.removeEventListener('mousedown', md); }
+        window.removeEventListener('mousemove', mm); window.removeEventListener('mouseup', mu); window.removeEventListener('keydown', kd);
+        if (canvas) canvas.style.display = 'none';
+        if (scene3) scene3.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+        scene3 = null; terrain = water = null; hg = null; castles = []; fig = new Map(); hero = null; vills = null; treeM = []; rings = {}; MT = null; shadowG = shadowM = null; route = mark = null;
+    }
+    function stop(sc) {
+        if (!on && !scene3) return; teardown();
+        if (sc && sc.cameras && sc.cameras.main) { try { sc.cameras.main.setBackgroundColor('#1e2a16'); for (const ch of sc.children.list) ch.setVisible(true); } catch (e) { } }
+    }
+    /** Jedna snímka 3D mapy (volá MapScene.update po výpočte sveta a 2D štítkov). Vráti true, ak 3D beží. */
+    function frame(sc, delta) {
+        if (!want()) { if (on) stop(sc); return false; }
+        if (!on && !start(sc)) return false;
+        const dt = Math.min(3, delta / 16.67); clock += delta / 1000; B3.kit.setClock(clock);
+        const c = sc.cameras.main; c.setBackgroundColor('rgba(0,0,0,0)'); c.setZoom(RES); c.centerOn(W / 2, H / 2);
+        for (const ch of sc.children.list) if (ch.visible) ch.setVisible(false);   // 2D vrstvy sa neukazujú, ostanú len premietnuté štítky
+        fit(); light();
+        const cx = cam.x + W / Z / 2, cy = cam.y + H / Z / 2, d = 900 / Z, ty = Math.max(0, heightAt(cx, cy));
+        const cp = Math.cos(pitch);
+        cam3.position.set(cx + Math.sin(yaw) * cp * d, ty + Math.sin(pitch) * d, cy + Math.cos(yaw) * cp * d);
+        cam3.position.y = Math.max(cam3.position.y, heightAt(cam3.position.x, cam3.position.z) + 50);
+        cam3.lookAt(cx, ty + 10, cy); scene3.fog.near = d * 1.5; scene3.fog.far = d * 7;
+        syncCastles(); syncFigs(sc, dt, cx, cy, d * 1.6 + 500); updRoute();
+        R.setRenderTarget(null); R.render(scene3, cam3);
+        labels(sc);
+        return true;
+    }
+    function labels(sc) {
+        const show = (txt, p, dy, vis = true) => { if (!txt) return; if (p && vis) { txt.setScale(1).setPosition(p[0], p[1] + dy).setVisible(true); } };
+        if (sc.towns) for (const o of sc.towns) { const p = proj(o.t.x, o.t.y + 70); show(o.txt, p, 8); if (p) o.stars.setScale(1).setPosition(p[0], p[1] - 4).setVisible(true); }
+        if (sc.vill && Z > .55) for (const o of sc.vill) show(o.txt, proj(o.v.x, o.v.y + 30), 2);
+        if (sc.armies) for (const e of E) { const o = sc.armies.get(e.id); if (o) show(o.txt, proj(e.x, e.y, 0), 22 * (1 / 1)); }
+        if (sc.heroTxt && hero) { const p = proj(G.x, G.y); show(sc.heroTxt, p, 20); }
+    }
+    return { frame, stop, pick, proj, heightAt, want, get scene() { return scene3; }, get castles() { return castles; }, get camera() { return cam3; }, set yawTo(v) { yaw = v; }, set pitchTo(v) { pitch = v; }, get on() { return on; }, get yaw() { return yaw; } };
+})();

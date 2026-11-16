@@ -68,10 +68,10 @@ class MapScene extends Phaser.Scene {
         this.mmCam.ignore([this.fx, this.heroTxt, this.heroCrown, this.hero, ...this.vill.flatMap(o => [o.spr, o.txt]), ...this.towns.flatMap(o => [o.spr, o.txt, o.stars])]);
 
         this.input.on('pointerdown', p => this.click(p));
-        this.input.on('pointermove', p => { this.hover = this.cameras.main.getWorldPoint(p.x, p.y); this.hoverScreen = { x: p.x / RES, y: p.y / RES }; });
+        this.input.on('pointermove', p => { this.hover = (M3.on && M3.pick(p.x / RES, p.y / RES)) || this.cameras.main.getWorldPoint(p.x, p.y); this.hoverScreen = { x: p.x / RES, y: p.y / RES }; });
         this.input.on('gameout', () => this.hover = null);
         this.input.on('wheel', (p, o, dx, dy) => { if (mode === 'map') Z = Math.max(.45, Math.min(1.5, Z - Math.sign(dy) * .1)); });
-        this.events.once('shutdown', () => this.input.removeAllListeners());
+        this.events.once('shutdown', () => { this.input.removeAllListeners(); M3.stop(); });
         } catch (e) { console.error('Mapa', e); }
         this.finishBoot();
         };
@@ -480,7 +480,7 @@ class MapScene extends Phaser.Scene {
         G.dest = -1; G.vd = -1; G.pd = -1; G.chase = null; G.talk = null;
         const sx = p.x / RES, sy = p.y / RES;
         if (sx > MM.x && sy > MM.y && sx < MM.x + MM.w && sy < MM.y + MM.h) { G.tx = (sx - MM.x) / MM.w * WW; G.ty = (sy - MM.y) / MM.h * WH; return; }
-        const w = this.cameras.main.getWorldPoint(p.x, p.y);
+        const w = (M3.on && M3.pick(sx, sy)) || this.cameras.main.getWorldPoint(p.x, p.y);   // 3D mapa: lúč kamery na zem (js/engine/m3d.js)
         G.tx = w.x; G.ty = w.y;
         E.forEach(e => { if (Math.hypot(e.x - w.x, e.y - w.y) < 34) { if (hos(e.f, G.fac)) G.chase = e; else G.talk = e; } });
         VL.forEach((v, i) => { if (Math.hypot(v.x - w.x, v.y - w.y) < 26) { G.tx = v.x; G.ty = v.y; G.vd = i; } });
@@ -508,7 +508,7 @@ class MapScene extends Phaser.Scene {
             if (this.stuckN > 90) { mode = 'map'; this.stuckN = 0; }
         }
         if (mode !== 'town') this.stuckN = 0;
-        if (mode === 'battle') { this.scene.start('Battle'); return; }
+        if (mode === 'battle') { M3.stop(this); this.scene.start('Battle'); return; }
 
         const c = this.cameras.main;
         c.setZoom(Z * RES);
@@ -526,6 +526,7 @@ class MapScene extends Phaser.Scene {
             this.drawFx();
             if (this.clouds) { const on = !lowFx(); this.clouds.setVisible(on); if (on) { this.clouds.tilePositionX -= delta * .0022 * timeMul(); this.clouds.tilePositionY -= delta * .0009 * timeMul(); this.clouds.setAlpha(1 - nightness() * .8); } }   // oblaky plávajú od západu, v noci ich tieň zmizne
             if (this.haze) this.haze.setAlpha(.85 + .15 * Math.sin(time / 1400));
+            M3.frame(this, delta);   // 3D mapa: skryje 2D vrstvy a vykreslí krajinu, hrady a postavy (js/engine/m3d.js)
         } catch (e) {
             if (!this.drawErr) { this.drawErr = 1; console.error('Mapa', e); }
         }
