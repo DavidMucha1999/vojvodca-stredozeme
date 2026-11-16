@@ -274,6 +274,32 @@ function horseMove(u, mx, my, k, dt) {
     u.y = Math.max(20, Math.min(BH - 8, u.y + Math.sin(C.mvA) * C.mvS * dt));
     return C.mvA;
 }
+/** Kôň hrdinu ako vo Warbande: thr = plyn (W +1, S -1), trn = otáčanie (A -1, D +1). Kôň ide len smerom svojej hlavy, cúva pomaly, myš otáča iba jazdca. Vráti smer pohybu alebo null. */
+function horseDrive(u, thr, trn, dt) {
+    const C = CMB, H = typeof Soldiers !== 'undefined' ? Soldiers.GEAR.m[G.eq.m] || {} : {}, ri = 1 + .08 * csLv('ri'), man = (.075 - (H.s || 1) * .02) * ri, acc = (.013 + it('m').v * .004) * ri;
+    if (C.rear > 0) { C.rear -= dt; C.mvS = 0; return null; }
+    if (C.mvA == null) C.mvA = u.f;
+    let v = C.mvS || 0; const top = u.sp, back = -.22 * u.sp;
+    if (thr > 0) v = v < 0 ? Math.min(0, v + .06 * dt) : Math.min(top, v + acc * dt * thr);   // rozbeh asi za sekundu
+    else if (thr < 0) v = v > 0 ? Math.max(0, v - .045 * dt) : Math.max(back, v - .012 * dt);   // brzda, potom pomalé cúvanie
+    else v = v > 0 ? Math.max(0, v - .012 * dt) : Math.min(0, v + .03 * dt);   // bez plynu kôň dobieha
+    if (trn) { const f = Math.min(1, Math.abs(v) / Math.max(.6, u.sp)); C.mvA += trn * man * dt * (.55 + .45 * Math.min(1, f * 3)) * (1 - .4 * f); }   // na mieste a v cvale sa otáča pomalšie ako v kluse
+    C.mvA = Math.atan2(Math.sin(C.mvA), Math.cos(C.mvA)); C.mvS = v;
+    if (Math.abs(v) < .02) return null;
+    u.x = Math.max(8, Math.min(BW - 8, u.x + Math.cos(C.mvA) * v * dt));
+    u.y = Math.max(20, Math.min(BH - 8, u.y + Math.sin(C.mvA) * v * dt));
+    return v > 0 ? C.mvA : C.mvA + Math.PI;
+}
+/** Kôň vojaka AI: krok, ktorý AI urobila (z x0, y0), premení na jazdu dopredu – kôň sa otáča obmedzene, necúva ani neide bokom. */
+function horseAI(u, x0, y0, dt) {
+    if (u.hd == null) u.hd = u.f;
+    const dx = u.x - x0, dy = u.y - y0, d = Math.hypot(dx, dy);
+    if (d < .01) return;
+    let df = Math.atan2(dy, dx) - u.hd; df = Math.atan2(Math.sin(df), Math.cos(df));
+    u.hd += Math.max(-.065 * dt, Math.min(.065 * dt, df));
+    const s = d * Math.max(.3, Math.cos(df));   // pri ostrej otočke kôň spomalí a zatáča oblúkom
+    u.x = Math.max(10, Math.min(BW - 10, x0 + Math.cos(u.hd) * s)); u.y = Math.max(20, Math.min(BH - 10, y0 + Math.sin(u.hd) * s));
+}
 /** Jazdecký lukostrelec: krúži okolo nepriateľa vo vzdialenosti streľby a strieľa z koňa. */
 const isHA = u => !!(u.uk && FU[u.uk] && FU[u.uk].b === 'c' && FU[u.uk].wp === 'bow');
 function haAI(u, b, bd, dt) {

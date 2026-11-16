@@ -196,7 +196,8 @@ const DIR_N = { l: 'zľava', r: 'sprava', u: 'zhora', t: 'bod' };
 function wpnTimes() {
     const W = it('w') || {}, t2 = twoHand(), spear = !!W.r, S = wstat(W), L = loadSwing();   // ťažká výbava spomalí nápriah aj zotavenie
     const P = wpTimeK();   // zdatnosť so zbraňou zrýchli nápriah aj zotavenie (js/sim/mastery.js)
-    return { ready: (t2 ? 13 : spear ? 11 : 9) / S.sp * L * P, rec: (t2 ? 24 : 18) / S.sp * L * P, spear, t2, S, reach: W.r || 34 * S.len, kind: wkind(W) };
+    return { ready: (t2 ? 24 : spear ? 20 : 17) / S.sp * L * P, rec: (t2 ? 36 : 27) / S.sp * L * P,   // tempo ako vo Warbande: nápriah asi pol sekundy, potom zotavenie
+        spear, t2, S, reach: W.r || 34 * S.len, kind: wkind(W) };
 }
 /** Hrdina s myšou: nápriah do smeru (drž tlačidlo = silnejší úder, kryt počas nápriahu = klam), sklopená kopija v cvale. */
 function heroDirectional(u, dt, mv, slow, cost, rg) {
@@ -230,7 +231,7 @@ function heroDirectional(u, dt, mv, slow, cost, rg) {
     }
     if (u.c > 0 || C.blk) return;
     if (kd('thrust')) C.rd = { d: 't', t: 0, key: 'thrust', ready: WT.ready * slow };
-    else if (kd('atk') || C.lmb) { const d = mouseDir() || (C.alt = C.alt === 'l' ? 'r' : 'l'); C.rd = { d, t: 0, key: 'atk', ready: WT.ready * slow }; }
+    else if (kd('atk') || C.lmb) { let d = mouseDir() || (C.alt = C.alt === 'l' ? 'r' : 'l'); if (WT.spear) d = d === 'u' ? 'u' : 't'; C.rd = { d, t: 0, key: 'atk', ready: WT.ready * slow }; }   // kopija ako vo Warbande: len bod zospodu a bod zhora (myš hore)
 }
 /** Úder do smeru (uvoľnenie nápriahu): sek zľava/sprava zasiahne viac nepriateľov v oblúku, úder zhora jedného silnejšie, bod má dlhší dosah.
  *  Zbraň sa potom pohybuje (swingTick): zasiahne len to, cez čo čepeľ prejde, a silnejšie uprostred seku a hrotom než pri rúčke.
@@ -239,10 +240,10 @@ function heroStrike(u, R, slow, cost, rg) {
     const C = CMB, WT = wpnTimes(), d = R.d, S = WT.S, held = Math.max(0, R.t - R.ready);
     const pow = 1 + .45 * Math.min(1, held / 30) * (R.t > 200 ? Math.max(0, 1 - (R.t - 200) / 120) : 1);
     const a2 = WT.t2 ? 1.3 : 1.05, n2 = WT.t2 ? 4 : 3;
-    const P = { u: { arc: .5, n: 1, m: 1.2 * S.sw, r: 1 }, l: { arc: a2, n: n2, m: S.sw, r: 1 }, r: { arc: a2, n: n2, m: S.sw, r: 1 }, t: { arc: .42, n: 1, m: 1.35 * S.th, r: WT.spear ? 1.5 : 1.35 } }[d];
+    const P = { u: WT.spear ? { arc: .42, n: 1, m: 1.25 * S.th, r: 1.4 } : { arc: .5, n: 1, m: 1.2 * S.sw, r: 1 }, l: { arc: a2, n: n2, m: S.sw, r: 1 }, r: { arc: a2, n: n2, m: S.sw, r: 1 }, t: { arc: .42, n: 1, m: 1.35 * S.th, r: WT.spear ? 1.5 : 1.35 } }[d];
     C.hist = (C.hist || []).concat(d).slice(-4);
     const reach = WT.reach * P.r;
-    C.sw = { vis: R.t, d, t: 0, dur: (d === 't' ? 8 : WT.t2 ? 14 : 11) / S.sp * slow, P, pow, reach, hit: [], bl: 0, pitch: C.aim3 ? C.aim3.pitch : null };
+    C.sw = { vis: R.t, d, t: 0, dur: (d === 't' ? 12 : WT.t2 ? 21 : 16) / S.sp * slow, P, pow, reach, hit: [], bl: 0, pitch: C.aim3 ? C.aim3.pitch : null };
     u.c = WT.rec * slow * (d === 't' ? .85 : 1); C.st -= (d === 't' ? 7 : WT.t2 ? 13 : 10) * cost * (pow > 1.2 ? 1.2 : 1); if (C.st < 0) C.st = 0;
     fx = 10; C.swing = { t: 10, a: u.f, k: d === 't' ? 't' : 's', d, r: reach, w: P.arc, pow };
     C.rd = null;
@@ -257,8 +258,8 @@ function swingTick(u, dt, WT) {
     s.t += dt; const p = Math.min(1, s.t / s.dur), P = s.P, d = s.d;
     const sa = v => { const x = dirTo(u, v) - u.f; return Math.atan2(Math.sin(x), Math.cos(x)); };
     const th = d === 'l' ? -P.arc + 2 * P.arc * p : d === 'r' ? P.arc - 2 * P.arc * p : 0;   // uhol čepele voči smeru pohľadu
-    const tip = s.reach * (d === 't' ? Math.sin(Math.min(1, p * 1.6) * Math.PI / 2) : 1);   // bod: hrot sa vysúva
-    const vel = d === 't' ? .7 + .5 * Math.min(1, p * 1.6) : .7 + .5 * Math.sin(p * Math.PI);   // rýchlosť čepele
+    const stab = d === 't' || (WT.spear && d === 'u'), tip = s.reach * (stab ? Math.sin(Math.min(1, p * 1.6) * Math.PI / 2) : 1);   // bod: hrot sa vysúva
+    const vel = stab ? .7 + .5 * Math.min(1, p * 1.6) : .7 + .5 * Math.sin(p * Math.PI);   // rýchlosť čepele (bod aj bod kopijou zhora rastie, sek je najrýchlejší v strede)
     for (const v of U) {
         if (v === u || v.hp <= 0 || s.hit.includes(v) || s.hit.length >= P.n || wallBlocked(u, v)) continue;
         const fr = !v.t;   // vlastný vojak: sek zboku sa o neho zarazí (swingBlocked), úder zhora a bod ho zasiahnu
@@ -430,7 +431,7 @@ function aiMelee(u, b, bd, dt) {
     if (u.wu > 0) {
         u.wu -= dt; u.f = dirTo(u, u.wt || b);
         if (u.wu <= 3 && !u.fnt && sk > .35 && u.wt && u.wt.h && Math.random() < sk * .25 * dt) { u.fnt = 1; const o = ['l', 'r', 'u'].filter(x => x !== u.wd); u.wd = o[Math.floor(Math.random() * o.length)]; u.wu += 3; }   // klam: zručný vojak v poslednej chvíli zmení smer úderu
-        if (u.wu <= 0) { u.lwd = u.wd; u.as = { t: 0, dur: (heavy(u) ? 14 : 10) / S.sp, tg: u.wt, d: u.wd }; u.c = (heavy(u) ? 58 : 48) / S.sp; u.wt = null; u.fnt = 0; u.atkN = (u.atkN || 0) + 1; aiSwing(u, 0, S); }
+        if (u.wu <= 0) { u.lwd = u.wd; u.as = { t: 0, dur: (heavy(u) ? 20 : 15) / S.sp, tg: u.wt, d: u.wd }; u.c = (heavy(u) ? 74 : 62) / S.sp; u.wt = null; u.fnt = 0; u.atkN = (u.atkN || 0) + 1; aiSwing(u, 0, S); }
         return true;
     }
     if (bd > 13 * (WK === 'spear' ? 1.3 : WK === 'axe' ? .95 : 1)) { if (mounted(u)) u.run = (u.run || 0) + dt; return false; }
@@ -445,8 +446,8 @@ function aiMelee(u, b, bd, dt) {
     u.run = 0;
     // smer úderu (ako ho vidí obranca): zľava, sprava, zhora, bod; trollovia a obri bijú zhora, kopijníci bodajú, sekerníci len sekajú
     const sp = WK === 'spear', r = Math.random();
-    u.wd = heavy(u) ? 'u' : sp ? (r < .6 ? 't' : r < .8 ? 'l' : 'r') : WK === 'axe' ? (r < .4 ? 'l' : r < .75 ? 'r' : 'u') : r < .34 ? 'l' : r < .68 ? 'r' : r < .86 ? 'u' : 't';
-    u.wu = u.wu0 = ((heavy(u) ? 28 : 16) * (1.2 - .35 * sk) / S.sp) + (b.h && OPT.blkDir === 'manual' ? 9 : 0); u.wt = b; u.fnt = 0;
+    u.wd = heavy(u) ? 'u' : sp ? (r < .65 ? 't' : 'u') : WK === 'axe' ? (r < .4 ? 'l' : r < .75 ? 'r' : 'u') : r < .34 ? 'l' : r < .68 ? 'r' : r < .86 ? 'u' : 't';
+    u.wu = u.wu0 = ((heavy(u) ? 38 : 22) * (1.2 - .35 * sk) / S.sp) + (b.h && OPT.blkDir === 'manual' ? 9 : 0); u.wt = b; u.fnt = 0;
     return true;
 }
 /** Úder vojaka v pohybe (ako vo Warbande): po nápriahu čepeľ letí asi šestinu sekundy a zasiahne, len ak je cieľ v strede pohybu

@@ -32,20 +32,20 @@ function startBattleBase(en, al) {
     for (let i = 0; i < Math.min(G.ent || 0, 3); i++)
         U.push(mk(0, 'n'));
     // zálohy (ako vo Warbande): kto sa nezmestí na bojisko, príde v ďalšej vlne, keď vlastných ubudne
-    RES = [[], []];
-    if (!en.ar && !en.duel) [['i', G.inf, 40], ['c', G.cav, 20], ['a', G.arc, 20], ['v', G.vet, 20], ['e', G.elf, 15], ['r', G.roh, 12]].forEach(([k, n, c]) => { for (let i = cap(c); i < (n || 0); i++) RES[0].push([k]); });
+    BRES = [[], []];
+    if (!en.ar && !en.duel) [['i', G.inf, 40], ['c', G.cav, 20], ['a', G.arc, 20], ['v', G.vet, 20], ['e', G.elf, 15], ['r', G.roh, 12]].forEach(([k, n, c]) => { for (let i = cap(c); i < (n || 0); i++) BRES[0].push([k]); });
     // kto sa pridá: spojenci hráča a priatelia nepriateľa v okolí (pri obliehaní celý tábor), posádka pri obrane hradu
     BSIDES = battleSides(en, al);
     U.push(...sideUnits(BSIDES.allies, 0, Math.round(ALLY_CAP * BSZ())));
     if (en.def != null) { const t = TW[en.def], gn = Math.min(Math.round(30 * BSZ()), Math.max(2, t.g)); BSIDES.gUnits = gn; for (let i = 0; i < gn; i++) { const u = mk(0, i % 3 === 2 ? 'a' : 'i', t.f); u.ally = 1; u.garrison = 1; U.push(u); } }
     const nF = en.ar || en.duel ? en.n : Math.min(en.n, Math.round(FOE_FIELD * BSZ()));   // nepriatelia nad limit bojiska čakajú v zálohe
     for (let i = 0; i < en.n; i++)
-        if (i < nF) U.push(mk(1, foeKind(en, i), en.f)); else RES[1].push([foeKind(en, i), en.f]);
+        if (i < nF) U.push(mk(1, foeKind(en, i), en.f)); else BRES[1].push([foeKind(en, i), en.f]);
     U.push(...sideUnits(BSIDES.foes, 1, Math.max(0, Math.round(FOE_CAP * BSZ()) - nF)));
-    RES.k = [en.def != null ? 1.25 : 1, 1];   // posilnenie zdravia, ktoré dostanú aj zálohy
+    BRES.k = [en.def != null ? 1.25 : 1, 1];   // posilnenie zdravia, ktoré dostanú aj zálohy
     if (en.siege) {
         const sg = en.t.sg || {}, k = 1.3 + (en.t.wl || 0) * .15 - (sg.tow ? .15 : 0) - (en.sgFood != null && en.sgFood <= 0 ? .1 : 0);   // veža a hlad oslabujú obrancov
-        U.forEach(u => { if (u.t) u.hp = u.mh = u.mh * k; }); RES.k[1] = k;
+        U.forEach(u => { if (u.t) u.hp = u.mh = u.mh * k; }); BRES.k[1] = k;
     }
     if (en.def != null)   // obrana hradu: hradby pomáhajú hráčovej strane
         U.forEach(u => { if (!u.t) u.hp = u.mh = u.mh * 1.25; });
@@ -66,29 +66,29 @@ const foeKind = (en, i) => en.nz ? 'z' : en.trolls || en.beorn ? 't' : en.spider
 /** Okruh, z ktorého sa do bitky pridávajú ďalšie armády, a najväčší počet ich vojakov na bojisku.
  *  FOE_FIELD: najviac vojakov hlavnej nepriateľskej armády naraz na bojisku (× veľkosť bitky); zvyšok príde vo vlnách. */
 const JOIN_R = 300, ALLY_CAP = 30, FOE_CAP = 70, FOE_FIELD = 80;
-/** Zálohy oboch strán: RES[0] tvoji, RES[1] nepriateľ – zoznam [druh, frakcia]; RES.k = násobok zdravia (hradby, obliehanie). */
-let RES = [[], []];
+/** Zálohy oboch strán: BRES[0] tvoji, BRES[1] nepriateľ – zoznam [druh, frakcia]; BRES.k = násobok zdravia (hradby, obliehanie). */
+let BRES = [[], []];
 /** Posily vo vlnách (ako vo Warbande): keď na bojisku ostane menej ako polovica vlastných vojakov strany, dobehne z jej okraja
  *  ďalšia vlna zo zálohy (najviac do pôvodného počtu). Strana na úteku (morálka pod 15) posily nedostane. */
 function reinforce(dt) {
-    if (!RES[0].length && !RES[1].length) return;
+    if (!BRES[0].length && !BRES[1].length) return;
     if ((CMB.rfT = (CMB.rfT || 0) + dt) < 60) return;
     CMB.rfT = 0;
     for (const t of [0, 1]) {
-        if (!RES[t].length || CMB.M[t] < 15) continue;
+        if (!BRES[t].length || CMB.M[t] < 15) continue;
         const own = u => u.t === t && !u.h && !u.ally && !u.src && !u.garrison && !u.cp && !u.boss, cap = CMB.fc[t] || 1;
         const alive = U.filter(u => own(u) && u.hp > 0 && !u.rout).length;
         if (alive > cap * .5) continue;
-        const n = Math.min(RES[t].length, Math.max(1, cap - alive));
+        const n = Math.min(BRES[t].length, Math.max(1, cap - alive));
         for (let i = 0; i < n; i++) {
-            const [k, f] = RES[t].shift(), u = mk(t, k, f);
+            const [k, f] = BRES[t].shift(), u = mk(t, k, f);
             u.x = t ? BW - 20 - Math.random() * 40 : 20 + Math.random() * 40;
             if (SGB && SGB.att === 1) u.x = BW - u.x;   // obrana hradu: strany sú vymenené
-            u.hp = u.mh = u.mh * ((RES.k || [1, 1])[t] || 1); u.rf = 1; u.f = u.x > BW / 2 ? Math.PI : 0;
+            u.hp = u.mh = u.mh * ((BRES.k || [1, 1])[t] || 1); u.rf = 1; u.f = u.x > BW / 2 ? Math.PI : 0;
             U.push(u);
         }
         CMB.n0[t] += n; CMB.M[t] = Math.min(100, CMB.M[t] + 6);
-        const left = RES[t].length ? ' (v zálohe ešte ' + RES[t].length + ')' : '';
+        const left = BRES[t].length ? ' (v zálohe ešte ' + BRES[t].length + ')' : '';
         if (t) { TS = { s: 'Nepriateľovi dorazili posily: ' + n + ' mužov' + left + '.', l: 160 }; wbMsg('Nepriateľské posily: +' + n, '#ff9a80'); }
         else { TS = { s: 'Posily dorazili! ' + n + ' tvojich mužov vstupuje do boja' + left + '.', l: 160 }; wbMsg('Tvoje posily: +' + n, '#9fe08a'); snd('horn'); }
     }
@@ -97,7 +97,7 @@ function reinforce(dt) {
  *  podržaný medzerník bitku zrýchli. V aréne a v súboji veliteľov bitka končí hneď. */
 function heroFell() {
     const C = CMB; if (C.down || !LB || LB.ar || LB.duel) return false;
-    if (!U.some(u => !u.t && !u.h && u.hp > 0 && !u.rout) && !RES[0].length) return false;
+    if (!U.some(u => !u.t && !u.h && u.hp > 0 && !u.rout) && !BRES[0].length) return false;
     C.down = 1; C.blk = 0; C.rd = null; C.sw = null; C.camU = null;
     C.M[0] = Math.max(0, C.M[0] - 10);
     TS = { s: 'Padol si! Zranený ležíš na bojisku, ale tvoji muži bojujú ďalej. Drž medzerník – bitka pobeží rýchlejšie.', l: 420 };
@@ -226,7 +226,7 @@ function startBattle(en, al) {
         for (const k in FU)
             if (k[0] === 'u' && G[k])
                 for (let i = 0; i < G[k]; i++)
-                    if (i < 15) U.push(mk(0, k)); else RES[0].push([k]);   // vylepšené jednotky nad limit čakajú v zálohe
+                    if (i < 15) U.push(mk(0, k)); else BRES[0].push([k]);   // vylepšené jednotky nad limit čakajú v zálohe
         U.push(...compUnits());    // spoločníci bojujú ako hrdinovia
     }
     if (en.siege) {
@@ -243,7 +243,7 @@ function startBattle(en, al) {
     }
     else
         SGB = null;
-    if (en.boss) { if (!BOSSES[en.boss].minions) { U = U.filter(u => !u.t); RES[1] = []; } U.push(makeBoss(en.boss)); }   // boss (js/sim/bosses.js)
+    if (en.boss) { if (!BOSSES[en.boss].minions) { U = U.filter(u => !u.t); BRES[1] = []; } U.push(makeBoss(en.boss)); }   // boss (js/sim/bosses.js)
     cmbStart(en);   // morálka, veliteľ, výdrž, štít a šípy hrdinu (js/sim/combat.js)
 }
 function endBattle(win) {
@@ -522,8 +522,15 @@ function updBattle(dt) {
                     }
                 }
                 let mv = null;
-                if (heroMounted()) mv = horseMove(u, mx, my, 1, dt);   // kôň: zotrvačnosť a obratnosť (js/sim/warband.js)
-                if (heroMounted() && mv != null && !CMB.km) u.f = mv;
+                if (heroMounted()) {   // kôň ako vo Warbande: W/S plyn a brzda, A/D otáčanie, myš len mieri (js/sim/warband.js)
+                    if (ptr.down && !CMB.km) mv = horseMove(u, mx, my, 1, dt);   // dotykové ovládanie: kôň ide k prstu
+                    else {
+                        let thr = (keys.ArrowUp || keys.w ? 1 : 0) - (keys.ArrowDown || keys.s ? 1 : 0), trn = (keys.ArrowRight || keys.d ? 1 : 0) - (keys.ArrowLeft || keys.a ? 1 : 0);
+                        if (GP && Math.hypot(GP.mx, GP.my) > .25) { thr = -GP.my; trn = GP.mx; }
+                        mv = horseDrive(u, thr, trn, dt);
+                    }
+                }
+                if (heroMounted()) { if (mv != null && !CMB.km) u.f = mv; }   // na koni sa hýbe len kôň (predtým pri mierení myšou šiel hrdina aj priamo klávesmi – kĺzal do strán)
                 else if (mx || my) {
                     const m = Math.hypot(mx, my), k = CMB.blk && !heroMounted() ? .6 : 1;   // v kryte pešo pomalšie
                     mv = Math.atan2(my, mx);
@@ -534,7 +541,7 @@ function updBattle(dt) {
                 cmbHero(u, dt, mv);   // mierenie, kryt, sek, bod, luk, pokrik, nápor (js/sim/combat.js)
             }
             else {
-                if (u.ride > 0) { u.ride -= dt; u.f = u.rideA; u.x += Math.cos(u.rideA) * u.sp * dt; u.y += Math.sin(u.rideA) * u.sp * dt; continue; }   // jazda po nápore prejde cez nepriateľa a otočí sa (ako vo Warbande)
+                if (u.ride > 0) { u.ride -= dt; u.f = u.hd = u.rideA; u.x += Math.cos(u.rideA) * u.sp * dt; u.y += Math.sin(u.rideA) * u.sp * dt; continue; }   // jazda po nápore prejde cez nepriateľa a otočí sa (ako vo Warbande)
                 let b = null, bd = 1e9;
                 if (U.length > 150 && u.tg && u.tg.hp > 0 && (u.tgT -= dt) > 0) { b = u.tg; bd = Math.hypot(b.x - u.x, b.y - u.y); }   // veľká bitka: najbližší nepriateľ sa hľadá len občas
                 else {
@@ -569,6 +576,7 @@ function updBattle(dt) {
                     }
                 }
                 if (b) {
+                    const hx0 = u.x, hy0 = u.y;
                     u.f = Math.atan2(b.y - u.y, b.x - u.x);
                     if (isHA(u)) haAI(u, b, bd, dt);   // jazdecký lukostrelec krúži a strieľa
                     else if ((u.k === 'a' || u.k === 'e')) {
@@ -588,6 +596,7 @@ function updBattle(dt) {
                         u.y += (b.y - u.y) / bd * u.sp * dt;
                     }
                     else aiSpacing(u, b, bd, dt);   // odstup kopijníkov a úkroky zručných vojakov (js/sim/warband.js)
+                    if (onMount(u)) horseAI(u, hx0, hy0, dt);   // kôň ide dopredu a zatáča oblúkom
                 }
             }
         }
@@ -595,18 +604,18 @@ function updBattle(dt) {
         reinforce(dt);   // posily vo vlnách zo záloh
         if (U[0].hp <= 0 && !CMB.down) heroFell();
         U[0].tt = (U[0].tt || 0) + dt;
-        const mineUp = U.some(u => !u.t && u.hp > 0) || (RES[0].length > 0 && CMB.M[0] >= 15);   // záloha na úteku už nepríde
+        const mineUp = U.some(u => !u.t && u.hp > 0) || (BRES[0].length > 0 && CMB.M[0] >= 15);   // záloha na úteku už nepríde
         if (U[0].tt > 9000) {
             const s = t => U.filter(u => u.t === t && u.hp > 0).reduce((a, u) => a + u.hp, 0);
             endBattle(s(0) >= s(1));   // dlhá bitka: rozhodne zostávajúce zdravie
         }
         else if (U[0].hp <= 0 && (!CMB.down || !mineUp))   // hrdina padol a niet, kto by bojoval ďalej
             endBattle(false);
-        else if (!U.some(u => u.t && u.hp > 0) && (!RES[1].length || CMB.M[1] < 15))
+        else if (!U.some(u => u.t && u.hp > 0) && (!BRES[1].length || CMB.M[1] < 15))
             endBattle(true);
         else if (U.some(u => u.t && u.hp > 0) && !U.some(u => u.t && u.hp > 0 && !u.rout) && (CMB.endT += dt) > 150) {   // všetci nepriatelia utekajú: bojisko je tvoje (aj ich zálohy sa stiahnu)
             for (const u of U) if (u.t && u.hp > 0) { u.fled = 1; u.hp = 0; }
-            RES[1] = [];
+            BRES[1] = [];
             endBattle(true);
         }
         else if (CMB.down && !U.some(u => !u.t && u.hp > 0 && !u.rout) && (CMB.endT0 += dt) > 150) {   // po páde hrdinu utekajú všetci tvoji: prehra

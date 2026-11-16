@@ -37,6 +37,14 @@ for (const s of scripts) vm.runInContext(fs.readFileSync(path.join(ROOT, s), 'ut
 const run = code => vm.runInContext(code, sandbox);
 let fails = 0;
 const check = (name, ok, info = '') => { console.log((ok ? 'OK   ' : 'CHYBA') + ' ' + name + (info ? ' – ' + info : '')); if (!ok) fails++; };
+// všetky skripty hry (aj tie, ktoré tento test nenačítava – Phaser scény, 3D, grafika) zdieľajú jeden globálny priestor:
+// rovnaké meno const/let/class v dvoch súboroch v prehliadači zastaví načítanie a hra ostane na úvodnej obrazovke
+{
+    const all = [...fs.readFileSync(path.join(ROOT, 'Vojvodca Stredozeme.html'), 'utf8').matchAll(/<script src="([^"]+)"><\/script>/g)].map(m => m[1]).filter(s => !/^(https?:|vendor\/)/.test(s));
+    const seen = {}, dup = [];
+    for (const f of all) for (const m of fs.readFileSync(path.join(ROOT, f), 'utf8').matchAll(/^(?:const|let|class)\s+([A-Za-z_$][\w$]*)/gm)) { if (seen[m[1]] && seen[m[1]] !== f) dup.push(m[1] + ' (' + seen[m[1]] + ', ' + f + ')'); else seen[m[1]] = f; }
+    check('Žiadne meno const/let/class nie je v dvoch skriptoch hry', !dup.length, dup.join('; '));
+}
 const closeMenus = `(()=>{ const b = document.getElementById('bt'); if (b && b.children.length && Math.random() < .5) { const x = b.children.find(c => c.onclick && !c.disabled); if (x) { try { x.onclick.call(x); } catch (e) { throw e; } } } mode = 'map'; })()`;
 
 try {
@@ -331,13 +339,13 @@ try {
         var tick = n => { for (let i = 0; i < n; i++) cmbHero(h, 1, null); };
         CMB.mdx = -30; CMB.mdy = 0; var dL = mouseDir(); CMB.mdx = 0; CMB.mdy = -30; var dU = mouseDir(); CMB.mdy = 30; var dT = mouseDir(); CMB.mdx = 0; CMB.mdy = 0;
         var R0 = Math.random; Math.random = () => .999;
-        CMB.mdx = 30; keys[" "] = true; tick(1); var rdOk = CMB.rd && CMB.rd.d === "r"; tick(3); keys[" "] = false; tick(12); var hp1 = e.hp, quick = 9999 - hp1;
-        h.c = 0; CMB.st = 100; CMB.mdx = 30; keys[" "] = true; tick(45); keys[" "] = false; tick(12); var strong = hp1 - e.hp;
+        CMB.mdx = 30; keys[" "] = true; tick(1); var rdOk = CMB.rd && CMB.rd.d === "r"; tick(3); keys[" "] = false; tick(40); var hp1 = e.hp, quick = 9999 - hp1;
+        h.c = 0; CMB.st = 100; CMB.mdx = 30; keys[" "] = true; tick(55); keys[" "] = false; tick(30); var strong = hp1 - e.hp;
         h.c = 0; CMB.st = 100; keys[" "] = true; tick(5); CMB.blk = 0; keys.Shift = true; tick(1); keys.Shift = false; keys[" "] = false; var feint = !CMB.rd; tick(2);`);
     check('Smer úderu z pohybu myši, držaný nápriah je silnejší, kryt počas nápriahu je klam', run('dL === "l" && dU === "u" && dT === "t" && rdOk && quick > 0 && strong > quick * 1.3 && feint'), run('[dL, dU, dT, rdOk, quick, strong, feint].join(" ")'));
     // boj ako Warband: čepeľ v pohybe, štatistiky zbraní, brnenie odráta pevnú hodnotu, bez výdrže
-    run(`h.c = 0; e.hp = e.mh = 9999; e.x = h.x + 18; e.y = h.y; CMB.mdx = 30; CMB.sw = null; CMB.rd = { d: "r", t: 99, key: "atk", ready: 9, rel: 1 }; cmbHero(h, 1, null); var swAct = !!CMB.sw, hpA = e.hp; tick(1); var late = e.hp === hpA ? 0 : 1; tick(12); var swHit = e.hp < hpA && !CMB.sw;
-        h.c = 0; e.hp = e.mh = 9999; e.x = h.x + 80; CMB.rd = { d: "r", t: 99, key: "atk", ready: 9, rel: 1 }; cmbHero(h, 1, null); tick(14); var far = e.hp === 9999; e.x = h.x + 18;
+    run(`h.c = 0; e.hp = e.mh = 9999; e.x = h.x + 18; e.y = h.y; CMB.mdx = 30; CMB.sw = null; CMB.rd = { d: "r", t: 99, key: "atk", ready: 9, rel: 1 }; cmbHero(h, 1, null); var swAct = !!CMB.sw, hpA = e.hp; tick(1); var late = e.hp === hpA ? 0 : 1; tick(24); var swHit = e.hp < hpA && !CMB.sw;
+        h.c = 0; e.hp = e.mh = 9999; e.x = h.x + 80; CMB.rd = { d: "r", t: 99, key: "atk", ready: 9, rel: 1 }; cmbHero(h, 1, null); tick(26); var far = e.hp === 9999; e.x = h.x + 18;
         var kS = ["Železný meč", "Rohanská kopija", "Trpasličia sekera z Ereboru", "Orkský nôž", "Gondorský obojručný meč", "Sauronov palcát"].map(n => wkind(shOf("w").find(w => w.n === n)));
         var stOk = kS.join() === "sword,spear,axe,knife,two,mace" && wstat({ n: "x" }).sp === 1;
         var tp = U.find(u => u.t && u !== e); tp.hp = tp.mh = 9999; tp.cp = 0; tp.boss = 0; tp.uk = null; tp.k = "i";
@@ -364,13 +372,13 @@ try {
     // etapa 2 (bitka ako vo Warbande): zálohy a posily vo vlnách, bitka po páde hrdinu, zásahy vlastných, počty strán pre morálku
     run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
     run(`var sv2 = { inf: G.inf, cav: G.cav, arc: G.arc, vet: G.vet, elf: G.elf, roh: G.roh, gold: G.gold, x: G.x, y: G.y, tx: G.tx, ty: G.ty, hp: G.hp, ent: G.ent }; G.inf = 300; G.cav = G.arc = G.vet = G.elf = G.roh = G.ent = 0; OPT.bsize = "n";
-        startBattle({ n: 200, f: 2, nm: "T" }); var fe = U.filter(u => u.t && !u.src), resF = RES[1].length, resM = RES[0].length, n0ok = CMB.n0[0] > 20 && CMB.n0[1] > 20 && CMB.fc[1] === fe.length;
+        startBattle({ n: 200, f: 2, nm: "T" }); var fe = U.filter(u => u.t && !u.src), resF = BRES[1].length, resM = BRES[0].length, n0ok = CMB.n0[0] > 20 && CMB.n0[1] > 20 && CMB.fc[1] === fe.length;
         fe.slice(0, Math.ceil(fe.length * .6)).forEach(u => { u.hp = 0; }); CMB.M[1] = 60; CMB.rfT = 59; reinforce(1);
-        var waved = RES[1].length < resF && U.filter(u => u.t && u.hp > 0 && !u.src).length > fe.length * .45 && U.some(u => u.rf);
+        var waved = BRES[1].length < resF && U.filter(u => u.t && u.hp > 0 && !u.src).length > fe.length * .45 && U.some(u => u.rf);
         U[0].hp = 0; var stepOk = true; try { updBattle(1); } catch (er) { stepOk = String(er); } var goes = mode === "battle" && CMB.down === 1 && camUnit() !== U[0] && !camUnit().t;
-        RES[1] = []; for (const u of U) if (u.t) u.hp = 0; updBattle(1); var wonDown = mode !== "battle";`);
+        BRES[1] = []; for (const u of U) if (u.t) u.hp = 0; updBattle(1); var wonDown = mode !== "battle";`);
     run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
-    run(`G.inf = 5; startBattle({ n: 3, f: 9, nm: "T" }); for (const u of U) if (!u.t && !u.h) u.hp = 0; RES[0] = []; U[0].hp = 0; updBattle(1); var lostDown = mode !== "battle";`);
+    run(`G.inf = 5; startBattle({ n: 3, f: 9, nm: "T" }); for (const u of U) if (!u.t && !u.h) u.hp = 0; BRES[0] = []; U[0].hp = 0; updBattle(1); var lostDown = mode !== "battle";`);
     run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
     run(`G.inf = 10; startBattle({ n: 3, f: 9, nm: "T" }); var fa = U.find(u => !u.t && !u.h), fs2 = U.find(u => !u.t && !u.h && u !== fa); U.filter(u => u !== fa && u !== fs2 && !u.h).forEach(u => { u.x = 3000; u.y = 3000; u.stun = 999; });
         fs2.x = 200; fs2.y = 300; fa.x = 260; fa.y = 300; fa.f = 0; fa.hp = fa.mh = 999; AR.length = 0; var R3 = Math.random; Math.random = () => .9;
@@ -467,8 +475,13 @@ try {
     run(`G.eq.m = 2; G.own.m = [0, 2]; G.eq.r = 3; G.own.r = [0, 3]; startBattle({ n: 6, f: 7, nm: "T" }); var h = U[0]; CMB.mvA = 0; CMB.mvS = 0; var x0 = h.x; horseMove(h, 1, 0, 1, 1); var step1 = h.x - x0; for (let i = 0; i < 60; i++) horseMove(h, 1, 0, 1, 1); var x1 = h.x; horseMove(h, 1, 0, 1, 1); var stepN = h.x - x1; var horseOk = step1 < stepN * .5 && stepN > 0;
         G.eq.m = 0; CMB.bowC = 30; cmbHero(h, 1, 0); var b1 = CMB.bowC; cmbHero(h, 1, null); var xbOk = b1 === 30 && CMB.bowC < 30;
         var ha = mk(1, "uN3"); ha.x = 600; ha.y = 400; U.push(ha); var tgtU = U[0]; tgtU.x = 600; tgtU.y = 500; ha.c = 0; AR.length = 0; for (let i = 0; i < 90; i++) haAI(ha, tgtU, Math.hypot(tgtU.x - ha.x, tgtU.y - ha.y), 1); var haOk = isHA(ha) && AR.some(a => a.by === ha);
+        CMB.rear = 0; CMB.mvA = 0; CMB.mvS = 0; h.x = 500; h.y = 400; for (let i = 0; i < 60; i++) horseDrive(h, 1, 0, 1); var dvFwd = h.x > 520 && Math.abs(h.y - 400) < .01;   // W: kôň ide rovno dopredu
+        var yb = h.y; for (let i = 0; i < 20; i++) horseDrive(h, 1, 1, 1); var dvTurn = CMB.mvA > .3 && CMB.mvA < 1.6 && h.y > yb;   // D: otáča sa doprava oblúkom, nie bokom
+        for (let i = 0; i < 200; i++) horseDrive(h, -1, 0, 1); var dvBack = CMB.mvS < 0 && CMB.mvS >= -.22 * h.sp - 1e-9;   // S: zabrzdí a pomaly cúva
+        var hc = mk(1, Object.keys(FU).find(k => FU[k].b === "c" && FU[k].wp !== "bow") || "uN3"); hc.f = hc.hd = 0; hc.x = 700; hc.y = 400; var cx0 = hc.x, cy0 = hc.y; hc.y += 3; horseAI(hc, cx0, cy0, 1); var aiSide = Math.abs(hc.y - cy0) < 1 && hc.x > cx0;   // AI kôň nejde bokom
+        var horseDrv = dvFwd && dvTurn && dvBack && aiSide;
         for (const u of U) if (u.t) u.hp = 0; var kh = 0; while (mode === "battle" && kh < 60) { U[0].hp = 999; updBattle(1); kh++; } G.eq.r = 0; G.eq.m = 0;`);
-    check('Kôň má zotrvačnosť, kuša sa nabíja len postojačky, jazdecký lukostrelec strieľa', run('horseOk && xbOk && haOk'), run('[horseOk, xbOk, haOk].join(" ")'));
+    check('Kôň má zotrvačnosť, kuša sa nabíja len postojačky, jazdecký lukostrelec strieľa; kôň ako vo Warbande (W/S plyn, A/D otáčanie, nejde bokom)', run('horseOk && xbOk && haOk && horseDrv'), run('[horseOk, xbOk, haOk, dvFwd, dvTurn, dvBack, aiSide].join(" ")'));
     run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
     // verzia 44: veľké bitky, meniace sa počasie, spätný ráz zbrane od krytu, krv predvolene vypnutá
     run(`var bs0 = OPT.bsize; G.inf = 300; G.cav = 0; G.arc = 0; G.vet = 0; G.elf = 0; G.roh = 0; OPT.bsize = "n"; startBattle({ n: 300, f: 2, nm: "T" }); var nN = U.filter(u => !u.t && !u.h).length; for (const u of U) if (u.t) u.hp = 0; var kb = 0; while (mode === "battle" && kb < 60) { U[0].hp = 999; updBattle(1); kb++; }`);

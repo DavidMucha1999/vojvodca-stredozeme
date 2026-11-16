@@ -48,7 +48,9 @@ function optGroups() {
             { l: 'Auto kvalita', v: () => yn(OPT.autoQ !== false), fn: () => set('autoQ', OPT.autoQ === false), tip: 'Pri nízkom počte snímok za sekundu sama zníži kvalitu, aby bola hra plynulá.' },
             { l: 'Nálet kamery', v: () => yn(OPT.intro3d !== false), fn: () => set('intro3d', OPT.intro3d === false), tip: 'Filmový pohyb kamery na začiatku bitky.' },
             { l: 'Mierenie', v: () => OPT.aimMode === 'ground' ? 'kurzor' : 'zameriavač', fn: () => set('aimMode', OPT.aimMode === 'ground' ? 'look' : 'ground'), tip: 'Kurzor: mieriš kurzorom na zem. Zameriavač: myš otáča kameru, zameriavač je v strede (ako Warband).' },
-            { l: 'Ukazovateľ úderu', v: () => yn(OPT.tell !== false), fn: () => set('tell', OPT.tell === false), tip: 'Šípky okolo zameriavača ukazujú smer chystaného úderu.' }
+            { l: 'Ukazovateľ úderu', v: () => yn(OPT.tell !== false), fn: () => set('tell', OPT.tell === false), tip: 'Šípky okolo zameriavača ukazujú smer chystaného úderu.' },
+            { l: 'Kompas v bitke', v: () => yn(OPT.compass !== false), fn: () => set('compass', OPT.compass === false), tip: 'Pás hore ukazuje svetové strany, nepriateľov (červené) a tvojich (modré); šípka na okraji ukáže najbližšieho nepriateľa mimo záberu.' },
+            { l: 'Krúžok pod cieľom', v: () => yn(OPT.tgMark !== false), fn: () => set('tgMark', OPT.tgMark === false), tip: 'Súper pod zameriavačom má pod nohami červený krúžok.' }
         ] },
         { t: 'Obraz', items: [
             { l: 'Počítadlo FPS', v: () => yn(OPT.fps), fn: () => set('fps', !OPT.fps), tip: 'Zobrazí počet snímok za sekundu.' },

@@ -115,6 +115,34 @@ class UIScene extends Phaser.Scene {
         g.fillStyle(0xc9a24a, .7).fillRect(cx0 - 1, sy + 5, 2, 16);
         tx(0, 'Tvoji ' + this.cnt[0], 11, '#f3dc9a', 1, .5).setPosition(cx0 - 178, sy + 14);
         tx(1, this.cnt[1] + ' Nepriateľ', 11, '#ffb0a0', 0, .5).setPosition(cx0 + 178, sy + 14);
+        // kompas ako vo Warbande: svetové strany a kde sú nepriatelia (červené) a tvoji (modré) vzhľadom na smer pohľadu
+        const on3 = typeof B3 !== 'undefined' && B3.isOn && B3.isOn(), camY = on3 ? B3.yaw : C.km && C.aim3 ? C.aim3.yaw : h.f, wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
+        if (OPT.compass !== false && h.hp > 0) {
+            const ky = 38, KW = 170, HALF = Math.PI * .6, kx = a => { const r = wrap(a - camY); return Math.abs(r) > HALF ? null : cx0 + r / HALF * KW; };
+            if (!this.kBin || (this.kT = (this.kT || 0) + 1) % 6 === 0) {
+                const E = new Array(36).fill(0), A = new Array(36).fill(0); let nr = null, nd = 1e9;
+                for (const u of U) { if (u.hp <= 0 || u.fled || u.h) continue; const d = Math.hypot(u.x - h.x, u.y - h.y), b = ((Math.round(Math.atan2(u.y - h.y, u.x - h.x) / (Math.PI / 18)) % 36) + 36) % 36; if (u.t) { E[b]++; if (!u.rout && d < nd) { nd = d; nr = u; } } else A[b]++; }
+                this.kBin = [E, A]; this.kNear = nr; this.kNd = nd;
+            }
+            g.fillStyle(0x0e0a08, .6).fillRoundedRect(cx0 - KW - 10, ky - 2, KW * 2 + 20, 18, 5);
+            g.lineStyle(1, 0xc9a24a, .35); for (let i = 0; i < 24; i++) { const x = kx(i * Math.PI / 12); if (x != null && i % 6) g.lineBetween(x, ky + 10, x, ky + 14); }
+            const [E, A] = this.kBin;
+            for (let i = 0; i < 36; i++) { const x = kx(i * Math.PI / 18); if (x == null) continue; if (A[i]) { const hh = Math.min(7, 2 + A[i] * .5); g.fillStyle(0x6aa8ff, .85).fillRect(x - 2, ky + 14 - hh, 4, hh); } if (E[i]) { const hh = Math.min(12, 3 + E[i] * .6); g.fillStyle(0xff4a30, .9).fillRect(x - 2.5, ky, 5, hh); } }
+            [['S', -Math.PI / 2], ['V', 0], ['J', Math.PI / 2], ['Z', Math.PI]].forEach(([n, a], i) => { const x = kx(a); if (x == null) { if (this.cmbT[20 + i]) this.cmbT[20 + i].setVisible(false); } else tx(20 + i, n, 11, n === 'S' ? '#ffd24a' : '#e8d8a8', .5, .5).setPosition(x, ky + 7); });
+            g.fillStyle(0xffd24a, .9).fillTriangle(cx0, ky + 13, cx0 - 4, ky + 18, cx0 + 4, ky + 18);
+            // najbližší nepriateľ mimo záberu: šípka na okraji obrazovky
+            const n = this.kNear;
+            if (n && n.hp > 0 && this.kNd > 30) {
+                const r = wrap(Math.atan2(n.y - h.y, n.x - h.x) - camY), pul = .55 + .3 * Math.sin(tm * .15);
+                const nx = kx(r + camY); if (nx != null) { g.fillStyle(0xff4a30, 1).fillTriangle(nx, ky + 15, nx - 5, ky + 21, nx + 5, ky + 21); }
+                if (Math.abs(r) > .8) {   // mimo zorného poľa
+                    let ex, ey, ang;
+                    if (Math.abs(r) > 2.5) { ex = W / 2; ey = H - 120; ang = Math.PI / 2; } else { const sd = Math.sign(r); ex = sd > 0 ? W - 34 : 34; ey = H / 2; ang = sd > 0 ? 0 : Math.PI; }
+                    const s2 = 14, c = Math.cos(ang), si = Math.sin(ang);
+                    g.fillStyle(0xff4a30, pul).fillTriangle(ex + c * s2, ey + si * s2, ex - c * s2 * .6 - si * s2 * .8, ey - si * s2 * .6 + c * s2 * .8, ex - c * s2 * .6 + si * s2 * .8, ey - si * s2 * .6 - c * s2 * .8);
+                }
+            }
+        } else for (let i = 20; i < 24; i++) if (this.cmbT[i]) this.cmbT[i].setVisible(false);
         // panel hrdinu vľavo dole: zdravie, štít, kôň, výdrž, šípy
         const px = 10, py = H - 98, ph = 62;
         g.fillStyle(0x0e0a08, .74).fillRoundedRect(px, py, 188, ph, 6); g.lineStyle(1, 0xc9a24a, .55).strokeRoundedRect(px, py, 188, ph, 6);
@@ -127,13 +155,13 @@ class UIScene extends Phaser.Scene {
         if (OPT.noStam === false) { pb(ry, C.st, 100, C.gb > 0 ? (Math.floor(tm / 4) % 2 ? 0xff5030 : 0x802010) : 0xd9b84a, 5); ry += 8; }
         tx(5, [C.ammo0 ? 'Šípy ' + C.ammo : '', C.ammo0 && C.km ? (C.wpn === 'r' ? 'v ruke: strelná' : 'v ruke: zbraň') : '', C.cry > 0 ? '' : 'pokrik (V)'].filter(Boolean).join('  ·  '), 9, '#c8b48a', 0, 0).setPosition(px + 8, py + ph - 14);
         const bo = bossAlive();   // boss: veľká lišta zdravia s menom
-        if (bo) { g.fillStyle(0x000000, .65).fillRect(W / 2 - 152, 40, 304, 12); g.fillStyle(0x8a1a10, 1).fillRect(W / 2 - 150, 42, 300 * bo.hp / bo.mh, 8); g.fillStyle(0xff8a40, .5).fillRect(W / 2 - 150, 42, 300 * bo.hp / bo.mh, 3); tx(3, BOSSES[bo.boss].n, 12, '#ffb090', .5, 0).setPosition(W / 2, 54); }
+        if (bo) { g.fillStyle(0x000000, .65).fillRect(W / 2 - 152, 64, 304, 12); g.fillStyle(0x8a1a10, 1).fillRect(W / 2 - 150, 66, 300 * bo.hp / bo.mh, 8); g.fillStyle(0xff8a40, .5).fillRect(W / 2 - 150, 66, 300 * bo.hp / bo.mh, 3); tx(3, BOSSES[bo.boss].n, 12, '#ffb090', .5, 0).setPosition(W / 2, 78); }
         // cieľ pod zameriavačom: meno a zdravie (ako vo Warbande)
         if (h.hp > 0) {
             if (!this.tgSig || (this.tgT = (this.tgT || 0) + 1) % 3 === 0) {
                 const ya = C.km && C.aim3 ? C.aim3.yaw : h.f; let best = null, bs = 1e9;
                 for (const u of U) if (u.t && u.hp > 0 && !u.fled) { const dx = u.x - h.x, dy = u.y - h.y, d = Math.hypot(dx, dy); if (d > 160 || d < 1) continue; const da = angD(ya, Math.atan2(dy, dx)); if (da > .1 + 12 / d) continue; const sc = d + da * 220; if (sc < bs) { bs = sc; best = u; } }
-                this.tgSig = 1; this.tgU = best;
+                this.tgSig = 1; this.tgU = best; C.tgU = best;   // 3D: krúžok pod cieľom (js/engine/b3d.js)
             }
             const u = this.tgU;
             if (u && u.hp > 0) { const ty = H / 2 + 36; g.fillStyle(0x000000, .6).fillRect(W / 2 - 41, ty + 13, 82, 6); g.fillStyle(0xc0392b, 1).fillRect(W / 2 - 40, ty + 14, 80 * Math.max(0, u.hp) / u.mh, 4); tx(6, unitName(u), 10, '#f4e8d0', .5, 0).setPosition(W / 2, ty); }

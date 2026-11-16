@@ -20,7 +20,8 @@ const B3 = (() => {
     let arrowPool = [], stuck = [], pts = null, ptsPos = null, ptsCol = null, decals = [], torches = [], wx = null, siege = {}, clock = 0, drag = null;
     let hTex = null, trTex = null, trData = null, trDirty = 0, grassM = null, waterM = null, blobs = null, flashL = [], fires = [], trails = [], grade = null, frameN = 0;
     let intro = null, slow = null, photo = null, sunDir = null, braziers = [], lp = -.12, fpv = false;
-    const FPP = { aR: 1.25, eR: .9, aRy: .15, aL: 1.0, eL: 1.0 };   // póza rúk v prvej osobe (zbraň a štít v zábere)
+    const FPP = { aR: 1.25, eR: .9, aRy: .15, aL: 1.0, eL: 1.0 };
+    const FPC = { f: 1.4, up: .5, side: 0, fov: 66 };   // kamera v prvej osobe: posun vpred od hlavy (záporný = dozadu), hore, do strany a zorné pole   // póza rúk v prvej osobe (zbraň a štít v zábere)
     const lookOn = () => on && (typeof OPT === 'undefined' || OPT.aimMode !== 'ground');
     const MAT = {};
     const T = () => window.THREE;
@@ -1432,7 +1433,38 @@ const B3 = (() => {
     }
 
     /** Pózy pravej ruky pre smer úderu z pohľadu útočníka: [nápriah zdvih, švih, koniec zdvih, švih, lakeť pri nápriahu, lakeť na konci]. AI_D prevádza smer z pohľadu obrancu. */
-    const DPOSE = { u: [2.95, 0, .7, 0, 1.25, .1], r: [1.9, -1.45, 1.45, 1.1, .75, .2], l: [1.8, 1.25, 1.45, -1.1, 1.3, .35], t: [.8, -1, 1.6, 0, 1.9, 0] }, AI_D = { l: 'r', r: 'l', u: 'u', t: 't' };
+    /** Kľúčové pózy úderov ako vo Warbande: pre každý druh zbrane a smer W = plný nápriah, I = dopad (stred letu čepele), E = dokončenie.
+     *  Hodnoty [aR, aRy, eR, wz, wy, tw, ln]: aR zdvih ramena vpred, aRy švih ramena do strany (+ k ľavému boku), eR ohnutie lakťa,
+     *  wz sklon zbrane v zápästí, wy pootočenie zbrane okolo predlaktia (ostrie), tw vytočenie trupu (+ doľava), ln záklon (+) / predklon (−). */
+    const SWP = {
+        one: {
+            r: { W: [1.75, -1.6, 1.4, .5, 0, -.55, .05], I: [1.5, .2, .25, .15, 0, .1, -.12], E: [1.35, 1.1, .5, .3, 0, .45, -.1] },
+            l: { W: [1.75, 1.5, 1.6, .5, 0, .5, .05], I: [1.5, -.2, .25, .15, 0, -.1, -.12], E: [1.35, -1.1, .5, .3, 0, -.45, -.1] },
+            u: { W: [2.85, -.25, .3, -.3, 1.57, -.25, .3], I: [1.6, 0, .3, .2, 1.57, .05, -.2], E: [.9, .1, .4, .4, 1.57, .1, -.25] },
+            t: { W: [.1, -.8, 1.6, -.4, 1.57, -.5, .05], I: [1.55, -.05, .05, 0, 1.57, .25, -.2], E: [1.5, 0, .15, 0, 1.57, .2, -.18] }
+        },
+        spear: {
+            t: { W: [.2, -.35, 1.75, 0, 0, -.5, 0], I: [1.45, -.05, .1, 0, 0, .2, -.25], E: [1.4, 0, .2, 0, 0, .15, -.2] },
+            u: { W: [2.6, -.3, .6, -1.2, 0, -.35, .15], I: [2.05, -.1, .45, -1.35, 0, .15, -.15], E: [1.95, 0, .5, -1.45, 0, .15, -.2] }
+        }
+    };
+    /** Pózy pre pohľad z prvej osoby (ako vo Warbande): rovnaké údery, ale ruka a zbraň ostávajú v zábere kamery v hlave –
+     *  nápriah sprava v pravom hornom rohu, zľava v ľavom, zhora nad stredom, bod a kopija zdola sprava hrotom k stredu. */
+    const SWPF = {
+        one: {
+            r: { W: [1.45, .15, 1.2, -.6, 0, -.15, 0], I: [1.5, .2, .25, .15, 0, .1, -.12], E: [1.35, 1.1, .5, .3, 0, .45, -.1] },
+            l: { W: [1.2, .7, 1.2, .9, 0, .2, 0], I: [1.5, -.2, .25, .15, 0, -.1, -.12], E: [1.35, -1.1, .5, .3, 0, -.45, -.1] },
+            u: { W: [1.35, .3, 1.0, 1.4, 1.57, 0, .15], I: [1.6, .1, .3, -.5, 1.57, .05, -.2], E: [1.5, .15, .3, -1.0, 1.57, .05, -.2] },
+            t: { W: [1.1, .2, 1.4, -.9, 1.57, -.2, 0], I: [1.55, -.05, .05, 0, 1.57, .25, -.2], E: [1.5, 0, .15, 0, 1.57, .2, -.18] }
+        },
+        spear: {
+            t: { W: [1.0, .2, 1.1, -.6, 0, -.2, 0], I: [1.45, .2, .5, -.35, 0, .1, -.2], E: [1.5, .15, .45, -.4, 0, .1, -.2] },
+            u: { W: [1.6, .2, 1.4, -1.6, 0, -.2, .1], I: [1.75, .2, 1.2, -1.8, 0, .1, -.15], E: [1.85, .25, .9, -1.75, 0, .1, -.2] }
+        }
+    };
+    /** Kľúčové pózy pre druh zbrane a smer (kopija pozná len bod a bod zhora; sek zboku kopijou je bod); fp = pohľad z prvej osoby. */
+    const swingKeys = (cls, d, fp) => { const B0 = fp ? SWPF : SWP, T0 = B0[cls] || B0.one; return T0[d] || (cls === 'spear' ? T0.t : T0.u); };
+    const AI_D = { l: 'r', r: 'l', u: 'u', t: 't' };   // smer úderu vojaka z pohľadu obrancu → z pohľadu útočníka
     /** Póza jednotky podľa simulácie: chôdza/beh s kolenami, dýchanie, nápriah, úder, kryt, streľba, zásah, zapotácanie, útek, pád podľa smeru; jazda. */
     /** Chod koňa podľa rýchlosti (jednotky/tik): krok, klus, cval; dĺžka kroku = vzdialenosť na jeden cyklus nôh (stále rovnaká, aby kopytá nešmýkali). */
     const gaitOf = s => s < .7 ? 0 : s < 1.5 ? 1 : 2, STRIDE = [24, 40, 54];
@@ -1451,7 +1483,7 @@ const B3 = (() => {
         if (o.own && o.own.flash) o.own.flash.value = Math.max(0, o.hit - .55) * 2.2;   // krátky záblesk po zásahu (hit začína na .5 – 1)
         o.dirt = Math.min(1, (o.dirt || 0) + moved * .00035 + (o.atk > 0 ? .0012 * dt : 0)); o.own.dirt.value = o.dirt * DIRT_K;   // blato a prach sa počas bitky nalepia na nohy, výstroj aj koňa
         if (u.hp <= 0) return poseDead(o, u, dt);
-        const yawT = -(u.h && CMB.couch && CMB.mvA != null ? CMB.mvA : u.f); let d = yawT - r.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); r.rotation.y += d * Math.min(1, (o.mount ? .13 : u.boss || o.tp.beast ? .15 : .3) * dt);   // kôň, zver a boss sa otáčajú pomalšie a plynulejšie
+        const yawT = -(o.mount && !o.unh ? (u.h ? (CMB.mvA ?? u.f) : (u.hd ?? u.f)) : u.f); let d = yawT - r.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); r.rotation.y += d * Math.min(1, (o.mount ? .13 : u.boss || o.tp.beast ? .15 : .3) * dt);   // kôň hľadí smerom jazdy (nie tam, kam mieri jazdec); kôň, zver a boss sa otáčajú pomalšie a plynulejšie
         r.rotation.z = u.stun > 0 ? Math.sin(clock * 9) * .12 : 0; r.rotation.x = 0;
         if (o.lance > 0 && (o.lance -= dt) <= 0 && o.B) o.B.wp.scale.setScalar(1);
         if (o.far) { o.ph += o.sp * dt * .2; if (o.mount) o.mph += o.sp * dt / STRIDE[gaitOf(o.sp)]; o.rout = u.rout; return; }   // vzdialený vojak: hromadná sieť, animuje ho grafická karta
@@ -1580,20 +1612,25 @@ const B3 = (() => {
         // ruky
         const sw = Math.sin(o.ph) * amt;
         let aR = (H.spear ? .9 : .2) - sw * .45, aRy = 0, eR = H.spear ? 1.1 : .5 + breath * .05, aL = H.bow ? .35 : .3 + sw * .4, eL = H.shield ? .9 : .45;
-        const wind = (d, p) => { const P = DPOSE[d] || DPOSE.u; aR = lerp(.3, P[0], p); aRy = lerp(0, P[1], p); eR = lerp(.5, P[4], p); };
-        const strike = (d, p) => { const P = DPOSE[d] || DPOSE.u; aR = lerp(P[0], P[2], p); aRy = lerp(P[1], P[3], p); eR = lerp(P[4], P[5], p); };
-        if (u.wu > 0 && u.wu0) wind(u.wd ? AI_D[u.wd] : 'u', Math.min(1, (1 - u.wu / u.wu0) * 1.4));   // nápriah – smer čitateľný z pózy
-        if (o.atk > 0) { const p = 1 - o.atk; if (H.bow) { aL = 1.5; eL = 0; aR = 1.45; eR = 2.2 * (1 - Math.min(1, p * 3)); aRy = .3; } else if (H.spear && !u.lwd) { aR = 1.2 + Math.sin(p * Math.PI) * .45; eR = 1.6 - Math.sin(p * Math.PI) * 1.4; } else strike(u.lwd ? AI_D[u.lwd] : 'u', Math.min(1, p * 2)); }
+        // údery ako vo Warbande: kľúčové pózy podľa druhu zbrane (SWP), čas z bojovej simulácie (nápriah C.rd / u.wu, let čepele C.sw / u.as)
+        let wz = H.spear ? 0 : .45, wy = 0, tw0 = 0, ln0 = 0;   // zápästie (sklon a pootočenie zbrane), vytočenie a záklon trupu
+        const fpH = u.h && fpv && lookOn() && !photo, cls = H.spear ? 'spear' : 'one', R0 = () => [aR, aRy, eR, wz, wy, 0, 0], setK = k => { [aR, aRy, eR, wz, wy, tw0, ln0] = k; }, mixK = (a, b, k) => a.map((v, i) => lerp(v, b[i], k)), ease = k => k * k * (3 - 2 * k);
+        const wind = (d, p) => { const P = swingKeys(cls, d, fpH); setK(mixK(R0(), P.W, ease(Math.min(1, p)))); };
+        const strike = (d, p) => { const P = swingKeys(cls, d, fpH); setK(p < .45 ? mixK(P.W, P.I, ease(p / .45)) : mixK(P.I, P.E, ease((p - .45) / .55))); };
+        if (u.wu > 0 && u.wu0) wind(u.wd ? AI_D[u.wd] : 'u', (1 - u.wu / u.wu0) * 1.25);   // nápriah – smer čitateľný z pózy
+        else if (u.as && !u.h) strike(u.as.d ? AI_D[u.as.d] : 'u', Math.min(1, u.as.t / Math.max(1, u.as.dur)));   // čepeľ letí presne podľa simulácie (aiSwing)
+        else if (o.atk > 0) { const p = 1 - o.atk; if (H.bow) { aL = 1.5; eL = 0; aR = 1.45; eR = 2.2 * (1 - Math.min(1, p * 3)); aRy = .3; } else if (!u.h) strike(u.lwd ? AI_D[u.lwd] : (H.spear ? 't' : 'u'), Math.min(1, .55 + p)); }   // dokončenie úderu (nápor, staršie údery)
         if (u.h) {
-            const swg = C2.swing; o.atk = 0;
-            if (C2.rd) wind(C2.rd.d, Math.min(1, C2.rd.t / Math.max(1, C2.rd.ready)));
-            else if (swg && swg.t > 0) { const p = 1 - swg.t / 10; if (swg.k === 'c') { aR = 1.4; eR = .2; } else strike(swg.d || (swg.k === 't' ? 't' : 'r'), Math.min(1, p * 1.6)); }
+            const swg = C2.swing, R = C2.rd, S = C2.sw; o.atk = 0;
+            if (R) { wind(R.d, R.t / Math.max(1, R.ready)); const hold = R.t - R.ready - 20; if (hold > 0) { const k = Math.min(1, hold / 60) * .035; aR += Math.sin(clock * 55) * k; eR += Math.cos(clock * 47) * k; } }   // plný nápriah: ruka sa jemne chveje
+            else if (S) strike(S.d, Math.min(1, S.t / Math.max(1, S.dur)));
+            else if (swg && swg.t > 0) { const p = 1 - swg.t / 10; if (swg.k === 'c') { aR = 1.4; eR = .2; } else strike(swg.d || (swg.k === 't' ? 't' : 'r'), Math.min(1, .45 + p * .55)); }
             if (C2.couch) { aR = 1.5; aRy = .1; eR = .25; }
             if (C2.blk) { aL = 1.25; eL = .95; if (OPT.blkDir === 'manual' && !(C2.shp > 0)) { const Bk = { u: [2.6, .2, .9], l: [1.8, .9, 1], r: [1.8, -.9, 1], t: [1.1, .3, 1.2] }[C2.bd] || [1.9, 0, .9]; aR = Bk[0]; aRy = Bk[1]; eR = Bk[2]; } else if (!C2.shp) { aR = Math.max(aR, 1.7); eR = 1.1; } }
             if (C2.draw > 0 && H.bow) { aL = 1.55; eL = 0; aR = 1.5; eR = 2.3 * Math.min(1, C2.draw / 20); aRy = .32; }
         }
         if (H.bow && !(o.atk > 0) && !(u.h && C2.draw > 0)) { aL = .5 + sw * .3; eL = .4; }
-        if (u.h && fpv && lookOn() && !C2.rd && !(C2.swing && C2.swing.t > 0) && !C2.blk && !(C2.draw > 0)) { aR = FPP.aR; eR = FPP.eR; aRy = FPP.aRy; if (!H.bow) { aL = FPP.aL; eL = FPP.eL; } }   // prvá osoba: zbraň a štít pred sebou
+        if (u.h && fpv && lookOn() && !C2.rd && !C2.sw && !(C2.swing && C2.swing.t > 0) && !C2.blk && !(C2.draw > 0)) { aR = FPP.aR; eR = FPP.eR; aRy = FPP.aRy; if (!H.bow) { aL = FPP.aL; eL = FPP.eL; } }   // prvá osoba: zbraň a štít pred sebou
         if (!u.t && !u.h && u.hx != null && typeof fmOf === 'function' && fmOf(u) === 'wall' && !(o.atk > 0) && !(u.wu > 0)) { aL = 1.2; eL = 1; }   // štítový val: štíty vpred
         if (u.boss && u.atk) { const p = 1 - u.atk.t / u.atk.t0; wind('u', Math.min(1, p * 1.3)); }   // Kráľ trollov dvíha kyjak
         if (u.rout) { aR = 2.4 + sw * .4; eR = 1.2; aL = 2.4 - sw * .4; eL = 1.2; }
@@ -1621,7 +1658,8 @@ const B3 = (() => {
         // spätný ráz: zbraň odskočí od krytu
         const rc = (u.rc || 0) > 0 ? u.rc / 14 : 0; if (rc) { aR += .6 * rc; eR += .5 * rc; aRy *= 1 - rc * .5; u.rc -= dt; }
         // plynulé prechody medzi pózami
-        const tg = [aR, aRy, eR, aL, eL]; if (!o.pa) o.pa = tg.slice(); const kb = 1 - Math.pow(u.h ? .25 : .42, dt); for (let i = 0; i < 5; i++) o.pa[i] += (tg[i] - o.pa[i]) * kb; [aR, aRy, eR, aL, eL] = o.pa;
+        const tg = [aR, aRy, eR, aL, eL, wz, wy, tw0, ln0]; if (!o.pa || o.pa.length < 9) o.pa = tg.slice(); const kb = 1 - Math.pow(u.h ? .25 : .42, dt); for (let i = 0; i < 9; i++) o.pa[i] += (tg[i] - o.pa[i]) * kb; [aR, aRy, eR, aL, eL, wz, wy, tw0, ln0] = o.pa;
+        if (B.wp) { B.wp.rotation.order = 'ZYX'; B.wp.rotation.set(0, wy, wz); }   // zbraň v zápästí: najprv pootočenie ostria okolo čepele, potom sklon
         // výraz tváre: pokrik pri útoku, bolesť pri zásahu, žmurkanie
         if (B.mo) {
             const yell = shout || o.atk > .3 || u.wu > 0 || u.rout || (u.h && (C2.rd || (C2.swing && C2.swing.t > 0) || C2.cry > 840)), mT = yell ? 3.8 : o.hit > .3 ? 2.6 : 1;
@@ -1635,8 +1673,9 @@ const B3 = (() => {
         B.shd.rotation.z = -(aL + eL) * .92 + raise * 1.45;   // štít ostáva zvislo čelom vpred (pod šípmi nad hlavou)
         if (H.shield && !u.h && u.tg && (u.bd ?? 99) < 45) { let ra = Math.atan2(u.tg.y - u.y, u.tg.x - u.x) - u.f; ra = Math.atan2(Math.sin(ra), Math.cos(ra)); B.shd.rotation.y = Math.max(-.6, Math.min(.6, -ra)) * .6; } else B.shd.rotation.y *= .9;   // štít sa natočí k súperovi
         if (!u.h && !o.mount && (u.bd ?? 99) < 26 && !(o.atk > 0)) { B.ch.rotation.z -= .14; if (H.shield) { B.shL.rotation.z = Math.max(B.shL.rotation.z, .95); B.elL.rotation.z = Math.max(B.elL.rotation.z, 1); } if (o.sp < .3) { B.lgL.rotation.z += .3; B.lgR.rotation.z -= .22; B.knR.rotation.z -= .2; } }   // tlačenica v šíku: predklon, štít vpred, nohy zapreté
-        { const tw = o.mount || u.rout ? 0 : Math.sin(o.ph) * .16 * amt, wsh = !o.mount && amt < .25 ? Math.sin(clock * .7 + o.id * 2.1) : 0;   // protismerné otáčanie ramien a bokov pri chôdzi, prenášanie váhy v pokoji
-            B.ch.rotation.y = aRy * .3 + tw; B.hip.rotation.y = -tw * .8; B.hip.position.z = wsh * .22; B.ch.rotation.x += wsh * .02 + Math.sin(o.ph * 2) * .02 * amt; }   // trup sa otáča so švihom
+        { let twm = 0; if (o.mount && !o.unh) { twm = -u.f - o.root.rotation.y; twm = Math.max(-1.3, Math.min(1.3, Math.atan2(Math.sin(twm), Math.cos(twm)))); }   // jazdec sa v sedle natočí k cieľu, kôň ide rovno
+            const tw = o.mount || u.rout ? twm * .75 : Math.sin(o.ph) * .16 * amt, wsh = !o.mount && amt < .25 ? Math.sin(clock * .7 + o.id * 2.1) : 0;   // protismerné otáčanie ramien a bokov pri chôdzi, prenášanie váhy v pokoji
+            B.ch.rotation.y = tw0 + aRy * .15 + tw; B.hip.rotation.y = (twm ? twm * .25 : -tw * .8) - tw0 * .25; B.ch.rotation.z += ln0; B.hip.position.z = wsh * .22; B.ch.rotation.x += wsh * .02 + Math.sin(o.ph * 2) * .02 * amt; }   // trup sa otáča so švihom
         // plášť a zástava na pružine: vejú v behu, rozhojdajú sa pri otočke, dobiehajú pri zastavení
         const ry = o.root.rotation.y, dy = Math.atan2(Math.sin(ry - o.ry0), Math.cos(ry - o.ry0)); o.ry0 = ry;
         const ct = -.12 - Math.min(.7, o.sp * .25) - o.hit * .2 + Math.sin(clock * 1.3 + o.id) * .04, dd = Math.min(2, dt);
@@ -1858,6 +1897,16 @@ const B3 = (() => {
     function splinters(x, y, n, at) { const h = at ? at.y : heightAt(x, y) + 14; if (at) { x = at.x; y = at.z; } for (let i = 0; i < n; i++) { const a = Math.random() * 6.283; DUST.add({ x, y: h, z: y, vx: Math.cos(a) * 1.2, vy: .8 + Math.random() * 1.4, vz: Math.sin(a) * 1.2, g: .12, l: 26 + Math.random() * 14, c: '#8a6038', s0: 1.8, s1: 1.2, a0: 1 }); } }
     /** Špliechanie vody (brodenie, šíp do rieky). */
     function splash(x, y, n) { const wy = creekD(x, y) < 12 ? -6.4 : -4.3; for (let i = 0; i < n; i++) { const a = Math.random() * 6.283; DUST.add({ x, y: wy, z: y, vx: Math.cos(a) * .6, vy: .8 + Math.random() * 1.1, vz: Math.sin(a) * .6, g: .1, l: 22 + Math.random() * 10, c: '#dbe8f0', s0: 3, s1: 5, a0: .8 }); } }
+    /** Cieľ pod zameriavačom: jemný červený krúžok pod nohami (ako zvýraznenie súpera vo Warbande). */
+    let tgM = null;
+    function stepTgMark() {
+        const u = typeof CMB !== 'undefined' && OPT.tgMark !== false && U[0] && U[0].hp > 0 ? CMB.tgU : null;
+        if (!u || u.hp <= 0 || photo) { if (tgM) tgM.visible = false; return; }
+        if (!tgM) { const t = T(); tgM = new t.Mesh(new t.RingGeometry(.8, 1, 40), new t.MeshBasicMaterial({ color: C('#ff4a30'), transparent: true, opacity: .55, side: t.DoubleSide, depthWrite: false })); tgM.rotation.x = -Math.PI / 2; tgM.renderOrder = 3; }
+        if (tgM.parent !== scene) scene.add(tgM);
+        const r = (typeof onMount === 'function' && onMount(u) ? 15 : 8.5) * (u.boss ? 2.5 : 1);
+        tgM.scale.setScalar(r * (1 + .05 * Math.sin(clock * 4))); tgM.position.set(u.x, heightAt(u.x, u.y) + 1.2, u.y); tgM.visible = true;
+    }
     function ring(x, y, r, c = '#ffd0a0') {
         const t = T(), m = new t.Mesh(new t.RingGeometry(.8, 1, 40), new t.MeshBasicMaterial({ color: C(c), transparent: true, opacity: .8, side: t.DoubleSide, depthWrite: false, blending: t.AdditiveBlending }));
         m.rotation.x = -Math.PI / 2; m.position.set(x, heightAt(x, y) + 1.5, y); scene.add(m); debris.push({ ring: m, r, l: 24, l0: 24 });
@@ -2045,7 +2094,7 @@ const B3 = (() => {
         const head = new t.Vector3(); if (o && o.B) o.B.hd.getWorldPosition(head); else head.set(h.x, heightAt(h.x, h.y) + ((h.h ? G.eq.m && !h.dis : typeof mounted === 'function' && mounted(h)) ? 40 : 22), h.y);
         let pos;
         if (fpv && h.h && h.hp > 0) {
-            pos = head.clone().addScaledVector(F, 1.4); pos.y += .5;
+            pos = head.clone().addScaledVector(F, FPC.f).addScaledVector(Rt, FPC.side); pos.y += FPC.up;
             if (o && !o.mount) pos.y += Math.sin(o.ph * 2) * .35 * Math.min(1, o.sp);
             else if (o && o.mount) pos.y += Math.sin((o.ph || 0) * 2.2) * .3 * Math.min(1, o.sp || 0);   // krok
             if (cam.near !== .4) { cam.near = .4; cam.updateProjectionMatrix(); }
@@ -2058,7 +2107,7 @@ const B3 = (() => {
         }
         const look = cam.position.clone().addScaledVector(F, 200); cam.lookAt(look); tgt = look;
         if (SHAKE > 0) { cam.position.x += (Math.random() - .5) * SHAKE * .8; cam.position.y += (Math.random() - .5) * SHAKE * .8; }
-        const C2 = typeof CMB !== 'undefined' ? CMB : {}, fov = (fpv ? 66 : 54) + (C2.charging || C2.couch ? 8 : 0) + Math.min(5, Math.max(0, (Math.hypot(C2.vx || 0, C2.vy || 0) - 2.5) * 3)) - (C2.draw > 20 && fpv ? 8 : 0);
+        const C2 = typeof CMB !== 'undefined' ? CMB : {}, fov = (fpv ? FPC.fov : 54) + (C2.charging || C2.couch ? 8 : 0) + Math.min(5, Math.max(0, (Math.hypot(C2.vx || 0, C2.vy || 0) - 2.5) * 3)) - (C2.draw > 20 && fpv ? 8 : 0);
         if (Math.abs(cam.fov - fov) > .05) { cam.fov += (fov - cam.fov) * Math.min(1, .1 * dt); cam.updateProjectionMatrix(); }
         lightsFollow(h.x, h.y, dt);
     }
@@ -2503,7 +2552,7 @@ const B3 = (() => {
         for (const b of FAR.values()) { b.im.count = b.n; b.im.instanceMatrix.needsUpdate = true; if (b.an) b.an.needsUpdate = true; }
         B3G.U_DIRT.value = dN ? dSum / dN * DIRT_K : 0;
         if (waterM || creekM) { let n = 0; const F = (waterM || creekM).material.uniforms.uFoam.value; for (const u of U) { if (n >= 8 || u.hp <= 0 || u.fled) continue; const o = units.get(u); if (!o || !o.inS) continue; if (!(FIELD && FIELD.river && Math.abs(u.x - 720) < 44) && creekD(u.x, u.y) > 9) continue; F[n++].set(u.x, u.y, (o.mount ? 6 : 3.4) * (o.sp > .3 ? 1.3 : .8)); } for (let i = n; i < 8; i++) F[i].set(-999, -999, 0); if (waterM && creekM) creekM.material.uniforms.uFoam.value = F; }   // pena okolo brodiacich sa
-        updSiege(); stepRegiments(); if (!photo) stepProps(sdt); syncArrows(); syncParticles(); if (!photo) { runFx(sdt); stepWeather(sdt); stepPanorama(sdt); stepLeaves(sdt); stepRoofs(sdt); stepOrders(); } stepBirds(); stepArrowTrails(); drawOverlay(); camUpdate(dt); computeAim(); stepBlobs(); stepSmokeShade(); stepEnv(); stepFireLight();
+        updSiege(); stepRegiments(); if (!photo) stepProps(sdt); syncArrows(); syncParticles(); if (!photo) { runFx(sdt); stepWeather(sdt); stepPanorama(sdt); stepLeaves(sdt); stepRoofs(sdt); stepOrders(); } stepBirds(); stepArrowTrails(); stepTgMark(); drawOverlay(); camUpdate(dt); computeAim(); stepBlobs(); stepSmokeShade(); stepEnv(); stepFireLight();
         // filmová kamera: v spomalení a pri nástupe jemné chvenie z ruky a širokouhlé pásy
         const cine = !photo && (intro || (slow && slow.u)) ? 1 : 0; CINE += (cine - CINE) * Math.min(1, .08 * dt);
         if (CINE > .01 && cam) { const hh = CINE * (intro ? .5 : 1); cam.position.x += Math.sin(clock * 1.7) * .5 * hh + Math.sin(clock * 4.3) * .15 * hh; cam.position.y += Math.sin(clock * 2.3 + 1) * .35 * hh; cam.rotation.z += Math.sin(clock * 1.1) * .006 * hh; }
@@ -2586,5 +2635,5 @@ const B3 = (() => {
     const TPLgeo = g => { for (const tp of TPL.values()) for (const v of Object.values(tp)) { if (v === g) return true; if (v && typeof v === 'object') { if (v.geo === g) return true; for (const w of Object.values(v)) if (w === g) return true; } } return (PR && Object.values(PR).includes(g)) || (AGEO && Object.values(AGEO).includes(g)); };
     /** Kontrola nasadenia brnenia (testy): pozície odevu a tela v pokojovej póze pre jednotku u. */
     function garmentDebug(k, u) { const sp = specOf(u), H = template(sp).humanoid, rc = modelRace(sp.race), g = garmentGeos(k, H.BN, rc), B = modelBody(H.BN, rc, false); return { g: Array.from((g[0] || g[1]).attributes.position.array), b: Array.from(B.P), main: B.main }; }
-    return { FPP, garmentDebug, specOf, rigOf: u => units.get(u), want, start, prep, warm, frame, stop, pick, rel, wheel, dragStart, dragMove, dragEnd, isOn, heightAt, skipIntro, timeK, photoToggle, get photo() { return !!photo; }, get scene() { return scene; }, photoAt(x, y, z, yw, pt) { if (!photo) photoToggle(); photo.pos.set(x, y, z); photo.yaw = yw; photo.pitch = pt; }, get renderer() { return R; }, get intro() { return !!intro; }, get yaw() { return yaw; }, get look() { return lookOn(); }, get fp() { return fpv; }, lookMove, toggleFP, get pitch() { return lp; }, get aq() { return AQ.lvl; }, get fps() { return AQ.fps; } };
+    return { FPP, FPC, SWP, SWPF, garmentDebug, specOf, rigOf: u => units.get(u), want, start, prep, warm, frame, stop, pick, rel, wheel, dragStart, dragMove, dragEnd, isOn, heightAt, skipIntro, timeK, photoToggle, get photo() { return !!photo; }, get scene() { return scene; }, photoAt(x, y, z, yw, pt) { if (!photo) photoToggle(); photo.pos.set(x, y, z); photo.yaw = yw; photo.pitch = pt; }, get renderer() { return R; }, get intro() { return !!intro; }, get yaw() { return yaw; }, get look() { return lookOn(); }, get fp() { return fpv; }, lookMove, toggleFP, get pitch() { return lp; }, get aq() { return AQ.lvl; }, get fps() { return AQ.fps; } };
 })();
