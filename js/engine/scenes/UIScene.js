@@ -329,7 +329,7 @@ class UIScene extends Phaser.Scene {
             ax += (it.icon ? 15 : 0) + t.width + 12;
         }
         const hit = this.add.circle(cx, cy, R + 4, 0, 0).setInteractive({ useHandCursor: true });   // klik na portrét: prehľad hrdinu
-        hit.on('pointerup', () => { const b = [...tb.children].find(x => x.textContent.trim().startsWith('Prehľad')); if (b) b.click(); });
+        hit.on('pointerup', () => { const b = [...tb.children].find(x => x.textContent.trim().startsWith('Inventár')); if (b) b.click(); });
         out.push(hit);
         return out;
     }

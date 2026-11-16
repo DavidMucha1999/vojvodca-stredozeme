@@ -4,8 +4,10 @@
 function skills(i) {
     mode = 'town';
     PORTRAIT = Portraits.hero();
+    RICH.back = () => town(i); RICH.backLabel = 'Späť'; RICH.tab = 'attr';
     show('Hrdina ' + G.name, 'Rasa: ' + raceName() + ', povaha: ' + traitName() + '. Úroveň ' + G.lv + ', voľné body: ' + G.sk + '. Každá schopnosť môže mať až 5 stupňov.');
     [['st', 'Sila (+3 útok)'], ['od', 'Odolnosť (+15 zdravie)'], ['ob', 'Obratnosť (+8 % rýchlosť)'], ['pr', 'Presviedčanie (+6 pri prehováraní)'], ['ls', 'Lukostrelba (+1 zranenie šípov)']].forEach(([k, n]) => btn(n + ' [' + G.s[k] + ']', () => { G.sk--; G.s[k]++; upd(); skills(i); }, !G.sk || G.s[k] >= 5));
+    ov.dataset.screen = 'hero';   // obrazovka Hrdina (js/engine/scenes/UIRich.js)
     btn('Perky' + (G.pp > 0 ? ' (voľné: ' + G.pp + ')' : ''), () => party(() => skills(i), 'p'), 0, 'crown');
     btn('Bojové schopnosti' + (G.bk > 0 ? ' (voľné: ' + G.bk + ')' : ''), () => party(() => skills(i), 'b'), 0, 'sword');
     btn('Späť', () => town(i));
@@ -112,6 +114,7 @@ function town(i) {
     qChk('v', t.n);
     questEvent('v', t.n);
     show(t.n + ' (' + FN[t.f] + ')', 'Zlato ' + G.gold + ', vojsko ' + ar() + ', zdravie ' + Math.ceil(G.hp) + '/' + mh() + '. Posádka hradu: ' + t.g + (t.lord ? ', léno drží ' + t.lord : '') + '.');
+    ov.dataset.screen = 'town'; ov.dataset.ti = i;   // bohatá obrazovka vstupu do hradu (js/engine/scenes/UIRich.js)
     if (roomsOk()) btn('Vstúpiť na nádvorie', () => enterCastle(i, 'yard'), 0, 'castle');
     [['r', 'Verbovanie vojakov', 'recruit'], ['e', 'Kováč a zbrojnica', 'anvil'], ['v', 'Vojsko, zajatci a odpočinok', 'rest'], ...(t.mine ? [['h', 'Správa hradu', 'castle']] : []), ['d', 'Dvor a diplomacia', 'court']].forEach(([c, n, ic]) => btn(n, () => tsub(i, c), 0, ic));
     btn('Trh', () => market(t, () => town(i)), 0, 'scales');

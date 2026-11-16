@@ -364,6 +364,14 @@ Všetky modely z Meshy (telá postáv, kone, netvory, zbrane a brnenia dobra) s�
 - **Cesty na mape** sa počítajú tou istou trasou medzi hradmi a zaoblia sa (Chaikin), takže prirodzene vedú cez mosty a brody.
 - **Staré uloženia:** po načítaní (`navFixPositions`) sa hrdina, armády, dediny a poslovia, ktorí by stáli vo vode, presunú na najbližšiu súš. Rovnako pri novej hre; bandy sa vo vode nerodia.
 
+## Bohaté obrazovky: hrad, Hrdina, Družina, Voľby (verzia 104)
+
+- Doteraz sa každé okno kreslilo jedným spoločným vzorom (nadpis, odsek, stĺpec tlačidiel). Štyri hlavné obrazovky majú teraz vlastné rozloženie (`js/engine/scenes/UIRich.js`). Funkcia okna ich označí `ov.dataset.screen` (`town`, `hero`, `party`, `settings`) a `UIDialog.syncDialog` zavolá `richScreen`; ak sa obsah nezmestí alebo nastane chyba, okno sa nakreslí po starom. Akcie volajú tie isté HTML tlačidlá (`b.click()`) alebo tie isté funkcie hry (`wear`, `takePerk`, `csTake`), takže herná logika sa nezmenila. Klávesy 1–9 a Esc fungujú ako predtým (`dlgButtons`).
+- **Vstup do hradu:** hlavička s oblohou podľa dennej doby, siluetami hôr, obrázkom hradu frakcie a zástavou; meno, frakcia a pán, hviezdy prosperity, posádka, hradby, prosperita a pruh vzťahu. Budovy ako ilustrované dlaždice (Nádvorie, Kasárne, Kováč, Tábor a zajatci, Správa, Dvor, Trh, Krčma, Hrdina, Aréna, Prístav) s popisom, číslom klávesy a odznakom stavu („Niekto tu čaká“, „2 bodov“, „Vstupné 20“). Vpravo nástenka (tipy, výprava, klebety), úlohy, Uložiť a Odísť z mesta.
+- **Hrdina** (Inventár na mape, Výbava, klik na portrét, Hrdina a schopnosti v hrade): veľká postava v aktuálnej výbave na podstavci, okolo šesť slotov; vybraný slot ukáže veci z batohu ako karty so zeleným/červeným rozdielom oproti tomu, čo nosíš (klik = obliecť). Vpravo kruh úrovne a záložky **Výbava**, **Vlastnosti** (pruhy a +), **Perky** (mriežka vetiev, zelené = dá sa vziať) a **Schopnosti** (zdatnosti so zbraňami a bojové schopnosti s +).
+- **Družina:** súhrn (muži a sila, morálka s pruhom, zásoby, žold, zajatci a voz), záložky; spoločníci ako karty s portrétom, úrovňou, pruhmi zdravia a spokojnosti, rolou a tlačidlami; vojsko ako karty s postavičkou, počtom a žoldom. Ostatné záložky (zásoby, perky, schopnosti, rozkazy) vo vlastnom štýle v dvoch stĺpcoch.
+- **Voľby:** kategórie vľavo (Zvuk, Hra, Bitka 3D, Obraz, Ovládanie), vpravo voľby so spínačmi, posuvníkmi hlasitosti a výberom ‹ hodnota ›, pod každou krátky popis (celý pri myši).
+
 ## Rozvoj bojovníka ako vo Warbande (etapa 3, verzia 94)
 
 Nový súbor `js/sim/mastery.js` (načítava sa hneď po `warband.js`).

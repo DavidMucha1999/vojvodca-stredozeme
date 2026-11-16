@@ -14,6 +14,8 @@ function btn(label, fn, off, icon) {
     document.getElementById('bt').appendChild(b);
     return b;
 }
+/** Stav bohatých obrazoviek (js/engine/scenes/UIRich.js): vybraná záložka, slot výbavy, kategória volieb a kam sa vrátiť. */
+let RICH = { tab: 'eq', slot: 'w', cat: 0, back: null, backLabel: 'Späť' };
 let LOG = [], TS = null, BI = 'g', RN = null, PORTRAIT = null;
 /** Textový riadok v okne (cez celú šírku). o.gold = zlatý nadpis riadka, o.dim = tlmený, o.color = vlastná farba, o.icon = plátno ikony/portrétu + kľúč. */
 function row(text, o = {}) {
@@ -32,6 +34,7 @@ const select = b => { b.dataset.sel = '1'; b.style.outline = '3px solid #fff'; r
 /** Okno s nadpisom h a textom body. Ak je pred volaním nastavený PORTRAIT (popis tváre), okno dostane portrét (plátno .por). */
 function show(h, body) {
     ov.classList.remove('encv');
+    delete ov.dataset.screen; delete ov.dataset.ti; delete ov.dataset.tab;   // druh bohatej obrazovky (js/engine/scenes/UIRich.js) nastaví až volajúci
     {
         ov.innerHTML = '<h1>' + h + '</h1><p>' + body + '</p><div id="bt"></div>';
         if (PORTRAIT && typeof Portraits !== 'undefined') {

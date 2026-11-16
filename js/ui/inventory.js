@@ -49,6 +49,7 @@ function inv(back) {
 function invShow(back, close) {
     mode = 'town';
     show('Inventár', eqSum() + ' Biely rámik = to, čo nosíš. Kliknutím vec oblečieš.');
+    ov.dataset.screen = 'hero'; RICH.back = back; RICH.backLabel = close; RICH.tab = 'eq';   // obrazovka Hrdina (js/engine/scenes/UIRich.js)
     SH.forEach(s => {
         rowHead(s.l);
         [...G.own[s.k]].sort((a, b) => a - b).forEach(j => {

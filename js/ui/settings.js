@@ -80,6 +80,7 @@ function gameSettings(back) {
     if (fromMap) { if (mode !== 'map' && mode !== 'town') return; back = () => { ov.classList.add('hide'); mode = 'map'; }; }
     mode = 'town';
     show('Nastavenia hry', 'Klikni na položku a jej hodnota sa zmení.');
+    ov.dataset.screen = 'settings';   // bohatá obrazovka Voľby (js/engine/scenes/UIRich.js)
     for (const g of optGroups()) {
         row(g.t, { gold: 1 });
         g.items.forEach(i => btn(i.l + ': ' + i.v(), () => { i.fn(); gameSettings(fromMap ? null : back); }, 0));

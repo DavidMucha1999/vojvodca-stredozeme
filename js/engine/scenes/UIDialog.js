@@ -19,7 +19,7 @@ Object.assign(UIScene.prototype, {
         const keepScroll = sameTitle ? this.dlg.scroll : 0;
         this.sig.dlg = sig;
         if (this.dlg) { if (this.dlg.hold) this.dlg.hold.remove(); this.dlg.root.destroy(true); this.dlg.mask && this.dlg.mask.destroy(); this.dlg = null; }
-        if (m) this.buildDialog(keepScroll);
+        if (m && !(ov.dataset.screen && this.richScreen(ov.dataset.screen))) this.buildDialog(keepScroll);   // bohaté obrazovky: js/engine/scenes/UIRich.js
         this.sig.bars = null;
     },
 

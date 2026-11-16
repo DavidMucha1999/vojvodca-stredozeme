@@ -89,6 +89,7 @@ function party(back, tab) {
         tabs();
         [['a', 'Útok – všetci vpred', 'attack'], ['h', 'Držať líniu – lukostrelci strieľajú, pešiaci čakajú', 'shield'], ['f', 'Nasledovať hrdinu – šík okolo teba', 'hero'], ['l', 'Šík – línia čelom k nepriateľovi (lukostrelci za pechotou)', 'shield'], ['r', 'Ústup', 'back']].forEach(([k, n, ic]) => { const b = btn(n, () => { G.ord0 = k; re('o'); }, 0, ic); if ((G.ord0 || 'a') === k) select(b); });
     }
+    ov.dataset.screen = 'party'; ov.dataset.tab = tab;   // bohatá obrazovka Družina (js/engine/scenes/UIRich.js)
     btn(fromMap ? 'Zavrieť' : 'Späť', back, 0, 'back');
 }
 function compTalk(c, back, line) {
