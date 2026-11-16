@@ -312,6 +312,15 @@ Všetky modely z Meshy (telá postáv, kone, netvory, zbrane a brnenia dobra) s�
 - **Kompas** (`drawCombatHud` v `js/engine/scenes/UIScene.js`): pás pod silou a morálkou ukazuje svetové strany (S, V, J, Z), nepriateľov (červené stĺpiky, vyššie = viac) a tvojich (modré) v smere pohľadu ±108°. Najbližší nepriateľ má červený trojuholník a keď je mimo záberu, **na okraji obrazovky bliká červená šípka** (dole, keď je za tebou). Lišta bossa je posunutá pod kompas.
 - **Krúžok pod cieľom** (`stepTgMark` v `js/engine/b3d.js`): súper pod zameriavačom (ten, ktorého meno a zdravie vidíš pod zameriavačom) má pod nohami červený krúžok. Kompas aj krúžok sa dajú vypnúť v Nastaveniach (Boj).
 
+## Krajina na mape (verzia 97)
+
+- **Oprava – les ako čierne štvorčeky:** stromy (`tree_0`–`tree_2`, `deadtree`) boli v skupine textúr bitky, ktorá sa načítava až na pozadí. Les mapy sa niekedy zložil skôr a jeho textúra `map_trees` ostala čierna (náhradná textúra Phaseru). Teraz patria do skupiny mapy (`Art.loadTextures` v `js/engine/art.js`).
+- **Zem** (`buildGround` v `js/engine/scenes/MapScene.js`): dlaždica 512 × 512 so steblami trávy, zrnkami a trsmi sa opakuje po celom svete (`grain`, TileSprite), pod ňou veľké farebné plochy podľa oblasti (`patches`: sviežejšia a vyschnutá lúka, popol Mordoru, piesočné duny na juhu, sneh na severe). Na hraniciach oblastí plochy slabnú, aby nebolo vidno šev.
+- **Cesty:** mierne sa kľukatia (dve sínusovky kolmo na smer, na koncoch presne v hrade), majú vyšliapaný tmavší lem a husté body, takže ohyby sú hladké. Mosty sa kladú presne na priesečník cesty s riekou.
+- **Rieka a jazero:** Anduin sa od prameňa k ústiu rozširuje (ťahy štetcom: úsečky a kruhy v kĺboch), má trávnatý a piesočný breh, hlbinu, svetlý prúd a vlnky. Jazero má breh, plytčinu a hlbinu.
+- **Hory:** každá hora vrhá na zem mäkký tieň na juhovýchod (svetlo zo severozápadu ako pri reliéfe).
+- **Ovzdušie** (`buildAtmos`, `drawFx`): tiene oblakov pomaly plávajú od západu (v noci zmiznú, pri zrýchlenom čase idú rýchlejšie), nad Mordorom je tmavočervený opar a okolo Hory osudu pulzuje žiara na zemi, nad Mŕtvymi močiarmi pláva hmla a na severe padá sneh okolo kamery. Pri nastavení efektov „nízke“ sa oblaky, hmla a sneh vypnú.
+
 ## Rozvoj bojovníka ako vo Warbande (etapa 3, verzia 94)
 
 Nový súbor `js/sim/mastery.js` (načítava sa hneď po `warband.js`).

@@ -104,7 +104,7 @@ const Art = {
      *  alebo nič = všetko. onProgress(hotové, celkom) hlási postup pre načítaciu obrazovku. */
     loadTextures(scene, group, onProgress) {
         const T = (typeof ASSETS !== 'undefined' && ASSETS.textures) || {};
-        const isBattle = k => /^(unit_|ground_|tree_|deadtree|rock|water|cobble|wall|tower|keep)/.test(k);
+        const isBattle = k => /^(unit_|ground_|rock|water|cobble|wall|tower|keep)/.test(k);   // stromy (tree_, deadtree) patria k mape: les mapy sa z nich skladá hneď pri štarte
         const keys = Object.keys(T).filter(k => group === 'map' ? !isBattle(k) : group === 'battle' ? isBattle(k) : true);
         let done = 0;
         const one = key => new Promise(ok => {
