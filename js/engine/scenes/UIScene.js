@@ -55,6 +55,7 @@ class UIScene extends Phaser.Scene {
         tm += dt;
         const scene = this.scene.isActive('Battle') ? 'battle' : this.scene.isActive('Tavern') || this.scene.isActive('Castle') ? 'tavern' : this.scene.isActive('Map') ? 'map' : 'intro';
         this.drawOverlay(scene, dt);
+        this.drawDial(scene);
         this.syncMinimap(scene);
         this.syncHud();
         this.syncBars();
@@ -234,57 +235,125 @@ class UIScene extends Phaser.Scene {
     // ---------- Horná lišta (zrkadlo #hud) -----------------------------------------
     syncHud() {
         const on = !!G && hud.style.visibility !== 'hidden' && !ov.classList.contains('intro') && mode !== 'battle';
-        const sig = on ? hud.innerHTML : '';
+        const onMap = on && mode === 'map' && this.scene.isActive('Map');
+        const sig = on ? hud.innerHTML + '|' + onMap + '|' + (G.hp | 0) : '';
         if (sig === this.sig.hud) return;
         this.sig.hud = sig;
         this.hudLayer.removeAll(true);
         if (!on) return;
-        // Slabá jednoradová lišta: ikona + hodnota; názov položky sa ukáže, keď na ňu ukážeš myšou.
-        const RH = 22, GAP = 14;
-        let x = 10, y = 0;
-        const items = [], seps = [], zones = [];
-        for (const span of hud.children) {
-            const val = span.querySelector('b');                 // nulové položky (napr. Elfovia 0) lištu zbytočne zahlcujú
-            if (val && val.textContent.trim() === '0' && !/Zlato|Sláva/.test(span.textContent)) continue;
-            const full = span.textContent.replace(/\s+/g, ' ').trim();
-            const first = span === hud.children[0];
-            const icon = Icons.forHud(full, first);
-            const vcol = span.style.color || UI_C.gold;
-            let value = full, label = full;
-            if (val && icon) {
-                value = val.textContent.replace(/\s+/g, ' ').trim();
-                label = full.replace(value, '').replace(/^[,:\s]+|[:\s]+$/g, '').trim() || full;
-                const m = value.match(/^([^:]+):\s*(.+)$/); if (m) { label = m[1]; value = m[2]; }   // „Body: 5“
-            }
-            if (first) label = full;
-            const w = icon ? 19 : 0;
-            const tv = this.add.text(0, 0, value, txtStyle(11, icon ? vcol : UI_C.ink, { fontStyle: icon ? 'bold' : 'normal' }));
-            const iw = w + tv.width;
-            if (x + iw > W - 10 && x > 10) { x = 10; y += RH; }
-            if (icon) items.push(this.add.image(x, y + RH / 2, Icons.tex(this, icon)).setDisplaySize(15, 15).setOrigin(0, .5).setAlpha(.9));
-            tv.setPosition(x + w, y + RH / 2 - tv.height / 2); items.push(tv);
-            zones.push([x - 4, y, iw + 8, RH, label + (label !== value && !first ? ': ' + value : '')]);
-            x += iw + GAP;
-            seps.push([x - GAP / 2, y]);
+        // ROZHRANIE „FILMOVÉ MINIMUM“: žiadne pásy, len stmavené okraje; hodnoty vľavo hore, deň vpravo hore,
+        // hrdina s kruhom zdravia vľavo dole (drawHero), kolieso dňa a noci v strede (drawDial), tlačidlá vpravo dole (syncBars)
+        const shadow = t => t.setShadow(0, 1.5, '#000', 4, true, true);
+        const items = [], zones = [];
+        const vg = this.add.graphics();
+        vg.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, .62, .62, 0, 0).fillRect(0, 0, W, 64);
+        if (onMap) { vg.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, 0, 0, .7, .7).fillRect(0, H - 110, W, 110);
+            vg.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, .32, 0, .32, 0).fillRect(0, 0, 90, H); vg.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, 0, .32, 0, .32).fillRect(W - 90, 0, 90, H); }
+        items.push(vg);
+        // rozober položky hornej lišty (HTML #hud) na skupiny
+        const P = { army: [], rest: [] };
+        [...hud.children].forEach((span, k) => {
+            const val = span.querySelector('b'), full = span.textContent.replace(/\s+/g, ' ').trim();
+            if (val && val.textContent.trim() === '0' && !/Zlato|Sláva/.test(full)) return;
+            const col = span.style.color || '', warn = /255, 122, 90|ff7a5a/i.test(col) ? 2 : /255, 192, 112|ffc070/i.test(col) ? 1 : /255, 179, 71|ffb347/i.test(col) ? 1 : 0;
+            let value = val ? val.textContent.replace(/\s+/g, ' ').trim() : full, label = full.replace(value, '').replace(/^[,:\s]+|[:\s]+$/g, '').trim() || full;
+            const m = value.match(/^([^:]+):\s*(.+)$/); if (m) { label = m[1]; value = m[2]; }
+            const it = { full, value, label, warn, icon: Icons.forHud(full, k === 0) };
+            if (k === 0) P.name = { name: value, rank: full.replace(value, '').replace(/^[,\s]+/, '') };
+            else if (/^Deň/.test(full)) P.day = { n: value, note: (full.match(/\(([^)]*)\)/) || [])[1] || '' };
+            else if (/^Zdravie/.test(full)) P.hp = it;
+            else if (/^Úroveň/.test(full)) P.lv = { n: value, xp: (full.match(/\(([^)]*)\)/) || [])[1] || '' };
+            else if (/^(Pešiaci|Jazdci|Lukostrelci|Elfovia|Rohirimi|Veteráni|Elitné)/.test(full)) P.army.push(it);
+            else P.rest.push(it);
+        });
+        const tip = (x, y, w, h, s2) => zones.push([x, y, w, h, s2]);
+        // vľavo hore: hodnoty plávajú na stmavenom okraji (ikona + číslo), varovania farebne a ikona bliká
+        let x = 14, y = 9;
+        for (const it of P.rest) {
+            const col = it.warn === 2 ? '#ff9c80' : it.warn === 1 ? '#ffc890' : '#f6ecd6';
+            const tv = shadow(this.add.text(0, 0, it.icon ? it.value : it.full, txtStyle(13, col, { fontStyle: 'bold' })));
+            const iw = (it.icon ? 18 : 0) + tv.width;
+            if (x + iw > W - 150 && x > 14) { x = 14; y += 20; }
+            if (it.icon) { const im = this.add.image(x, y + 9, Icons.tex(this, it.icon)).setDisplaySize(15, 15).setOrigin(0, .5); items.push(im); if (it.warn === 2) this.tweens.add({ targets: im, alpha: .25, duration: 550, yoyo: true, repeat: -1 }); }
+            tv.setPosition(x + (it.icon ? 18 : 0), y + 9 - tv.height / 2); items.push(tv);
+            tip(x - 3, y - 1, iw + 6, 20, it.label + (it.label !== it.value ? ': ' + it.value : ''));
+            x += iw + 16;
         }
-        const hb = y + RH + 2;
-        const bg = this.add.graphics();
-        bg.fillGradientStyle(0x1c140e, 0x1c140e, 0x120e0c, 0x120e0c, .72, .72, .5, .5).fillRect(0, 0, W, hb);
-        bg.fillStyle(0xc9a24a, .55).fillRect(0, hb - 1, W, 1);          // tenký zlatý lem
-        bg.fillStyle(0x6a5a46, .4);
-        for (const [sx, sy] of seps.slice(0, -1)) bg.fillRect(sx, sy + 6, 1, RH - 12);   // jemné oddeľovače
-        this.hudLayer.add([bg, ...items]);
-        for (const [zx, zy, zw, zh, tip] of zones) {   // popis položky po ukázaní myšou
+        // vpravo hore: deň veľkým písmom, ročné obdobie a počasie kurzívou
+        if (P.day) {
+            const d = shadow(this.add.text(W - 14, 5, 'Deň ' + P.day.n, txtStyle(19, '#f6ecd6', { fontFamily: TITLE_FONT }))).setOrigin(1, 0);
+            const n = shadow(this.add.text(W - 15, 29, P.day.note, txtStyle(11, '#cdbb95', { fontStyle: 'italic' }))).setOrigin(1, 0);
+            items.push(d, n);
+        }
+        // vľavo dole: hrdina (len na mape – v krčme a na hrade má miesto okno)
+        if (onMap && P.name) items.push(...this.drawHero(P));
+        this.hudLayer.add(items);
+        for (const [zx, zy, zw, zh, t2] of zones) {   // popis položky po ukázaní myšou
             const z = this.add.rectangle(zx, zy, zw, zh, 0, 0).setOrigin(0).setInteractive();
-            let tb = null;
+            let tb2 = null;
             z.on('pointerover', () => {
-                const t = this.add.text(0, 0, tip, txtStyle(11, '#f3dc9a')), tw = t.width + 14, tx = Math.max(4, Math.min(W - tw - 4, zx));
-                const g = this.add.graphics().fillStyle(0x120e0c, .95).fillRoundedRect(tx, hb + 3, tw, 20, 4).lineStyle(1, UI_C.line, .9).strokeRoundedRect(tx, hb + 3, tw, 20, 4);
-                t.setPosition(tx + 7, hb + 6); tb = this.add.container(0, 0, [g, t]); this.hudLayer.add(tb);
+                const t = this.add.text(0, 0, t2, txtStyle(11, '#f3dc9a')), tw = t.width + 14, tx = Math.max(4, Math.min(W - tw - 4, zx)), ty = zy > H / 2 ? zy - 24 : zy + zh + 3;
+                const g = this.add.graphics().fillStyle(0x120e0c, .95).fillRoundedRect(tx, ty, tw, 20, 4).lineStyle(1, UI_C.line, .9).strokeRoundedRect(tx, ty, tw, 20, 4);
+                t.setPosition(tx + 7, ty + 3); tb2 = this.add.container(0, 0, [g, t]); this.hudLayer.add(tb2);
             });
-            z.on('pointerout', () => { if (tb) { tb.destroy(true); tb = null; } });
+            z.on('pointerout', () => { if (tb2) { tb2.destroy(true); tb2 = null; } });
             this.hudLayer.add(z);
         }
+    }
+
+    /** Hrdina vľavo dole: portrét v kruhu, okolo neho červený oblúk zdravia, odznak úrovne, meno, hodnosť a vojsko. Klik = Prehľad. */
+    drawHero(P) {
+        const out = [], cx = 46, cy = H - 46, R = 32;
+        const look = Portraits.hero(), key = 'hud_por_' + JSON.stringify(look).replace(/[^a-z0-9]/gi, '').slice(0, 120);
+        if (!this.textures.exists(key)) {
+            const src = Portraits.canvas(look, 128), cv = document.createElement('canvas'); cv.width = cv.height = 128;
+            const c = cv.getContext('2d'); c.beginPath(); c.arc(64, 64, 64, 0, 6.283); c.clip(); c.fillStyle = '#2a1a10'; c.fillRect(0, 0, 128, 128); c.drawImage(src, 0, 4, 128, 128);
+            this.textures.addCanvas(key, cv);
+        }
+        const g = this.add.graphics();
+        g.fillStyle(0x000000, .45).fillCircle(cx, cy + 2, R + 6);
+        g.lineStyle(4, 0x000000, .55).strokeCircle(cx, cy, R + 3);
+        const m = /(\d+)\s*\/\s*(\d+)/.exec(P.hp ? P.hp.value : ''), f = m ? Math.max(0, Math.min(1, +m[1] / +m[2])) : 1;
+        g.lineStyle(4, f < .35 ? 0xff5030 : 0xd84a3a, 1).beginPath().arc(cx, cy, R + 3, -Math.PI / 2, -Math.PI / 2 + f * 6.283).strokePath();
+        g.lineStyle(1, 0xe6c37a, .75).strokeCircle(cx, cy, R - .5);
+        out.push(g, this.add.image(cx, cy, key).setDisplaySize(R * 2 - 2, R * 2 - 2));
+        if (P.lv) { const b = this.add.graphics().fillStyle(0x2a1c10, 1).fillCircle(cx + 24, cy + 24, 9).lineStyle(1.2, 0xe6c37a, 1).strokeCircle(cx + 24, cy + 24, 9); out.push(b, this.add.text(cx + 24, cy + 24, P.lv.n, txtStyle(10, '#f6ecd6', { fontStyle: 'bold' })).setOrigin(.5)); }
+        const sh = t => t.setShadow(0, 1.5, '#000', 4, true, true);
+        out.push(sh(this.add.text(cx + R + 12, cy - 30, P.name.name, txtStyle(16, '#f6ecd6', { fontFamily: TITLE_FONT }))));
+        out.push(sh(this.add.text(cx + R + 13, cy - 10, P.name.rank.replace(/\s*\(/, ' · ').replace(/\)/, '') + (P.hp ? '  ·  ' + P.hp.value + ' zdravia' : ''), txtStyle(10.5, '#cdbb95', { fontStyle: 'italic' }))));
+        let ax = cx + R + 13;
+        for (const it of P.army) {
+            if (it.icon) out.push(this.add.image(ax, cy + 15, Icons.tex(this, it.icon)).setDisplaySize(13, 13).setOrigin(0, .5));
+            const t = sh(this.add.text(ax + (it.icon ? 15 : 0), cy + 15, it.icon ? it.value : it.full, txtStyle(12, '#f6ecd6', { fontStyle: 'bold' }))).setOrigin(0, .5); out.push(t);
+            const z = this.add.rectangle(ax - 2, cy + 6, t.width + 19, 18, 0, 0).setOrigin(0).setInteractive(); z.on('pointerover', () => { this._armyTip = this.add.text(ax, cy - 52, it.label + ': ' + it.value, txtStyle(11, '#f3dc9a', { backgroundColor: 'rgba(18,14,12,.95)', padding: { x: 6, y: 3 } })); }); z.on('pointerout', () => { if (this._armyTip) this._armyTip.destroy(); this._armyTip = null; }); out.push(z);
+            ax += (it.icon ? 15 : 0) + t.width + 12;
+        }
+        const hit = this.add.circle(cx, cy, R + 4, 0, 0).setInteractive({ useHandCursor: true });   // klik na portrét: prehľad hrdinu
+        hit.on('pointerup', () => { const b = [...tb.children].find(x => x.textContent.trim().startsWith('Prehľad')); if (b) b.click(); });
+        out.push(hit);
+        return out;
+    }
+
+    /** Kolieso dňa a noci v strede dole: slnko a mesiac sa otáčajú s časom dňa; pri čakaní pod ním rýchlosť času. */
+    drawDial(scene) {
+        if (!this.dialG) { this.dialG = this.add.graphics().setDepth(11); this.dialSpd = this.add.text(0, 0, '', txtStyle(11, '#fff3d0', { fontStyle: 'bold', backgroundColor: 'rgba(110,70,20,.85)', padding: { x: 7, y: 2 } })).setOrigin(.5).setDepth(12).setInteractive({ useHandCursor: true }); this.dialSpd.on('pointerup', () => timeBtn.click()); }
+        const g = this.dialG; g.clear();
+        const on = scene === 'map' && mode === 'map' && !!G && !this.dlg && !this.big && hud.style.visibility !== 'hidden' && !ov.classList.contains('intro');
+        this.dialSpd.setVisible(on && waiting());
+        if (!on) return;
+        const cx = W / 2, cy = H - 38, R = 26, a = -(dayT / DAY_LEN) * 6.283;   // poludnie hore, polnoc dole
+        g.fillStyle(0x0a0806, .55).fillCircle(cx, cy, R + 5); g.lineStyle(1, 0xe6c37a, .6).strokeCircle(cx, cy, R + 5);
+        // obloha: horná polovica deň (zlatá), dolná noc (modrá) – kotúč sa otáča
+        g.fillStyle(0xe8a850, 1).slice(cx, cy, R, a - Math.PI, a, false).fillPath();
+        g.fillStyle(0x16204a, 1).slice(cx, cy, R, a, a + Math.PI, false).fillPath();
+        g.fillStyle(0xffd27a, .55).slice(cx, cy, R * .7, a - Math.PI * .8, a - Math.PI * .2, false).fillPath();
+        const sx = cx + Math.cos(a - Math.PI / 2) * R * .62, sy = cy + Math.sin(a - Math.PI / 2) * R * .62, mx = cx + Math.cos(a + Math.PI / 2) * R * .62, my = cy + Math.sin(a + Math.PI / 2) * R * .62;
+        g.fillStyle(0xfff4c0, 1).fillCircle(sx, sy, 5.5); g.fillStyle(0xfff4c0, .3).fillCircle(sx, sy, 8);
+        g.fillStyle(0xe8ecff, 1).fillCircle(mx, my, 4); g.fillStyle(0x16204a, 1).fillCircle(mx + 2, my - 1, 3.4);
+        g.fillStyle(0xffffff, .8); for (let k = 0; k < 5; k++) { const sa = a + .5 + k * .45, sr = R * (.35 + (k % 3) * .18); g.fillRect(cx + Math.cos(sa) * sr, cy + Math.sin(sa) * sr, 1, 1); }
+        g.lineStyle(1.5, 0x000000, .45).strokeCircle(cx, cy, R);
+        g.fillStyle(0xe6c37a, 1).fillTriangle(cx, cy - R - 2, cx - 4, cy - R - 9, cx + 4, cy - R - 9);   // ručička: teraz
+        this.dialSpd.setPosition(cx + R + 26, cy).setText('Čas ×' + (G.tmul || 1));
     }
 
     // ---------- Panel tlačidiel a rozkazy (zrkadlo tb a od) --------------------------
@@ -304,44 +373,43 @@ class UIScene extends Phaser.Scene {
         this.barLayer.removeAll(true);
         const BH = 26;
         if (vis(tb)) {
-            const y = H - BH - 4, all = [...tb.children], grouped = new Set(UIScene.GROUPS.flatMap(g => g[2]));
-            const find = n => all.find(b => b.textContent.trim().startsWith(n));
-            let x = 6;
-            const out = [];
-            const put = (label, ic, fn, o = {}) => {
-                const zoom = !label, w = zoom ? BH : Math.max(20, this.measure(label, 11) + 14 + (ic ? BH + 2 : 0));
-                out.push(...this.button(x, y, w, BH, label, fn, { size: 11, icon: ic ? Icons.tex(this, ic) : null, bare: zoom, ...o }));
-                x += w + 3;
-                return x - w - 3;
+            // vpravo dole mriežka okrúhlych tlačidiel (2 × 4), nad ňou lupa; ponuky Hrdina, Kronika a Nastavenia sa otvárajú nahor
+            const all = [...tb.children], grouped = new Set(UIScene.GROUPS.flatMap(g => g[2]));
+            const find = n => all.find(b => b.textContent.trim().startsWith(n) && b.style.display !== 'none');
+            const out = [], R = 16, GAP = 46, colX = c => W - 14 - R - (3 - c) * GAP, rowY = r => H - 34 - (1 - r) * 48;
+            const round = (cx, cy, r, ic, label, fn, o = {}) => {
+                const g = this.add.graphics(), draw = hov => { g.clear(); g.fillStyle(0x000000, .35).fillCircle(cx, cy + 2, r + 1); g.fillStyle(o.main ? 0x6e4614 : 0x0e0a06, o.main ? (hov ? .95 : .85) : (hov ? .8 : .58)).fillCircle(cx, cy, r); g.lineStyle(1.3, hov || o.on ? 0xffe0a0 : o.main ? 0xf0cf80 : 0xe6c37a, hov ? 1 : .6).strokeCircle(cx, cy, r); };
+                draw(false); out.push(g);
+                if (ic) out.push(this.add.image(cx, cy, Icons.tex(this, ic)).setDisplaySize(r * 1.15, r * 1.15));
+                if (label) out.push(this.add.text(cx, cy + r + 1, label, txtStyle(9.5, o.on ? '#ffe7a0' : '#d8c8a4', { fontStyle: 'bold' })).setOrigin(.5, 0).setShadow(0, 1, '#000', 3, true, true));
+                const z = this.add.circle(cx, cy, r, 0, 0).setInteractive({ useHandCursor: true });
+                z.on('pointerover', () => { draw(true); if (typeof uiSnd === 'function') uiSnd('hover'); }); z.on('pointerout', () => draw(false));
+                z.on('pointerdown', () => { if (typeof uiSnd === 'function') uiSnd('click'); }); z.on('pointerup', () => { if (!(this.drag && this.drag.moved)) fn(); });
+                out.push(z);
             };
-            // lupa a Tábor ostávajú priamo na paneli
-            all.filter(b => /^[−+]$/.test(b.textContent.trim())).forEach(b => put('', Icons.forButton(b.textContent), () => b.click()));
+            const click = n => () => { const b = find(n); if (b) b.click(); };
             const camp = find('Tábor') || find('Zrušiť tábor') || find('Zrušiť pobyt');
-            if (camp) put(camp.textContent, 'tent', () => camp.click());
-            put('Mapa (M)', 'map', () => { this.big = !this.big; });
-            // skupinové tlačidlá, ktoré rozbalia ponuku
-            for (const [name, ic, items] of UIScene.GROUPS) {
-                const open = this.menu === name, bx = put(name + (open ? ' ▾' : ' ▴'), ic, () => { this.menu = open ? null : name; });
-                if (!open) continue;
-                const bs = items.map(find).filter(Boolean), iw = 150, ih = 26, ph = bs.length * (ih + 3) + 9, py = y - ph - 4;
-                const panel = this.add.graphics();
-                panel.fillStyle(0x1c1510, .96).fillRoundedRect(bx, py, iw + 10, ph, 5);
-                panel.lineStyle(1.5, UI_C.line, 1).strokeRoundedRect(bx, py, iw + 10, ph, 5);
-                const blocker = this.add.rectangle(bx, py, iw + 10, ph, 0, 0).setOrigin(0).setInteractive();
-                out.push(panel, blocker);
-                bs.forEach((b, i) => {
-                    const t = b.textContent.trim(), bic = Icons.forButton(t);
-                    out.push(...this.button(bx + 5, py + 5 + i * (ih + 3), iw, ih, t, () => { this.menu = null; b.click(); }, { size: 11, icon: bic ? Icons.tex(this, bic) : null }));
-                });
+            const menuOf = name => () => { this.menu = this.menu === name ? null : name; };
+            const slots = [
+                ['map', 'Mapa', () => { this.big = !this.big; }, { on: this.big }], ['group', 'Družina', click('Družina')], ['bag', 'Výbava', click('Inventár')], ['quest', 'Úlohy', click('Úlohy')],
+                ['helm', 'Hrdina', menuOf('Hrdina'), { on: this.menu === 'Hrdina' }], ['book', 'Kronika', menuOf('Kronika'), { on: this.menu === 'Kronika' }], ['gear', 'Voľby', menuOf('Nastavenia'), { on: this.menu === 'Nastavenia' }],
+                camp ? ['tent', /Zrušiť/.test(camp.textContent) ? 'Odísť' : 'Tábor', () => camp.click(), { main: 1, on: /Zrušiť/.test(camp.textContent) }] : null];
+            slots.forEach((sl, i) => { if (sl) round(colX(i % 4), rowY(i >> 2), R, sl[0], sl[1], sl[2], sl[3] || {}); });
+            // lupa nad mriežkou vpravo
+            all.filter(b => /^[−+]$/.test(b.textContent.trim())).forEach((b, i) => round(W - 14 - 11 - (1 - i) * 28, rowY(0) - R - 26, 11, Icons.forButton(b.textContent), '', () => b.click()));
+            // ďalšie tlačidlá (nové položky mimo skupín) ako malé okrúhle vľavo od lupy
+            const extra = all.filter(b => { const t = b.textContent.trim(); return b.style.display !== 'none' && b !== timeBtn && !/^[−+]$/.test(t) && !/tábor|pobyt/i.test(t) && ![...grouped].some(n => t.startsWith(n)); });
+            extra.forEach((b, i) => { const ic = Icons.forButton(b.textContent); round(W - 14 - 11 - (2 + i) * 30, rowY(0) - R - 26, 11, ic || 'help', '', () => b.click()); });
+            // otvorená ponuka skupiny: panel nad mriežkou
+            for (const [name, ic, list] of UIScene.GROUPS) {
+                if (this.menu !== name) continue;
+                const bs = list.map(find).filter(Boolean), iw = 150, ih = 24, ph = bs.length * (ih + 3) + 9, bx = W - 14 - iw - 10, py = rowY(0) - R - 40 - ph;
+                const panel = this.add.graphics(); panel.fillStyle(0x140e0a, .95).fillRoundedRect(bx, py, iw + 10, ph, 6); panel.lineStyle(1.3, 0xe6c37a, .8).strokeRoundedRect(bx, py, iw + 10, ph, 6);
+                out.push(panel, this.add.rectangle(bx, py, iw + 10, ph, 0, 0).setOrigin(0).setInteractive());
+                bs.forEach((b, i) => { const t = b.textContent.trim(), bic = Icons.forButton(t); out.push(...this.button(bx + 5, py + 5 + i * (ih + 3), iw, ih, t, () => { this.menu = null; b.click(); }, { size: 11, icon: bic ? Icons.tex(this, bic) : null })); });
             }
-            // tlačidlá, ktoré nepatria do žiadnej skupiny ani nie sú vyššie (nové položky), ostanú viditeľné
-            all.filter(b => { const t = b.textContent.trim(); return b.style.display !== 'none' && !/^[−+]$/.test(t) && !/tábor|pobyt/i.test(t) && ![...grouped].some(n => t.startsWith(n)); })
-               .forEach(b => put(b.textContent, Icons.forButton(b.textContent), () => b.click()));
-            const plate = this.add.graphics(), pw = x + 3;
-            plate.fillStyle(0x120e0a, .78).fillRoundedRect(2, y - 4, pw, BH + 8, { tl: 0, tr: 8, bl: 0, br: 0 });
-            plate.lineStyle(1, 0xc9a24a, .55).lineBetween(2, y - 4, pw + 2, y - 4);
-            this.barLayer.add([plate, ...out]);
-            if (this.pause) this.pause.y = y - 14;
+            this.barLayer.add(out);
+            if (this.pause) this.pause.setPosition(W / 2, H - 78);
         }
         if (vis(od)) {   // dolný rad rozkazy, nad ním skupiny vojska
             const all = [...od.children], rowOf = (bs, w, y, sz) => { const x0 = W / 2 - (bs.length * (w + 4)) / 2; bs.forEach((b, i) => { const ic = Icons.forButton(b.textContent.replace(/^\S+ /, '')); this.barLayer.add(this.button(x0 + i * (w + 4), y, w, b === bs[0] && sz ? BH - 4 : BH - (sz ? 4 : 0), b.textContent, () => b.click(), { size: sz || 11, sel: +(b.style.opacity || 1) === 1, icon: ic ? Icons.tex(this, ic) : null })); }); };

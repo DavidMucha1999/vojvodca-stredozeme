@@ -68,13 +68,13 @@ function realmTick(dt) {
     for (const v of G.envs || []) {
         const dx = G.x - v.x, dy = G.y - v.y, d = Math.hypot(dx, dy);
         if (d < 70) { v.done = 1; LETTERS.push({ kind: 'envoy', f: v.f, offer: v.offer, from: FN[v.f] }); continue; }
-        v.x += dx / d * 3.4 * dt; v.y += dy / d * 3.4 * dt;
+        const s1 = navStep(v, G.x, G.y); if (s1) navMove(v, s1, Math.min(3.4 * dt, s1[2]));   // po súši (js/sim/nav.js)
     }
     if (G.envs) G.envs = G.envs.filter(v => !v.done);
     for (const c of G.cars || []) {
         const t = TW[c.to], dx = t.x - c.x, dy = t.y - c.y, d = Math.hypot(dx, dy);
         if (d < 40) { c.done = 1; const pay = c.inv + Math.round(c.inv * (.25 + c.dist / 14000) * (.7 + (t.pr ?? 40) / 100)); G.gold += pay; lg('Karavána dorazila do ' + t.n + ' a priniesla ' + pay + ' zlata.'); TS = { s: 'Karavána v ' + t.n + ': +' + pay + ' zlata.', l: 220 }; upd(); continue; }
-        c.x += dx / d * 1.6 * dt; c.y += dy / d * 1.6 * dt;
+        const s2 = navStep(c, t.x, t.y); if (s2) navMove(c, s2, Math.min(1.6 * dt, s2[2]));
     }
     if (G.cars) G.cars = G.cars.filter(c => !c.done);
 }

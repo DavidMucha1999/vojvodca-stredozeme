@@ -95,14 +95,14 @@ function lordTick(e, dt) {
         if (!tg) tg = { x: e.x, y: e.y };
     }
     const dd = Math.max(1, Math.hypot(tg.x - e.x, tg.y - e.y)), sv = tg === G ? 1 : .7, fl = (tg === G && e.n < pw() * .6) ? -1.1 : 1;
-    e.vx = (tg.x - e.x) / dd * sv * fl;
-    e.vy = (tg.y - e.y) / dd * sv * fl;
+    const st = fl > 0 && dd > 2 ? navStep(e, tg.x, tg.y) : null;   // po súši: rieky len cez mosty a brody (js/sim/nav.js)
+    e.vx = st ? st[0] * sv : fl > 0 && dd > 2 ? 0 : (tg.x - e.x) / dd * sv * fl;
+    e.vy = st ? st[1] * sv : fl > 0 && dd > 2 ? 0 : (tg.y - e.y) / dd * sv * fl;
     if (e.fo || stopHere || (fol && Math.hypot(fol.x - e.x, fol.y - e.y) < 45)) {
         e.vx = 0;
         e.vy = 0;
     }
-    e.x = Math.max(10, Math.min(WW - 10, e.x + e.vx * dt));
-    e.y = Math.max(10, Math.min(WH - 10, e.y + e.vy * dt));
+    { const sp = Math.hypot(e.vx, e.vy); if (sp > 1e-6) navMove(e, [e.vx / sp, e.vy / sp], sp * dt, true); }   // do vody nevkročí, pri brehu kĺže (js/sim/nav.js)
     if (hos(e.f, G.fac) && pd < ENGAGE_R && mode === 'map' && !(G.safe > 0) && !sheltered) {
         meetFoe(e, e.fo && !hos(e.fo.f, G.fac) ? e.fo : null);   // stretnutie: boj alebo súboj veliteľov (js/sim/bosses.js)
         return true;

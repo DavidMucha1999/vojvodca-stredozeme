@@ -1,17 +1,12 @@
 /*
- * Bojisko podľa miesta na mape: hustota lesa (dlaždice T.forest v okolí), blízkosť rieky Anduiny (bezierová krivka
- * ako v MapScene), kopce (hory T.mountains) a kraj (regionAt). FIELD nastaví startBattle; BattleScene podľa neho kreslí
+ * Bojisko podľa miesta na mape: hustota lesa (dlaždice T.forest v okolí), blízkosť veľkej rieky (js/data/geo.js), kopce (hory T.mountains) a kraj (regionAt). FIELD nastaví startBattle; BattleScene podľa neho kreslí
  * stromy, rieku s brodom, kopec a skaly; simulácia spomaľuje v lese a vo vode a dáva výhodu z kopca.
  */
 let FIELD = { forest: 0, river: false, hill: null, trees: [], reg: 'g' };
-/** Body rieky (v jednotkách sveta) – rovnaká krivka ako na mape. */
+/** Body všetkých riek (v jednotkách sveta) z geografie (js/data/geo.js); rieky sú oddelené – susedné body môžu patriť rôznym riekam. */
 const riverPoints = (() => { let pts = null; return () => {
     if (pts) return pts;
-    const R = [[640, 0], [600, 300], [820, 420], [780, 640], [760, 800], [900, 880], [860, 1200]].map(([x, y]) => [x * K, y * K]);
-    const bz = (p0, p1, p2, p3, t) => { const u = 1 - t; return [u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0], u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * p3[1]]; };
-    pts = [];
-    for (let i = 0; i <= 80; i++) pts.push(bz(R[0], R[1], R[2], R[3], i / 80));
-    for (let i = 0; i <= 80; i++) pts.push(bz(R[3], R[4], R[5], R[6], i / 80));
+    pts = typeof GEO !== 'undefined' ? GEO.RIVERS.flatMap(R => R.pts.map(([x, y]) => [x * K, y * K])) : [];
     return pts;
 }; })();
 function battleTerrain(x, y) {

@@ -22,7 +22,7 @@ function spawnX() {
             x = 200 + r() * (WW - 400);
             y = 200 + r() * (WH - 400);
             k++;
-        } while ((TW.some(t => Math.hypot(t.x - x, t.y - y) < 300) || Math.hypot(G.x - x, G.y - y) < 500) && k < 30);
+        } while ((TW.some(t => Math.hypot(t.x - x, t.y - y) < 300) || Math.hypot(G.x - x, G.y - y) < 500 || (typeof navOk === 'function' && !navOk(x, y))) && k < 30);   // nie vo vode
         const reg = regionAt(x, y), q = r();
         const kind = reg === 'a' || reg === 'd' ? (q < .7 ? 'orcs' : 'wolves') : reg === 's' ? (q < .5 ? 'wolves' : 'bandit') : q < .55 ? 'bandit' : q < .75 ? 'orcs' : q < .9 ? 'deserters' : 'wolves';
         const n = (kind === 'orcs' ? 6 : kind === 'wolves' ? 5 : 4) + Math.floor(r() * 6 + G.day / 4);

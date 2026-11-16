@@ -5,7 +5,7 @@
  * zástavami, kameru so zoomom a minimapu ako druhú kameru.
  * Súradnice obrazovky sú logické (720×480), plátno má rozlíšenie RES-krát väčšie.
  */
-const MM = { x: W - 218, y: H - 152, w: 210, h: 140 };
+const MM = { x: W - 168, y: 52, w: 156, h: 104 };   // minimapa vpravo hore pod dňom (rozhranie „filmové minimum“)
 const FONT = '"IM Fell English", Georgia, serif';
 const txtStyle = (size, color, extra) => Object.assign({ fontFamily: FONT, fontSize: size + 'px', color, resolution: RES }, extra);
 
@@ -34,7 +34,8 @@ class MapScene extends Phaser.Scene {
         this.armies = new Map();
         this.hover = null;
         // scéna sa po bitke spúšťa znova: objekty z minulého spustenia sú zničené, preto sa vytvoria nanovo
-        this.sgTxt = new Map(); this.musterTxt = null; this.spaceKey = null;
+        this.sgTxt = new Map(); this.musterTxt = null; this.spaceKey = null; this._ht = null; this._mt = null; this.placeTxt = []; this._pls = null;   // texty sú nové: zabudni naposledy nastavené (inak štítok družiny po bitke ostane prázdny)
+        this.lineChunks = new Map();   // štvorce statického kreslenia (chunkG)
         try { this.buildTerrain(); }
         catch (e) { console.error('Mapa', e); }
         const places = () => {
@@ -80,6 +81,20 @@ class MapScene extends Phaser.Scene {
         if (this.booting) { BootLoad.set(.68, 'Staviam dediny a hrady…'); setTimeout(() => { if (this.scene.isActive()) places(); else this.finishBoot(); }, 30); } else places();
     }
 
+    /** Štvorce sveta pre statické kreslenie (cesty, rieka, tiene hôr): zobrazia sa len tie pri kamere. */
+    chunkKey(x, y) { const C = 1600; return Math.max(0, Math.min(8, x / C | 0)) + ',' + Math.max(0, Math.min(5, y / C | 0)); }
+    chunkG(x, y, depth, key) {
+        key = key || this.chunkKey(x, y);
+        const id = key + '|' + depth; let c = this.lineChunks.get(id);
+        if (!c) { const [cx, cy] = key.split(',').map(Number); c = { g: this.add.graphics().setDepth(depth), x: cx * 1600, y: cy * 1600 }; this.lineChunks.set(id, c); }
+        return c.g;
+    }
+    cullChunks() {
+        if (!this.lineChunks) return;
+        const m = 260, x0 = cam.x - m, y0 = cam.y - m, x1 = cam.x + W / Z + m, y1 = cam.y + H / Z + m;   // okraj: hrubé čiary presahujú štvorec
+        for (const c of this.lineChunks.values()) { const on = c.x < x1 && c.x + 1600 > x0 && c.y < y1 && c.y + 1600 > y0; if (c.g.visible !== on) c.g.setVisible(on); }
+    }
+
     /** Je bod blízko cesty? (cesty sú prepočítané body kriviek) */
     nearRoad(x, y, d) { const P = this.roadPts || []; for (let i = 0; i < P.length; i++) { const dx = P[i].x - x; if (dx > d || dx < -d) continue; const dy = P[i].y - y; if (dx * dx + dy * dy < d * d) return true; } return false; }
     /** Voľný priestor okolo hradov, dedín a ciest – nech obraz nie je nahádzaný na kope. */
@@ -104,7 +119,7 @@ class MapScene extends Phaser.Scene {
             if (p.kind === 'ford') { g.fillStyle(0x7a8a90, 1); for (let k = 0; k < 7; k++) g.fillEllipse(x - 36 + k * 12, y + Math.sin(k) * 6, 10, 6); g.fillStyle(0xbfd0d8, .5).fillEllipse(x, y, 100, 22); g.fillStyle(0x8a8a86, 1).fillRect(x - 40, y - 30, 3, 14).fillRect(x + 36, y - 26, 3, 12); g.fillStyle(0xd9a441, 1).fillRect(x - 38, y - 30, 10, 6); }
             if (p.kind === 'tree') { g.fillStyle(0x5a6a3a, 1).fillEllipse(x, y + 2, 80, 30); g.fillStyle(0xd8d8d0, 1); P([[x - 4, y + 4], [x - 3, y - 30], [x + 3, y - 30], [x + 4, y + 4]]); g.fillRect(x - 18, y - 24, 14, 3).fillRect(x + 4, y - 18, 16, 3).fillRect(x - 12, y - 38, 3, 14); g.fillStyle(0x8a8a86, 1); for (let k = 0; k < 5; k++) g.fillRect(x - 30 + k * 14, y - 4 + (k % 2) * 6, 10, 2); }
             const t = this.add.text(x, y + 18, p.n.split(' (')[0], { fontFamily: 'sans-serif', fontSize: '10px', color: '#f0e6c8', backgroundColor: 'rgba(18,14,12,.6)', padding: { x: 3, y: 1 }, resolution: RES }).setOrigin(.5, 0).setDepth(-7.4);
-            out.push(t);
+            out.push(t); (this.placeTxt || (this.placeTxt = [])).push(t);
         }
         out.push(g);
         return out;
@@ -260,43 +275,31 @@ class MapScene extends Phaser.Scene {
         this.textures.addCanvas('wash', wc);
         out.push(this.add.image(0, 0, 'wash').setOrigin(0).setScale(WW / T.cols).setAlpha(.42).setDepth(-9.5));
         out.push(...this.buildGround());   // zrno trávy a farebné plochy podľa krajiny
-        // voda a cesty (vektorovo, ostré pri každom priblížení)
-        const g = this.add.graphics().setDepth(-9), k = K;
-        g.fillStyle(0x24526a, 1).fillRect(0, 0, 30 * k, WH);
-        g.fillStyle(0xffffff, .35).fillRect(30 * k, 0, 3 * k, WH);
-        const L = { x: 1195, y: 326, rx: 110, ry: 60, rot: .2 };
-        const lake = (rx, ry, col) => { const pts = []; for (let a = 0; a < 6.3; a += .1) { const x = Math.cos(a) * rx, y = Math.sin(a) * ry; pts.push({ x: (L.x + x * Math.cos(L.rot) - y * Math.sin(L.rot)) * k, y: (L.y + x * Math.sin(L.rot) + y * Math.cos(L.rot)) * k }); } g.fillStyle(col, 1).fillPoints(pts, true); };
-        lake(L.rx + 22, L.ry + 20, 0x6a7448); lake(L.rx + 15, L.ry + 14, 0x8a8456); lake(L.rx + 10, L.ry + 10, 0x2c5b73); lake(L.rx - 5, L.ry - 8, 0x3f7892); lake(L.rx - 30, L.ry - 26, 0x4a86a0);   // piesočný breh, plytčina, hlbina
-        const R = [[640, 0], [600, 300], [820, 420], [780, 640], [760, 800], [900, 880], [860, 1200]].map(([x, y]) => new Phaser.Math.Vector2(x * k, y * k));
-        // rieka: piesočné brehy, tmavý stred, svetlý prúd; od prameňa na severe sa rozširuje k ústiu (ťahy štetcom: úsečky a kruhy v kĺboch)
-        const rv = new Phaser.Curves.Path(R[0].x, R[0].y).cubicBezierTo(R[3], R[1], R[2]).cubicBezierTo(R[6], R[4], R[5]).getPoints(640), rn = rv.length - 1;
-        const brush = (w0, col, a, joints) => { for (let i = 1; i <= rn; i++) { const w = w0 * k * .75 * (.55 + .9 * i / rn); g.lineStyle(w, col, a).lineBetween(rv[i - 1].x, rv[i - 1].y, rv[i].x, rv[i].y); if (joints) g.fillStyle(col, a).fillCircle(rv[i].x, rv[i].y, w / 2); } };
-        brush(30, 0x6a7448, 1, 1); brush(22, 0x8a8456, 1, 1); brush(15, 0x2c5b73, 1, 1); brush(8, 0x3f7892, 1, 1); brush(2.2, 0x8ac0d8, .45, 0);
-        for (let i = 6; i < rn; i += 9) { const p = rv[i], q = rv[i - 2], a = Math.atan2(p.y - q.y, p.x - q.x), o = (i % 18 ? 1 : -1) * 3.2 * k * (.55 + .9 * i / rn); g.lineStyle(1.2 * k * .75, 0xbfe0ee, .35).lineBetween(p.x - Math.sin(a) * o, p.y + Math.cos(a) * o, p.x - Math.sin(a) * o + Math.cos(a) * 9 * k, p.y + Math.cos(a) * o + Math.sin(a) * 9 * k); }   // vlnky prúdu
-        // cesty: tmavší okraj, svetlý stred, vyjazdené koľaje
-        const roads = MAPDATA.roads.map(([a, b], ri) => {   // cesta sa mierne kľukatí (na koncoch presne v hrade), ohyb strieda strany
-            const A = TW[a], B = TW[b], len = Math.hypot(B.x - A.x, B.y - A.y), sd = ri % 2 ? 1 : -1, hs = n => { const x = Math.sin(n * 91.7 + ri * 13.3) * 43758.5; return x - Math.floor(x); };
-            const P = new Phaser.Curves.QuadraticBezier(new Phaser.Math.Vector2(A.x, A.y), new Phaser.Math.Vector2((A.x + B.x) / 2 + sd * 26 * k, (A.y + B.y) / 2 - sd * 20 * k), new Phaser.Math.Vector2(B.x, B.y)).getPoints(Math.max(28, Math.min(420, len / (1.6 * k) | 0)));
-            const a1 = Math.min(16 * k, len * .03), f1 = Math.max(1, Math.round(len / (240 * k))), f2 = f1 * 3 + 1, p1 = hs(1) * 6.28, p2 = hs(2) * 6.28, n = P.length - 1;
-            return P.map((p, i) => { const t = i / n, q0 = P[Math.max(0, i - 1)], q1 = P[Math.min(n, i + 1)], dx = q1.x - q0.x, dy = q1.y - q0.y, dl = Math.hypot(dx, dy) || 1, off = Math.sin(Math.PI * t) * (Math.sin(t * f1 * 6.283 + p1) * a1 + Math.sin(t * f2 * 6.283 + p2) * a1 * .3);
-                return new Phaser.Math.Vector2(p.x - dy / dl * off, p.y + dx / dl * off); });
-        });
+        // voda (js/data/geo.js): more s plytčinou a piesočným pobrežím, jazerá, veľké rieky so šírkou podľa toku; mosty a brody
+        const g = this.add.graphics().setDepth(-9.05), k = K;
+        out.push(g, ...this.buildWater(g));
+        // cesty: trasa po súši z hľadania cesty (js/sim/nav.js) – rieky prekračujú len na mostoch a brodoch; rohy sa zaoblia (Chaikin)
+        const roads = MAPDATA.roads.map(([a, b]) => {
+            const A = TW[a], B = TW[b]; if (!A || !B) return [];
+            let P = [[A.x, A.y], ...(NAV.path(A.x, A.y, B.x, B.y) || [[B.x, B.y]])];
+            for (let it = 0; it < 3; it++) { const Q = [P[0]]; for (let i = 0; i < P.length - 1; i++) { const [x0, y0] = P[i], [x1, y1] = P[i + 1]; Q.push([x0 * .75 + x1 * .25, y0 * .75 + y1 * .25], [x0 * .25 + x1 * .75, y0 * .25 + y1 * .75]); } Q.push(P[P.length - 1]); P = Q; }
+            const D = [P[0]]; for (let i = 1; i < P.length; i++) { const [x0, y0] = P[i - 1], [x1, y1] = P[i], n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / (5 * k))); for (let q = 1; q <= n; q++) D.push([x0 + (x1 - x0) * q / n, y0 + (y1 - y0) * q / n]); }
+            return D.map(([x, y]) => new Phaser.Math.Vector2(x, y));
+        }).filter(r => r.length > 1);
+        this.roadLines = roads;                                        // tvar ciest aj pre pergamenovú veľkú mapu (UIMaps.js)
         this.roadPts = roads.flat();                                   // body ciest pre „voľný priestor“ (stromy a skaly sa cestám vyhýbajú)
-        g.lineStyle(9 * k * .75, 0x2a2414, .14); roads.forEach(r => g.strokePoints(r));   // vyšliapaný lem okolo cesty
-        g.lineStyle(5.5 * k * .75, 0x7a6a44, .55); roads.forEach(r => g.strokePoints(r));
-        g.lineStyle(3.6 * k * .75, 0xc4ad78, .85); roads.forEach(r => g.strokePoints(r));
-        g.lineStyle(.5 * k * .75, 0x8a7a50, .6); roads.forEach(r => { g.strokePoints(r.map(p => ({ x: p.x, y: p.y - 1.1 * k * .75 }))); g.strokePoints(r.map(p => ({ x: p.x, y: p.y + 1.1 * k * .75 }))); });
-        out.push(g);
+        const runs = [];   // [štvorec, body] – súvislé kusy cesty v jednom štvorci (bez prekrytia, priesvitný lem sa nezdvojí)
+        for (const r of roads) { let cur = null, ck = null; for (let i = 1; i < r.length; i++) { const key = this.chunkKey((r[i - 1].x + r[i].x) / 2, (r[i - 1].y + r[i].y) / 2); if (key !== ck) { cur = [r[i - 1]]; ck = key; runs.push([key, cur]); } cur.push(r[i]); } }
+        const lay = (w, col, a, dy = 0) => { for (const [key, pts] of runs) { const gg = this.chunkG(0, 0, -8.95, key); gg.lineStyle(w, col, a).strokePoints(dy ? pts.map(p => ({ x: p.x, y: p.y + dy })) : pts); } };
+        lay(9 * k * .75, 0x2a2414, .14);   // vyšliapaný lem okolo cesty
+        lay(5.5 * k * .75, 0x7a6a44, .55); lay(3.6 * k * .75, 0xc4ad78, .85);
+        lay(.5 * k * .75, 0x8a7a50, .6, -1.1 * k * .75); lay(.5 * k * .75, 0x8a7a50, .6, 1.1 * k * .75);   // koľaje
+        const wet = (x, y) => GEO.still(x / k, y / k) || !!GEO.riverAt(x / k, y / k, 6);
         if (this.textures.exists('map_field_g0')) {
-            // mosty tam, kde cesta pretína rieku
-            for (const r of roads) for (let i = 1; i < r.length; i++) {
-                const p = r[i], near = rv.find(q => Math.hypot(q.x - p.x, q.y - p.y) < 3 * k);
-                if (near) { const a = Math.atan2(r[i].y - r[i - 1].y, r[i].x - r[i - 1].x); out.push(this.add.image(p.x, p.y, 'map_bridge').setScale(.5).setRotation(a).setDepth(-8.5)); break; }
-            }
             // polia okolo dedín a skalky po krajine
             const rnd = (n) => ((n * 9301 + 49297) % 233280) / 233280;
-            VL.forEach((v, i) => { for (let f = 0; f < 1; f++) { const a = rnd(i * 3 + f) * 6.283, d = 48 + rnd(i * 7 + f) * 20; out.push(this.add.image(v.x + Math.cos(a) * d, v.y + Math.sin(a) * d * .7, 'map_field_' + regionAt(v.x, v.y) + ((i + f) % 2)).setScale(.4).setAlpha(.9).setRotation((rnd(i + f * 5) - .5) * .6).setDepth(-8.6)); } });
-            for (let i = 0; i < 120; i++) { const x = rnd(i * 11 + 1) * WW, y = rnd(i * 13 + 2) * WH; if (!TW.some(t => Math.hypot(t.x - x, t.y - y) < 44 * K) && !VL.some(v => Math.hypot(v.x - x, v.y - y) < 26 * K) && !this.nearRoad(x, y, 13 * K)) out.push(this.add.image(x, y, 'map_rocks_' + (i % 3)).setScale(.4).setDepth(-8.4)); }
+            VL.forEach((v, i) => { for (let f = 0; f < 1; f++) { const a = rnd(i * 3 + f) * 6.283, d = 48 + rnd(i * 7 + f) * 20; if (wet(v.x + Math.cos(a) * d, v.y + Math.sin(a) * d * .7)) continue; out.push(this.add.image(v.x + Math.cos(a) * d, v.y + Math.sin(a) * d * .7, 'map_field_' + regionAt(v.x, v.y) + ((i + f) % 2)).setScale(.4).setAlpha(.9).setRotation((rnd(i + f * 5) - .5) * .6).setDepth(-8.6)); } });
+            for (let i = 0; i < 120; i++) { const x = rnd(i * 11 + 1) * WW, y = rnd(i * 13 + 2) * WH; if (!wet(x, y) && !TW.some(t => Math.hypot(t.x - x, t.y - y) < 44 * K) && !VL.some(v => Math.hypot(v.x - x, v.y - y) < 26 * K) && !this.nearRoad(x, y, 13 * K)) out.push(this.add.image(x, y, 'map_rocks_' + (i % 3)).setScale(.4).setDepth(-8.4)); }
         }
         // mäkký tmavý podklad pod lesmi: zjemní hranice dlaždíc a dá lesu hĺbku
         const fc = document.createElement('canvas'); fc.width = T.cols; fc.height = T.rows;
@@ -313,8 +316,7 @@ class MapScene extends Phaser.Scene {
         out.push(...this.buildForest(T));
         out.push(...this.buildPlaces());
         // hory: tieň na zemi na juhovýchod (svetlo zo severozápadu ako pri reliéfe), potom kresba
-        const mg = this.add.graphics().setDepth(-7.05); out.push(mg);
-        for (const [x, y, size] of T.mountains) { mg.fillStyle(0x0a0c06, .16).fillEllipse(x * k + size * k * .45, y * k + size * k * .04, size * k * 2.5, size * k * .7); mg.fillStyle(0x0a0c06, .12).fillEllipse(x * k + size * k * .2, y * k, size * k * 1.9, size * k * .45); }
+        for (const [x, y, size] of T.mountains) { const mg = this.chunkG(x * k, y * k, -7.05); mg.fillStyle(0x0a0c06, .16).fillEllipse(x * k + size * k * .45, y * k + size * k * .04, size * k * 2.5, size * k * .7); mg.fillStyle(0x0a0c06, .12).fillEllipse(x * k + size * k * .2, y * k, size * k * 1.9, size * k * .45); }
         for (const [x, y, size, kind, v] of T.mountains) {
             const key = 'mtn_' + kind + '_' + (kind === 'doom' ? 0 : v % 3);
             if (!this.textures.exists(key)) continue;
@@ -324,6 +326,52 @@ class MapScene extends Phaser.Scene {
             if (kind === 'doom') this.doom = img;
         }
         out.push(...this.buildAtmos());
+        return out;
+    }
+
+
+    /** Voda z geografie (js/data/geo.js). More a jazerá sú pár veľkých mnohouholníkov v jednom Graphics (g), rieky sa kreslia
+     *  ťahmi štetca do štvorcov sveta (chunkG, len pri kamere). Mosty a brody s menami. Vráti ďalšie objekty sveta. */
+    buildWater(g) {
+        const k = K, out = [], W2 = P => P.map(([x, y]) => ({ x: x * k, y: y * k }));
+        // posun čiary pobrežia do mora o d jednotiek (normála, strana podľa toho, kde je more)
+        const off = (P, d) => P.map((p, i) => { const a = P[Math.max(0, i - 1)], b = P[Math.min(P.length - 1, i + 1)], nx = -(b[1] - a[1]), ny = b[0] - a[0], l = Math.hypot(nx, ny) || 1; let ux = nx / l, uy = ny / l; if (!GEO.isSea(p[0] + ux * 3, p[1] + uy * 3)) { ux = -ux; uy = -uy; } return [p[0] + ux * d, p[1] + uy * d]; });
+        const C = GEO.COAST, tail = [[1800, 1200], [0, 1200], [0, 0]];
+        g.lineStyle(16 * k, 0x8a8456, 1).strokePoints(W2(C)); g.lineStyle(9 * k, 0xc8b882, 1).strokePoints(W2(C));          // breh: tráva do piesku
+        g.fillStyle(0x4a86a0, 1).fillPoints(W2([...C, ...tail]), true);                                                       // plytčina
+        g.fillStyle(0x3a7290, 1).fillPoints(W2([...off(C, 9), ...tail]), true);
+        g.fillStyle(0x24526a, 1).fillPoints(W2([...off(C, 26), ...tail]), true);                                               // hlbina
+        g.lineStyle(1.6 * k, 0xffffff, .35).strokePoints(W2(off(C, 3))); g.lineStyle(1 * k, 0xffffff, .18).strokePoints(W2(off(C, 7)));   // príboj
+        for (const L of GEO.LAKES) {
+            const sc = f => L.poly.map(([x, y]) => [L.x + (x - L.x) * f, L.y + (y - L.y) * f]);
+            g.fillStyle(0x6a7448, 1).fillPoints(W2(sc(1 + 9 / Math.min(L.rx, L.ry))), true); g.fillStyle(0xc8b882, 1).fillPoints(W2(sc(1 + 4 / Math.min(L.rx, L.ry))), true);
+            g.fillStyle(0x4a86a0, 1).fillPoints(W2(L.poly), true); g.fillStyle(0x2c5b73, 1).fillPoints(W2(sc(.72)), true); if (L.rx > 40) g.fillStyle(0x24526a, 1).fillPoints(W2(sc(.45)), true);
+            g.lineStyle(1.2 * k, 0xffffff, .3).strokePoints(W2(sc(.94)), true);
+        }
+        // rieky: ťahy štetca (úsečka + kruh v kĺbe) – breh, piesok, hlbina, prúd, odlesk; šírka rastie k ústiu
+        for (const R of GEO.RIVERS) {
+            const P = R.pts, n = P.length - 1;
+            const dry = []; for (let i = 1; i <= n; i++) dry[i] = !GEO.still((P[i - 1][0] + P[i][0]) / 2, (P[i - 1][1] + P[i][1]) / 2);   // úsek v mori či jazere sa nekreslí (breh by trčal do vody)
+            const brush = (add, mul, col, a, joints) => { for (let i = 1; i <= n; i++) { if (!dry[i]) continue; const w = ((R.wd[i - 1] + R.wd[i]) / 2 * mul + add) * k, x0 = P[i - 1][0] * k, y0 = P[i - 1][1] * k, x1 = P[i][0] * k, y1 = P[i][1] * k, gg = this.chunkG((x0 + x1) / 2, (y0 + y1) / 2, -9); gg.lineStyle(w, col, a).lineBetween(x0, y0, x1, y1); if (joints) gg.fillStyle(col, a).fillCircle(x1, y1, w / 2); } };
+            brush(9, 1, 0x6a7448, 1, 1); brush(4.5, 1, 0x8a8456, 1, 1); brush(0, 1, 0x2c5b73, 1, 1); brush(0, .55, 0x3f7892, 1, 1); brush(0, .14, 0x8ac0d8, .45, 0);
+            for (let i = 3; i < n; i += 3) { const p = P[i], q = P[i - 1], a = Math.atan2(p[1] - q[1], p[0] - q[0]), o = (i % 6 ? 1 : -1) * R.wd[i] * .22; this.chunkG(p[0] * k, p[1] * k, -9).lineStyle(.9 * k, 0xbfe0ee, .35).lineBetween((p[0] - Math.sin(a) * o) * k, (p[1] + Math.cos(a) * o) * k, (p[0] - Math.sin(a) * o + Math.cos(a) * 5) * k, (p[1] + Math.cos(a) * o + Math.sin(a) * 5) * k); }   // vlnky
+        }
+        // mosty a brody: most cez rieku (kolmo na tok), brod ako rad kameňov a svetlá plytčina; meno pod nimi
+        const tang = (x, y) => { const R = GEO.riverAt(x, y, 12); if (!R) return [0, 8]; let bi = 1, bd = 1e9; for (let i = 1; i < R.pts.length; i++) { const d = Math.hypot(R.pts[i][0] - x, R.pts[i][1] - y); if (d < bd) { bd = d; bi = i; } } const a = R.pts[bi - 1], b = R.pts[bi]; return [Math.atan2(b[1] - a[1], b[0] - a[0]), R.wd[bi]]; };
+        for (const c of GEO.CROSS) {
+            const [a, w] = tang(c.x, c.y), x = c.x * k, y = c.y * k, cg = this.chunkG(x, y, -8.9), nx = -Math.sin(a), ny = Math.cos(a), L = (w / 2 + 6) * k;
+            if (c.k === 'most') {
+                const pts = (s1, s2) => [[x - nx * L + Math.cos(a) * s1, y - ny * L + Math.sin(a) * s1], [x + nx * L + Math.cos(a) * s1, y + ny * L + Math.sin(a) * s1], [x + nx * L + Math.cos(a) * s2, y + ny * L + Math.sin(a) * s2], [x - nx * L + Math.cos(a) * s2, y - ny * L + Math.sin(a) * s2]].map(([px, py]) => ({ x: px, y: py }));
+                cg.fillStyle(0x000000, .3).fillPoints(pts(-3.2 * k + 6, 3.2 * k + 6), true);
+                cg.fillStyle(0x9a9286, 1).fillPoints(pts(-3.2 * k, 3.2 * k), true); cg.fillStyle(0xb8b0a2, 1).fillPoints(pts(-2.2 * k, 2.2 * k), true);
+                cg.lineStyle(.8 * k, 0x6a645a, 1); for (let t = -1; t <= 1; t += .25) cg.lineBetween(x + nx * L * t - Math.cos(a) * 2.2 * k, y + ny * L * t - Math.sin(a) * 2.2 * k, x + nx * L * t + Math.cos(a) * 2.2 * k, y + ny * L * t + Math.sin(a) * 2.2 * k);
+            } else {
+                cg.fillStyle(0x8ac0d8, .45).fillEllipse(x, y, (w + 8) * k * 1.1, (w + 8) * k * .6);
+                for (let t = -1; t <= 1.01; t += .34) { const px = x + nx * (w / 2 + 2) * k * t + Math.cos(a) * ((t * 7) % 2) * k, py = y + ny * (w / 2 + 2) * k * t + Math.sin(a) * ((t * 7) % 2) * k; cg.fillStyle(0x6a6a62, 1).fillEllipse(px, py + 1.2 * k, 3.6 * k, 2.4 * k); cg.fillStyle(0xa8a69a, 1).fillEllipse(px, py, 3.2 * k, 2 * k); }
+            }
+            const t = this.add.text(x + nx * (L + 4 * k) * Math.sign(ny || 1), y + Math.abs(ny) * (L + 4 * k) + 6 * k, c.n, { fontFamily: 'serif', fontSize: '10px', fontStyle: 'italic', color: '#f0e6c8', backgroundColor: 'rgba(18,14,12,.45)', padding: { x: 3, y: 1 }, resolution: RES }).setOrigin(.5, 0).setDepth(-7.4);
+            out.push(t); (this.placeTxt || (this.placeTxt = [])).push(t);
+        }
         return out;
     }
 
@@ -403,12 +451,11 @@ class MapScene extends Phaser.Scene {
             x.fillStyle = dead ? 'rgba(60,40,30,.75)' : 'rgba(22,54,24,.8)'; x.beginPath(); x.arc(cx + (rnd(n * 7) - .5) * 2, cy + (rnd(n * 11) - .5) * 2, sx * .62, 0, 7); x.fill();
             if (!dead) { x.fillStyle = 'rgba(70,120,50,.55)'; x.beginPath(); x.arc(cx - 1, cy - 1.5, sx * .3, 0, 7); x.fill(); }
         }
-        // rieka Anduin s brehmi a jazero
-        const river = () => { x.beginPath(); x.moveTo(640 * s, 0); x.bezierCurveTo(600 * s, 300 * s, 820 * s, 420 * s, 780 * s, 640 * s); x.bezierCurveTo(760 * s, 800 * s, 900 * s, 880 * s, 860 * s, 1200 * s); };
-        x.lineCap = 'round'; river(); x.strokeStyle = 'rgba(160,150,110,.7)'; x.lineWidth = 14 * s; x.stroke(); river(); x.strokeStyle = '#2e6a8c'; x.lineWidth = 9 * s; x.stroke(); river(); x.strokeStyle = '#5a9ab8'; x.lineWidth = 3 * s; x.stroke();
-        x.fillStyle = 'rgba(160,150,110,.7)'; x.beginPath(); x.ellipse(1195 * s, 326 * s, 118 * s, 66 * s, .2, 0, 7); x.fill();
-        x.fillStyle = '#2e6a8c'; x.beginPath(); x.ellipse(1195 * s, 326 * s, 110 * s, 60 * s, .2, 0, 7); x.fill();
-        x.fillStyle = 'rgba(120,180,210,.5)'; x.beginPath(); x.ellipse(1180 * s, 316 * s, 60 * s, 24 * s, .2, 0, 7); x.fill();
+        // more, jazerá a rieky z geografie (js/data/geo.js)
+        const poly = (P, close) => { x.beginPath(); P.forEach(([px2, py2], i) => i ? x.lineTo(px2 * s, py2 * s) : x.moveTo(px2 * s, py2 * s)); if (close) x.closePath(); };
+        x.fillStyle = '#26546c'; poly(GEO.SEA, true); x.fill(); x.strokeStyle = 'rgba(200,184,130,.8)'; x.lineWidth = 2; poly(GEO.COAST); x.stroke();
+        for (const L of GEO.LAKES) { x.fillStyle = '#2e6a8c'; poly(L.poly, true); x.fill(); x.strokeStyle = 'rgba(200,184,130,.7)'; x.lineWidth = 1.2; x.stroke(); }
+        x.lineCap = 'round'; for (const R of GEO.RIVERS) for (let i = 1; i < R.pts.length; i++) { x.strokeStyle = '#2e6a8c'; x.lineWidth = Math.max(1.2, R.wd[i] * s * 1.2); x.beginPath(); x.moveTo(R.pts[i - 1][0] * s, R.pts[i - 1][1] * s); x.lineTo(R.pts[i][0] * s, R.pts[i][1] * s); x.stroke(); }
         // cesty
         x.strokeStyle = 'rgba(214,190,130,.75)'; x.lineWidth = 1.6; for (const [a2, b2] of MAPDATA.roads) { const A = MAPDATA.castles[a2], B = MAPDATA.castles[b2]; if (A && B) { x.beginPath(); x.moveTo(A[1] * s, A[2] * s); x.quadraticCurveTo((A[1] + B[1]) / 2 * s + 30 * s, (A[2] + B[2]) / 2 * s - 25 * s, B[1] * s, B[2] * s); x.stroke(); } }
         // hory: tieň, telo, svetlá strana, snehová čiapka
@@ -432,7 +479,7 @@ class MapScene extends Phaser.Scene {
         if (G.camp) { G.camp = 0; G.stay = null; const b = [...tb.children].find(x => /tábor|pobyt/i.test(x.textContent)); if (b) b.textContent = 'Tábor'; upd(); }
         G.dest = -1; G.vd = -1; G.pd = -1; G.chase = null; G.talk = null;
         const sx = p.x / RES, sy = p.y / RES;
-        if (sx > MM.x && sy > MM.y) { G.tx = (sx - MM.x) / MM.w * WW; G.ty = (sy - MM.y) / MM.h * WH; return; }
+        if (sx > MM.x && sy > MM.y && sx < MM.x + MM.w && sy < MM.y + MM.h) { G.tx = (sx - MM.x) / MM.w * WW; G.ty = (sy - MM.y) / MM.h * WH; return; }
         const w = this.cameras.main.getWorldPoint(p.x, p.y);
         G.tx = w.x; G.ty = w.y;
         E.forEach(e => { if (Math.hypot(e.x - w.x, e.y - w.y) < 34) { if (hos(e.f, G.fac)) G.chase = e; else G.talk = e; } });
@@ -468,6 +515,8 @@ class MapScene extends Phaser.Scene {
         cam.x = Math.max(0, Math.min(WW - W / Z, G.x - W / Z / 2));
         cam.y = Math.max(0, Math.min(WH - H / Z, G.y - H / Z / 2));
         c.centerOn(cam.x + W / Z / 2, cam.y + H / Z / 2);
+        this.ls = Math.max(1, Math.round(.9 / Z * 20) / 20);   // popisky pri oddialení rastú, aby ostali čitateľné (na obrazovke stála veľkosť)
+        this.cullChunks();   // cesty, rieka a tiene hôr len pri kamere
 
         try {
             this.syncForest(1);
@@ -489,6 +538,10 @@ class MapScene extends Phaser.Scene {
             if (o.lv !== L) { o.lv = L; o.spr.setScale(.32 * (.85 + L * .08)); o.stars.setText('★'.repeat(L)); }
             const lab = t.n + '  ⚔' + t.g;
             if (o.lab !== lab) { o.lab = lab; o.txt.setText(lab); }
+            const col = t.f === G.fac ? '#ffd24a' : hos(t.f, G.fac) ? '#ffa890' : AL[G.fac] && AL[G.fac][t.f] ? '#b0e898' : '#ecdfc6';   // tvoj hrad zlatý, nepriateľský červenkastý, spojenecký zelený
+            if (o.col !== col) { o.col = col; o.txt.setColor(col); }
+            const ls = this.ls || 1;
+            if (o.ls !== ls) { o.ls = ls; o.txt.setScale(ls); o.stars.setScale(ls); }
         }
         for (const o of this.vill) {
             const f = TW[o.v.t].f, b = o.v.st > 0, L = lvl(o.v), key = f + (b ? 'b' : '') + L;
@@ -499,7 +552,10 @@ class MapScene extends Phaser.Scene {
                 o.spr.setTexture(b ? 'map_village_burn' : 'map_village_' + reg + L).setScale(.36).setTint(evil && !b ? 0xb8a8a0 : 0xffffff);
                 o.txt.setColor(b ? '#c08070' : FC[f]);
             }
+            const ls = Math.max(1, (this.ls || 1) * .8);
+            if (o.ls !== ls) { o.ls = ls; o.txt.setScale(ls); o.txt.setVisible(Z > .5); }   // pri veľkom oddialení mená dedín zmiznú (neprekrývajú hrady)
         }
+        if (this.placeTxt && this._pls !== this.ls) { this._pls = this.ls; const ps = Math.max(1, (this.ls || 1) * .9); this.placeTxt.forEach(t => t.setScale(ps)); }   // mená zaujímavých miest
     }
 
     syncArmies() {
@@ -527,6 +583,7 @@ class MapScene extends Phaser.Scene {
             if (e.vx) o.spr.setFlipX(e.vx < 0);
             const lab = e.nm + ' ' + Math.ceil(e.n), col = hos(e.f, G.fac) ? '#ff8a70' : (AL[G.fac][e.f] || e.f === G.fac) ? '#9fe08a' : '#ecdfc6';
             o.txt.setPosition(e.x, e.y + 19);
+            if (o.ls !== this.ls) { o.ls = this.ls; o.txt.setScale(this.ls || 1); }
             if (o.lab !== lab) { o.lab = lab; o.txt.setText(lab); }
             if (o.col !== col) { o.col = col; o.txt.setColor(col); }
             o.crown.setVisible(!!e.kr).setPosition(e.x + 17, e.y - 46);
@@ -552,7 +609,8 @@ class MapScene extends Phaser.Scene {
         if (moving) this.hero.setFlipX(G.tx < G.x);
         this.hero.setPosition(G.x, G.y + (moving ? Math.sin(tm * .4) * 1.2 : 0)).setDepth(G.y + 1);
         const ht = G.name + ' ' + ar();
-        this.heroTxt.setPosition(G.x, G.y + 38);
+        const atT = this.towns && this.towns.find(o => Math.abs(o.t.x - G.x) < 40 && Math.abs(o.t.y - G.y) < 40);   // v hrade: popisok družiny pod menom hradu, nie cez neho
+        this.heroTxt.setPosition(G.x, atT ? atT.txt.y + atT.txt.displayHeight + 3 * (this.ls || 1) : G.y + 38).setScale(this.ls || 1);
         if (this._ht !== ht) { this._ht = ht; this.heroTxt.setText(ht); }
         this.heroCrown.setVisible(!!G.king).setPosition(G.x + 17, G.y - 46);
     }
@@ -587,6 +645,9 @@ class MapScene extends Phaser.Scene {
         });
     }
 
+    /** Farba frakcie ako číslo pre Graphics (FC sú reťazce '#rrggbb'). */
+    fcol(f) { const c = this._fc || (this._fc = {}); return c[f] ?? (c[f] = parseInt((FC[f] || '#888888').slice(1), 16)); }
+
     drawFx() {
         const g = this.fx; g.clear();
         const x0 = cam.x - 220, y0 = cam.y - 220, x1 = cam.x + W / Z + 220, y1 = cam.y + H / Z + 220;
@@ -594,13 +655,20 @@ class MapScene extends Phaser.Scene {
         const moving = Math.hypot(G.tx - G.x, G.ty - G.y) > 3;
         if (moving) for (let k = 1; k < 5; k++) g.fillStyle(0xc8b48c, .22 - k * .04).fillCircle(G.x - Math.cos(G.f || 0) * k * 7, G.y - Math.sin(G.f || 0) * k * 7 + 8, 5 - k * .6);
         g.lineStyle(2, 0xd9a441, .7).strokeEllipse(G.x, G.y + 8, 38, 16);
-        if (moving) g.lineStyle(1.5, 0xecdfc6, .6).strokeRect(G.tx - 5, G.ty - 5, 10, 10);
+        if (moving) {   // trasa družiny: bodky k cieľu (posúvajú sa smerom pochodu) a značka cieľa
+            const dx = G.tx - G.x, dy = G.ty - G.y, dl = Math.hypot(dx, dy), st = 16 / Z, ph = (tm * .8 / Z) % st;
+            g.fillStyle(0xecdfc6, .55); for (let d = 14 / Z + ph; d < dl - 8; d += st) g.fillCircle(G.x + dx / dl * d, G.y + 8 + dy / dl * d, 1.8 / Z);
+            const pr = 1 + .15 * Math.sin(tm / 5); g.lineStyle(2 / Z, 0xffd24a, .8).strokeEllipse(G.tx, G.ty, 22 * pr / Z, 10 * pr / Z); g.lineStyle(1.5 / Z, 0xecdfc6, .6).strokeRect(G.tx - 3 / Z, G.ty - 3 / Z, 6 / Z, 6 / Z);
+        }
         for (const e of E) {
             if (!see(e.x, e.y)) continue;
             if (e.nz) g.fillStyle(0x780000, .28).fillCircle(e.x, e.y, 26 + Math.sin(tm / 6) * 3);
-            if (hos(e.f, G.fac)) g.lineStyle(2, e.n > pw() ? 0xe0442a : 0x6fbf5a, 1).strokeEllipse(e.x, e.y + 8, 34, 14);
+            if (hos(e.f, G.fac)) { const strong = e.n > pw(); g.fillStyle(strong ? 0xe0442a : 0xe0a030, .14).fillEllipse(e.x, e.y + 8, 34, 14); g.lineStyle(2, strong ? 0xe0442a : 0xe0a030, 1).strokeEllipse(e.x, e.y + 8, 34, 14); }   // nepriateľ: červený = silnejší ako ty, oranžový = slabší
+            else g.lineStyle(1.5, e.f === G.fac || (AL[G.fac] && AL[G.fac][e.f]) ? 0x5aa0e8 : 0xa8a49a, .75).strokeEllipse(e.x, e.y + 8, 34, 14);   // tvoji a spojenci modrý krúžok, neutrálni sivý
             if (e.fo) { g.lineStyle(3, 0xffd27a, 1); g.lineBetween(e.x - 9, e.y - 36, e.x + 9, e.y - 20); g.lineBetween(e.x + 9, e.y - 36, e.x - 9, e.y - 20); }
         }
+        // pod menom hradu pásik vo farbe frakcie (ako erb na štítku)
+        if (this.towns) for (const o of this.towns) { const t = o.t; if (!see(t.x, t.y)) continue; const tw = o.txt.displayWidth, th = o.txt.displayHeight; g.fillStyle(this.fcol(t.f), 1).fillRect(t.x - tw / 2, o.txt.y + th, tw, 3 * (this.ls || 1)); }
         // zraz vojska vlastnej frakcie: pulzujúci zlatý kruh a zástava pri hrade zrazu
         if (!this.musterTxt) { this.musterTxt = this.add.text(0, 0, 'Zraz vojska', { fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold', color: '#ffd24a', backgroundColor: 'rgba(18,14,12,.8)', padding: { x: 5, y: 1 }, resolution: RES }).setOrigin(.5, 1).setDepth(9003).setVisible(false); this.mmCam.ignore(this.musterTxt); }
         const mm = G.fac !== 9 ? marshal(G.fac) : null;

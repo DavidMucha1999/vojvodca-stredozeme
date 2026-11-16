@@ -321,6 +321,49 @@ Všetky modely z Meshy (telá postáv, kone, netvory, zbrane a brnenia dobra) s�
 - **Hory:** každá hora vrhá na zem mäkký tieň na juhovýchod (svetlo zo severozápadu ako pri reliéfe).
 - **Ovzdušie** (`buildAtmos`, `drawFx`): tiene oblakov pomaly plávajú od západu (v noci zmiznú, pri zrýchlenom čase idú rýchlejšie), nad Mordorom je tmavočervený opar a okolo Hory osudu pulzuje žiara na zemi, nad Mŕtvymi močiarmi pláva hmla a na severe padá sneh okolo kamery. Pri nastavení efektov „nízke“ sa oblaky, hmla a sneh vypnú.
 
+## Ikonky a popisky na mape (verzia 98)
+
+- **Čitateľné popisky pri oddialení** (`this.ls` v `update`, `js/engine/scenes/MapScene.js`): popisky sú v súradniciach sveta, preto sa pri oddialení zmenšovali (pri najmenšom priblížení asi na 7 px). Teraz rastú opačne ako priblíženie (`max(1, 0.9 / Z)`), takže mená hradov, armád, družiny a zaujímavých miest majú na obrazovke stálu veľkosť. Mená dedín sa pri veľkom oddialení (Z ≤ 0,5) skryjú, aby neprekrývali hrady.
+- **Hrady:** pod menom je pásik vo farbe frakcie (`fcol`, kreslí `drawFx`). Meno má farbu podľa vzťahu k tebe: tvoja frakcia zlatá, nepriateľ červenkastý, spojenec zelený, ostatní béžoví. Keď je družina v hrade, jej popisok je pod menom hradu, nie cez neho.
+- **Armády:** krúžok pod armádou podľa vzťahu: nepriateľ silnejší ako ty červený, slabší oranžový (oba s jemnou výplňou), tvoji a spojenci modrý, neutrálni sivý.
+- **Trasa družiny:** pri pochode vedú k cieľu bodky, ktoré sa posúvajú smerom pochodu, a cieľ má pulzujúci zlatý krúžok.
+
+## Pergamenová veľká mapa (verzia 99)
+
+- **Podklad** (`buildAtlas` v `js/engine/scenes/UIMaps.js`): veľká mapa (kláves M) už nepoužíva kockatý obrázok minimapy. Raz sa namaľuje textúra `atlas` 1440 × 960: teplý papier so škvrnami a vláknami, krajiny jemným akvarelom podľa druhu zeme, lesy ako stromčeky (mŕtve lesy ako pahýle), pohoria zozadu dopredu so svetlou a šrafovanou tienistou stranou a snehom, Hora osudu so žiarou, Anduin od prameňa širší, jazero s obrysmi brehu, more na západe, stmavené okraje papiera, dvojitý rám a ružica svetových strán vľavo dole.
+- **Cesty** sú prerušované atramentové čiary po tých istých oblúkoch ako na hlavnej mape (`roadLines` z MapScene), namiesto rovných spojníc.
+- **Mená bez prekrývania:** hrady sa popisujú od tvojich a väčších; meno skúša polohy pod, nad, vedľa a šikmo od značky, kým sa s ničím neprekrýva (keď miesto nie je, ostane priesvitné). Zaujímavé miesta majú meno kurzívou, len keď sa zmestí. Mená dedín na veľkej mape nie sú (ostali bodky). Meno hradu má farbu podľa vzťahu: nepriateľ tmavočervený, tvoja frakcia zlatohnedý.
+- **Mená krajín** sú veľké riedke písmo kurzívou vo farbe frakcie, priesvitné, vždy celé vnútri rámu.
+- **Legenda** má nové farby krúžkov armád: slabší nepriateľ oranžový, tvoji a spojenci modrý, neutrálni sivý.
+
+## Minimapa a varovania v hornom páse (verzia 100)
+
+- **Minimapa** (`miniKey` v `js/engine/scenes/UIMaps.js`) používa zmenšený pergamen veľkej mapy (`atlas_s`, 420 × 280, zmenšený v dvoch krokoch, aby stromčeky neblikali) namiesto kockatého obrázka. Kým nie je hlavná mapa postavená, ostáva starý obrázok `minimap`. Značky sú pre svetlý papier tmavé: dediny tmavé bodky, miesta tmavomodré trojuholníky, výrez kamery tmavý rám so svetlou linkou, hrdina s tmavým obrysom.
+- **Varovania v hornom páse** (`syncHud` v `js/engine/scenes/UIScene.js`, farby v `js/ui/hud.js`): zásoby pod 4 dni a morálka pod 45 sú oranžové s jemným rámčekom (blíži sa problém); hlad, zásoby pod 2 dni a morálka pod 30 sú červené a rámček pulzuje.
+
+## Plynulá mapa (verzia 101)
+
+- **Oprava sekania pri pohybe po mape:** Phaser objekt `Graphics` prepočítava všetky svoje tvary v každej snímke, aj mimo obrazovky. Hladké cesty a rieka z verzie 97 mali v jednom objekte asi 330 000 príkazov, čo stálo asi 175 ms na snímku. Teraz sa cesty, rieka a tiene hôr kreslia do štvorcov sveta 1600 × 1600 (`chunkG`, `chunkKey` v `js/engine/scenes/MapScene.js`) a `cullChunks` v každej snímke zobrazí len štvorce pri kamere (zvyčajne 2–4). Body ciest sú redšie (každých 32 bodov sveta) a rieka má 360 úsekov namiesto 640. Čas snímky mapy klesol zo 192 ms na asi 10–13 ms (merané v prehliadači ručným krokom hry).
+- Pravidlo do budúcna: veľké statické kresby na mape nedávať do jedného `Graphics`, ale cez `chunkG`.
+
+## Rozhranie mapy „Filmové minimum“ (verzia 102)
+
+- Namiesto pásu hore a panela tlačidiel dole sú len **stmavené okraje obrazu** (`syncHud` v `js/engine/scenes/UIScene.js`) a prvky voľne v rohoch, aby bolo čo najviac vidieť mapu. Údaje sa naďalej berú z HTML lišty `#hud` (`js/ui/hud.js`) a tlačidiel `tb` (`js/ui/toolbar.js`), takže herná logika sa nezmenila.
+- **Vľavo hore** plávajú hodnoty (zlato, zásoby, morálka, sláva…) ako ikona a číslo s tieňom; varovania sú oranžové alebo červené a pri ohrození ikona bliká. Popis ukáže myš. **Vpravo hore** je deň veľkým písmom, pod ním obdobie a počasie, pod tým minimapa (`MM` presunutá hore, klik na ňu kontroluje celý obdĺžnik).
+- **Vľavo dole hrdina** (`drawHero`): skutočný portrét (`Portraits.hero()`, orezaný do kruhu), okolo neho červený oblúk zdravia, odznak úrovne, meno, hodnosť, zdravie a vojsko podľa druhov. Klik na portrét otvorí Prehľad.
+- **V strede dole kolieso dňa a noci** (`drawDial`, kreslí sa každú snímku): zlatá polovica deň, modrá noc, slnko a mesiac sa otáčajú s časom dňa, značka hore = teraz. Pri čakaní (tábor, obliehanie, obrana, zajatie) je vedľa tlačidlo rýchlosti času (×1 / ×3 / ×8).
+- **Vpravo dole mriežka okrúhlych tlačidiel** (`syncBars`): Mapa, Družina, Výbava, Úlohy / Hrdina, Kronika, Voľby a zvýraznený **Tábor** (v tábore „Odísť“). Hrdina, Kronika a Voľby otvárajú ponuku nad mriežkou, nad ňou je lupa. Nové tlačidlá mimo skupín sa ukážu ako malé okrúhle vedľa lupy. Rozkazy v bitke ostali bez zmeny.
+- **Oprava:** po bitke sa mapa stavia nanovo, ale pamäť posledného textu (`_ht`, `_mt`) ostala, takže štítok družiny pod hrdinom bol prázdny. `buildWorld` ju teraz vynuluje.
+
+## Prestavba mapy: tvar Stredozeme, rieky a jazerá (verzia 103)
+
+- **Geografia** (`js/data/geo.js`, vektorové dáta v jednotkách návrhu 1800 × 1200): pobrežie Veľkého mora na západe a juhu (záliv Forochel, záliv Lhûnu so Šedými prístavmi, južné pobrežie s deltou Anduinu), **rieky so šírkou podľa toku** (Anduin cez Nen Hithoel a vodopády Rauros k delte pri Pelargire, Brandyvína, Šedá voda, Isen, Entova voda, Bruinen, Lhûn, Bystrá, Rýchla riečka, Celebrant), **jazerá** (Večerné jazero, Dlhé jazero, Nen Hithoel, more Rhûn, Núrnen) a **reťaze hôr** (Hmlisté hory, Ered Luin, Biele hory, Šedé hory, Ered Lithui a Ephel Dúath okolo Mordoru, Železné vrchy, Emyn Muil, Osamelá hora). Mapa je vlastná kresba podľa polohy krajín, nie kópia mapy z filmu.
+- Pri načítaní `GEO` upraví `MAPDATA`: políčka mora a jazier sú voda (bez lesa), pri riekach nie je hustý les, vrchy sa rozmiestnia pozdĺž reťazí (Hora osudu ostáva), dediny vo vode sa posunú na breh, Mistrand sa presunul na breh mora Rhûn. Mapa z editora Tiled (`assets/maps/stredozem.json`) ostáva podkladom terénu a lesov, vodu a hory určuje `geo.js`.
+- **Kreslenie** (`buildWater` v `js/engine/scenes/MapScene.js`): more s plytčinou, hlbinou, príbojom a piesočným pobrežím, jazerá s brehom, rieky ťahmi štetca po štvorcoch sveta (úseky v mori a jazerách sa nekreslia), **mosty a brody** s menami (Brandyvínsky most, Sarnský brod, Isenské brody, Starý brod, Cair Andros…). Veľká mapa, minimapa aj bitky pri rieke (`riverPoints`) berú vodu z tej istej geografie.
+- **Voda je prekážka** (`js/sim/nav.js`): mriežka 180 × 120 políčok, more, jazerá a rieky sú nepriechodné, rieky sa dajú prekročiť len na mostoch, brodoch a v hradoch na rieke (Osgiliath, Tharbad, Pelargir). Hľadanie cesty A* (8 smerov, bez zrezávania rohov cez vodu), trasa sa vyrovná podľa presnej priamej viditeľnosti (prechod všetkými pretínanými políčkami). `navStep` dá smer k ďalšiemu bodu trasy, `navMove` posunie objekt a pri brehu kĺže pozdĺž neho. Takto chodí **hrdina** (klik za rieku = cesta cez najbližší most), **armády**, **poslovia a karavány**. Najviac 8 nových trás za krok sveta; hľadanie cesty pridá asi 0,02 ms na krok (78 armád).
+- **Cesty na mape** sa počítajú tou istou trasou medzi hradmi a zaoblia sa (Chaikin), takže prirodzene vedú cez mosty a brody.
+- **Staré uloženia:** po načítaní (`navFixPositions`) sa hrdina, armády, dediny a poslovia, ktorí by stáli vo vode, presunú na najbližšiu súš. Rovnako pri novej hre; bandy sa vo vode nerodia.
+
 ## Rozvoj bojovníka ako vo Warbande (etapa 3, verzia 94)
 
 Nový súbor `js/sim/mastery.js` (načítava sa hneď po `warband.js`).

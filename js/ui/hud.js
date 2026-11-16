@@ -16,7 +16,7 @@ function upd() {
         FN[6] = G.kn;
         BF[6] = G.kc;
     }
-    { const d = foodDays(), pm = G.pm ?? 60; hud.innerHTML += '<span' + (G.hungry || d < 2 ? ' style="color:#ff7a5a"' : '') + '>Zásoby <b>' + (G.hungry ? 'hlad' : d + ' d') + '</b></span><span' + (pm < 30 ? ' style="color:#ff7a5a"' : '') + '>Morálka <b>' + pm + '</b></span>'; }
+    { const d = foodDays(), pm = G.pm ?? 60; hud.innerHTML += '<span' + (G.hungry || d < 2 ? ' style="color:#ff7a5a"' : d < 4 ? ' style="color:#ffc070"' : '') + '>Zásoby <b>' + (G.hungry ? 'hlad' : d + ' d') + '</b></span><span' + (pm < 30 ? ' style="color:#ff7a5a"' : pm < 45 ? ' style="color:#ffc070"' : '') + '>Morálka <b>' + pm + '</b></span>'; }   // oranžová = blíži sa problém, červená = už je
     hud.innerHTML += '<span>Česť <b>' + (G.hon || 0) + '</b></span><span>Strach <b>' + (G.fear || 0) + '</b></span>' + (G.camp ? '<span><b>Tábor</b></span>' : '')
         + (G.besiege >= 0 && TW[G.besiege] ? '<span>Obliehanie <b>' + TW[G.besiege].n + '</b></span>' : '') + (G.defend >= 0 && TW[G.defend] ? '<span>Obrana <b>' + TW[G.defend].n + '</b></span>' : '');
     if (typeof timeBtn !== 'undefined') { timeBtn.style.display = waiting() ? '' : 'none'; timeBtn.textContent = 'Čas ×' + (G.tmul || 1); }

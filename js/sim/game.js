@@ -106,6 +106,7 @@ function newGame() {
         dayT = 0;
         mode = 'map';
         ov.classList.add('hide');
+        if (typeof navFixPositions === 'function') navFixPositions();   // nikto nezačína vo vode
         upd();
     }
 }
@@ -142,6 +143,7 @@ function loadNow(slot) {
             LETTERS = s.LETTERS || [];
             E.forEach(e => { e.vx = 0; e.vy = 0; e.w = 0; if (e.home == null && !e.nz && e.f !== 9) { const t = TW.map((x, i) => i).filter(i => TW[i].f === e.f).sort((a, b) => Math.hypot(TW[a].x - e.x, TW[a].y - e.y) - Math.hypot(TW[b].x - e.x, TW[b].y - e.y))[0]; e.home = t; e.role = e.role || 'army'; } });
             NID = Math.max(s.NID || 0, 1e5);
+            if (typeof navFixPositions === 'function') navFixPositions();   // stará pozícia mohla po prestavbe mapy skončiť vo vode
             sp = 100;
             dayT = 0;
             mode = 'map';
