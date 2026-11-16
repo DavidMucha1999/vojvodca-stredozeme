@@ -90,7 +90,7 @@ const M3 = (() => {
         for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
             const k = j * NX + i, x = i * CX, y = j * CY, h = hg[k], ti = Math.min(TR.cols - 1, x / (WW / TR.cols) | 0), tj = Math.min(TR.rows - 1, y / (WH / TR.rows) | 0), g = TR.ground[tj * TR.cols + ti] || 1, grp = Math.min(6, Math.floor((g - 1) / 4));
             tmp.copy(pal[grp]); const vv = .88 + .24 * vn(x / 95, y / 95) + (hs(i, j) - .5) * .06; tmp.multiplyScalar(vv * 1.14);
-            const rg = regionAt(x, y), dk = rg === 'a';
+            const rg = regionAt(x, y), dk = rg === 'a'; if (dk) tmp.multiplyScalar(.5).lerp(new C('#3a1a12'), .25);   // Mordor: tmavá spálená zem
             const rk = sm(70, 150, h); if (rk > 0) tmp.lerp(dk ? rockD : rock, rk * .95);
             if (!dk && rg !== 'd') { const sn = sm(170, 250, h + (rg === 's' ? 70 : 0)); if (sn > 0) tmp.lerp(snow, sn); }
             const w = wet[k]; if (w > .03) { tmp.lerp(sand, sm(.03, .3, w) * .85); if (h < -2) tmp.lerp(deep, sm(-2, -16, h)); }
