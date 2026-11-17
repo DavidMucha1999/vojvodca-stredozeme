@@ -62,7 +62,7 @@ const M3 = (() => {
     // ---------- krajina ----------
     function buildField(sc) {
         const TR = MAPDATA.terrain, NY = GY + 1; hg = new Float32Array(NX * NY);
-        const wet = new Float32Array(NX * NY), cr = GEO.CROSS.map(c => [c.x * K, c.y * K]);
+        const wet = new Float32Array(NX * NY), cr = GEO.CROSS.filter(c => c.k === 'brod').map(c => [c.x * K, c.y * K]);   // brody ostanú plytké, pod mostmi tečie rieka
         for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
             const x = i * CX, y = j * CY; let w = 0;
             if (GEO.still(x / K, y / K) || GEO.riverAt(x / K, y / K, 1.6)) { w = 1; for (const c of cr) if (Math.abs(c[0] - x) < 44 && Math.abs(c[1] - y) < 44 && Math.hypot(c[0] - x, c[1] - y) < 44) { w = 0; break; } }
@@ -137,6 +137,41 @@ const M3 = (() => {
             }
         }
         vills = mkMesh(M.build()); scene3.add(vills);
+    }
+
+    // ---------- mosty a brody ----------
+    let bridges = [];
+    /** Smer toku a šírka rieky v blízkosti prechodu (súradnice sveta). */
+    function riverAtCross(c) {
+        const R0 = GEO.riverAt(c.x, c.y, 14); if (!R0) return null; let best = 1e9, tx = 1, tz = 0, wd = 8;
+        for (let i = 1; i < R0.pts.length; i++) { const [ax, ay] = R0.pts[i - 1], [bx, by] = R0.pts[i], mx = (ax + bx) / 2, my = (ay + by) / 2, d = Math.hypot(mx - c.x, my - c.y); if (d < best) { best = d; const l = Math.hypot(bx - ax, by - ay) || 1; tx = (bx - ax) / l; tz = (by - ay) / l; wd = R0.wd[i]; } }
+        return { tx, tz, wd };
+    }
+    function buildCrossings() {
+        bridges = []; const M = Mesher(), grp = [];
+        for (const c of GEO.CROSS) {
+            const rv = riverAtCross(c) || { tx: 0, tz: 1, wd: 8 }, cx = c.x * K, cz = c.y * K, wood = c.x < 700;
+            let dx = -rv.tz, dz = rv.tx;   // smer mosta kolmo na tok
+            const hl = rv.wd * K / 2 + 46;
+            if (c.k === 'most') {
+                const n = 9, W2 = 34, stone = wood ? '#8a6a40' : '#b8b0a0', stone2 = wood ? '#6a4e30' : '#9a9284', th = Math.atan2(-dz, dx), L = new (T().Group)();
+                const B = Mesher();
+                for (let i = -n; i <= n; i++) { const t = i / n, y = 7 + 7 * (1 - t * t), len = 2 * hl / (2 * n + 1) + .8; B.bx(stone, i * len, y - 3, 0, len, 3.4, W2); if (i % 2 === 0) { B.bx(stone2, i * len, y, W2 / 2 - 1, len * 1.6, 6, 2.4); B.bx(stone2, i * len, y, -W2 / 2 + 1, len * 1.6, 6, 2.4); } if (i % 3 === 0 && Math.abs(i) < n) B.cy(stone2, i * len, -18, 0, 5, y + 12); }
+                B.bx(stone2, -hl - 10, 0, 0, 24, 8, W2 + 4); B.bx(stone2, hl + 10, 0, 0, 24, 8, W2 + 4);
+                const m = mkMesh(B.build()); m.position.set(cx, 0, cz); m.rotation.y = th; scene3.add(m); grp.push(m);
+                bridges.push({ x: cx, z: cz, dx, dz, hl, hw: W2 / 2 + 3, ford: 0 });
+            } else {
+                const n = 7; for (let i = -n; i <= n; i++) { const t = i / n, x = cx + dx * t * hl, z = cz + dz * t * hl + Math.sin(i * 2.3) * 5; M.cy('#8a8478', x, 0, z, 6 + (i & 1) * 2, 4 + Math.abs(Math.sin(i)) * 2); }
+                for (const sd of [-1, 1]) { M.cy('#5a4630', cx + dx * hl * sd, 0, cz + dz * hl * sd - 4, 1.4, 22); M.bx('#d9a441', cx + dx * hl * sd + 3, 17, cz + dz * hl * sd - 4, 7, 4, .8); }
+            }
+        }
+        const g = M.build(); if (g.attributes.position.count) { const m = mkMesh(g); scene3.add(m); }
+    }
+    /** Výška pod nohami: krajina, na moste jeho mostovka. */
+    function groundY(x, y) {
+        let h = Math.max(0, heightAt(x, y));
+        for (const b of bridges) { const rx = x - b.x, rz = y - b.z, al = rx * b.dx + rz * b.dz, ac = -rx * b.dz + rz * b.dx; if (Math.abs(al) < b.hl && Math.abs(ac) < b.hw) { const t = al / b.hl; h = Math.max(h, 7 + 7 * (1 - t * t) + 1); } }
+        return h;
     }
 
     // ---------- hrady ----------
@@ -322,7 +357,7 @@ const M3 = (() => {
         const sh = new (T().Mesh)(shadowG || (shadowG = new (T().CircleGeometry)(1, 14).rotateX(-Math.PI / 2)), shadowM || (shadowM = new (T().MeshBasicMaterial)({ color: 0x000000, transparent: true, opacity: .32, depthWrite: false })));
         scene3.add(sh); o.sh = sh; o.hd = 0; o.mv = 0; o.isHero = isHero; o.fx = u.x; o.fy = u.y; o.ph = 0; o.mph = 0; return o;
     }
-    function dropFig(o) { if (!o) return; scene3.remove(o.root); if (o.sh) scene3.remove(o.sh); if (o.ring) scene3.remove(o.ring); }
+    function dropFig(o) { if (!o) return; if (o.fol) o.fol.forEach(dropFig); scene3.remove(o.root); if (o.sh) scene3.remove(o.sh); if (o.ring) scene3.remove(o.ring); }
     function ringFor(col) {
         const t = T(); if (!rings[col]) rings[col] = new t.MeshBasicMaterial({ color: col, transparent: true, opacity: .85, side: t.DoubleSide, depthTest: false, depthWrite: false });
         const m = new t.Mesh(rings.geo || (rings.geo = new t.RingGeometry(24, 30, 28).rotateX(-Math.PI / 2)), rings[col]); m.renderOrder = 5; return m;
@@ -330,8 +365,8 @@ const M3 = (() => {
     function place(o, x, y, dt, lift = 0) {
         const mv = Math.hypot(x - o.fx, y - o.fy); if (mv > .02) { const hd = Math.atan2(y - o.fy, x - o.fx); let d = hd - o.hd; d = Math.atan2(Math.sin(d), Math.cos(d)); o.hd += d * Math.min(1, .18 * dt); }
         o.mv += (Math.min(60, mv / Math.max(.3, dt)) - o.mv) * .2; o.fx = x; o.fy = y;
-        const h = heightAt(x, y);
-        o.root.position.set(x, Math.max(0, h) + lift, y); o.root.rotation.y = -o.hd; o.sh.position.set(x, Math.max(0, h) + .8, y); o.sh.scale.setScalar(o.mount ? 20 : 11);
+        const h = groundY(x, y);
+        o.root.position.set(x, h + lift, y); o.root.rotation.y = -o.hd; o.sh.position.set(x, h + .8, y); o.sh.scale.setScalar(o.mount ? 20 : 11);
         animate(o, mv, dt);
     }
     /** Chôdza a cval: nohy a kĺby kostry z bitky, rýchlosť z posunu na mape (jednotky sveta za tik / mierka postavy). */
@@ -351,24 +386,45 @@ const M3 = (() => {
             if (B.shL && B.shR) { B.shL.rotation.z = Math.sin(p) * a * .4 + .15; B.elL.rotation.z = .35; B.elR.rotation.z = .3; B.shR.rotation.z = -Math.sin(p) * a * .25 + .12; }
         }
     }
+    /** Stopa za postavou (najnovší bod prvý): kolóna vojakov sa drží na nej. */
+    function trail(o, x, y) { const t = o.tr || (o.tr = []), l = t[0]; if (!l || Math.hypot(x - l[0], y - l[1]) >= 8) { t.unshift([x, y]); if (t.length > 70) t.pop(); } }
+    function behind(o, d, x, y) {
+        let acc = 0, px = x, py = y;
+        for (const p of o.tr || []) { const s = Math.hypot(p[0] - px, p[1] - py); if (acc + s >= d) { const k = (d - acc) / (s || 1); return [px + (p[0] - px) * k, py + (p[1] - py) * k]; } acc += s; px = p[0]; py = p[1]; }
+        return null;
+    }
+    /** Kolóna: n pešiakov za veliteľom (o), každý v postavení vedľa trasy, rovnaké postavy ako v bitke. */
+    function followers(o, owner, n, mk, dt, near) {
+        const fl = o.fol || (o.fol = []);
+        while (fl.length > n) dropFig(fl.pop());
+        while (fl.length < n && near && bud > 0) { bud--; try { const f = mkFig(mk(fl.length), false); f.hd = o.hd; fl.push(f); } catch (e) { console.warn('3D vojak', e); n = fl.length; break; } }
+        const hx = Math.cos(o.hd), hy = Math.sin(o.hd);
+        fl.forEach((f, i) => {
+            f.root.visible = f.sh.visible = near; if (!near) { f.fx = owner.x; f.fy = owner.y; return; }
+            const side = (i % 2 ? 1 : -1) * (13 + (i >> 1) * 4), d = ((i >> 1) + 1) * 34 + 18;
+            const p = behind(o, d, owner.x, owner.y) || [owner.x - hx * d, owner.y - hy * d];
+            place(f, p[0] - hy * side, p[1] + hx * side, dt);
+        });
+    }
     const heroSig = () => { try { return JSON.stringify([G.eq, G.fac, G.name, G.look]); } catch (e) { return '' + G.fac; } };
     function syncFigs(sc, dt, vx, vz, vr) {
         // hrdina
         const hu = { h: 1, x: G.x, y: G.y, c: 0, hp: 1, f: 0 }, hsg = heroSig();
         if (!hero || hero.sig !== hsg) { if (hero) dropFig(hero); try { hero = mkFig(hu, true); hero.sig = hsg; } catch (e) { console.warn('3D hrdina', e); hero = null; } }
-        if (hero) { hero.sig = hsg; place(hero, G.x, G.y, dt); }
+        if (hero) { hero.sig = hsg; place(hero, G.x, G.y, dt); trail(hero, G.x, G.y); followers(hero, G, Math.min(5, Math.ceil((typeof ar === 'function' ? ar() : 0) / 5)), i => ({ k: 'i', x: G.x, y: G.y, c: 0, hp: 1, vr: (i * 29 % 100) / 100, fv: i % 4 }), dt, true); }
         // velitelia a armády
-        const seen = new Set(); bud = 1;
+        const seen = new Set(); bud = 2;
         for (const e of E) {
             seen.add(e.id); let o = fig.get(e.id);
             const near = Math.abs(e.x - vx) < vr && Math.abs(e.y - vz) < vr;
             if (!o) { if (!near || bud <= 0) continue; bud--; try { o = mkFig(lordUnit(e), false); o.ring = null; } catch (err) { console.warn('3D velitel', err); o = { bad: 1 }; } fig.set(e.id, o); }
             if (o.bad) continue;
             o.root.visible = o.sh.visible = near; if (o.ring) o.ring.visible = near; if (!near) { o.fx = e.x; o.fy = e.y; continue; }
-            place(o, e.x, e.y, dt, e.nz ? 40 + Math.sin(clock * 2 + e.id) * 4 : 0);
+            place(o, e.x, e.y, dt, e.nz ? 40 + Math.sin(clock * 2 + e.id) * 4 : 0); trail(o, e.x, e.y);
+            followers(o, e, e.nz ? 0 : Math.min(5, Math.ceil(e.n / 5)), i => ({ t: 1, fc: e.f, k: 'i', x: e.x, y: e.y, c: 0, hp: 1, vr: ((e.id * 7 + i * 13) % 100) / 100, fv: (e.id + i) % 4 }), dt, near);
             const col = hos(e.f, G.fac) ? 0xe05040 : (AL[G.fac] && AL[G.fac][e.f]) || e.f === G.fac ? 0x70d060 : 0xe0d8b8;
             if (!o.ring || o.rc !== col) { if (o.ring) scene3.remove(o.ring); o.ring = ringFor(col); o.rc = col; scene3.add(o.ring); }
-            o.ring.position.set(e.x, Math.max(0, heightAt(e.x, e.y)) + 1.5, e.y); o.ring.scale.setScalar(o.mount ? 1.15 : .8);
+            o.ring.position.set(e.x, groundY(e.x, e.y) + 1.5, e.y); o.ring.scale.setScalar(o.mount ? 1.15 : .8);
         }
         for (const [id, o] of fig) if (!seen.has(id)) { dropFig(o); fig.delete(id); }
     }
@@ -380,7 +436,7 @@ const M3 = (() => {
         scene3 = new t.Scene(); fogc = new t.Color('#aebfcf'); scene3.fog = new t.Fog(fogc, 1800, 9000); scene3.background = fogc;
         cam3 = new t.PerspectiveCamera(40, W / H, 20, 20000);
         hemi = new t.HemisphereLight(0xdfe8ff, 0x6a5a40, 1.05); sun = new t.DirectionalLight(0xfff0d0, 2.2); sun.position.set(-700, 1000, 500); scene3.add(hemi, sun);
-        buildField(sc); buildTrees(sc); buildVillages();
+        buildField(sc); buildTrees(sc); buildVillages(); buildCrossings();
         castles = TW.map(t => ({ t, mesh: null, sig: '' })); syncCastles();
         route = new t.Line(new t.BufferGeometry().setAttribute('position', new t.BufferAttribute(new Float32Array(3 * 80), 3)), new t.LineBasicMaterial({ color: 0xffd24a, depthTest: false, transparent: true, opacity: .9 })); route.renderOrder = 6; route.frustumCulled = false; scene3.add(route);
         mark = new t.Mesh(new t.TorusGeometry(14, 2.4, 6, 20).rotateX(Math.PI / 2), new t.MeshBasicMaterial({ color: 0xffd24a, depthTest: false })); mark.renderOrder = 6; scene3.add(mark);
