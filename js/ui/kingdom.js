@@ -15,14 +15,14 @@ function kingdom(i, tab) {
     const income = own.reduce((s, t) => s + Math.round(castleIncome(t) * taxMul() * fiefShare(t)), 0) + vill.reduce((s, v) => s + (v.st > 0 ? 0 : 4 + lvl(v) * 2), 0);
     const tabs = () => [['o', 'Prehľad', 'crown'], ['f', 'Léna', 'castle'], ['v', 'Vazali', 'group'], ['p', 'Správa', 'scales']].forEach(([k, n, ic]) => { const b = btn(n, () => re(k), 0, ic); if (k === tab) select(b); });
     if (tab === 'o') {
-        show(G.kn ? 'Kráľovstvo ' + G.kn : G.fac === 6 ? 'Vlastná družina' : 'Tvoje panstvo – ' + FN[G.fac], (G.king ? 'Si kráľ. ' : G.fac === 6 ? 'Si nezávislý vojvodca. ' : 'Slúžiš kráľovstvu ' + FN[G.fac] + '. ') + 'Hrady: ' + own.length + ', dediny: ' + vill.length + ', vazali: ' + vas.length + '. Denný príjem z panstva: ' + income + ' zlata (dane: ' + ({ low: 'nízke', normal: 'bežné', high: 'vysoké' })[G.tax || 'normal'] + '). Sláva ' + G.ren + ', česť ' + (G.hon || 0) + ', strach ' + (G.fear || 0) + '.' + (G.side != null ? ' Strana: ' + sideName(G.side) + '.' : ''));
+        show(G.kn ? 'Kráľovstvo ' + G.kn : G.fac === 6 ? 'Vlastná družina' : 'Tvoje panstvo – ' + FN[G.fac], (G.king ? 'Si kráľ. ' : G.fac === 6 ? 'Si nezávislý vojvodca. ' : 'Slúžiš kráľovstvu ' + FN[G.fac] + '. ') + 'Hrady: ' + own.length + ', dediny: ' + vill.length + ', vazali: ' + vas.length + '. Denný príjem z panstva: ' + income + ' zlata (dane: ' + ({ low: 'nízke', normal: 'bežné', high: 'vysoké' })[G.tax || 'normal'] + '). Sláva ' + G.ren + ', česť ' + (G.hon || 0) + ', strach ' + (G.fear || 0) + '.' + (G.side != null ? ' Strana: ' + sideName(G.side) + '.' : '')); ov.dataset.screen = 'sections';
         tabs();
         if (G.fac !== 6 && own.length) btn('Vyhlásiť nezávislosť (vojna s ' + FN[G.fac] + ')', () => { const o = G.fac; G.fac = 6; TW.forEach(x => { if (x.mine) x.f = 6; }); WR[6][o] = WR[o][6] = true; AL[6][o] = AL[o][6] = false; REL[6][o] = REL[o][6] = -70; E.forEach(e => { if (e.f === o) e.rl = (e.rl || 0) - 15; }); vas.forEach(e => { if (e.vas) e.f = 6; }); G.ren += 3; lg('Vyhlásil si nezávislosť od ' + FN[o] + '. Kráľovstvo ti vyhlásilo vojnu.'); upd(); msg('Tvoji poslovia odniesli list kráľovi: od dnešného dňa si pánom vlastnej zeme. ' + FN[o] + ' ti vyhlásil vojnu a jeho lordi ťa považujú za zradcu. Vazali, ktorým si udelil léno, idú s tebou.', () => re('o')); }, 0, 'flag');
         if (G.fac === 6 && !G.king) btn('Korunovať sa za kráľa (sláva 14, 3 hrady)', () => { G.king = 1; lg(G.name + ' bol korunovaný za kráľa.'); upd(); kingDlg(); }, !(G.ren >= 14 && own.length >= 3), 'crown');
         if (G.king) btn('Zmeniť meno kráľovstva, erb a farbu', () => kingDlg(), 0, 'flag');
     }
     if (tab === 'f') {
-        show('Léna', 'Hrad môžeš udeliť vazalovi (lord sa stane jeho strážcom) alebo spoločníkovi z družiny – ten odíde z družiny, usadí sa na hrade ako jeho pán a bráni ho. Držiteľ léna si necháva 30 % príjmu hradu, ale je ti verný.');
+        show('Léna', 'Hrad môžeš udeliť vazalovi (lord sa stane jeho strážcom) alebo spoločníkovi z družiny – ten odíde z družiny, usadí sa na hrade ako jeho pán a bráni ho. Držiteľ léna si necháva 30 % príjmu hradu, ale je ti verný.'); ov.dataset.screen = 'sections';
         tabs();
         own.forEach(t => {
             const ti = TW.indexOf(t);
@@ -40,7 +40,7 @@ function kingdom(i, tab) {
         if (!own.length) row('Nemáš žiadny hrad. Dobyj nejaký obliehaním alebo ho dostaň ako léno od panovníka.');
     }
     if (tab === 'v') {
-        show('Vazali', vas.length ? 'Lordi v tvojich službách: vzťah k tebe, vernosť (0–30) a vojsko. Žold zvyšuje vernosť; maršal vedie ťaženia.' : 'Zatiaľ nemáš vazalov. Lordov získaš udelením léna, presvedčením (rokovanie na mape) alebo keď nespokojný lord ponúkne služby listom.');
+        show('Vazali', vas.length ? 'Lordi v tvojich službách: vzťah k tebe, vernosť (0–30) a vojsko. Žold zvyšuje vernosť; maršal vedie ťaženia.' : 'Zatiaľ nemáš vazalov. Lordov získaš udelením léna, presvedčením (rokovanie na mape) alebo keď nespokojný lord ponúkne služby listom.'); ov.dataset.screen = 'sections';
         tabs();
         const m = MAR[G.fac] != null ? E.find(o => o.id === MAR[G.fac]) : null;
         vas.forEach(e => {
@@ -52,7 +52,7 @@ function kingdom(i, tab) {
         if (vas.length) btn('Vyplatiť žold všetkým (' + vas.length * 40 + ' zlata, vernosť +3, vzťah +4)', () => { G.gold -= vas.length * 40; vas.forEach(e => { e.loy = Math.min(30, loyOf(e) + 3); e.rl = (e.rl || 0) + 4; }); upd(); re('v'); }, G.gold < vas.length * 40, 'coins');
     }
     if (tab === 'p') {
-        show('Správa kráľovstva', 'Dane: nízke = menej zlata, prosperita dedín rastie, vazali spokojní; vysoké = o 35 % viac zlata, prosperita klesá, vazali šomrú (vernosť −0,1 denne).');
+        show('Správa kráľovstva', 'Dane: nízke = menej zlata, prosperita dedín rastie, vazali spokojní; vysoké = o 35 % viac zlata, prosperita klesá, vazali šomrú (vernosť −0,1 denne).'); ov.dataset.screen = 'sections';
         tabs();
         [['low', 'Nízke dane'], ['normal', 'Bežné dane'], ['high', 'Vysoké dane']].forEach(([k, n]) => { const b = btn(n, () => { G.tax = k; re('p'); }, 0, 'coins'); if ((G.tax || 'normal') === k) select(b); });
         if (own.length) btn('Posilniť všetky posádky (+5 obrancov na hrad, ' + own.length * 40 + ' zlata)', () => { G.gold -= own.length * 40; own.forEach(t => t.g += 5); upd(); re('p'); }, G.gold < own.length * 40, 'shield');

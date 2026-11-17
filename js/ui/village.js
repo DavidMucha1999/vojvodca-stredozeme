@@ -10,7 +10,7 @@ function villageElder(i, line) {
     const v = VL[i], t = TW[v.t], evil = bloc(t.f) === 1 && t.f !== 6 || (t.f === 6 && heroSide() === 1), own = t.mine || t.f === G.fac;
     mode = 'room'; PORTRAIT = evil ? vLook.overseer : vLook.elder;
     const hello = v.st > 0 ? (evil ? 'Vypálili to. Všetko. Teraz tu nie je čo vymáhať.' : 'Všetko zhorelo, pane. Chalupy, sýpka, aj staré lipy. Postavíme to znova, ale potrvá to.') : evil ? 'Čo chceš? Dane sú vybraté, otroci pracujú, mäso je na ceste do ' + t.n + '. Ak hľadáš prácu, choď do hradu.' : own ? 'Vitaj, pane. Dedina ' + v.n + ' ti patrí a prosperuje, ako vidíš – alebo neprosperuje, podľa toho, ako nás chránite.' : 'Vitaj v ' + v.n + ', cudzinec. Patríme pod ' + t.n + '. Čo ťa k nám privádza?';
-    show((evil ? 'Dozorca' : 'Starosta') + ' dediny ' + v.n, '„' + (line || hello) + '“');
+    evShow((evil ? 'Dozorca' : 'Starosta') + ' dediny ' + v.n, '„' + (line || hello) + '“');
     const bands = E.filter(e => e.f === 9 && Math.hypot(e.x - v.x, e.y - v.y) < 350 * K).sort((a, b) => Math.hypot(a.x - v.x, a.y - v.y) - Math.hypot(b.x - v.x, b.y - v.y));
     btn('Čo nové v kraji?', () => villageElder(i, rumor(t)), 0, 'book');
     if (bands.length && !G.bounty) btn('Trápi vás niekto? (úloha: ' + bands[0].nm + ')', () => { const b = bands[0]; G.bounty = { id: b.id, nm: b.nm, g: 40 + Math.floor(b.n * 5) }; G.chase = b; villageElder(i, 'Áno! ' + b.nm + ' nám kradne dobytok a páli polia. Ak ich zaženieš, dáme ti ' + G.bounty.g + ' zlata – všetko, čo máme. Cieľ je označený na mape.'); }, 0, 'attack');
@@ -26,7 +26,7 @@ function villageMarket(i) { const v = VL[i]; mode = 'town'; market(v, () => { ov
 function villageRecruit(i) {
     const v = VL[i], t = TW[v.t], evil = heroSide() === 1, rich = lvl(v) >= 3;
     mode = 'room'; PORTRAIT = evil ? vLook.broken : vLook.merchant;
-    show(evil ? 'Zverbovaní sedliaci' : 'Dobrovoľníci z ' + v.n, evil ? 'Pri klietke stojí rad vychudnutých mužov. Dozorca vraví, že za pár mincí ich môžeš odviesť do vojska; bojovať budú zo strachu.' : 'Pri voze so senom sa zišli mladíci s kosami a vidlami. Chcú vidieť svet a priniesť domov pár mincí.' + (rich ? ' Bohatá dedina má aj niekoľko lovcov s lukmi.' : ''));
+    evShow(evil ? 'Zverbovaní sedliaci' : 'Dobrovoľníci z ' + v.n, evil ? 'Pri klietke stojí rad vychudnutých mužov. Dozorca vraví, že za pár mincí ich môžeš odviesť do vojska; bojovať budú zo strachu.' : 'Pri voze so senom sa zišli mladíci s kosami a vidlami. Chcú vidieť svet a priniesť domov pár mincí.' + (rich ? ' Bohatá dedina má aj niekoľko lovcov s lukmi.' : ''));
     btn('Najať 3 pešiakov (25 zlata)', () => { G.gold -= 25; G.inf += 3; upd(); villageRecruit(i); }, G.gold < 25 || v.st > 0, { u: 'i' });
     if (rich && !evil) btn('Najať 2 lukostrelcov (40 zlata)', () => { G.gold -= 40; G.arc += 2; upd(); villageRecruit(i); }, G.gold < 40, { u: 'a' });
     if (evil) btn('Odviesť 5 sedliakov násilím (strach +2, česť −3, prosperita −10)', () => { G.inf += 5; G.fear = (G.fear || 0) + 2; G.hon = (G.hon || 0) - 3; v.pr = Math.max(0, (v.pr ?? 40) - 10); upd(); villageRecruit(i); }, v.st > 0, 'chain');
@@ -35,14 +35,14 @@ function villageRecruit(i) {
 function villageWell(i) {
     const v = VL[i]; mode = 'room';
     const used = (G.vwell || {})[v.n] === G.day;
-    show('Studňa', used ? 'Dnes si už pil. Voda je studená a dobrá, ale zázraky nerobí dvakrát denne.' : 'Studená voda z hlbokej studne. Vojaci si naplnia mechy a kone sa napijú.');
+    evShow('Studňa', used ? 'Dnes si už pil. Voda je studená a dobrá, ale zázraky nerobí dvakrát denne.' : 'Studená voda z hlbokej studne. Vojaci si naplnia mechy a kone sa napijú.');
     btn('Napiť sa (zdravie +10, družina +)', () => { (G.vwell = G.vwell || {})[v.n] = G.day; G.hp = Math.min(mh(), G.hp + 10); if (G.chp) Object.keys(G.chp).forEach(k => G.chp[k] = Math.min(1, G.chp[k] + .1)); upd(); vBack(); }, used, 'heart');
     btn('Späť', vBack, 0, 'back');
 }
 function villageChapel(i) {
     const v = VL[i], t = TW[v.t], evil = bloc(t.f) === 1 && t.f !== 6 || (t.f === 6 && heroSide() === 1), used = (G.vpray || {})[v.n] === G.day;
     mode = 'room';
-    show(evil ? 'Oltár Tieňa' : 'Kaplnka', evil ? 'Čierny kameň s lebkami a zaschnutou krvou. Orkovia sem nosia obete pre Oko.' : 'Malá drevená svätyňa s hviezdou Elbereth nad dverami. Vonia tu vosk a sušené kvety.');
+    evShow(evil ? 'Oltár Tieňa' : 'Kaplnka', evil ? 'Čierny kameň s lebkami a zaschnutou krvou. Orkovia sem nosia obete pre Oko.' : 'Malá drevená svätyňa s hviezdou Elbereth nad dverami. Vonia tu vosk a sušené kvety.');
     if (evil) btn('Priniesť obetu (strach +2, zdravie −5)', () => { (G.vpray = G.vpray || {})[v.n] = G.day; G.fear = (G.fear || 0) + 2; G.hp = Math.max(10, G.hp - 5); upd(); vBack(); }, used, 'skull');
     else btn('Pomodliť sa (česť +1, zdravie +5)', () => { (G.vpray = G.vpray || {})[v.n] = G.day; G.hon = (G.hon || 0) + 1; G.hp = Math.min(mh(), G.hp + 5); upd(); vBack(); }, used, 'honor');
     if (!evil) btn('Darovať chudobným (10 zlata, sláva +1)', () => { G.gold -= 10; G.ren++; upd(); vBack(); }, G.gold < 10, 'coins');
@@ -51,7 +51,7 @@ function villageChapel(i) {
 function villageInn(i) {
     const v = VL[i], t = TW[v.t], evil = heroSide() === 1;
     mode = 'room'; PORTRAIT = vLook.merchant;
-    show(evil ? 'Brloh v ' + v.n : 'Krčmička v ' + v.n, evil ? 'Nízka chatrč, kde sa orkovia a zbehovia opíjajú kvaseným mliekom. Za sudom sedí jednooký hostinský.' : 'Nízka izba s jedným stolom a ohniskom. Hostinský nalieva domáce pivo a praská chlieb.');
+    evShow(evil ? 'Brloh v ' + v.n : 'Krčmička v ' + v.n, evil ? 'Nízka chatrč, kde sa orkovia a zbehovia opíjajú kvaseným mliekom. Za sudom sedí jednooký hostinský.' : 'Nízka izba s jedným stolom a ohniskom. Hostinský nalieva domáce pivo a praská chlieb.');
     btn('Prenocovať (5 zlata, plné zdravie, deň plynie)', () => { G.gold -= 5; G.hp = mh(); endDay(); upd(); msg('Ráno ťa zobudí kohút' + (evil ? ' – teda, orkovia ho už zjedli, zobudí ťa dozorca.' : ' a vôňa čerstvého chleba.'), vBack); }, G.gold < 5, 'rest');
     btn('Vypočuť si klebety (3 zlata)', () => { G.gold -= 3; upd(); msg('„' + rumor(t) + '“', () => villageInn(i)); }, G.gold < 3, 'book');
     btn('Dať rundu dedine (15 zlata, sláva +1)', () => { G.gold -= 15; G.ren++; upd(); msg('Celá krčmička pripíja na tvoje zdravie.', () => villageInn(i)); }, G.gold < 15, 'mug');
@@ -61,7 +61,7 @@ function villageTalk(i, kind) {
     const v = VL[i], t = TW[v.t];
     mode = 'room'; PORTRAIT = kind ? vLook.broken : vLook.woman;
     const good = kind === 0, lines = good ? ['Pán ' + (t.lord || 'hradu ' + t.n) + ' vyberá dane raz za mesiac. Horšie sú tie tlupy z lesa.', 'Chlapi hovoria, že na východe sa zbiera vojsko. Ja hovorím, nech sa zbiera ďaleko odtiaľto.', 'Obilie sa tento rok urodilo. Keby ste chceli kúpiť, kupec má plný voz.', 'V noci počuť vlkov. Nie také obyčajné – väčšie.', 'Môj muž odišiel k vojsku pána ' + t.n + '. Píše, že je tam zima a málo chleba.'] : ['Nehovor s nimi nahlas. Dozorca počuje všetko.', 'Brali nám mäso, potom dobytok, potom synov. Zostali sme len my starí.', 'Raz príde niekto zo západu. Hovorí sa to potichu, pri ohni.', 'Ak máš kúsok chleba, pane… nie pre mňa. Pre deti.'];
-    show(good ? 'Dedinčanka' : 'Zlomený sedliak', '„' + lines[Math.floor(Math.random() * lines.length)] + '“');
+    evShow(good ? 'Dedinčanka' : 'Zlomený sedliak', '„' + lines[Math.floor(Math.random() * lines.length)] + '“');
     if (!good && G.gold >= 5) btn('Dať mu 5 zlata (česť +1)', () => { G.gold -= 5; G.hon = (G.hon || 0) + 1; upd(); vBack(); }, 0, 'heart');
     btn('Späť', vBack, 0, 'back');
 }

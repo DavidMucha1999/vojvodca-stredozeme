@@ -10,7 +10,7 @@ function council() {
     mode = 'town';
     if (fr.length && Math.random() < .6) {
         const t = fr[0], C = [...L.filter(e => !e.kr), ...L.filter(e => e.kr)].slice(0, 2), c = C.map(e => e.nm);
-        show('Rada šľachticov: ' + FN[f], 'Rada rozhoduje, kto dostane léno ' + t.n + '. Kandidáti sú ty a ' + c.join(', ') + '.');
+        evShow('Rada šľachticov: ' + FN[f], 'Rada rozhoduje, kto dostane léno ' + t.n + '. Kandidáti sú ty a ' + c.join(', ') + '.');
         btn('Hlasovať za seba', () => { let s = G.ren * 1.5 + (G.hon || 0) * .5 + 15; L.forEach(e => { per(e); s += ((e.rl || 0) > 10 ? 8 : -4) + (e.tr === 3 ? -6 : 0); }); const w = s > L.length * 4; if (w) {
             t.mine = 1;
             t.lord = G.name;
@@ -25,7 +25,7 @@ function council() {
             mode = 'map';
             return;
         }
-        show('Rada šľachticov: ' + FN[f], 'Šľachtici navrhujú vyhlásiť vojnu frakcii ' + FN[tg] + '. Ako hlasuješ?');
+        evShow('Rada šľachticov: ' + FN[f], 'Šľachtici navrhujú vyhlásiť vojnu frakcii ' + FN[tg] + '. Ako hlasuješ?');
         const go = y => { const v = Math.ceil(G.ren / 5) + 1, yes = L.filter(e => { per(e); return e.tr === 3 || e.tr === 4 || Math.random() < .4; }).length + (y ? v : 0), no = L.length + v - yes; const p = yes > no; if (p) {
             WR[f][tg] = WR[tg][f] = true;
             AL[f][tg] = AL[tg][f] = false;

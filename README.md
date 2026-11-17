@@ -415,6 +415,8 @@ Popri spoločnom štýle majú tri druhy okien vlastné rozloženie (`js/engine/
 - **Prehľad sekcií** (`sections`): Úlohy (karty s postupom a tlačidlom Vzdať sa), Kronika, Denník, Štatistiky, Trofeje, Úspechy; každá sekcia je karta.
 - **Udalosť** (`event`, funkcia `evShow` v `dom.js`): filmová karta s ilustráciou (obloha podľa dennej doby, hory, veľký medailón s ikonou) a voľbami ako kartami; používajú ju udalosti na ceste, príbeh, svetové udalosti, stretnutia, výsledok bitky, súboje, hádka v družine, posol a plavba. Keď sa obsah nezmestí (dlhý text, viac ako 6 volieb), okno sa nakreslí v spoločnom štýle.
 
+Pridané v ďalšej etape: **Trh, Kráľovstvo (Prehľad, Léna, Vazali, Správa), Krčma a menu Obliehania** sú prehľad sekcií (tlačidlá sa zalamujú do riadkov v karte); **Uložiť a Načítať hru** je mriežka kariet v dvoch stĺpcoch (`ov.dataset.cols`); **veliteľ, krčmár a rozhovory so spoločníkmi, dedina, hradné budovy, miesta, rada šľachticov, zajatie a udalosti obliehania** sú karta udalosti, ktorá pri okne s portrétom ukáže portrét v ráme. Listy (nadpis „List …“) ostávajú na pergamene.
+
 Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie a klávesy ako v bežných oknách).
 
 ## Rozvoj bojovníka ako vo Warbande (etapa 3, verzia 94)

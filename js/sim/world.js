@@ -174,7 +174,7 @@ function updMap(dt) {
         if (G.ring === 1 && mode === 'map' && dd < 180 && !G.rp) {
             G.rp = 1;
             mode = 'town';
-            show('Hora osudu', 'Stojíš pri ohni, v ktorom bol Prsteň vykovaný.');
+            evShow('Hora osudu', 'Stojíš pri ohni, v ktorom bol Prsteň vykovaný.');
             btn('Hodiť Prsteň do ohňa', () => { G.ring = 2; G.ren += 10; E = E.filter(e => !e.nz); TW.forEach(t => { if (t.f === 2)
                 t.g = Math.floor(t.g / 2); }); lg('Jeden prsteň je zničený! Moc Mordoru slabne.'); ach(); upd(); msg('Prsteň sa roztavil v ohni. Nazgûli zmizli a posádky Mordoru sú oslabené.', () => { ov.classList.add('hide'); mode = 'map'; }); });
             btn('Ponechať si ho', () => { ov.classList.add('hide'); mode = 'map'; });

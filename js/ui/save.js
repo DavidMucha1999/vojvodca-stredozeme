@@ -10,7 +10,7 @@ function slotBtn(k, n, fn, off) {
 }
 function saveMenu(back) {
     mode = 'town';
-    show('Uložiť hru', 'Vyber pozíciu (6 ručných). Hra sa okrem toho sama ukladá na konci každého dňa do automatickej pozície.');
+    show('Uložiť hru', 'Vyber pozíciu (6 ručných). Hra sa okrem toho sama ukladá na konci každého dňa do automatickej pozície.'); ov.dataset.screen = 'shop'; ov.dataset.cols = '2';
     SLOTS.filter(([k]) => !/^auto/.test(k)).forEach(([k, n]) => slotBtn(k, n, () => { const had = !!slotData(k); msg(save(k) ? 'Hra uložená do pozície ' + k + (had ? ' (pôvodná pozícia prepísaná).' : '.') : 'Ukladanie nie je v tomto prostredí dostupné.', back); }));
     saveTransferBtns(() => saveMenu(back));
     btn('Späť', back, 0, 'back');
@@ -19,7 +19,7 @@ function saveMenu(back) {
 function loadMenu() {
     const any = SLOTS.some(([k]) => slotInfo(k));
     if (!any && !DESKTOP) return load(1);
-    show('Načítať hru', 'Vyber uloženú pozíciu.');
+    show('Načítať hru', 'Vyber uloženú pozíciu.'); ov.dataset.screen = 'shop'; ov.dataset.cols = '2';
     ov.classList.add('intro');
     SLOTS.forEach(([k, n]) => slotBtn(k, n, () => load(k), !slotData(k)));
     saveTransferBtns(loadMenu);

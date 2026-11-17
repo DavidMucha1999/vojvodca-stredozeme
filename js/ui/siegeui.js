@@ -22,7 +22,7 @@ function siegeMenu(i) {
     if (!s) { G.besiege = -1; mode = 'map'; ov.classList.add('hide'); return; }
     mode = 'town'; G.dest = -1;
     const bs = besiegers(i), ins = defenders(i), lead = s.lead === 'G' ? 'ty' : (E.find(e => e.id === s.lead) || {}).nm || FN[s.f];
-    show('Obliehanie: ' + t.n, (s.lead === 'G' ? 'Obliehanie vedieš ty' : 'Obliehanie vedie ' + lead) + ' – ' + (G.day - s.d0 + 1) + '. deň. Posádka ' + t.g + (t.wl ? ', hradby stupeň ' + t.wl : '') + (ins.length ? '; v hrade sú aj ' + ins.map(e => e.nm + ' (' + Math.ceil(e.n) + ')').join(', ') : '') + '. Zásoby posádky: ' + (s.food > 0 ? 'na ' + s.food + ' dní' : 'došli – posádka hladuje') + '.');
+    show('Obliehanie: ' + t.n, (s.lead === 'G' ? 'Obliehanie vedieš ty' : 'Obliehanie vedie ' + lead) + ' – ' + (G.day - s.d0 + 1) + '. deň. Posádka ' + t.g + (t.wl ? ', hradby stupeň ' + t.wl : '') + (ins.length ? '; v hrade sú aj ' + ins.map(e => e.nm + ' (' + Math.ceil(e.n) + ')').join(', ') : '') + '. Zásoby posádky: ' + (s.food > 0 ? 'na ' + s.food + ' dní' : 'došli – posádka hladuje') + '.'); ov.dataset.screen = 'sections';
     row('Obliehatelia: tvoje vojsko (' + ar() + ')' + (bs.length ? ', ' + bs.map(e => e.nm + ' (' + Math.ceil(e.n) + ')').join(', ') : '') + ' – spolu ' + Math.round(siegeMen(i)) + ' mužov proti ' + Math.round(defStrength(i)) + ' obrancom.', { icon: { canvas: Icons.canvas('sword'), key: 'ico_ui_sword' } });
     row('Technika: ' + ['lad', 'ram', 'tow'].map(k => SIEGE_NAME[k] + ' ' + (s[k] ? 'hotové' : pct(siegeProg(s, k)))).join(', ') + '. Za deň pribudne práca ' + Math.min(SIEGE_DAY_WORK, Math.round(siegeMen(i))) + ' (rebríky ' + SIEGE_WORK.lad + ', baranidlo ' + SIEGE_WORK.ram + ', veža ' + SIEGE_WORK.tow + ').', { dim: 1 });
     if (s.lead === 'G') {
@@ -73,7 +73,7 @@ function siegeEventUI() {
     mode = 'town';
     if (ev.kind === 'assault') {
         const lead = (E.find(e => e.id === s.lead) || besiegers(ev.i)[0] || {}).nm || FN[s.f];
-        show('Útok na ' + t.n, lead + ' dáva rozkaz k útoku na hradby. Technika je pripravená (' + ['lad', 'ram', 'tow'].filter(k => s[k]).map(k => SIEGE_NAME[k]).join(', ') + '). Obrancov je asi ' + Math.round(defStrength(ev.i)) + ', útočníkov ' + Math.round(siegeMen(ev.i) + (playerBesieging(ev.i) ? 0 : ar())) + '.');
+        evShow('Útok na ' + t.n, lead + ' dáva rozkaz k útoku na hradby. Technika je pripravená (' + ['lad', 'ram', 'tow'].filter(k => s[k]).map(k => SIEGE_NAME[k]).join(', ') + '). Obrancov je asi ' + Math.round(defStrength(ev.i)) + ', útočníkov ' + Math.round(siegeMen(ev.i) + (playerBesieging(ev.i) ? 0 : ar())) + '.');
         btn('Pridať sa k útoku', () => { G.besiege = ev.i; siegeBattle(ev.i); }, 0, 'attack');
         btn('Zostať bokom (útočia bez teba)', () => { siegeAssaultAI(ev.i); ov.classList.add('hide'); mode = 'map'; upd(); }, 0, 'back');
     } else if (ev.kind === 'defend') {
@@ -82,7 +82,7 @@ function siegeEventUI() {
         btn('Nechať posádku brániť samu', () => { siegeAssaultAI(ev.i); if (G.defend === ev.i && TW[ev.i].f !== G.fac && hos(TW[ev.i].f, G.fac)) G.defend = -1; ov.classList.add('hide'); mode = 'map'; upd(); }, 0, 'back');
     } else if (ev.kind === 'sortie') {
         const n = Math.max(4, Math.round(t.g * .6));
-        show('Výpad posádky ' + t.n, 'Brána sa otvorila a ' + n + ' obrancov vyráža na tvoj tábor!');
+        evShow('Výpad posádky ' + t.n, 'Brána sa otvorila a ' + n + ' obrancov vyráža na tvoj tábor!');
         btn('Do zbrane!', () => { ov.classList.add('hide'); t.g = Math.max(2, t.g - n); startBattle({ nm: 'Výpad posádky ' + t.n, n, f: t.f, sortie: ev.i, t }); }, 0, 'attack');
     }
 }

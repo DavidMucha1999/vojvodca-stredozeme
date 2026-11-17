@@ -7,7 +7,7 @@ function lord(e) {
         mode = 'town';
         e.rl = e.rl || 0;
         PORTRAIT = Portraits.forLord(e);
-        show(e.nm + ' (' + FN[e.f] + ')', 'Vzťah: ' + Math.round(e.rl) + '. Vojakov: ' + Math.ceil(e.n) + '. Tvoja sláva: ' + G.ren + '.' + (e.mem && e.mem.length ? ' Pamätá si: ' + memText(e) : ''));
+        evShow(e.nm + ' (' + FN[e.f] + ')', 'Vzťah: ' + Math.round(e.rl) + '. Vojakov: ' + Math.ceil(e.n) + '. Tvoja sláva: ' + G.ren + '.' + (e.mem && e.mem.length ? ' Pamätá si: ' + memText(e) : ''));
         btn('Porozprávať sa', () => talk(e));
         btn('Spýtať sa na iných lordov', () => { const fr = friends(e).map(o => o.nm), fo = foes(e).map(o => o.nm); PORTRAIT = Portraits.forLord(e); msg('„' + (fr.length ? 'S ' + fr.join(' a ') + ' sme bojovali bok po boku; na tých sa dá spoľahnúť. ' : '') + (fo.length ? fo.join(' a ') + ' – tých nech mi nikto nespomína. ' : '') + (!fr.length && !fo.length ? 'Držím sa stranou dvorných hádok.' : '') + (loyOf(e) < 6 ? ' A môj pán? Radšej mlčať. Nie som s ním spokojný.' : '') + '“', () => lord(e)); }, 0, 'talk');
         btn('Darovať 50 zlata (+8 vzťah)', () => { G.gold -= 50; e.rl += 8; upd(); lord(e); }, G.gold < 50);
@@ -57,7 +57,7 @@ function talk(e, line, used = {}) {
     const c = dlgCtx(e), say = s => '„' + s + '“';
     mode = 'town';
     PORTRAIT = Portraits.forLord(e);
-    show(e.nm + ', ' + TR[e.tr][0] + ' veliteľ ' + FN[e.f], say(line || DLG.greet(c)));
+    evShow(e.nm + ', ' + TR[e.tr][0] + ' veliteľ ' + FN[e.f], say(line || DLG.greet(c)));
     const topic = (key, label, fn) => { if (used[key]) return; btn(label, () => { used[key] = 1; const r = fn(c); if (typeof r === 'string') talk(e, r, used); else { e.rl = (e.rl || 0) + r.d; upd(); talk(e, r.t, used); } }); };
     topic('world', 'Čo sa deje vo svete?', c => DLG.pick(DLG.WORLD[c.f] || DLG.WORLD[0]));
     topic('plan', 'Aké máš plány?', c => DLG.PLAN[e.tr](c));
@@ -81,7 +81,7 @@ function questOffer(e, qo) {
     mode = 'town';
     const d = qo.def, king = e.kr;
     PORTRAIT = Portraits.forLord(e);
-    show(d.n, '„' + d.intro.replace(/\{Y\}/g, G.name) + '“\n\nOdmena: ' + d.r + ' zlata, sláva +' + d.ren + ', vzťah (' + e.nm + ') +' + d.rl * (king ? 2 : 1) + (king ? ', panovník: zlepší sa aj vzťah s frakciou ' + FN[e.f] : '') + '.');
+    evShow(d.n, '„' + d.intro.replace(/\{Y\}/g, G.name) + '“\n\nOdmena: ' + d.r + ' zlata, sláva +' + d.ren + ', vzťah (' + e.nm + ') +' + d.rl * (king ? 2 : 1) + (king ? ', panovník: zlepší sa aj vzťah s frakciou ' + FN[e.f] : '') + '.');
     btn('Prijať úlohu', () => { questAccept(e, d, qo.home); talk(e, ['Dobre. Viem, že slovo dodržíš.', 'Výborne. Zlato čaká, keď bude hotovo.', 'Ďakujem. Naozaj ďakujem.', 'Dobre. Nesklam ma, mám na teba plány.', 'Tak choď. A nevracaj sa s prázdnymi rukami.', 'Múdra voľba. Budem sledovať, ako si počínaš.'][e.tr]); });
     btn('Odmietnuť', () => talk(e, ['Škoda. Ale vážim si, že si to povedal rovno.', 'Tvoja strata. Zlato si nájde iné ruky.', 'Ach... dobre. Chápem.', 'Zapamätám si, že si odmietol.', 'Zbabelec. Choď mi z očí.', 'Rozumiem. Možno inokedy.'][e.tr]));
 }

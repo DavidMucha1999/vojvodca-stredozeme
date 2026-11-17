@@ -32,7 +32,7 @@ function courtLetter(L) {
     const e = E.find(o => o.id === L.eid && !o.dead);
     mode = 'town';
     if (e) PORTRAIT = Portraits.forLord(e);
-    show('List od lorda ' + L.from, '„' + L.text + '“' + (e ? ' (' + e.nm + ', ' + FN[e.f] + ', ' + Math.ceil(e.n) + ' mužov, vernosť pánovi ' + Math.round(loyOf(e)) + ')' : ' (Lord medzitým padol.)'));
+    evShow('List od lorda ' + L.from, '„' + L.text + '“' + (e ? ' (' + e.nm + ', ' + FN[e.f] + ', ' + Math.ceil(e.n) + ' mužov, vernosť pánovi ' + Math.round(loyOf(e)) + ')' : ' (Lord medzitým padol.)'));
     btn('Prijať do služieb', () => { if (e) { const o = e.f; e.f = G.fac; e.loy = 20; e.rl = (e.rl || 0) + 10; e.home = TW.findIndex(t => t.mine) >= 0 ? TW.findIndex(t => t.mine) : e.home; rl(G.fac, o, -8); lg(e.nm + ' prešiel do tvojich služieb.'); assignRoles(G.fac); } ov.classList.add('hide'); mode = 'map'; }, !e, 'crown');
     btn('Odmietnuť', () => { if (e) e.rl = (e.rl || 0) - 5; ov.classList.add('hide'); mode = 'map'; }, 0, 'back');
 }
@@ -41,7 +41,7 @@ function court(i, back) {
     const t = TW[i], f = t.f, mine = t.mine, lords = E.filter(e => e.f === f && !e.dead && !e.nz).sort((a, b) => (b.kr ? 1 : 0) - (a.kr ? 1 : 0) || b.n - a.n);
     mode = 'town';
     const m = MAR[f] != null ? E.find(o => o.id === MAR[f]) : null;
-    show('Dvor: ' + FN[f], 'Lordi kráľovstva (' + lords.length + ')' + (m ? ', maršal ' + m.nm : '') + '. Vzťah = k tebe, vernosť = k vlastnému pánovi (0–30; pod 4 lord uvažuje o prestupe). Spory medzi lordmi oslabujú zvolávanie vojska.');
+    evShow('Dvor: ' + FN[f], 'Lordi kráľovstva (' + lords.length + ')' + (m ? ', maršal ' + m.nm : '') + '. Vzťah = k tebe, vernosť = k vlastnému pánovi (0–30; pod 4 lord uvažuje o prestupe). Spory medzi lordmi oslabujú zvolávanie vojska.');
     lords.slice(0, 12).forEach(e => {
         per(e); loyOf(e);
         const fr = friends(e).map(o => o.nm), fo = foes(e).map(o => o.nm);

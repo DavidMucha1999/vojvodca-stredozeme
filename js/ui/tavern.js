@@ -12,12 +12,12 @@ function tavRefresh() { const sc = typeof game !== 'undefined' && game.scene.get
 function tavTalk(i, c, line) {
     mode = 'tavern';
     PORTRAIT = c.look;
-    show(c.n + ', ' + c.t, '„' + (line || c.join) + '“');
+    evShow(c.n + ', ' + c.t, '„' + (line || c.join) + '“');
     const full = (G.comp || []).length >= 4, ok = G.ren >= c.ren && G.gold >= c.p && !full;
     btn('Pripojiť sa k družine (' + c.p + ' zlata' + (G.ren < c.ren ? ', treba slávu ' + c.ren : '') + (full ? ', družina je plná' : '') + ')', () => {
         G.gold -= c.p; compJoin(c); upd();
         PORTRAIT = c.look;
-        show(c.n, '„' + compLine(c) + '“ ' + c.n + ' vstáva od stola a pridáva sa k tebe. V bitke bude bojovať po tvojom boku.');
+        evShow(c.n, '„' + compLine(c) + '“ ' + c.n + ' vstáva od stola a pridáva sa k tebe. V bitke bude bojovať po tvojom boku.');
         btn('Späť do krčmy', () => { tavBack(); tavRefresh(); });
     }, !ok, 'group');
     btn('Opýtať sa na jeho príbeh', () => tavTalk(i, c, compLine(c)), 0, 'book');
@@ -35,7 +35,7 @@ function tavKeeper(i, line) {
     mode = 'tavern';
     const hello = evil ? 'Čo chceš? Mäso došlo, zostalo len to z včera. Plať, alebo sa prac.' : th === 'elf' ? 'Vitaj, pútnik. Posaď sa; víno z Dorwinionu je staršie než tvoj rod.' : th === 'dwarf' ? 'Sadaj! Pivo je silné, pečienka horúca a účet sa platí vopred.' : th === 'hobbit' ? 'Dobrý večer! Pivo, koláč, alebo oboje? U nás sa zvyčajne berie oboje.' : 'Vitaj, pane. Čo si dáš? Pivo, chlieb, alebo novinky?';
     PORTRAIT = KEEPER_LOOK[th] || KEEPER_LOOK.human;
-    show((th === 'evil' ? 'Správca brlohu' : th === 'elf' ? 'Hostiteľ' : 'Krčmár') + ' v ' + t.n, '„' + (line || hello) + '“');
+    evShow((th === 'evil' ? 'Správca brlohu' : th === 'elf' ? 'Hostiteľ' : 'Krčmár') + ' v ' + t.n, '„' + (line || hello) + '“');
     btn('Vypočuť si klebety (5 zlata)', () => { G.gold -= 5; upd(); tavKeeper(i, rumor(t)); }, G.gold < 5, 'book');
     btn('Zaplatiť rundu pre všetkých (' + (10 + G.ren) + ' zlata, sláva +1)', () => { G.gold -= 10 + G.ren; G.ren++; G.tround = G.day; lg('Zaplatil si rundu v ' + t.n + '. Ľudia si ťa pamätajú.'); upd(); tavKeeper(i, evil ? 'Chlapi revú. Dobre, dnes ťa nikto neokradne.' : 'Na tvoje zdravie, pane! O tomto sa bude hovoriť.'); }, G.gold < 10 + G.ren || G.tround === G.day, 'mug');
     btn('Prenocovať (8 zlata, plné zdravie)', () => { G.gold -= 8; G.hp = mh(); upd(); tavKeeper(i, 'Izba hore, schody vŕzgajú. Ráno budeš ako nový.'); }, G.gold < 8 || G.hp >= mh(), 'rest');

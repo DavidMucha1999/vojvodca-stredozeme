@@ -61,7 +61,7 @@ function readLetter() {
     const m = E.find(e => e.id === L.mid);
     mode = 'town';
     if (m) PORTRAIT = Portraits.forLord(m);
-    show('List od maršala ' + L.from, '„' + L.text + '“');
+    evShow('List od maršala ' + L.from, '„' + L.text + '“');
     btn('Pridať sa k ťaženiu (ísť na zraz)', () => { const t = TW[L.ci], mp = m ? musterPoint(m, t) : t; G.tx = mp.x; G.ty = mp.y + 30; G.dest = -1; G.join = { f: L.f, ci: L.ci, mid: L.mid }; if (m) m.rl = (m.rl || 0) + 3; lg('Prisľúbil si účasť na ťažení maršala ' + L.from + '.'); ov.classList.add('hide'); mode = 'map'; }, 0, 'sword');
     btn('Odmietnuť', () => { if (m) m.rl = (m.rl || 0) - 4; lg('Odmietol si výzvu maršala ' + L.from + '.'); ov.classList.add('hide'); mode = 'map'; }, 0, 'back');
 }

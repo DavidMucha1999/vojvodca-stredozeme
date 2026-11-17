@@ -36,7 +36,7 @@ function evShow(h, body) { show(h, body); ov.dataset.screen = 'event'; }
 /** Okno s nadpisom h a textom body. Ak je pred volaním nastavený PORTRAIT (popis tváre), okno dostane portrét (plátno .por). */
 function show(h, body) {
     ov.classList.remove('encv');
-    delete ov.dataset.screen; delete ov.dataset.ti; delete ov.dataset.tab;   // druh bohatej obrazovky (js/engine/scenes/UIRich.js) nastaví až volajúci
+    delete ov.dataset.screen; delete ov.dataset.ti; delete ov.dataset.tab; delete ov.dataset.cols;   // druh bohatej obrazovky (js/engine/scenes/UIRich.js) nastaví až volajúci
     {
         ov.innerHTML = '<h1>' + h + '</h1><p>' + body + '</p><div id="bt"></div>';
         if (PORTRAIT && typeof Portraits !== 'undefined') {

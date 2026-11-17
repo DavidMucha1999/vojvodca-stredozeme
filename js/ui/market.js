@@ -6,7 +6,7 @@ function market(o, back) {
     mode = 'town';
     const inv = stock(o), cargo = G.cargo || {}, cc = cargoCount();
     const carry = GOODS.filter(g => cargo[g.k]).map(g => g.ico + ' ' + g.n + ' ' + cargo[g.k]).join(', ');
-    show('Trh: ' + o.n, 'Zlato ' + G.gold + '. Voz: ' + cc + '/' + CARGO_MAX + (carry ? ' (' + carry + ')' : ' (prázdny)') + '.' + (o.good ? ' Dedina vyrába: ' + goodOf(o.good).n + '.' : ' Hrad kupuje všetko, draho predáva, čo mu chýba.'));
+    show('Trh: ' + o.n, 'Zlato ' + G.gold + '. Voz: ' + cc + '/' + CARGO_MAX + (carry ? ' (' + carry + ')' : ' (prázdny)') + '.' + (o.good ? ' Dedina vyrába: ' + goodOf(o.good).n + '.' : ' Hrad kupuje všetko, draho predáva, čo mu chýba.')); ov.dataset.screen = 'sections';
     // zásoby jedla pre družinu (js/sim/supply.js)
     const evil = bloc(o.good ? TW[o.t].f : o.f);
     rowHead('Zásoby pre družinu: ' + foodTotal() + ' porcií, vystačia na ' + foodDays() + ' d (denne ' + foodNeed() + ' porcií). Pestrá strava dvíha morálku.', { gold: 1 });

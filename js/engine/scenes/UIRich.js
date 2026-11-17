@@ -338,6 +338,8 @@ Object.assign(UIScene.prototype, {
     // ---------- spoločné pomôcky pre vlastné obrazovky ----------
     /** Ikona HTML tlačidla: plátno veci/vojaka/ikony, alebo ikona podľa textu. */
     rBtnIcon(k) { const ik = this.iconFor(k); if (ik) return ik; const dn = Icons.forDialog(k.textContent.trim()); return dn ? Icons.tex(this, dn) : null; },
+    /** Názov ikony rozhrania pre tlačidlo (podľa textu), predvolene meč. */
+    rBtnIconName(k) { return Icons.forDialog(k.textContent.trim()) || 'sword'; },
     /** Panel okna s vlastnou veľkosťou (rovnaký rám ako rWin). */
     rPanel(root, x, y, w, h, exit, shade = true) {
         if (shade) root.add(this.add.rectangle(0, 0, W, H, 0x050302, .55).setOrigin(0).setInteractive());
@@ -375,7 +377,7 @@ Object.assign(UIScene.prototype, {
         const h1 = ov.querySelector('h1'), title = h1 ? h1.textContent : '', text = [...ov.querySelectorAll(':scope > p')].map(p => p.textContent).join(' ');
         const exit = this.exitButton(), bs = this.htmlButtons().filter(b => b !== exit); if (!bs.length || bs.length > 60) return false;
         const R = this.rWin(root, exit), top = this.rHead(root, R, title, text);
-        const cols = 3, gap = 8, cw = (R.w - 28 - gap * (cols - 1) - 12) / cols, chh = 64, y0 = top + 4, h = R.y + R.h - 46 - y0, content = this.rScroll(R.x + 14, y0, R.w - 28 - 12, h);
+        const cols = +ov.dataset.cols || 3, gap = 8, cw = (R.w - 28 - gap * (cols - 1) - 12) / cols, chh = 64, y0 = top + 4, h = R.y + R.h - 46 - y0, content = this.rScroll(R.x + 14, y0, R.w - 28 - 12, h);
         bs.forEach((b, k) => {
             const label = b.textContent.trim(), parts = label.split(' · ').map(s => s.trim()); let name = parts[0], sub = [], price = null, state = null;
             const m = /^(.*?) \((.*)\)$/.exec(name); if (m) { name = m[1]; sub.push(m[2]); }
@@ -415,9 +417,10 @@ Object.assign(UIScene.prototype, {
         secs.forEach(s => {
             const pieces = [], body = s.lines.map(l => l[0]).join('\n'), hasHead = !!s.head;
             const ht = hasHead ? this.rT(14, y + 9, s.head, 11.5, '#e6c37a', { bold: true, wrap: cw - 28 }) : null, tb = body ? this.rT(14, y + (hasHead ? 12 + ht.height : 9), body, 10, '#e6dabf', { wrap: cw - 28, ls: 2 }) : null;
-            const bh = s.btns.length ? 28 : 0, ch = (hasHead ? 12 + ht.height : 9) + (tb ? tb.height + 6 : 0) + bh + 9, g = this.add.graphics(); this.rCard(g, 0, y, cw, ch); g.fillStyle(0xe6c37a, .8).fillRect(0, y + 6, 3, ch - 12);
+            const pw = s.btns.map(b => Math.min(cw - 28, 40 + b.textContent.trim().length * 5.4)), rowsB = []; { let cx0 = 0, rr = 0; s.btns.forEach((b, i) => { if (cx0 && cx0 + pw[i] > cw - 28) { rr++; cx0 = 0; } rowsB.push([cx0, rr]); cx0 += pw[i] + 6; }); }
+            const bh = s.btns.length ? (rowsB.length ? rowsB[rowsB.length - 1][1] + 1 : 0) * 27 + 2 : 0, ch = (hasHead ? 12 + ht.height : 9) + (tb ? tb.height + 6 : 0) + bh + 9, g = this.add.graphics(); this.rCard(g, 0, y, cw, ch); g.fillStyle(0xe6c37a, .8).fillRect(0, y + 6, 3, ch - 12);
             content.add([g]); if (ht) content.add(ht); if (tb) content.add(tb);
-            let bx = cw - 10; s.btns.forEach(b => { const lab = b.textContent.trim(), bw = Math.min(250, 40 + lab.length * 5.2); bx -= bw; content.add(this.rBtn(bx, y + ch - 29, bw, 22, lab, () => b.click(), { off: b.disabled, size: 9.5, icon: Icons.forDialog(lab) || 'sword' })); bx -= 6; this.dlgButtons.push(b); });
+            const by0 = y + ch - 9 - bh + 2; s.btns.forEach((b, i) => { const lab = b.textContent.trim(), bw = pw[i]; content.add(this.rBtn(14 + rowsB[i][0], by0 + rowsB[i][1] * 27, bw, 22, lab, () => b.click(), { off: b.disabled, size: 9.5, icon: this.rBtnIconName(b) })); this.dlgButtons.push(b); });
             y += ch + 8;
         });
         this.rScrollEnd(root, content, y);
@@ -429,7 +432,7 @@ Object.assign(UIScene.prototype, {
     richEvent(root) {
         const h1 = ov.querySelector('h1'), title = h1 ? h1.textContent : '', text = [...ov.querySelectorAll(':scope > p')].map(p => p.textContent).join('\n\n');
         const bt = ov.querySelector('#bt'), kids = [...bt.children], bs = kids.filter(k => k.tagName === 'BUTTON'), rows = kids.filter(k => k.tagName !== 'BUTTON' && k.textContent.trim()).map(k => k.textContent.trim());
-        if (!bs.length || bs.length > 6) return false;
+        if (!bs.length || bs.length > 6 || /^List /.test(title)) return false;
         const PW2 = 620, art = 188, tw = PW2 - art - 34, ic = this.dlgIcon(title), quote = /^\s*„/.test(text);
         const tt = this.rT(0, 0, title, 21, '#f6ecd6', { title: true, wrap: tw }), tb = this.rT(0, 0, text, 11.5, quote ? '#f2e4bf' : '#e6dabf', { wrap: tw, italic: quote, ls: 3 }), rb = rows.length ? this.rT(0, 0, rows.join('\n'), 10, '#cdbb95', { wrap: tw, ls: 2 }) : null;
         const bh = bs.map(b => b.textContent.trim().length > 54 ? 40 : 30), ph = 18 + tt.height + 8 + tb.height + (rb ? rb.height + 8 : 0) + 12 + bh.reduce((a, b) => a + b + 6, 0) + 14, H2 = Math.max(250, ph);
@@ -442,8 +445,9 @@ Object.assign(UIScene.prototype, {
         const ridge = (yb, amp, col, a, seed) => { const pts = [{ x: ax, y: ay + ah }]; for (let k = 0; k <= 8; k++) pts.push({ x: ax + k * art / 8, y: ay + ah * yb - (Math.sin(k * 1.9 + seed) * .5 + .5) * amp }); pts.push({ x: ax + art, y: ay + ah }); g.fillStyle(col, a).fillPoints(pts, true); };
         ridge(.78, 50, 0x3a3040, .6, H2 % 7); ridge(.9, 26, 0x1a1410, .9, H2 % 5);
         const cx = ax + art / 2, cy = ay + ah * .4; for (let r = 5; r >= 1; r--) g.fillStyle(0xe6c37a, .05 * (6 - r) / 2).fillCircle(cx, cy, 24 + r * 9);
-        g.fillStyle(0x000000, .5).fillCircle(cx, cy + 1, 38); g.fillStyle(0x2a1c10, 1).fillCircle(cx, cy, 37); g.lineStyle(2, 0xe6c37a, .9).strokeCircle(cx, cy, 38); g.lineStyle(.7, 0xe6c37a, .4).strokeCircle(cx, cy, 43);
-        root.add(this.add.image(cx, cy, Icons.tex(this, ic)).setDisplaySize(52, 52));
+        const por = ov.querySelector('canvas.por'), pk = por && por.dataset.key;
+        if (pk) { if (!this.textures.exists(pk)) this.textures.addCanvas(pk, por); g.fillStyle(0x000000, .55).fillRoundedRect(cx - 44, cy - 42, 88, 88, 6); g.lineStyle(2, 0xe6c37a, .9).strokeRoundedRect(cx - 43, cy - 43, 86, 86, 6); g.lineStyle(.7, 0xe6c37a, .4).strokeRoundedRect(cx - 47, cy - 47, 94, 94, 8); root.add(this.add.image(cx, cy, pk).setDisplaySize(82, 82)); }
+        else { g.fillStyle(0x000000, .5).fillCircle(cx, cy + 1, 38); g.fillStyle(0x2a1c10, 1).fillCircle(cx, cy, 37); g.lineStyle(2, 0xe6c37a, .9).strokeCircle(cx, cy, 38); g.lineStyle(.7, 0xe6c37a, .4).strokeCircle(cx, cy, 43); root.add(this.add.image(cx, cy, Icons.tex(this, ic)).setDisplaySize(52, 52)); }
         const fade = this.add.graphics(); fade.fillGradientStyle(0x0e0a07, 0x0e0a07, 0x0e0a07, 0x0e0a07, 0, .95, 0, .95).fillRect(ax + art - 40, ay, 40, ah); root.add(fade);
         const x0 = px + art + 20; let y = py + 18;
         tt.setPosition(x0, y); root.add(tt); y += tt.height + 4; g.fillGradientStyle(0xe6c37a, 0xe6c37a, 0xe6c37a, 0xe6c37a, .7, 0, .7, 0).fillRect(x0, y, tw, 1.2); y += 8;

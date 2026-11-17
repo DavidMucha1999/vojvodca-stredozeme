@@ -6,7 +6,7 @@
 function tavern(i) {
     const t = TW[i], list = compsAt(t);
     mode = 'town';
-    show('Krčma v ' + t.n, list.length ? 'Pri ohni sedí niekto, kto vyzerá, že hľadá prácu alebo spoločnosť.' : 'V krčme je dnes len obyčajný ľud. Hrdinovia sa tu objavujú podľa toho, kam ťa cesty zavedú a aká je tvoja sláva.');
+    show('Krčma v ' + t.n, list.length ? 'Pri ohni sedí niekto, kto vyzerá, že hľadá prácu alebo spoločnosť.' : 'V krčme je dnes len obyčajný ľud. Hrdinovia sa tu objavujú podľa toho, kam ťa cesty zavedú a aká je tvoja sláva.'); ov.dataset.screen = 'sections';
     list.forEach(c => {
         rowHead(c.n + ', ' + c.t);
         row('„' + c.join + '“');
@@ -95,7 +95,7 @@ function party(back, tab) {
 function compTalk(c, back, line) {
     mode = 'town';
     PORTRAIT = { ...c.look, mood: crel(c.id) < 35 ? 'angry' : crel(c.id) > 75 ? 'happy' : undefined };   // nálada podľa spokojnosti
-    show(c.n, '„' + (line || compLine(c)) + '“');
+    evShow(c.n, '„' + (line || compLine(c)) + '“');
     btn('Povedz niečo', () => compTalk(c, back, compLine(c)));
     btn('Ako sa ti darí?', () => { const hp = G.chp && G.chp[c.id] != null ? G.chp[c.id] : 1; compTalk(c, back, hp > .8 ? 'Som pripravený. Kam ideme?' : hp > .5 ? 'Rany sa hoja. Ešte deň či dva a budem ako nový.' : 'Zle. Potrebujem odpočinok, nie ďalšiu bitku.'); });
     btn('Čo si myslíš o našej ceste?', () => compTalk(c, back, G.ren > 15 ? 'Ľudia o tebe hovoria. To je dobre, kým hovoria dobre.' : G.ring === 1 ? 'Nesieš to so sebou. Cítim to každý deň. Daj si pozor.' : 'Je to dlhá cesta. Ale dlhé cesty majú dobré konce, ak ich človek dojde.'));

@@ -9,7 +9,7 @@ function place(i, inScene) {
     const inS = inScene != null;
     mode = inS ? 'room' : 'town'; G.dest = -1;
     const back = inS ? () => { ov.classList.add('hide'); mode = 'room'; } : () => { ov.classList.add('hide'); mode = 'map'; }, done = () => { G.pv[P.id] = G.day; };
-    show(P.n, P.d + (ready ? '' : ' (Nedávno si tu bol; vráť sa neskôr.)'));
+    evShow(P.n, P.d + (ready ? '' : ' (Nedávno si tu bol; vráť sa neskôr.)'));
     const acts = [];
     const act = (label, fn, icon) => { acts.push(label); if (typeof inScene === 'number' && inScene !== acts.length - 1) return; btn(label, () => { done(); fn(); }, !ready, icon); };
     if (P.id === 'amonsul') act('Vystúpiť na vrchol a rozhliadnuť sa', () => { const en = E.filter(e => hos(e.f, G.fac)).sort((a, b) => Math.hypot(a.x - G.x, a.y - G.y) - Math.hypot(b.x - G.x, b.y - G.y)).slice(0, 4); if (!G.pv.amonsul1) { G.pv.amonsul1 = 1; G.ren++; } msg('Z vrcholu vidíš: ' + (en.map(e => e.nm + ' (' + FN[e.f] + ', ' + Math.ceil(e.n) + ' mužov, ' + (e.x < G.x ? 'západ' : 'východ') + ')').join('; ') || 'nikoho') + '. ' + (isNight() ? 'V tme pod kopcom sa mihajú čierne tiene – lepšie neostať.' : 'Sláva +1 za výstup.'), back); }, 'map');
@@ -45,7 +45,7 @@ function placeTalk(i, who) {
     }[who];
     if (!T) return back();
     PORTRAIT = T[1];
-    show(T[0], '„' + T[2][Math.floor(Math.random() * T[2].length)] + '“');
+    evShow(T[0], '„' + T[2][Math.floor(Math.random() * T[2].length)] + '“');
     btn('Povedz niečo', () => placeTalk(i, who), 0, 'talk');
     btn('Späť', back, 0, 'back');
 }
