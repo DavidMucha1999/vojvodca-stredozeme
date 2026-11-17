@@ -419,6 +419,13 @@ Pridané v ďalšej etape: **Trh, Kráľovstvo (Prehľad, Léna, Vazali, Správa
 
 Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie a klávesy ako v bežných oknách).
 
+## Pohyb a kontakt v boji (verzia 108)
+
+- **Telesná kolízia** (`sepUnits` v `js/sim/warband.js`, volá ju `updBattle`): vojaci sa neprekrývajú. Dvojica bližšie než (r₁ + r₂) × 0,72 sa jemne odtlačí; kôň, obri, boss a hrdina ustupujú menej, jazda v nápore (`u.ride`) kolíziou prechádza. Mriežka 26 jednotiek; pri obliehaní slabšie. Meranie zrkadlovej bitky 40 proti 40: prekrývajúcich sa dvojíc 115 → 0, najmenší odstup 0,1 → 6,7.
+- **Pohyb v zblíženom boji** (`aiSpacing`): vojak po údere s pravdepodobnosťou 35 % + zručnosť krok späť, pri dobíjaní krúži okolo súpera po oblúku (zručnejší rýchlejšie, smer sa mení každých 70 – 160 snímok) a drží odstup. Slabý vojak už nestojí, len krúži pomalšie.
+- **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
+- Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
+
 ## Rozvoj bojovníka ako vo Warbande (etapa 3, verzia 94)
 
 Nový súbor `js/sim/mastery.js` (načítava sa hneď po `warband.js`).

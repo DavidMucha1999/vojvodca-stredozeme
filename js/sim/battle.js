@@ -600,6 +600,7 @@ function updBattle(dt) {
                 }
             }
         }
+        sepUnits(dt);   // telesná kolízia: vojaci sa neprekrývajú (js/sim/warband.js)
         cmbMorale(dt);
         reinforce(dt);   // posily vo vlnách zo záloh
         if (U[0].hp <= 0 && !CMB.down) heroFell();

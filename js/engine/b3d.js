@@ -1469,8 +1469,10 @@ const B3 = (() => {
     /** Chod koňa podľa rýchlosti (jednotky/tik): krok, klus, cval; dĺžka kroku = vzdialenosť na jeden cyklus nôh (stále rovnaká, aby kopytá nešmýkali). */
     const gaitOf = s => s < .7 ? 0 : s < 1.5 ? 1 : 2, STRIDE = [24, 40, 54];
     function pose(o, u, dt) {
-        const r = o.root, moved = Math.hypot(u.x - o.px, u.y - o.py); o.px = u.x; o.py = u.y;
-        o.sp += (Math.min(3.0, moved / Math.max(.3, dt)) - o.sp) * .18;   // vyhladená skutočná rýchlosť (plynulý prechod medzi chodmi)
+        const r = o.root, mdx = u.x - o.px, mdy = u.y - o.py, moved = Math.hypot(mdx, mdy); o.px = u.x; o.py = u.y;
+        o.sp += (Math.min(3.0, moved / Math.max(.3, dt)) - o.sp) * .18;
+        // smer pohybu voči pohľadu: dopredu, cúvanie, úkrok do strany (animácia nôh v poseHuman)
+        if (moved > .03) { const rel = Math.atan2(mdy, mdx) - u.f, k = Math.min(1, o.sp / .5); o.mf = (o.mf || 0) + (Math.cos(rel) * k - (o.mf || 0)) * .15; o.ms = (o.ms || 0) + (Math.sin(rel) * k - (o.ms || 0)) * .15; } else { o.mf = (o.mf || 0) * .85; o.ms = (o.ms || 0) * .85; }   // vyhladená skutočná rýchlosť (plynulý prechod medzi chodmi)
         if (u.c > o.lc + 5) o.atk = 1; o.lc = u.c;
         if (o.atk > 0) o.atk = Math.max(0, o.atk - dt * .07);
         const fly = u.fly > 0 ? 70 + Math.sin(clock * 4) * 6 : u.boss === 'fell' ? 34 + Math.sin(clock * 2) * 4 : 0;
@@ -1588,10 +1590,11 @@ const B3 = (() => {
             B.lgR.rotation.z = .6 + c * .5; B.knR.rotation.z = -1.1; B.lgL.rotation.z = .6 - c * .5; B.knL.rotation.z = -1.1; B.ch.rotation.set(0, 0, 0);
             return;
         }
-        o.ph += o.sp * dt * .2;
+        const bk = !o.mount && (o.mf || 0) < -.35, sdK = o.mount ? 0 : Math.min(1, Math.max(0, (Math.abs(o.ms || 0) - .35) / .4)), sdS = (o.ms || 0) < 0 ? -1 : 1;   // cúvanie, úkrok do strany
+        o.ph += o.sp * dt * .2 * (bk ? -.75 : 1);
         const amt = Math.min(1, o.sp / 1.0), run = u.rout ? 1.3 : 1, breath = Math.sin(clock * 2.2 + o.id) * .5 + .5;
         if (!o.mount) {
-            [[B.lgR, B.knR, 0], [B.lgL, B.knL, Math.PI]].forEach(([lg, kn, off]) => { const p = o.ph + off; lg.rotation.set(0, 0, Math.sin(p) * .62 * amt * run + (1 - amt) * .04); kn.rotation.z = -(Math.max(0, Math.cos(p)) * 1.15 * amt * run + .06 + (1 - amt) * .05); });
+            [[B.lgR, B.knR, 0], [B.lgL, B.knL, Math.PI]].forEach(([lg, kn, off]) => { const p = o.ph + off; lg.rotation.set(sdK * sdS * Math.sin(p) * .5 * amt, 0, Math.sin(p) * .62 * amt * run * (1 - sdK * .7) + (1 - amt) * .04); kn.rotation.z = -(Math.max(0, Math.cos(p)) * 1.15 * amt * run + .06 + (1 - amt) * .05); });
             B.hip.position.y = H.hipY + Math.abs(Math.sin(o.ph)) * .55 * amt - (1 - amt) * .12 - breath * .05;
             if (QN() >= 1) {   // nohy na svahu: nižšia noha nesie váhu, vyššia sa pokrčí (inverzná kinematika chodidiel)
                 const sc = o.scaleH || 1, ry = o.root.rotation.y, sx = Math.sin(ry), sz = Math.cos(ry), fx = Math.cos(ry), fz = -Math.sin(ry), base = o.root.position.y, L = (H.hipY - .6) * sc, lz = (H.lz || 1.4) * sc;
@@ -1604,7 +1607,7 @@ const B3 = (() => {
             B.lgR.rotation.set(-.42, 0, 1.15); B.lgL.rotation.set(.42, 0, 1.15); B.knR.rotation.z = B.knL.rotation.z = -1.45; B.hip.position.y = H.hipY;
         }
         // trup: zhrbenie (orkovia, trollovia), predklon v behu, trhnutie pri zásahu, dýchanie
-        const lean = (H.hunch || 0) + Math.min(.32, o.sp * .1) * (o.mount ? .4 : 1) + (u.rout ? .2 : 0);
+        const lean = (H.hunch || 0) + Math.min(.32, o.sp * .1) * (o.mount ? .4 : 1) * (bk ? -.4 : 1) + (u.rout ? .2 : 0);
         const pr = u.lhA != null ? u.lhA - u.f : Math.PI;   // zapotácanie v smere úderu
         B.ch.rotation.set(Math.sin(pr) * o.hit * .32, 0, -lean - Math.cos(pr) * o.hit * .38); B.ch.scale.set(1, 1 + breath * .012, 1 + breath * .008);
         if (u.h) { B.hd.scale.setScalar(fpv && lookOn() && !photo ? .001 : 1); B.hd.rotation.z = lookOn() ? Math.max(-.6, Math.min(.5, lp * .6)) : 0; }   // v prvej osobe bez vlastnej hlavy

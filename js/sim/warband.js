@@ -165,13 +165,38 @@ const aiStop = u => 13 * aiLen(u) * .95;
  *  zručnejší vojak pri dobíjaní úkrokom do strany nestojí na mieste. */
 function aiSpacing(u, b, bd, dt) {
     if (u.wu > 0 || u.stun > 0 || u.rout) return;
-    const a = dirTo(u, b), len = aiLen(u), sk = aiSkill(u);
+    const a = dirTo(u, b), len = aiLen(u), sk = aiSkill(u), stop = aiStop(u);
     if (aiWpn(u) === 'spear' && bd < 13 * len * .62) { u.x -= Math.cos(a) * u.sp * .5 * dt; u.y -= Math.sin(a) * u.sp * .5 * dt; return; }
-    if (u.c > 0 && sk > .25 && !mounted(u)) {
+    if (mounted(u)) return;
+    // po údere krok späť (ako vo Warbande bojovníci nestoja ako stĺpy): zručnejší ustupuje častejšie
+    if (u.atkSeen !== u.atkN) { u.atkSeen = u.atkN; if (u.atkN && Math.random() < .35 + sk * .5) u.bk = 10 + Math.random() * 12; }
+    if (u.bk > 0) { u.bk -= dt; const k = .55 * u.sp * dt; u.x -= Math.cos(a) * k; u.y -= Math.sin(a) * k; return; }
+    if (u.c > 0) {   // pri dobíjaní krúži okolo súpera po oblúku a drží odstup
         if (!u.sd) u.sd = Math.random() < .5 ? 1 : -1;
-        if ((u.sdT = (u.sdT || 0) - dt) <= 0) { u.sdT = 50 + Math.random() * 60; u.sd = -u.sd; }
-        const k = .3 * u.sp * dt; u.x += -Math.sin(a) * u.sd * k; u.y += Math.cos(a) * u.sd * k;
+        if ((u.sdT = (u.sdT || 0) - dt) <= 0) { u.sdT = 70 + Math.random() * 90; u.sd = -u.sd; }
+        const k = (.28 + sk * .3) * u.sp * dt, rad = Math.max(-1, Math.min(1, (bd - stop * .92) / 8)) * .25 * u.sp * dt;
+        u.x += -Math.sin(a) * u.sd * k + Math.cos(a) * rad; u.y += Math.cos(a) * u.sd * k + Math.sin(a) * rad;
     }
+}
+/** Telesná kolízia (ako vo Warbande): vojaci sa neprekrývajú – dvojica bližšie než súčet polomerov (× .72) sa odtlačí; ťažší (kôň, obri, boss, hrdina)
+ *  ustupujú menej. Mriežka 26 jednotiek, pri obliehaní slabšie (rebríky a brána). Volá updBattle raz za snímok. */
+function sepUnits(dt) {
+    const CS = 26, g = new Map(), L = [];
+    for (const u of U) if (u.hp > 0 && !u.fled && !(u.ride > 0)) { u._sx = u._sy = 0; u._i = L.length; L.push(u); const k = (u.x / CS | 0) * 4096 + (u.y / CS | 0); const a = g.get(k); if (a) a.push(u); else g.set(k, [u]); }
+    const str = (SGB ? .35 : .5) * Math.min(2, dt), mass = u => (u.r || 7) * (u.r || 7) * (onMount(u) ? 2 : 1) * (u.h ? 2.5 : 1);
+    for (const a of L) {
+        const cx = a.x / CS | 0, cy = a.y / CS | 0;
+        for (let i = cx - 1; i <= cx + 1; i++) for (let j = cy - 1; j <= cy + 1; j++) {
+            const c = g.get(i * 4096 + j); if (!c) continue;
+            for (const b of c) {
+                if (b._i <= a._i) continue;   // každá dvojica raz
+                const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), m = ((a.r || 7) + (b.r || 7)) * .72; if (d >= m) continue;
+                const ang = a._i * 2.399 + b._i * 1.618, nx = d > .01 ? dx / d : Math.cos(ang), ny = d > .01 ? dy / d : Math.sin(ang), ov = (m - d) * str, ma = mass(a), mb = mass(b), wa = mb / (ma + mb);
+                a._sx -= nx * ov * wa; a._sy -= ny * ov * wa; b._sx += nx * ov * (1 - wa); b._sy += ny * ov * (1 - wa);
+            }
+        }
+    }
+    for (const u of L) { u.x += Math.max(-2.5, Math.min(2.5, u._sx)); u.y += Math.max(-2.5, Math.min(2.5, u._sy)); }
 }
 /** Lukostrelec AI: najprv mieri (napína asi pol sekundy, hrdina to vidí v ukazovateli útokov), potom vystrelí a dlhšie dobíja. */
 function aiBow(u, b, sp, dt = 1) {
