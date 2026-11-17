@@ -5,3 +5,4 @@ tests/screens/
 __pycache__/
 historia.bundle
 dist/
+*.lnk

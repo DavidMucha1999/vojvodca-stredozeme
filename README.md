@@ -4,6 +4,25 @@ Strategická hra (v prehliadači alebo ako počítačová hra pre Windows) inšp
 
 Autor a vývojár hry: **Dávid Mucha**
 
+**▶ [Spustiť hru v prehliadači](https://davidmucha1999.github.io/vojvodca-stredozeme/)**
+
+Netreba nič inštalovať. Hra je určená pre počítač s klávesnicou a myšou (Chrome, Edge alebo Firefox); prvé načítanie trvá pár sekúnd. Postup hry sa ukladá len v prehliadači hráča.
+
+## Čo v hre je
+
+- **Mapa Stredozeme** (v 3D aj 2D) s horami, riekami, jazerami, mostmi, hradmi podľa kníh, obliehaním a počasím; hrdina a velitelia sú 3D postavy s výbavou.
+- **Bitky v 3D** ako v Mount & Blade: Warband (smerový boj, kôň, lukostrelci, obliehanie hradieb).
+- **Strategická vrstva:** družina a spoločníci, vojská, frakcie, diplomacia, ekonomika hradov, úlohy a príbeh.
+
+## Technické údaje
+
+- Čistý JavaScript bez zostavovacieho kroku: **Phaser 3** (mapa a rozhranie), **Three.js** (3D bitka a 3D mapa), simulácia hry oddelená od vykresľovania (`js/sim`, testovateľná bez prehliadača: `npm test`).
+- Postavy, zbrane, hrady aj krajina sa kreslia kódom (generované modely), bez externých 3D súborov.
+- Voliteľná počítačová verzia pre Windows cez Electron (`desktop/`).
+- Kód vznikal s pomocou AI nástrojov.
+
+> Neoficiálny fanúšikovský projekt bez komerčného účelu. Svet, mená a postavy patria J. R. R. Tolkienovi a jeho vydavateľom; autor hry s nimi nie je nijako spojený.
+
 ## Spustenie
 
 Hra je jeden súbor **`Vojvodca Stredozeme.html`** (spúšťa sa dvojklikom, má vlastnú ikonu `assets/ikona.ico`; vedľa je aj odkaz `Vojvodca Stredozeme.lnk` s touto ikonou) v hernom engine **Phaser 3**: ostrý obraz, dlaždicová mapa, animovaní vojaci, zvuky zo súborov a rozhranie v Phaseri. Phaser je v projekte (`vendor/phaser.min.js`), takže hra beží aj bez internetu. Server ani inštalácia nie sú potrebné. Celú hru v jednom súbore vytvorí `python tools/build_single.py` (výsledok je v `dist/vojvodca-single.html`).
