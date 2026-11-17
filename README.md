@@ -380,6 +380,7 @@ Mapa sa dá zobraziť v 3D (`js/engine/m3d.js`, Nastavenia → Mapa 3D; vypnutí
 - **Postavy:** hrdina a velitelia sú rovnaké postavy ako v 3D bitke (`B3.kit.rig`): výbava hrdinu, kôň, zástava kráľov; chôdza a cval podľa rýchlosti, kruh pod veliteľom podľa vzťahu, Nazgûl lietajú.
 - **Hrady:** modely z dielov podľa frakcie (Gondor biely kameň, Rohan drevo a slama, Mordor čierne hroty, Harad pieskovec…) a vlastné modely podľa Tolkienových opisov: Minas Tirith (7 stupňov, ostroha, Biela veža), Edoras (Meduseld), Helmov žľab, Barad-dûr, Isengard (Orthanc), Erebor, Hobitov, Minas Morgul, Osgiliath, Rivendell. Farba a vzhľad sa menia podľa vlastníka a úrovne hradu.
 - **Kolóny a mosty:** za hrdinom a veliteľmi kráčajú pešiaci po ich stope (jeden na päť mužov, najviac päť); cez rieky vedú mosty (`GEO.CROSS`, druh `most`: drevené na západe, kamenné inde) so správnou výškou pod nohami (`groundY`), brody sú plytké so stupadlami a tabuľkou.
+- **Obliehanie a počasie:** pri obliehanom hrade stojí tábor (stany s erbom obliehateľa, ohne) a podľa stavu obliehania rebríky, baranidlo a obliehacia veža, nad hradom stúpa dym. Počasie z `MW` plynule prechádza: dážď a búrka (šikmé kvapky, blesky), sneh, popol a hmla (zahmlenie, stmavnutie).
 - **Kamera a ovládanie:** šikmo zhora, koliesko približuje, Q a E alebo pravé tlačidlo myši otáčajú, klik na zem sa premieta lúčom (`M3.pick`). Štítky (hrady, armády, dediny, hrdina) ostávajú z Phaseru a premietajú sa z 3D polohy (`M3.proj`); 2D vrstvy sa skrývajú.
 
 ## Rozvoj bojovníka ako vo Warbande (etapa 3, verzia 94)

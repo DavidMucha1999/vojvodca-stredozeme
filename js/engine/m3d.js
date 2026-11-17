@@ -497,6 +497,76 @@ const M3 = (() => {
         for (const [id, o] of fig) if (!seen.has(id)) { dropFig(o); fig.delete(id); }
     }
 
+    // ---------- obliehanie ----------
+    let sieges = new Map(), flameM = null;
+    function removeSiege(o) { scene3.remove(o.mesh); o.mesh.geometry.dispose(); o.fx.forEach(m => scene3.remove(m)); o.smoke.forEach(m => scene3.remove(m)); }
+    /** Tábor obliehateľov: stany s erbom, ohne, a podľa stavu obliehania rebríky, baranidlo a obliehacia veža; nad hradom dym. */
+    function buildSiege(t, s) {
+        const M = Mesher(), tc = new (T().Color)(FC[s.f] || '#aa4433'), hex = '#' + tc.getHexString(), fx = [], smoke = [], t3 = T(), ox = t.x, oz = t.y - 70;
+        const gy = (x, z) => groundY(x, z);
+        for (let a = 0; a < 7; a++) {
+            const an = Math.PI * (.12 + .76 * a / 6), x = ox + Math.cos(an) * 200, z = oz + Math.sin(an) * 200 + 40, y = gy(x, z);
+            M.cn(['#d8c8a0', '#c8b890', '#d0c098'][a % 3], x, y, z, 17, 19, a); M.cy('#3a2a1a', x, y + 17, z, .8, 16); M.bx(hex, x + 4, y + 24, z, 8, 5, .6);
+            if (a % 2 === 0) { const fxp = x + 22, fz = z + 10, fy = gy(fxp, fz); M.cy('#3a3028', fxp, fy, fz, 5, 2); const f = new t3.Mesh(new t3.ConeGeometry(4, 10, 6).translate(0, 5, 0), flameM || (flameM = new t3.MeshBasicMaterial({ color: 0xff8a28 }))); f.position.set(fxp, fy + 2, fz); scene3.add(f); fx.push(f); }
+        }
+        const fy = gy(ox, oz + 70);
+        if (s.lad) for (const o of [-26, -14]) M.add('box', '#8a6a3a', [ox + o, fy + 30, oz + 82], [-.22, 0, 0], [3.4, 62, 1.6]);
+        if (s.ram) { const x = ox + 28, z = oz + 110, y = gy(x, z); M.bx('#6b4a2e', x, y + 6, z, 16, 10, 40); M.pr('#3a2a1a', x, y + 16, z, 20, 9, 44, Math.PI / 2); M.cy('#8a8a90', x, y + 10, z + 26, 3.5, 12); M.cy('#2a2018', x - 9, y, z - 14, 5, 3); M.cy('#2a2018', x + 9, y, z + 14, 5, 3); }
+        if (s.tow) { const x = ox + 90, z = oz + 100, y = gy(x, z); M.bx('#6b4a2e', x, y + 6, z, 26, 78, 26); for (let q = 0; q < 3; q++) M.bx('#3a2a1a', x, y + 14 + q * 24, z - 13.4, 22, 2.4, 1); M.bx('#8a6a3a', x, y + 80, z, 30, 4, 30); for (const sx of [-9, 9]) for (const sz of [-9, 9]) M.cy('#2a2018', x + sx, y, z + sz, 5, 4); M.bx(hex, x, y + 84, z, 12, 8, .8); }
+        const mesh = mkMesh(M.build()); scene3.add(mesh);
+        for (let i = 0; i < 6; i++) { const m = new t3.Mesh(new t3.SphereGeometry(1, 8, 6), new t3.MeshBasicMaterial({ color: 0x4a4440, transparent: true, opacity: .5, depthWrite: false })); m.userData = { i, x: ox + (i % 3 - 1) * 14, z: oz + (i % 2) * 10, y0: Math.max(2, groundY(ox, oz)) + 125 }; scene3.add(m); smoke.push(m); }
+        return { mesh, fx, smoke };
+    }
+    function syncSieges(dt) {
+        TW.forEach((t, i) => {
+            const s = t.sg; let o = sieges.get(i);
+            if (!s) { if (o) { removeSiege(o); sieges.delete(i); } return; }
+            const sig = ['lad', 'ram', 'tow'].map(k => s[k] ? 1 : 0).join('') + '|' + s.f;
+            if (!o || o.sig !== sig) { if (o) removeSiege(o); o = buildSiege(t, s); o.sig = sig; sieges.set(i, o); }
+            o.fx.forEach((f, q) => { const k = 1 + Math.sin(clock * 9 + q * 2.1) * .22 + Math.sin(clock * 15 + q) * .1; f.scale.set(1 / k * .9 + .1, k, 1 / k * .9 + .1); });
+            o.smoke.forEach(m => { const u = m.userData, ph = ((clock * .12 + u.i / 6) % 1); m.position.set(u.x + Math.sin(clock + u.i) * 6 + ph * 26, u.y0 + ph * 150, u.z + ph * 8); m.scale.setScalar(7 + ph * 26); m.material.opacity = .55 * (1 - ph) * Math.min(1, ph * 6); });
+        });
+    }
+
+    // ---------- počasie ----------
+    const NW = 1500, WT = { clear: {}, rain: { rain: 1, dark: .3, fog: .2 }, storm: { rain: 1.6, dark: .6, fog: .3 }, fog: { fog: 1 }, snow: { snow: 1, fog: .2, dark: .1 }, ash: { ash: 1, dark: .3, fog: .3 } };
+    let wxS = { rain: 0, snow: 0, ash: 0, fog: 0, dark: 0 }, wP = null, flash = 0;
+    let DOT = null;
+    function dotTex() {
+        if (DOT) return DOT; const c = document.createElement('canvas'); c.width = 32; c.height = 32; const x = c.getContext('2d'), g = x.createRadialGradient(16, 16, 0, 16, 16, 16);
+        g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.55, 'rgba(255,255,255,.85)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 32, 32);
+        return (DOT = new (T().CanvasTexture)(c));
+    }
+    function buildWeather() {
+        const t = T(), rnd = new Float32Array(NW * 3); for (let i = 0; i < rnd.length; i++) rnd[i] = Math.random();
+        const mkPts = (col, size) => { const g = new t.BufferGeometry().setAttribute('position', new t.BufferAttribute(new Float32Array(NW * 3), 3)), m = new t.Points(g, new t.PointsMaterial({ color: col, size, transparent: true, opacity: .9, depthWrite: false, map: dotTex() })); m.frustumCulled = false; m.visible = false; scene3.add(m); return m; };
+        const rain = new t.LineSegments(new t.BufferGeometry().setAttribute('position', new t.BufferAttribute(new Float32Array(NW * 6), 3)), new t.LineBasicMaterial({ color: 0xbcd0e0, transparent: true, opacity: .5, depthWrite: false }));
+        rain.frustumCulled = false; rain.visible = false; scene3.add(rain);
+        wP = { rnd, rain, snow: mkPts(0xffffff, 11), ash: mkPts(0x7a6458, 9) };
+    }
+    function stepWx(dt) {
+        const tg = WT[typeof MW !== 'undefined' && MW ? MW.n : 'clear'] || {};
+        for (const k in wxS) wxS[k] += ((tg[k] || 0) - wxS[k]) * Math.min(1, .03 * dt);
+        if (tg.rain > 1.2 && Math.random() < .005 * dt) flash = 1; flash *= Math.pow(.9, dt);
+    }
+    const fr = v => v - Math.floor(v);
+    function weatherFx(cx, cz, ty, d) {
+        const w = wP; if (!w) return; const S = d * 2.2 + 700, SY = d * .9 + 340, R = w.rnd, c = clock;
+        const dens = k => Math.min(NW, Math.floor(NW * (.3 + .7 * Math.min(1, k))));
+        w.rain.visible = wxS.rain > .03;
+        if (w.rain.visible) {
+            const a = w.rain.geometry.attributes.position, n = dens(wxS.rain / 1.4), sl = .22, L = SY * .05; w.rain.material.opacity = Math.min(.5, wxS.rain * .35);
+            for (let i = 0; i < n; i++) { const y = ty + SY * (1 - fr(R[i * 3 + 1] - c * 2.1)), x = cx + (R[i * 3] - .5) * S + sl * (y - ty), z = cz + (R[i * 3 + 2] - .5) * S; a.setXYZ(i * 2, x, y, z); a.setXYZ(i * 2 + 1, x - sl * L, y - L, z); }
+            a.needsUpdate = true; w.rain.geometry.setDrawRange(0, n * 2);
+        }
+        for (const [P, k, sp, sw] of [[w.snow, wxS.snow, .1, 26], [w.ash, wxS.ash, .05, 40]]) {
+            P.visible = k > .03; if (!P.visible) continue;
+            const a = P.geometry.attributes.position, n = dens(k); P.material.opacity = Math.min(.9, k);
+            for (let i = 0; i < n; i++) { const y = ty + SY * (1 - fr(R[i * 3 + 1] - c * sp)); a.setXYZ(i, cx + (R[i * 3] - .5) * S + Math.sin(c * 1.2 + R[i * 3 + 2] * 30) * sw, y, cz + (R[i * 3 + 2] - .5) * S + Math.cos(c * .9 + R[i * 3] * 30) * sw); }
+            a.needsUpdate = true; P.geometry.setDrawRange(0, n);
+        }
+    }
+
     // ---------- scéna, kamera, klik ----------
     function setup(sc) {
         const t = T(), k = B3.kit.ensure(); R = k.R; canvas = k.canvas;
@@ -508,7 +578,7 @@ const M3 = (() => {
         castles = TW.map(t => ({ t, mesh: null, sig: '' })); syncCastles();
         route = new t.Line(new t.BufferGeometry().setAttribute('position', new t.BufferAttribute(new Float32Array(3 * 80), 3)), new t.LineBasicMaterial({ color: 0xffd24a, depthTest: false, transparent: true, opacity: .9 })); route.renderOrder = 6; route.frustumCulled = false; scene3.add(route);
         mark = new t.Mesh(new t.TorusGeometry(14, 2.4, 6, 20).rotateX(Math.PI / 2), new t.MeshBasicMaterial({ color: 0xffd24a, depthTest: false })); mark.renderOrder = 6; scene3.add(mark);
-        yaw = 0; canvas.style.display = 'block';
+        buildWeather(); yaw = 0; canvas.style.display = 'block';
         const gc = game.canvas; if (gc) { gc.addEventListener('contextmenu', ctx); gc.addEventListener('mousedown', md); }
         window.addEventListener('mousemove', mm); window.addEventListener('mouseup', mu); window.addEventListener('keydown', kd);
     }
@@ -546,6 +616,10 @@ const M3 = (() => {
         hemi.intensity = .5 + .65 * d; sun.intensity = .3 + 1.9 * d; sun.color.setRGB(1, .86 + .1 * d, .62 + .3 * d); hemi.color.setRGB(.55 + .4 * d, .6 + .35 * d, .85 + .1 * d);
         fogc.setRGB(.05 + .6 * d, .08 + .68 * d, .14 + .66 * d); scene3.fog.color.copy(fogc); scene3.background.copy(fogc); R.setClearColor(fogc, 1);
         water.material.color.setRGB(.1 + .08 * d, .22 + .2 * d, .3 + .24 * d);
+        const gr = Math.min(1, wxS.fog * .8 + wxS.rain * .3 + wxS.snow * .3 + wxS.ash * .4), g0 = d * .55 + .05;
+        fogc.r += (g0 * (1 + wxS.ash * .12) - fogc.r) * gr; fogc.g += (g0 - fogc.g) * gr; fogc.b += (g0 * (1 - wxS.ash * .12) - fogc.b) * gr;
+        scene3.fog.color.copy(fogc); scene3.background.copy(fogc); R.setClearColor(fogc, 1);
+        hemi.intensity = hemi.intensity * (1 - wxS.dark * .45) + flash * 2.4; sun.intensity *= 1 - wxS.dark * .6;
     }
     function start(sc) {
         try { setup(sc); on = true; return true; }
@@ -557,7 +631,7 @@ const M3 = (() => {
         window.removeEventListener('mousemove', mm); window.removeEventListener('mouseup', mu); window.removeEventListener('keydown', kd);
         if (canvas) canvas.style.display = 'none';
         if (scene3) scene3.traverse(o => { if (o.geometry) o.geometry.dispose(); });
-        scene3 = null; terrain = water = null; hg = null; castles = []; fig = new Map(); hero = null; vills = null; treeM = []; rings = {}; MT = null; shadowG = shadowM = null; route = mark = null;
+        sieges = new Map(); flameM = null; wP = null; DOT = null; wxS = { rain: 0, snow: 0, ash: 0, fog: 0, dark: 0 }; scene3 = null; terrain = water = null; hg = null; castles = []; fig = new Map(); hero = null; vills = null; treeM = []; rings = {}; MT = null; shadowG = shadowM = null; route = mark = null;
     }
     function stop(sc) {
         if (!on && !scene3) return; teardown();
@@ -570,13 +644,13 @@ const M3 = (() => {
         const dt = Math.min(3, delta / 16.67); clock += delta / 1000; B3.kit.setClock(clock);
         const c = sc.cameras.main; c.setBackgroundColor('rgba(0,0,0,0)'); c.setZoom(RES); c.centerOn(W / 2, H / 2);
         for (const ch of sc.children.list) if (ch.visible) ch.setVisible(false);   // 2D vrstvy sa neukazujú, ostanú len premietnuté štítky
-        fit(); light();
+        stepWx(dt); fit(); light();
         const cx = cam.x + W / Z / 2, cy = cam.y + H / Z / 2, d = 900 / Z, ty = Math.max(0, heightAt(cx, cy));
         const cp = Math.cos(pitch);
         cam3.position.set(cx + Math.sin(yaw) * cp * d, ty + Math.sin(pitch) * d, cy + Math.cos(yaw) * cp * d);
         cam3.position.y = Math.max(cam3.position.y, heightAt(cam3.position.x, cam3.position.z) + 50);
-        cam3.lookAt(cx, ty + 10, cy); scene3.fog.near = d * 1.5; scene3.fog.far = d * 7;
-        syncCastles(); syncFigs(sc, dt, cx, cy, d * 1.6 + 500); updRoute();
+        cam3.lookAt(cx, ty + 10, cy); const fg = Math.min(1, wxS.fog * .9 + wxS.rain * .25 + wxS.ash * .25 + wxS.snow * .25); scene3.fog.near = d * 1.5 * (1 - .75 * fg); scene3.fog.far = d * 7 * (1 - .7 * fg);
+        syncCastles(); syncSieges(dt); weatherFx(cx, cy, ty, d); syncFigs(sc, dt, cx, cy, d * 1.6 + 500); updRoute();
         R.setRenderTarget(null); R.render(scene3, cam3);
         labels(sc);
         return true;
