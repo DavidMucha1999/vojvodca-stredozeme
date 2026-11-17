@@ -403,6 +403,10 @@ Mapa sa dá zobraziť v 3D (`js/engine/m3d.js`, Nastavenia → Mapa 3D; vypnutí
 - **Výkon:** stromy sú v štvorcoch 1600 × 1600 a kreslia sa len tie v zábere; rozlíšenie 3D mapy podľa Nastavení grafiky (nízka 1×, stredná 1,25×, vysoká 1,5×, ultra 2×) a pri „Auto kvalita“ sa pri dlhodobo nízkych FPS znižuje po krokoch .25 (najmenej .75×); pod 3D mapou sa nekreslia 2D lesy, cesty a efekty.
 - **Kamera a ovládanie:** šikmo zhora, koliesko približuje, Q a E alebo pravé tlačidlo myši otáčajú, klik na zem sa premieta lúčom (`M3.pick`). Štítky (hrady, armády, dediny, hrdina) ostávajú z Phaseru a premietajú sa z 3D polohy (`M3.proj`); 2D vrstvy sa skrývajú.
 
+## Spoločný štýl okien (verzia 106)
+
+Všetky bežné okná hry (asi 75: kováč, trh, krčma, veliteľ, kronika, úlohy, kráľovstvo, obliehanie, udalosti na ceste, výsledok bitky…) majú rovnaký vzhľad ako bohaté obrazovky: tmavý rám so zlatými lemami (zlo má červenší), hlavička s medailónom a ikonou podľa nadpisu (`DLG_ICONS` v `UIDialog.js`), svetlý text s citátmi kurzívou, tlačidlá ako karty s ikonou (`dlgBtn`) a jantárová pilulka na odchod. List (nadpis „List …“) ostáva na pergamene s voskovou pečaťou. Logika sa nezmenila: okná sa stále opisujú cez `show`/`btn` a `UIDialog.buildDialog` ich len nakreslí inak. Vlastné obrazovky (kováč s mriežkou vecí, úlohy, kráľovstvo…) sú ďalšia etapa.
+
 ## Rozvoj bojovníka ako vo Warbande (etapa 3, verzia 94)
 
 Nový súbor `js/sim/mastery.js` (načítava sa hneď po `warband.js`).

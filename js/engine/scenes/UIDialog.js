@@ -2,6 +2,14 @@
  * ENGINE: okná rozhrania v Phaseri (metódy UIScene). Okno sa opisuje v HTML (#ov: nadpis, odsek, tlačidlá a riadky z show/btn/rowHead
  * v js/ui/dom.js) a tu sa prekreslí ako panel s rámom, portrétom, ikonkami, posúvaním a klávesami 1–9/Esc; listy ako pergamen s pečaťou.
  */
+/** Ikonka okna podľa nadpisu (medailón v hlavičke bežných okien). */
+const DLG_ICONS = [[/Kováč|zbrojnic/, 'anvil'], [/Kupec|^Trh|Obchod/, 'scales'], [/Krčm|Hostiteľ|brloh|Krčmár/, 'mug'], [/Chrám|Kaplnka|Oltár|pamätník/, 'honor'], [/Cvičisko/, 'attack'],
+    [/Veliteľ posádky|Posádka/, 'shield'], [/Správca hradu|Správa kráľovstva|Kráľovstvo|panstvo|Nové kráľovstvo|Strana/, 'castle'], [/Léna|Vazali|Dvor|Rada|Diplomacia/, 'court'],
+    [/Obliehanie|Útok|Výpad|Nepriateľ útočí/, 'ram'], [/Studňa/, 'leaf'], [/Dedina|Starosta|Dozorca|dediny|Dobrovoľníci|sedliaci|Dedinčan/, 'village'], [/Úlohy|Príbeh|Úloha/, 'quest'],
+    [/Kronika|Denník|Správa zo sveta/, 'diary'], [/Štatistiky/, 'chart'], [/Trofeje|Úspechy|Víťaz/, 'trophy'], [/Prehľad sveta/, 'map'], [/Návod|Encyklopédia/, 'help'], [/Uložiť|Načítať/, 'chest'],
+    [/Ovládanie|Nastavenia/, 'gear'], [/Ukončiť/, 'door'], [/Prístav|Plavba/, 'flag'], [/karavána|Kupec|Trpasličí kupec/, 'cart'], [/Porazen|Porážka|Zajat|zajatí|V zajatí|výkupné/, 'chain'],
+    [/Súboj|Stretnutie|Prehra v súboji/, 'sword'], [/Posol|Hádka|Spoloční|družiny/, 'group'], [/Hora osudu/, 'ring'], [/Búrka|víchrica/, 'sun'], [/Prosba|Utečenci|pocestný|Potulný/, 'talk']];
+
 Object.assign(UIScene.prototype, {
     // ---------- Okná (zrkadlo #ov) ---------------------------------------------------
     mirrorable() {
@@ -25,9 +33,9 @@ Object.assign(UIScene.prototype, {
 
     buildDialog(scroll) {
         const root = this.add.container(0, 0).setDepth(40);
-        const shade = this.add.rectangle(0, 0, W, H, 0x0c0907, .35).setOrigin(0).setInteractive();
+        const shade = this.add.rectangle(0, 0, W, H, 0x050302, .5).setOrigin(0).setInteractive();
         const h1 = ov.querySelector('h1'), title = h1 ? h1.textContent : '';
-        const letter = /^List /.test(title), LC = letter ? { gold: '#6a2a10', ink: '#2e2014', dim: '#6a5a48' } : { gold: '#7a4a14', ink: '#2a1c12', dim: '#6a5840' };   // pergamen: tmavý atrament
+        const letter = /^List /.test(title), LC = letter ? { gold: '#6a2a10', ink: '#2e2014', dim: '#6a5a48' } : { gold: '#e6c37a', ink: '#e6dabf', dim: '#a8987c' };   // list: pergamen s tmavým atramentom; ostatné okná tmavý rám so svetlým textom
         const bt = ov.querySelector('#bt'), kids = bt ? [...bt.children] : [];
         const nBtn = kids.filter(k => k.tagName === 'BUTTON').length, cols = nBtn > 14 || /^Trh:/.test(title) ? 3 : nBtn >= 5 ? 2 : 1;
         const PW = cols === 3 ? 620 : cols === 2 ? 540 : 460, GP = 8;
@@ -52,10 +60,22 @@ Object.assign(UIScene.prototype, {
                     }
                 } catch (e) { }
             }
-            if (title) { const t = this.add.text(pimg ? px0 : PW / 2, y, title, txtStyle(19, LC.gold, { fontFamily: TITLE_FONT, align: pimg ? 'left' : 'center', wordWrap: { width: pw0 } })).setOrigin(pimg ? 0 : .5, 0); items.push(t); y += t.height + 5; }
+            if (title && letter) { const t = this.add.text(pimg ? px0 : PW / 2, y, title, txtStyle(19, LC.gold, { fontFamily: TITLE_FONT, align: pimg ? 'left' : 'center', wordWrap: { width: pw0 } })).setOrigin(pimg ? 0 : .5, 0); items.push(t); y += t.height + 5; }
+            else if (title) {
+                const ic = pimg ? null : this.dlgIcon(title), tx0 = pimg ? px0 : ic ? 16 + 46 : 16, tw = pimg ? pw0 : IW - (ic ? 46 : 0) - 4;
+                const t = this.add.text(tx0, y, title, txtStyle(20, '#f6ecd6', { fontFamily: TITLE_FONT, align: 'left', wordWrap: { width: tw } })).setOrigin(0, 0).setShadow(0, 1, '#000', 3, true, true);
+                const th = Math.max(t.height, ic ? 38 : 0);
+                if (ic) { const mg = this.add.graphics(), cx = 35, cy = y + th / 2; mg.fillStyle(0x000000, .55).fillCircle(cx, cy + 1, 19); mg.fillStyle(0x2a1c10, 1).fillCircle(cx, cy, 18); mg.lineStyle(1.4, 0xe6c37a, .85).strokeCircle(cx, cy, 19); mg.lineStyle(.6, 0xe6c37a, .35).strokeCircle(cx, cy, 22.5); items.push(mg, this.add.image(cx, cy, Icons.tex(this, ic)).setDisplaySize(24, 24)); t.y = y + (th - t.height) / 2; }
+                items.push(t); y += th + 6;
+                const rg = this.add.graphics(), rx = pimg ? px0 : 16, rw = (pimg ? pw0 : IW) - 4;
+                rg.fillGradientStyle(0xe6c37a, 0xe6c37a, 0xe6c37a, 0xe6c37a, .7, 0, .7, 0).fillRect(rx, y, rw, 1.2); rg.fillStyle(0xe6c37a, .9).fillRect(rx - 1, y - 1.5, 4, 4);
+                items.push(rg); y += 9;
+            }
             ov.querySelectorAll(':scope > p').forEach(p => {
                 if (!p.textContent.trim()) return;
-                const t = this.add.text(pimg ? px0 : PW / 2, y, p.textContent, txtStyle(letter ? 13 : 13, p.style.color ? LC.gold : LC.ink, { fontStyle: letter ? 'italic' : 'normal', align: pimg ? 'left' : 'center', lineSpacing: 2, wordWrap: { width: pw0 } })).setOrigin(pimg ? 0 : .5, 0);
+                const lft = pimg || !letter, quote = /^\s*„/.test(p.textContent);
+                const t = this.add.text(lft ? (pimg ? px0 : 16) : PW / 2, y, p.textContent, txtStyle(13, p.style.color ? LC.gold : quote && !letter ? '#f2e4bf' : LC.ink, { fontStyle: letter || quote ? 'italic' : 'normal', align: lft ? 'left' : 'center', lineSpacing: 2, wordWrap: { width: pw0 - (lft && !pimg ? 4 : 0) } })).setOrigin(lft ? 0 : .5, 0);
+                if (!letter) t.setShadow(0, 1, '#000', 3, true, true);
                 items.push(t); y += t.height + 6;
             });
             if (pimg) { y = Math.max(y, py0 + 84); px0 = 16; }
@@ -86,7 +106,7 @@ Object.assign(UIScene.prototype, {
                     const block = Math.max(t.height, ik ? 34 : 0);
                     if (k.dataset.kind === 'gold') {
                         const rule = this.add.graphics();
-                        rule.lineStyle(1, 0x8a6230, .55).lineBetween(16, y + block + 2, 16 + IW - 4, y + block + 2);
+                        rule.lineStyle(1, letter ? 0x8a6230 : 0xe6c37a, letter ? .55 : .4).lineBetween(16, y + block + 2, 16 + IW - 4, y + block + 2);
                         items.push(rule); y += block + 7;
                     } else y += block + 3;
                 }
@@ -157,23 +177,43 @@ Object.assign(UIScene.prototype, {
             panel.lineStyle(1.2, 0x6a4a2a, .6).strokePoints(pts.map(([x, y]) => ({ x, y })), true);
             return;
         }
-        const evil = G && heroSide() === 1, line = evil ? 0x9a2a1a : UI_C.line, line2 = evil ? 0x5a1a12 : 0x8a6a2a;
-        panel.fillStyle(evil ? 0x14100f : UI_C.panel, .97).fillRoundedRect(px, py, PW, PH, 6);
-        panel.fillStyle(evil ? 0xdcc6ae : 0xe6d2a6, 1).fillRoundedRect(px + 8, py + 8, PW - 16, PH - 16, 3);
-        let stain = Math.round(px * 3 + py);
-        const rndS = () => (stain = stain * 16807 % 2147483647) / 2147483647;
-        panel.fillStyle(0xc8b080, .3); for (let k = 0; k < 16; k++) panel.fillEllipse(px + 16 + rndS() * (PW - 32), py + 16 + rndS() * (PH - 32), 8 + rndS() * 26, 3 + rndS() * 8);
-        panel.lineStyle(2, line, 1).strokeRoundedRect(px, py, PW, PH, 6);
-        panel.lineStyle(1, line, .55).strokeRoundedRect(px + 5, py + 5, PW - 10, PH - 10, 4);
-        // rohy
-        for (const [cx, cy, sx, sy] of [[px, py, 1, 1], [px + PW, py, -1, 1], [px, py + PH, 1, -1], [px + PW, py + PH, -1, -1]]) {
-            if (evil) { panel.fillStyle(line, 1).fillTriangle(cx, cy, cx + sx * 14, cy, cx, cy + sy * 14); panel.fillStyle(line2, 1).fillTriangle(cx + sx * 4, cy + sy * 4, cx + sx * 10, cy + sy * 4, cx + sx * 4, cy + sy * 10); }
-            else { panel.lineStyle(1.5, line, .9); panel.beginPath(); panel.moveTo(cx + sx * 3, cy + sy * 16); panel.lineTo(cx + sx * 3, cy + sy * 6); panel.lineTo(cx + sx * 8, cy + sy * 3); panel.lineTo(cx + sx * 16, cy + sy * 3); panel.strokePath(); panel.fillStyle(line, 1).fillCircle(cx + sx * 9, cy + sy * 9, 2.2); panel.lineStyle(1, line, .6); panel.beginPath(); panel.moveTo(cx + sx * 9, cy + sy * 9); panel.lineTo(cx + sx * 20, cy + sy * 12); panel.strokePath(); panel.beginPath(); panel.moveTo(cx + sx * 9, cy + sy * 9); panel.lineTo(cx + sx * 12, cy + sy * 20); panel.strokePath(); }
+        // tmavý rám so zlatými lemami (rovnaký jazyk ako bohaté obrazovky: vstup do hradu, Hrdina, Družina, Voľby); zlo má červenší lem
+        const evil = G && heroSide() === 1, gold = evil ? 0xd0644a : 0xe6c37a;
+        panel.fillStyle(0x000000, .5).fillRoundedRect(px + 2, py + 5, PW, PH, 8);
+        panel.fillGradientStyle(0x22170f, 0x22170f, 0x0f0a07, 0x0f0a07, .98, .98, .99, .99).fillRect(px + 3, py + 3, PW - 6, PH - 6);
+        panel.fillGradientStyle(evil ? 0x4a1c14 : 0x4a3418, evil ? 0x4a1c14 : 0x4a3418, 0x0f0a07, 0x0f0a07, .55, .55, 0, 0).fillRect(px + 3, py + 3, PW - 6, 58);   // jemný lesk hlavičky
+        panel.lineStyle(1, gold, .65).strokeRoundedRect(px, py, PW, PH, 7);
+        panel.lineStyle(3, 0x0a0704, .9).strokeRoundedRect(px - 2.5, py - 2.5, PW + 5, PH + 5, 9);
+        panel.lineStyle(.6, gold, .25).strokeRoundedRect(px - 4.5, py - 4.5, PW + 9, PH + 9, 10);
+        for (const [cx, cy] of [[px, py], [px + PW, py], [px, py + PH], [px + PW, py + PH]]) { panel.fillStyle(0x0a0704, 1).fillCircle(cx, cy, 4.5); panel.fillStyle(gold, .9).fillCircle(cx, cy, 2.6); }
+    },
+
+    /** Ikonka okna podľa nadpisu, alebo null. */
+    dlgIcon(title) { const m = DLG_ICONS.find(([re]) => re.test(title)); return m ? m[1] : 'scroll'; },
+
+    /** Tlačidlo okna v novom štýle: zaoblená karta s tmavým drevom, zlatým lemom a ikonou v medailóne; o.primary = odchod (jantárová pilulka). */
+    dlgBtn(x, y, w, h, label, fn, o = {}) {
+        const off = !!o.disabled, prim = !!o.primary && !off, sel = !!o.sel, g = this.add.graphics();
+        const draw = hov => {
+            g.clear(); g.fillStyle(0x000000, .38).fillRoundedRect(x, y + 2, w, h, 6);
+            const c1 = o.fill != null ? o.fill : off ? 0x1c1612 : prim ? (hov ? 0xa06a24 : 0x8a5a1c) : sel ? 0x6a4818 : hov ? 0x4a3620 : 0x33261a, c2 = o.fill != null ? o.fill : off ? 0x14100c : prim ? 0x5a3a10 : sel ? 0x4a3010 : 0x1e150d;
+            g.fillGradientStyle(c1, c1, c2, c2, 1, 1, 1, 1).fillRect(x + 1, y + 1, w - 2, h - 2);
+            g.fillStyle(0xffe0a0, off ? .02 : hov ? .12 : .06).fillRect(x + 1, y + 1, w - 2, Math.max(2, (h - 2) * .4));
+            g.lineStyle(sel || prim ? 1.4 : .9, hov ? 0xffe0a0 : prim ? 0xf0cf80 : sel ? 0xffd88a : 0xe6c37a, off ? .25 : hov ? 1 : sel || prim ? .95 : .5).strokeRoundedRect(x, y, w, h, 6);
+            if (o.icon) { const is = Math.min(h - 6, o.iconSize || 22), sx = x + 4, sy = y + (h - is - 4) / 2; g.fillStyle(0x0a0704, off ? .35 : .6).fillRoundedRect(sx, sy, is + 4, is + 4, 5); g.lineStyle(.9, 0xe6c37a, off ? .2 : .55).strokeRoundedRect(sx, sy, is + 4, is + 4, 5); }
+        };
+        draw(false);
+        const out = [g], is = o.icon ? Math.min(h - 6, o.iconSize || 22) : 0, iw = o.icon ? is + 12 : 0;
+        if (o.icon) out.push(this.add.image(x + 6 + is / 2 + 0, y + h / 2, o.icon).setDisplaySize(is - 2, is - 2).setAlpha(off ? .5 : 1));
+        const t = this.add.text(o.icon ? x + iw + 4 : x + w / 2, y + h / 2, label, txtStyle(o.size || 13, off ? '#8a7a60' : prim || sel ? '#fff3d0' : '#f0d690', { align: o.icon ? 'left' : 'center', wordWrap: { width: Math.max(10, w - 14 - iw), useAdvancedWrap: true } })).setOrigin(o.icon ? 0 : .5, .5).setShadow(0, 1, '#000', 2, true, true);
+        out.push(t);
+        if (!off && fn) {
+            const z = this.add.rectangle(x, y, w, h, 0, 0).setOrigin(0).setInteractive({ useHandCursor: true });
+            z.on('pointerover', () => { draw(true); if (typeof uiSnd === 'function') uiSnd('hover'); }); z.on('pointerout', () => draw(false));
+            z.on('pointerdown', () => { if (typeof uiSnd === 'function') uiSnd('click'); }); z.on('pointerup', () => { if (!(this.drag && this.drag.moved)) fn(); });
+            out.push(z);
         }
-        // stredový ornament hore
-        const mx = px + PW / 2;
-        if (evil) { panel.fillStyle(line, 1).fillTriangle(mx - 6, py + 1, mx, py + 9, mx + 6, py + 1); }
-        else { panel.lineStyle(1.2, line, .8); panel.beginPath(); panel.moveTo(mx - 22, py + 1); panel.lineTo(mx - 8, py + 6); panel.lineTo(mx, py + 2); panel.lineTo(mx + 8, py + 6); panel.lineTo(mx + 22, py + 1); panel.strokePath(); }
+        return out;
     },
 
     /** Vosková pečať listu: červený vosk s erbom frakcie odosielateľa (podľa mena v nadpise), stuha. */
@@ -198,8 +238,7 @@ Object.assign(UIScene.prototype, {
         const bh = Math.max(minH, icon ? is + 8 : 28, probe.height + 12) + (primary ? 4 : 0); probe.destroy();
         if (measure) return { h: bh };
         const swatch = k.style.background && k.textContent.trim() === '' ? k.style.background : null;
-        const parts = this.button(x, y, w, bh, label, () => { if (allow()) k.click(); }, { disabled: k.disabled, icon, iconSize: is, size: primary ? 14 : 13, sel: !!(k.dataset.sel || k.style.outline), primary: !!primary && !k.disabled });
-        if (swatch) parts[0].setFillStyle(hex(swatch));
+        const parts = this.dlgBtn(x, y, w, bh, label, () => { if (allow()) k.click(); }, { disabled: k.disabled, icon, iconSize: is, size: primary ? 14 : 13, sel: !!(k.dataset.sel || k.style.outline), primary: !!primary && !k.disabled, fill: swatch ? hex(swatch) : undefined });
         this.dlgButtons.push(k);
         parts.h = bh;
         return parts;
