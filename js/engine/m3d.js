@@ -12,7 +12,7 @@
 const M3 = (() => {
     const T = () => window.THREE, FS = 2.6, GX = 300, GY = 200, CX = WW / GX, CY = WH / GY, NX = GX + 1;
     let on = false, failed = false, R = null, canvas = null, scene3 = null, cam3 = null, hemi = null, sun = null, fogc = null, terrain = null, water = null;
-    let hg = null, castles = [], fig = new Map(), hero = null, yaw = 0, pitch = .95, fw = 0, fh = 0, clock = 0, route = null, mark = null, shadowG = null, shadowM = null, rings = {}, vills = null, treeM = [], drag = null, bud = 0, tgtKey = '';
+    let prMax = 1.5, pr = 1.5, fpsE = 16.7, fpsN = 0, hg = null, castles = [], fig = new Map(), hero = null, yaw = 0, pitch = .95, fw = 0, fh = 0, clock = 0, route = null, mark = null, shadowG = null, shadowM = null, rings = {}, vills = null, treeM = [], drag = null, bud = 0, tgtKey = '';
     const hs = (x, y) => { const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return n - Math.floor(n); };
     const vn = (x, y) => { const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy); return (hs(ix, iy) * (1 - u) + hs(ix + 1, iy) * u) * (1 - v) + (hs(ix, iy + 1) * (1 - u) + hs(ix + 1, iy + 1) * u) * v; };
     const sm = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
@@ -116,14 +116,18 @@ const M3 = (() => {
             }
         }
         const cone = new t.ConeGeometry(1, 1, 7).translate(0, .5, 0), trunk = new t.CylinderGeometry(.5, .6, 1, 5).translate(0, .5, 0), m4 = new t.Matrix4(), q = new t.Quaternion(), e = new t.Euler(), c = new t.Color();
-        const A = new t.InstancedMesh(cone, new t.MeshLambertMaterial({ color: 0xffffff }), list.length), B = new t.InstancedMesh(trunk, new t.MeshLambertMaterial({ color: 0x4a3420 }), list.length);
-        list.forEach(([x, y, dead, r], k) => {
+        const mA = new t.MeshLambertMaterial({ color: 0xffffff }), mB = new t.MeshLambertMaterial({ color: 0x4a3420 }), chunks = new Map();
+        for (const it of list) { const key = (it[0] / 1600 | 0) + ',' + (it[1] / 1600 | 0); let a = chunks.get(key); if (!a) chunks.set(key, a = []); a.push(it); }   // štvorce 1600 × 1600: kamera kreslí len tie v zábere
+        for (const items of chunks.values()) {
+        const A = new t.InstancedMesh(cone, mA, items.length), B = new t.InstancedMesh(trunk, mB, items.length);
+        items.forEach(([x, y, dead, r], k) => {
             const h = heightAt(x, y), rad = 15 + r * 12, hh = (dead ? 40 : 66) + r * 40, rg = regionAt(x, y); e.set(0, r * 20, 0); q.setFromEuler(e);
             m4.compose(new t.Vector3(x, h + 14, y), q, new t.Vector3(dead ? 6 : rad, hh, dead ? 6 : rad)); A.setMatrixAt(k, m4);
             c.set(dead ? '#4a4038' : rg === 'a' ? '#3a3a32' : rg === 's' ? '#2c4a42' : ['#2c5a26', '#35672b', '#26501f', '#456e2c'][(r * 4) | 0]); c.multiplyScalar(.85 + r * .3); A.setColorAt(k, c);
             m4.compose(new t.Vector3(x, h - 2, y), q, new t.Vector3(5 + r * 2, 22, 5 + r * 2)); B.setMatrixAt(k, m4);
         });
-        A.instanceMatrix.needsUpdate = B.instanceMatrix.needsUpdate = true; A.frustumCulled = B.frustumCulled = false; scene3.add(A, B); treeM = [A, B];
+        A.instanceMatrix.needsUpdate = B.instanceMatrix.needsUpdate = true; if (A.instanceColor) A.instanceColor.needsUpdate = true; A.computeBoundingSphere(); B.computeBoundingSphere(); scene3.add(A, B); treeM.push(A, B);
+        }
     }
 
     function buildVillages() {
@@ -570,7 +574,7 @@ const M3 = (() => {
     // ---------- scéna, kamera, klik ----------
     function setup(sc) {
         const t = T(), k = B3.kit.ensure(); R = k.R; canvas = k.canvas;
-        R.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5)); R.shadowMap.enabled = false; R.toneMapping = t.NoToneMapping; R.setClearColor(0x9fb4c8, 1);
+        prMax = Math.min(window.devicePixelRatio || 1, { low: 1, med: 1.25, high: 1.5, ultra: 2 }[typeof OPT !== 'undefined' && OPT.gfx || 'high'] || 1.5); pr = prMax; fpsE = 16.7; fpsN = 0; R.setPixelRatio(pr); R.shadowMap.enabled = false; R.toneMapping = t.NoToneMapping; R.setClearColor(0x9fb4c8, 1);
         scene3 = new t.Scene(); fogc = new t.Color('#aebfcf'); scene3.fog = new t.Fog(fogc, 1800, 9000); scene3.background = fogc;
         cam3 = new t.PerspectiveCamera(40, W / H, 20, 20000);
         hemi = new t.HemisphereLight(0xdfe8ff, 0x6a5a40, 1.05); sun = new t.DirectionalLight(0xfff0d0, 2.2); sun.position.set(-700, 1000, 500); scene3.add(hemi, sun);
@@ -641,6 +645,7 @@ const M3 = (() => {
     function frame(sc, delta) {
         if (!want()) { if (on) stop(sc); return false; }
         if (!on && !start(sc)) return false;
+        autoQ(delta);
         const dt = Math.min(3, delta / 16.67); clock += delta / 1000; B3.kit.setClock(clock);
         const c = sc.cameras.main; c.setBackgroundColor('rgba(0,0,0,0)'); c.setZoom(RES); c.centerOn(W / 2, H / 2);
         for (const ch of sc.children.list) if (ch.visible) ch.setVisible(false);   // 2D vrstvy sa neukazujú, ostanú len premietnuté štítky
@@ -654,6 +659,13 @@ const M3 = (() => {
         R.setRenderTarget(null); R.render(scene3, cam3);
         labels(sc);
         return true;
+    }
+    /** Automatická kvalita: pri dlhodobo nízkych FPS sa znižuje rozlíšenie 3D mapy (po krokoch .25), pri rezerve sa vracia. */
+    function autoQ(delta) {
+        if (typeof OPT !== 'undefined' && OPT.autoQ === false) return;
+        fpsE += (Math.min(100, delta) - fpsE) * .04; if (++fpsN % 90) return;
+        if (fpsE > 28 && pr > .75) { pr = Math.max(.75, pr - .25); R.setPixelRatio(pr); fw = 0; }
+        else if (fpsE < 17.5 && pr < prMax) { pr = Math.min(prMax, pr + .25); R.setPixelRatio(pr); fw = 0; }
     }
     function labels(sc) {
         const show = (txt, p, dy, vis = true) => { if (!txt) return; if (p && vis) { txt.setScale(1).setPosition(p[0], p[1] + dy).setVisible(true); } };

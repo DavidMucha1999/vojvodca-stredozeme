@@ -516,15 +516,15 @@ class MapScene extends Phaser.Scene {
         cam.y = Math.max(0, Math.min(WH - H / Z, G.y - H / Z / 2));
         c.centerOn(cam.x + W / Z / 2, cam.y + H / Z / 2);
         this.ls = Math.max(1, Math.round(.9 / Z * 20) / 20);   // popisky pri oddialení rastú, aby ostali čitateľné (na obrazovke stála veľkosť)
-        this.cullChunks();   // cesty, rieka a tiene hôr len pri kamere
+        if (!M3.on) this.cullChunks();   // cesty, rieka a tiene hôr len pri kamere (v 3D mape sa 2D vrstvy nekreslia)
 
         try {
-            this.syncForest(1);
+            if (!M3.on) this.syncForest(1);
             if (this.towns) this.syncTowns();
             this.syncArmies();
             if (this.hero) this.syncHero();
-            this.drawFx();
-            if (this.clouds) { const on = !lowFx(); this.clouds.setVisible(on); if (on) { this.clouds.tilePositionX -= delta * .0022 * timeMul(); this.clouds.tilePositionY -= delta * .0009 * timeMul(); this.clouds.setAlpha(1 - nightness() * .8); } }   // oblaky plávajú od západu, v noci ich tieň zmizne
+            if (!M3.on) this.drawFx();
+            if (this.clouds && !M3.on) { const on = !lowFx(); this.clouds.setVisible(on); if (on) { this.clouds.tilePositionX -= delta * .0022 * timeMul(); this.clouds.tilePositionY -= delta * .0009 * timeMul(); this.clouds.setAlpha(1 - nightness() * .8); } }   // oblaky plávajú od západu, v noci ich tieň zmizne
             if (this.haze) this.haze.setAlpha(.85 + .15 * Math.sin(time / 1400));
             M3.frame(this, delta);   // 3D mapa: skryje 2D vrstvy a vykreslí krajinu, hrady a postavy (js/engine/m3d.js)
         } catch (e) {
