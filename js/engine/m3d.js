@@ -330,7 +330,75 @@ const M3 = (() => {
             M.bx('#e6dfc0', -60, 0, 98, 14, 8, 14); M.bx('#e6dfc0', 60, 0, 98, 14, 8, 14);
             M.bx('#cfe6f0', 92, 0, -30, 7, 44, 3); M.dome('#b8d8e4', 92, 0, -26, 10, 3);   // vodopád
             for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283 + .2, r = 112 + (i % 3) * 8; M.cy('#4a3a20', Math.cos(a) * r, 0, Math.sin(a) * r * .85, 2.6, 28 + (i % 4) * 4); M.add('sph', ['#c8782a', '#d8a030', '#b85a22'][i % 3], [Math.cos(a) * r, 40 + (i % 4) * 4, Math.sin(a) * r * .85], [0, 0, 0], [26, 24, 26]); }
-        }
+        },
+        'Dol Amroth'(M, P) {   // biele mesto na výbežku nad morom, Lodný hrad s modrými strechami
+            M.add('cone', '#8a8678', [0, 36, -30], [0, 0, 0], [300, 72, 220]); M.add('cone', '#7a766a', [60, 24, 20], [0, 0, 0], [180, 48, 140]);
+            const W = PAL[0]; ringWall(M, W, 58, 26, 10, 66, 7);
+            M.bx('#e6e2d6', 0, 66, 0, 44, 50, 36); windows(M, 0, 72, 0, 44, 36, 40, 3, 2); M.cy('#ece8dc', 0, 116, 0, 13, 70); M.cn('#4a78aa', 0, 186, 0, 15, 40);
+            for (const [x, z] of [[-26, 14], [26, 14], [-26, -14], [26, -14]]) tower(M, W, x, 66, z, 6, 64, true, 16);
+            M.add('box', '#e6e2d6', [0, 80, 62], [-.5, 0, 0], [18, 6, 56]); flag(M, { flag: '#4a78aa' }, 0, 226, 0, 22);
+            for (let i = 0; i < 6; i++) M.bx('#dcd8cb', -70 + i * 28, 66, 70, 18, 14 + (i % 3) * 5, 14);
+        },
+        'Cirith Ungol'(M, P) {   // Veža Cirith Ungol v priesmyku
+            const D = { wall: '#2a2422', wall2: '#1c1816', roof: '#0c0a0a' };
+            M.add('cone', '#26201e', [-80, 70, -20], [0, 0, 0], [220, 140, 200]); M.add('cone', '#2e2724', [90, 60, -10], [0, 0, 0], [200, 120, 180]);
+            M.bx('#2a2422', 0, 0, 40, 170, 40, 8); for (let q = -8; q <= 8; q++) M.bx('#1c1816', q * 10, 40, 40, 5, 5, 9);
+            M.cy('#1a1614', 0, 0, 0, 24, 90); M.cy('#241e1c', 0, 90, 0, 20, 50); M.cy('#1a1614', 0, 140, 0, 14, 40);
+            for (let i = 0; i < 5; i++) { const a = i / 5 * 6.283; M.cn5('#0c0a0a', Math.cos(a) * 12, 180, Math.sin(a) * 12, 3, 30); }
+            for (let i = 0; i < 6; i++) { const a = i * 1.05; M.bx('#ff5a20', Math.cos(a) * 24, 50 + (i % 3) * 30, Math.sin(a) * 24, 2.4, 4, 2.4, -a); }
+            tower(M, D, -85, 0, 40, 10, 66); tower(M, D, 85, 0, 40, 10, 66);
+        },
+        Morannon(M, P) {   // Čierna brána medzi Zubami Mordoru
+            M.add('cone', '#26201e', [-150, 90, -10], [0, 0, 0], [260, 180, 200]); M.add('cone', '#2a2422', [150, 90, -10], [0, 0, 0], [260, 180, 200]);
+            M.bx('#14100e', 0, 0, 20, 110, 90, 24); M.bx('#0a0808', 0, 0, 32.4, 56, 66, 1.2); M.bx('#3a3430', 0, 0, 33, 4, 66, 1); M.bx('#8a2410', 0, 66, 33, 56, 3, 1.4);
+            for (const sx of [-1, 1]) { M.cy('#1a1614', sx * 78, 0, 20, 24, 150); M.cy('#241e1c', sx * 78, 150, 20, 28, 8); for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283; M.cn5('#0c0a0a', sx * 78 + Math.cos(a) * 22, 158, 20 + Math.sin(a) * 22, 3.5, 36); } M.cn5('#0c0a0a', sx * 78, 158, 20, 10, 70); }
+            for (let q = -4; q <= 4; q++) M.cn5('#0c0a0a', q * 13, 90, 20, 4, 24);
+        },
+        'Lothlórien'(M, P) {   // veľké mallorny s talanmi a pahorok Cerin Amroth
+            M.dome('#6aa04a', 0, 0, 40, 70, 30); for (let i = 0; i < 40; i++) { const a = i * 2.4, r = 10 + (i % 7) * 8; M.add('sph', i % 3 ? '#f0e050' : '#ffffff', [Math.cos(a) * r, 25 - r * .2, 40 + Math.sin(a) * r], [0, 0, 0], [3, 3, 3]); }
+            const T = [[0, -40, 17, 130], [-70, -10, 12, 100], [66, -16, 12, 104], [-40, 50, 11, 90], [50, 56, 11, 94], [-110, 40, 9, 80], [110, 30, 9, 84]];
+            for (const [x, z, r, h] of T) {
+                M.cy('#8a8268', x, 0, z, r, h); M.cy('#7a7258', x, 0, z, r * 1.5, 10);
+                M.add('sph', '#e8c44a', [x, h + r * .6, z], [0, 0, 0], [r * 5, r * 3.2, r * 5]); M.add('sph', '#f2da6a', [x + r, h + r * 1.2, z - r], [0, 0, 0], [r * 3, r * 2, r * 3]);
+                const py = h * .55; M.cy('#d8d4b8', x, py, z, r * 1.8, 3); M.cy('#e6e2c8', x, py + 3, z, r * .9, 12); M.cn('#c9b04a', x, py + 15, z, r * 1.1, 10);
+                for (let q = 0; q < 8; q++) { const a = q / 8 * 6.283; M.cy('#cfc8a4', x + Math.cos(a) * r * 1.7, py + 3, z + Math.sin(a) * r * 1.7, .5, 5); }
+            }
+        },
+        'Dol Guldur'(M, P) {   // temná pevnosť na skalnatom kopci v mŕtvom lese
+            const D = { wall: '#26201e', wall2: '#14100e', roof: '#0c0a0a' };
+            M.add('cone', '#2e2a28', [0, 60, 0], [0, 0, 0], [240, 120, 220]);
+            M.cy('#1c1816', 0, 100, 0, 34, 80); M.cy('#241e1c', 0, 180, 0, 28, 30); for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; M.bx('#14100e', Math.cos(a) * 26, 205 + (i % 2) * 14, Math.sin(a) * 26, 8, 26 + (i % 3) * 10, 8, -a); }
+            for (let i = 0; i < 5; i++) { const a = i / 5 * 6.283 + .5; tower(M, D, Math.cos(a) * 62, 70, Math.sin(a) * 62, 9, 48); }
+            M.add('sph', '#7aff9a', [0, 232, 0], [0, 0, 0], [6, 6, 6]);
+            for (let i = 0; i < 14; i++) { const a = i / 14 * 6.283, r = 120 + (i % 3) * 20; M.cy('#2a2218', Math.cos(a) * r, 0, Math.sin(a) * r, 2, 40 + (i % 4) * 8); M.cn5('#2a2218', Math.cos(a) * r, 40, Math.sin(a) * r, 6, 22); }
+        },
+        Esgaroth(M, P) {   // dom na koloch nad jazerom
+            for (let i = -6; i <= 6; i++) for (const z of [-34, 0, 34]) M.cy('#4a3420', i * 22, -18, z, 2.4, 28);
+            M.bx('#7a5a38', 0, 8, 0, 170, 4, 90);
+            const H = [[-62, -26], [-20, -30], [26, -28], [64, -22], [-60, 26], [-14, 30], [34, 28], [70, 24]];
+            H.forEach(([x, z], i) => { M.bx(i % 2 ? '#a08060' : '#8a6a48', x, 12, z, 24, 16, 18); M.pr(i % 3 ? '#6a4a30' : '#7a5a3a', x, 28, z, 27, 12, 21); });
+            M.bx('#8a6a48', 0, 12, 0, 40, 24, 30); M.pr('#4a78aa', 0, 36, 0, 44, 18, 34); M.cy('#6a4e30', 0, 54, 0, 3, 24); flag(M, { flag: '#4a8fd0' }, 0, 78, 0, 18);
+            M.bx('#7a5a38', 110, 8, 0, 60, 3, 10);
+        },
+        Moria(M, P) {   // sivý útes s Durinovými dverami
+            M.bx('#6a6a70', 0, 0, -10, 330, 150, 60); M.add('cone', '#5a5a62', [0, 190, -20], [0, 0, 0], [320, 120, 80]);
+            M.bx('#8a8a92', -40, 0, 22, 12, 74, 6); M.bx('#8a8a92', 40, 0, 22, 12, 74, 6); M.add('cyl', '#8a8a92', [0, 74, 22], [Math.PI / 2, 0, 0], [92, 6, 92]); M.bx('#0c0c10', 0, 0, 20, 68, 80, 3);
+            M.add('sph', '#e8f0ff', [0, 96, 25], [0, 0, 0], [16, 16, 4]);
+            for (const sx of [-1, 1]) { M.cy('#3a2a1a', sx * 56, 0, 50, 2.4, 40); M.add('sph', '#2c5a28', [sx * 56, 52, 50], [0, 0, 0], [26, 22, 26]); }
+        },
+        Umbar(M, P) {   // prístav so sivými kupolami a minaretmi
+            const H = PAL[4]; ringWall(M, H, 74, 28, 12, 0, 8); M.cy('#cfa868', 0, 0, 0, 70, 3);
+            M.bx(H.wall, 0, 0, 0, 56, 40, 50); M.dome('#d8d4c4', 0, 40, 0, 26, 24); M.dome('#d8d4c4', -40, 28, 40, 14, 14); M.dome('#d8d4c4', 42, 28, 38, 14, 14);
+            for (const [x, z] of [[-62, 0], [62, 0], [0, -60], [0, 62]]) { M.cy('#e0c890', x, 0, z, 4.4, 82); M.cn('#b4361e', x, 82, z, 6.4, 20); M.bx('#e0c890', x, 60, z, 11, 2.4, 11); }
+            M.bx('#cfa868', 0, 0, 90, 170, 10, 12); for (let i = 0; i < 5; i++) { M.cy('#4a3420', -60 + i * 30, 0, 118, 1.4, 70); M.bx('#e8e0c8', -60 + i * 30 + 8, 30, 118, 14, 36, .8); }
+        },
+        Bree(M, P) {   // dedina na kopci s palisádou a dvojitými bránami
+            M.add('cone', '#5a7a34', [0, 30, 0], [0, 0, 0], [250, 60, 230]);
+            for (let i = 0; i < 24; i++) { const a = i / 24 * 6.283; M.cy('#6a4e30', Math.cos(a) * 92, 58, Math.sin(a) * 82, 2.4, 22); M.cn5('#6a4e30', Math.cos(a) * 92, 80, Math.sin(a) * 82, 2.4, 6); }
+            M.bx('#4a3420', 0, 58, 82, 24, 20, 3); M.bx('#4a3420', 0, 58, -82, 24, 20, 3);
+            for (let i = 0; i < 11; i++) { const a = i * 2.2, r = 14 + (i % 4) * 16, x = Math.cos(a) * r, z = Math.sin(a) * r * .9; M.bx(['#b8a888', '#c8b898', '#a89878'][i % 3], x, 58, z, 20, 14, 15, a); M.pr(i % 2 ? '#7a4a30' : '#8a6a3a', x, 72, z, 22, 10, 18, a); }
+            M.bx('#8a6a48', 0, 58, 0, 34, 20, 22); M.pr('#6a4a30', 0, 78, 0, 38, 14, 26); M.cy('#4a3420', 0, 92, -6, 1.2, 16);
+        },
     };
     function castleGeo(t) {
         const f = t.f, P = PAL[f] || PAL[6], L = lvl(t), k = .85 + L * .07, M = Mesher();
