@@ -90,7 +90,7 @@ function envoyLetter(L) {
         alliance: 'Naše kráľovstvá majú spoločných nepriateľov. Môj pán ponúka spojenectvo – kto udrie na jedného, udrie na oboch.',
         threat: 'Môj pán je urazený. Pošli mu dar – 150 zlata – alebo budeme hovoriť mečmi.'
     };
-    show('Posol – ' + FN[f], '„' + T[L.offer] + '“');
+    evShow('Posol – ' + FN[f], '„' + T[L.offer] + '“');
     if (L.offer === 'peace') { btn('Prijať mier', () => { makeTruce(f, 20); rl(a, f, 10); msg('Mier je uzavretý. Posol sa ukloní a odchádza.', end); }, 0, 'honor'); btn('Odmietnuť', () => { rl(a, f, -5); end(); }, 0, 'back'); }
     if (L.offer === 'tribute') { const g = tributeOffer(f); btn('Zaplatiť ' + g + ' zlata (prímerie 15 dní)', () => { G.gold -= g; makeTruce(f, 15); rl(a, f, 5); msg('Posol prepočíta zlato a bez slova odíde.', end); }, G.gold < g, 'coins'); btn('Odmietnuť (vytiahnu na tvoj hrad)', () => { rl(a, f, -10); const t = TW.findIndex(t => t.mine); if (t >= 0) CP[f] = t; lg(FN[f] + ' sa chystá na ťaženie proti tebe.'); end(); }, 0, 'sword'); }
     if (L.offer === 'alliance') { btn('Uzavrieť spojenectvo', () => { AL[a][f] = AL[f][a] = true; rl(a, f, 10); lg('Spojenectvo s ' + FN[f] + '.'); msg('Spojenectvo je uzavreté.', end); }, 0, 'honor'); btn('Odmietnuť', () => { rl(a, f, -5); end(); }, 0, 'back'); }

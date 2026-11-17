@@ -247,7 +247,7 @@ function questLog() {
     if (mode !== 'map') return;
     mode = 'town';
     const Q = G.qu || [], chap = QS[G.q];
-    show('Úlohy', Q.length ? 'Máš ' + Q.length + ' z ' + MAX_QUESTS + ' úloh. Splnených: ' + Object.values(G.qdone || {}).reduce((a, b) => a + b, 0) + '.' : 'Nemáš žiadnu vedľajšiu úlohu. Porozprávaj sa s veliteľmi na mape, ponúknu ti prácu.');
+    show('Úlohy', Q.length ? 'Máš ' + Q.length + ' z ' + MAX_QUESTS + ' úloh. Splnených: ' + Object.values(G.qdone || {}).reduce((a, b) => a + b, 0) + '.' : 'Nemáš žiadnu vedľajšiu úlohu. Porozprávaj sa s veliteľmi na mape, ponúknu ti prácu.'); ov.dataset.screen = 'sections';
     if (chap) { rowHead('Príbeh: kapitola ' + (G.q + 1) + '/' + QS.length); row(chap.t + (chap.k === 'k' ? ' (' + G.qc + '/' + chap.n + ')' : '')); }
     Q.forEach(q => {
         const d = qDef(q), s = qStep(q);

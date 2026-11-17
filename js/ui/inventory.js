@@ -20,14 +20,14 @@ function smithy(i, k) {
     const cost = (k, x) => Math.round(x.p * (bd.s ? .8 : 1) * (k === 'm' && bd.j ? .75 : 1));   // zľava z kováčskej dielne a stajne
     mode = 'town';
     if (!k) {
-        show('Kováč a zbrojnica', 'Zlato: ' + G.gold + '. ' + eqSum() + ' ' + (bd.s ? 'Kováčska dielňa: výbava o 20 % lacnejšia. ' : '') + (bd.j ? 'Stajňa: kone o 25 % lacnejšie. ' : '') + (evil ? 'Tunajší kováči kujú výbavu zla pre služobníkov Saurona a Sarumana.' : 'Tunajší kováči kujú výbavu dobra pre Gondor, Rohan, elfov a trpaslíkov.') + (t.f === 6 ? ' Tvoj hrad predáva výbavu tvojej strany.' : ''));
+        show('Kováč a zbrojnica', 'Zlato: ' + G.gold + '. ' + eqSum() + ' ' + (bd.s ? 'Kováčska dielňa: výbava o 20 % lacnejšia. ' : '') + (bd.j ? 'Stajňa: kone o 25 % lacnejšie. ' : '') + (evil ? 'Tunajší kováči kujú výbavu zla pre služobníkov Saurona a Sarumana.' : 'Tunajší kováči kujú výbavu dobra pre Gondor, Rohan, elfov a trpaslíkov.') + (t.f === 6 ? ' Tvoj hrad predáva výbavu tvojej strany.' : '')); ov.dataset.screen = 'shop';
         SH.forEach(s => btn(s.l + ' (nosíš: ' + it(s.k).n + ')', () => smithy(i, s.k), 0, { k: s.k, i: G.eq[s.k] }));
         btn('Inventár', () => inv(() => smithy(i)));
         btn('Späť', () => town(i));
         return;
     }
     const s = SH.find(x => x.k === k);
-    show('Kováč: ' + s.l.toLowerCase(), 'Zlato: ' + G.gold + '. Nosíš: ' + it(k).n + ' (' + eqStat(k, it(k)) + ').' + ' Výbava ' + sideName(evil) + '.');
+    show('Kováč: ' + s.l.toLowerCase(), 'Zlato: ' + G.gold + '. Nosíš: ' + it(k).n + ' (' + eqStat(k, it(k)) + ').' + ' Výbava ' + sideName(evil) + '.'); ov.dataset.screen = 'shop';
     s.it.map((x, j) => [x, j]).sort((a, b) => a[0].p - b[0].p).forEach(([x, j]) => {
         if (!x.p || !x.z !== !evil) return;           // základné veci sa nepredávajú a výbava druhej strany tu nie je
         if (owns(k, j)) {

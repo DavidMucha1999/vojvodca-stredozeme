@@ -9,14 +9,14 @@ const INTRO_Q = [
 function qShow() {
     if (G && (G.intro === 0 || G.intro === 1)) {
         mode = 'town';
-        show('Príbeh: prvé kroky', INTRO_Q[G.intro].t);
+        evShow('Príbeh: prvé kroky', INTRO_Q[G.intro].t);
         btn('Na cestu', () => { ov.classList.add('hide'); mode = 'map'; });
         return;
     }
     const q = QS[G.q];
     if (q) {
         mode = 'town';
-        show('Príbeh: kapitola ' + (G.q + 1), q.t);
+        evShow('Príbeh: kapitola ' + (G.q + 1), q.t);
         btn('Na cestu', () => { ov.classList.add('hide'); mode = 'map'; });
     }
 }
@@ -32,7 +32,7 @@ function introDone() {
     upd();
     if (G.intro < 2) {
         mode = 'town';
-        show('Príbeh: prvé kroky', note + ' ' + INTRO_Q[G.intro].t);
+        evShow('Príbeh: prvé kroky', note + ' ' + INTRO_Q[G.intro].t);
         btn('Na cestu', () => { ov.classList.add('hide'); mode = 'map'; });
     }
     else qShow();

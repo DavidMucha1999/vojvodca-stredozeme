@@ -32,7 +32,7 @@ function portMenu(i) {
         const c = sailCost(i, j), hostile = hos(TW[j].f, G.fac), risk = pirateRisk(i, j);
         btn('Plaviť sa do ' + TW[j].n + ' · ' + sailDays(i, j) + ' d · ' + c + ' zlata' + (hostile ? ' (vylodenie pri nepriateľskom hrade)' : '') + (risk ? ' · korzári' : ''), () => {
             const r = sail(i, j); upd();
-            mode = 'town'; show('Plavba', r.text);
+            mode = 'town'; evShow('Plavba', r.text);
             if (r.pirates) btn('Brániť sa (boj s korzármi)', () => { ov.classList.add('hide'); startBattle({ n: 10 + Math.floor(G.day / 4), f: hos(4, G.fac) ? 4 : 9, nm: 'Korzári z Umbaru' }); }, 0, 'sword');
             else btn('Vylodiť sa', () => { ov.classList.add('hide'); mode = 'map'; }, 0, 'door');
         }, G.gold < c, 'map');

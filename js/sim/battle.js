@@ -267,10 +267,10 @@ function endBattle(win) {
             G.tw = (G.tw || 0) + 1;
             rl(G.fac, L.t.f, 5);
             lg('Víťazstvo v turnaji v ' + L.t.n + '.');
-            show('Víťaz turnaja', 'Ľud ťa oslavuje. Získal si ' + g + ' zlata a +1 slávu.');
+            evShow('Víťaz turnaja', 'Ľud ťa oslavuje. Získal si ' + g + ' zlata a +1 slávu.');
         }
         else
-            show('Porážka v aréne', 'Prebral si sa v ošetrovni. Nabudúce budeš mať viac šťastia.');
+            evShow('Porážka v aréne', 'Prebral si sa v ošetrovni. Nabudúce budeš mať viac šťastia.');
         btn('Pokračovať', () => { ov.classList.add('hide'); mode = 'map'; });
         upd();
         ach();
@@ -397,7 +397,7 @@ function endBattle(win) {
                     afterBattleFlags(win, L);
                     return;
                 }
-                show('Víťazstvo', (CMB.down ? 'Padol si zranený, ale tvoji muži bitku dobojovali. ' : '') + 'Padlo ' + (dI + dC) + ' tvojich mužov' + (wnd ? ' (z padlých ' + wnd + ' prežilo ranených – vrátia sa po vyliečení)' : '') + '. Korisť: ' + loot + ' zlata.' + lv + bossTxt);
+                evShow('Víťazstvo', (CMB.down ? 'Padol si zranený, ale tvoji muži bitku dobojovali. ' : '') + 'Padlo ' + (dI + dC) + ' tvojich mužov' + (wnd ? ' (z padlých ' + wnd + ' prežilo ranených – vrátia sa po vyliečení)' : '') + '. Korisť: ' + loot + ' zlata.' + lv + bossTxt);
                 battleReport(true);
                 const L = LB;
                 if (!L.siege)
@@ -430,7 +430,7 @@ function endBattle(win) {
                 G.cav = Math.floor(G.cav / 2);
                 G.arc = Math.floor(G.arc / 2);
                 upd();
-                show('Zajatý', L.nm + ' ťa po bitke zajal. Prebral si sa v žalári hradu ' + TW[G.captive.t].n + '. Polovica mužov padla alebo sa rozutekala; zlato ti zatiaľ nechali – budú ho chcieť ako výkupné.');
+                evShow('Zajatý', L.nm + ' ťa po bitke zajal. Prebral si sa v žalári hradu ' + TW[G.captive.t].n + '. Polovica mužov padla alebo sa rozutekala; zlato ti zatiaľ nechali – budú ho chcieť ako výkupné.');
                 battleReport(false);
                 btn('Pokračovať', () => { ov.classList.add('hide'); mode = 'map'; captiveDay(); });
             }
@@ -443,7 +443,7 @@ function endBattle(win) {
                 G.x = G.tx = TW[0].x;
                 G.y = G.ty = TW[0].y;
                 upd();
-                show('Porazený', 'Prišiel si o polovicu zlata aj mužov. Prebral si sa v Hobitove.');
+                evShow('Porazený', 'Prišiel si o polovicu zlata aj mužov. Prebral si sa v Hobitove.');
                 battleReport(false);
                 btn('Pokračovať', () => { ov.classList.add('hide'); mode = 'map'; });
             }

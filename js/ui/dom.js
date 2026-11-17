@@ -31,6 +31,8 @@ function row(text, o = {}) {
 const rowHead = text => row(text, { gold: 1 });
 /** Označí tlačidlo ako zvolené (biely rám). */
 const select = b => { b.dataset.sel = '1'; b.style.outline = '3px solid #fff'; return b; };
+/** Udalosť: okno ako show, ale nakreslené ako filmová karta s ilustráciou (UIRich.richEvent). */
+function evShow(h, body) { show(h, body); ov.dataset.screen = 'event'; }
 /** Okno s nadpisom h a textom body. Ak je pred volaním nastavený PORTRAIT (popis tváre), okno dostane portrét (plátno .por). */
 function show(h, body) {
     ov.classList.remove('encv');

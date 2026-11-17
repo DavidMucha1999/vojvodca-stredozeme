@@ -60,7 +60,7 @@ function startWorldEvent(k) {
     chron('Udalosť sveta: ' + ev.n + '.');
     lg('Udalosť sveta: ' + ev.n + '.');
     if (typeof EVENTS !== 'undefined') TS = { s: 'Udalosť sveta: ' + ev.n, l: 300 };
-    if (mode === 'map') { mode = 'town'; show('Správa zo sveta: ' + ev.n, ev.t + ' (trvá ' + ev.d + ' dní)'); btn('Pokračovať', () => { ov.classList.add('hide'); mode = 'map'; }, 0, 'door'); }
+    if (mode === 'map') { mode = 'town'; evShow('Správa zo sveta: ' + ev.n, ev.t + ' (trvá ' + ev.d + ' dní)'); btn('Pokračovať', () => { ov.classList.add('hide'); mode = 'map'; }, 0, 'door'); }
 }
 
 /** Koniec hry podľa strany, cti, strachu, Prsteňa a kráľovstva. why: 'story' alebo 'king'. */
@@ -88,7 +88,7 @@ function chronicle(back) {
     mode = 'town';
     PORTRAIT = Portraits.hero();
     const C = G.chron || [], perks = Object.keys(G.perk || {}).length;
-    show('Kronika – ' + G.name, rank() + ' · ' + raceName() + ' · ' + traitName() + ' · deň ' + G.day + (G.ending ? ' · koniec: ' + G.ending : '') + '.');
+    show('Kronika – ' + G.name, rank() + ' · ' + raceName() + ' · ' + traitName() + ' · deň ' + G.day + (G.ending ? ' · koniec: ' + G.ending : '') + '.'); ov.dataset.screen = 'sections';
     rowHead('Skutky');
     row(statLine() + ', najväčšie vojsko ' + (G.maxArmy || 0) + ' mužov, spoločníci ' + (G.comp || []).length + ', perky ' + perks + ', trofeje ' + (G.tro || []).length + '.');
     if (G.wev && worldEv(G.wev.k)) row('Práve teraz: ' + WORLD_EV[G.wev.k].n + ' (do dňa ' + G.wev.end + ').', { gold: 1 });

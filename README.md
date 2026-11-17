@@ -407,6 +407,16 @@ Mapa sa dá zobraziť v 3D (`js/engine/m3d.js`, Nastavenia → Mapa 3D; vypnutí
 
 Všetky bežné okná hry (asi 75: kováč, trh, krčma, veliteľ, kronika, úlohy, kráľovstvo, obliehanie, udalosti na ceste, výsledok bitky…) majú rovnaký vzhľad ako bohaté obrazovky: tmavý rám so zlatými lemami (zlo má červenší), hlavička s medailónom a ikonou podľa nadpisu (`DLG_ICONS` v `UIDialog.js`), svetlý text s citátmi kurzívou, tlačidlá ako karty s ikonou (`dlgBtn`) a jantárová pilulka na odchod. List (nadpis „List …“) ostáva na pergamene s voskovou pečaťou. Logika sa nezmenila: okná sa stále opisujú cez `show`/`btn` a `UIDialog.buildDialog` ich len nakreslí inak. Vlastné obrazovky (kováč s mriežkou vecí, úlohy, kráľovstvo…) sú ďalšia etapa.
 
+## Vlastné obrazovky okien (verzia 107)
+
+Popri spoločnom štýle majú tri druhy okien vlastné rozloženie (`js/engine/scenes/UIRich.js`; okno ich označí `ov.dataset.screen`, inak ostáva spoločný štýl):
+
+- **Obchod** (`shop`): kováč a zbrojnica ako mriežka kariet vecí s veľkou ikonou, štatistikou a cenou (NOSÍŠ, MÁŠ · OBLIECŤ, nedostupné stlmené), posúvateľná.
+- **Prehľad sekcií** (`sections`): Úlohy (karty s postupom a tlačidlom Vzdať sa), Kronika, Denník, Štatistiky, Trofeje, Úspechy; každá sekcia je karta.
+- **Udalosť** (`event`, funkcia `evShow` v `dom.js`): filmová karta s ilustráciou (obloha podľa dennej doby, hory, veľký medailón s ikonou) a voľbami ako kartami; používajú ju udalosti na ceste, príbeh, svetové udalosti, stretnutia, výsledok bitky, súboje, hádka v družine, posol a plavba. Keď sa obsah nezmestí (dlhý text, viac ako 6 volieb), okno sa nakreslí v spoločnom štýle.
+
+Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie a klávesy ako v bežných oknách).
+
 ## Rozvoj bojovníka ako vo Warbande (etapa 3, verzia 94)
 
 Nový súbor `js/sim/mastery.js` (načítava sa hneď po `warband.js`).

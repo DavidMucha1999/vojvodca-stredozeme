@@ -60,7 +60,7 @@ function quarrelLetter(L) {
     if (!A || !B || !(G.comp || []).includes(L.a) || !(G.comp || []).includes(L.b)) return;
     mode = 'town';
     PORTRAIT = A.look;
-    show('Hádka v družine', A.n + ' a ' + B.n + ' sa pri ohni hádajú o ' + L.topic + '. Ostatní stíchli a pozerajú na teba.');
+    evShow('Hádka v družine', A.n + ' a ' + B.n + ' sa pri ohni hádajú o ' + L.topic + '. Ostatní stíchli a pozerajú na teba.');
     const after = s => { if (L.a === 'legolas' && L.b === 'gimli' && (G.lgq = (G.lgq || 0) + 1) >= 3 && !G.lgFriends) { G.lgFriends = 1; addCrel('legolas', 20); addCrel('gimli', 20); lg('Legolas a Gimli sa po hádkach stali nerozlučnými priateľmi.'); s += ' Po tretej hádke si Legolas a Gimli podali ruky – odteraz sú nerozluční priatelia.'; } msg(s, end); };
     btn('Dať za pravdu: ' + A.n, () => { addCrel(L.a, 8); addCrel(L.b, -18); after(B.n + ' sa urazene vzdialil od ohňa.'); }, 0, 'talk');
     btn('Dať za pravdu: ' + B.n, () => { addCrel(L.b, 8); addCrel(L.a, -18); after(A.n + ' si odpľul a ide spať.'); }, 0, 'talk');

@@ -28,7 +28,7 @@ function dnk() {
     if (mode !== 'map')
         return;
     mode = 'town';
-    show('Denník udalostí', LOG.length ? 'Najnovšie udalosti sú hore.' : 'Zatiaľ sa nič nestalo.');
+    show('Denník udalostí', LOG.length ? 'Najnovšie udalosti sú hore.' : 'Zatiaľ sa nič nestalo.'); ov.dataset.screen = 'sections';
     LOG.slice(0, 25).forEach(s => { row(s); });
     btn('Zavrieť', () => { ov.classList.add('hide'); mode = 'map'; });
 }
@@ -37,7 +37,7 @@ function sts() {
         return;
     mode = 'town';
     const s = G.st || {};
-    show('Štatistiky', G.name + ', ' + rank() + '. Deň ' + G.day + '.');
+    show('Štatistiky', G.name + ', ' + rank() + '. Deň ' + G.day + '.'); ov.dataset.screen = 'sections';
     [['Bitky', s.b], ['Víťazstvá', s.w], ['Prehry', s.l], ['Porazení nepriatelia', s.k], ['Padlí vlastní vojaci', s.d], ['Dobyté hrady', s.c], ['Vyrabované dediny', s.r], ['Vlastné hrady', TW.filter(t => t.mine).length], ['Sláva', G.ren], ['Zlato', G.gold]].forEach(([n, v]) => { row(n + ': ' + (v || 0)); });
     btn('Zavrieť', () => { ov.classList.add('hide'); mode = 'map'; });
 }
@@ -46,7 +46,7 @@ function tro() {
         return;
     mode = 'town';
     const T = G.tro || [], D = G.dl || [];
-    show('Trofeje a porazení velitelia', 'Trofeje: ' + T.length + ' (každá +1 útok). Porazení velitelia: ' + D.length + '.');
+    show('Trofeje a porazení velitelia', 'Trofeje: ' + T.length + ' (každá +1 útok). Porazení velitelia: ' + D.length + '.'); ov.dataset.screen = 'sections';
     const bt = document.getElementById('bt');
     [...T.map(s => '🏆 ' + s), ...D.slice(0, 20).map(s => '⚔ ' + s)].forEach(s => { row(s); });
     btn('Zavrieť', () => { ov.classList.add('hide'); mode = 'map'; });
@@ -56,7 +56,7 @@ function achs() {
         return;
     mode = 'town';
     G.ach = G.ach || {};
-    show('Úspechy', 'Získané: ' + Object.keys(G.ach).length + '/' + ACH.length + '.');
+    show('Úspechy', 'Získané: ' + Object.keys(G.ach).length + '/' + ACH.length + '.'); ov.dataset.screen = 'sections';
     const bt = document.getElementById('bt');
     ACH.forEach(([id, n]) => { row((G.ach[id] ? '✔ ' : '✘ ') + n, { dim: !G.ach[id] }); });
     btn('Zavrieť', () => { ov.classList.add('hide'); mode = 'map'; });

@@ -102,7 +102,7 @@ function fellTick(dt) {
     const dx = G.x - F.x, dy = G.y - F.y, d = Math.hypot(dx, dy);
     if (G.camp && G.stay) { F.x -= dx / d * 2 * dt; F.y -= dy / d * 2 * dt; return; }   // hrdina v hrade: šelma krúži opodiaľ
     F.x += dx / d * 4.2 * dt; F.y += dy / d * 4.2 * dt;
-    if (d < 80 && mode === 'map') { G.fell = null; mode = 'town'; show('Útok z neba!', 'Tieň zakryl slnko. Okrídlená šelma sa strmhlav vrhá na tvoju družinu a Nazgûl vytasil meč.'); btn('Postaviť sa (boj s bossom)', () => { ov.classList.add('hide'); bossBattle('fell'); }, 0, 'sword'); }
+    if (d < 80 && mode === 'map') { G.fell = null; mode = 'town'; evShow('Útok z neba!', 'Tieň zakryl slnko. Okrídlená šelma sa strmhlav vrhá na tvoju družinu a Nazgûl vytasil meč.'); btn('Postaviť sa (boj s bossom)', () => { ov.classList.add('hide'); bossBattle('fell'); }, 0, 'sword'); }
 }
 
 // ---------- súboj veliteľov ----------
@@ -110,7 +110,7 @@ function fellTick(dt) {
 function meetFoe(e, al) {
     if (!e.nm || e.nz || e.f === 9 || e.metD === G.day || typeof show !== 'function') return startBattle(e, al);
     e.metD = G.day; mode = 'town'; PORTRAIT = Portraits.forLord(e);
-    show('Stretnutie: ' + e.nm + ' (' + FN[e.f] + ')', e.nm + ' zastavil svoje vojsko (' + Math.ceil(e.n) + ' mužov) na dohľad od tvojho.' + (e.mem && e.mem.length ? ' Pamätá si: ' + memText(e) : ''));
+    evShow('Stretnutie: ' + e.nm + ' (' + FN[e.f] + ')', e.nm + ' zastavil svoje vojsko (' + Math.ceil(e.n) + ' mužov) na dohľad od tvojho.' + (e.mem && e.mem.length ? ' Pamätá si: ' + memText(e) : ''));
     btn('Do boja!', () => { ov.classList.add('hide'); startBattle(e, al); }, 0, 'attack');
     btn('Vyzvať ' + e.nm + ' na súboj (víťaz zlomí odvahu druhého vojska)', () => { ov.classList.add('hide'); duelLord(e); }, 0, 'sword');
 }
@@ -127,7 +127,7 @@ function duelEnd(win, L) {
     const e = E.find(o => o.id === L.duel);
     mode = 'over'; od.style.display = 'none'; tb.style.display = 'flex'; roar(0); G.safe = 120;
     G.hp = Math.max(20, U[0].hp);
-    if (win) { G.duel = { id: L.duel, win: 1 }; G.ren++; if (e) lordMem(e, 'Porazil si ma v súboji.', -4); lg('Porazil si ' + L.nm + ' v súboji pred bitkou.'); show('Víťazstvo v súboji', L.nm + ' leží v prachu. Jeho muži stratili odvahu – ak teraz zaútočíš, budú utekať skôr. Sláva +1.'); if (e) btn('Zaútočiť na jeho zlomené vojsko', () => { ov.classList.add('hide'); mode = 'map'; startBattle(e); }, 0, 'attack'); btn('Nechať ho odísť', () => { ov.classList.add('hide'); mode = 'map'; }, 0, 'door'); }
-    else { G.duel = { id: L.duel, win: 0 }; if (e) lordMem(e, 'Porazil som ťa v súboji.', 2); lg('Prehral si súboj s ' + L.nm + '.'); show('Prehra v súboji', L.nm + ' ťa zrazil k zemi a jeho muži jasajú. Tvoje vojsko bude v najbližšej bitke s ním neisté.'); btn('Pokračovať', () => { ov.classList.add('hide'); mode = 'map'; }, 0, 'door'); }
+    if (win) { G.duel = { id: L.duel, win: 1 }; G.ren++; if (e) lordMem(e, 'Porazil si ma v súboji.', -4); lg('Porazil si ' + L.nm + ' v súboji pred bitkou.'); evShow('Víťazstvo v súboji', L.nm + ' leží v prachu. Jeho muži stratili odvahu – ak teraz zaútočíš, budú utekať skôr. Sláva +1.'); if (e) btn('Zaútočiť na jeho zlomené vojsko', () => { ov.classList.add('hide'); mode = 'map'; startBattle(e); }, 0, 'attack'); btn('Nechať ho odísť', () => { ov.classList.add('hide'); mode = 'map'; }, 0, 'door'); }
+    else { G.duel = { id: L.duel, win: 0 }; if (e) lordMem(e, 'Porazil som ťa v súboji.', 2); lg('Prehral si súboj s ' + L.nm + '.'); evShow('Prehra v súboji', L.nm + ' ťa zrazil k zemi a jeho muži jasajú. Tvoje vojsko bude v najbližšej bitke s ním neisté.'); btn('Pokračovať', () => { ov.classList.add('hide'); mode = 'map'; }, 0, 'door'); }
     upd();
 }
