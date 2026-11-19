@@ -426,6 +426,13 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
 
+## Tempo a bojisko (verzia 109)
+
+- **Väčšie bojisko** (`setField` v `js/core/setup.js`, volá ho `startBattle`): poľná bitka má 2200×1500 jednotiek (predtým 1440×960), hradby, aréna a súboje ostávajú malé. `BW`/`BH` sú teraz premenné; armády štartujú ďalej od seba, takže pochod trvá približne 17 s a je priestor na obchvat.
+- **Dlhšie boje** (`BTEMPO` v `js/sim/battle.js`): zranenie medzi vojakmi (nie hrdina ani bossovia) sa násobí 0,22, takže zrkadlová bitka 40 proti 40 trvá zhruba 3000 – 5000+ snímok boja namiesto 500. Hrdina dáva a berie plné zranenie.
+- Limit dlhej bitky (rozhodne zostávajúce zdravie) zvýšený z 9000 na 16000 snímok (~4,5 min).
+- Nie je zatiaľ: rieka a kopec majú pevné miesto (x ≈ 720), nie v strede väčšieho bojiska.
+
 ## Rozvoj bojovníka ako vo Warbande (etapa 3, verzia 94)
 
 Nový súbor `js/sim/mastery.js` (načítava sa hneď po `warband.js`).

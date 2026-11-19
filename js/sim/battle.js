@@ -183,12 +183,15 @@ function battleReport(win) {
     if (worst && worst.kills) line('Najnebezpečnejší nepriateľ: ' + unitName(worst) + ' – ' + worst.kills + ' zabití.', '#ff9a80');
 }
 /** Chrám v niektorom z tvojich hradov: tvoji vojaci sú pevnejší (o 10 % menej zranení). */
+/** Násobok zranenia medzi vojakmi (hrdina a bossovia sa nemenia): nižšie číslo = dlhšie boje. */
+const BTEMPO = .22;
 const temple = () => TW.some(t => t.mine && t.bd && t.bd.c);
 function hit(b, d, from) {
     if (b.fly > 0) return;   // drak vo vzduchu
     const was = b.hp > 0;
     if (from && onHill(from) && !onHill(b)) d *= 1.15;   // útok z kopca
     if (from && !from.t && !from.h && perk('taktik')) d *= 1.1;   // perk Taktik
+    if (from && !from.h && !b.h && !from.boss && !b.boss) d *= BTEMPO;   // vojaci proti vojakom: bitka trvá dlhšie (ako vo Warbande)
     if (!b.t) d *= DIFF_MUL();   // obťažnosť (js/ui/settings.js)
     if (b.h && CMB.horse > 0 && !b.dis) { const hd = d * .35; CMB.horse -= hd; d -= hd; if (CMB.horse <= 0) horseDown(b); else horseHurt(hd); }   // časť úderov schytá kôň
     b.hp -= d * (b.h ? red() : !b.t && temple() ? .9 : 1);
@@ -216,6 +219,7 @@ function mk(t, k, f) {
 }
 let SGB = null, PAUSE = 0, KD = 0, SHAKE = 0;
 function startBattle(en, al) {
+    setField(!en.ar && !en.duel && !en.siege && !(en.def != null && TW[en.def] && TW[en.def].sg));   // poľná bitka má väčšie bojisko
     if (en.ar) {   // aréna: hrdina bojuje sám, vojsko ostáva pred bránou
         const s = { inf: G.inf, cav: G.cav, arc: G.arc, elf: G.elf, roh: G.roh, vet: G.vet };
         G.inf = G.cav = G.arc = G.elf = G.roh = G.vet = 0;
@@ -606,7 +610,7 @@ function updBattle(dt) {
         if (U[0].hp <= 0 && !CMB.down) heroFell();
         U[0].tt = (U[0].tt || 0) + dt;
         const mineUp = U.some(u => !u.t && u.hp > 0) || (BRES[0].length > 0 && CMB.M[0] >= 15);   // záloha na úteku už nepríde
-        if (U[0].tt > 9000) {
+        if (U[0].tt > 16000) {
             const s = t => U.filter(u => u.t === t && u.hp > 0).reduce((a, u) => a + u.hp, 0);
             endBattle(s(0) >= s(1));   // dlhá bitka: rozhodne zostávajúce zdravie
         }

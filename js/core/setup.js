@@ -1,12 +1,12 @@
 /*
  * Základ: plátno, rozmery sveta, náhodný generátor, globálny stav hry a denník.
  */
-const cv = document.getElementById('c'), ctx = cv.getContext('2d'), W = 720, H = 480, WW = 14400, WH = 9600, K = 8, BW = 1440, BH = 960, ov = document.getElementById('ov'), hud = document.getElementById('hud');
-let BFW = BW, BFH = BH;   // poľná bitka 2200×1500, hradby a aréna ostanú na 1440×960
-function useField() {
-    const open = !(typeof SGB !== 'undefined' && SGB) && !(typeof LB !== 'undefined' && LB && LB.ar);
-    BFW = open ? 2200 : BW; BFH = open ? 1500 : BH;
-}
+const cv = document.getElementById('c'), ctx = cv.getContext('2d'), W = 720, H = 480, WW = 14400, WH = 9600, K = 8, ov = document.getElementById('ov'), hud = document.getElementById('hud');
+/** Rozmery bojiska: hradby, aréna a súboje majú 1440×960, poľná bitka 2200×1500 (dlhší pochod armád, priestor na obchvat).
+ *  Nastavuje ich setField na začiatku bitky (js/sim/battle.js); BFW/BFH sú len staré názvy tých istých rozmerov. */
+const BW0 = 1440, BH0 = 960, BWF = 2200, BHF = 1500;
+let BW = BW0, BH = BH0, BFW = BW0, BFH = BH0;
+function setField(open) { BW = BFW = open ? BWF : BW0; BH = BFH = open ? BHF : BH0; }
 cv.width = W;
 cv.height = H;
 let seed = 11;
