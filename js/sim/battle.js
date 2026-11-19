@@ -219,6 +219,7 @@ function mk(t, k, f) {
 }
 let SGB = null, PAUSE = 0, KD = 0, SHAKE = 0;
 function startBattle(en, al) {
+    Object.assign(TAC, { on: 0, t: 0, ret: 0, said: 0, front: null });   // nový plán nepriateľského veliteľa
     setField(!en.ar && !en.duel && !en.siege && !(en.def != null && TW[en.def] && TW[en.def].sg));   // poľná bitka má väčšie bojisko
     if (en.ar) {   // aréna: hrdina bojuje sám, vojsko ostáva pred bránou
         const s = { inf: G.inf, cav: G.cav, arc: G.arc, elf: G.elf, roh: G.roh, vet: G.vet };
@@ -559,6 +560,7 @@ function updBattle(dt) {
                     }
                 u.tg = b; u.tgT = 5 + Math.random() * 4;
                 }
+                if (u.t && TAC.on) { const nb = tacTarget(u, b); if (nb !== b) { b = nb; bd = Math.hypot(b.x - u.x, b.y - u.y); } }   // jazda po obchvate cieli na lukostrelcov
                 u.bd = bd;   // vzdialenosť k nepriateľovi (3D: nečinní vojaci búchajú do štítov a pokrikujú)
                 if (!u.t && !u.ally && b) {
                     const ORD = CMB.og[grpOf(u)] || 'a';   // rozkaz skupiny vojaka (pechota, lukostrelci, jazda)
@@ -582,7 +584,8 @@ function updBattle(dt) {
                 if (b) {
                     const hx0 = u.x, hy0 = u.y;
                     u.f = Math.atan2(b.y - u.y, b.x - u.x);
-                    if (isHA(u)) haAI(u, b, bd, dt);   // jazdecký lukostrelec krúži a strieľa
+                    if (tacMove(u, b, bd, dt)) { }   // taktika: obchvat, lukostrelci za líniou, spoločný postup (js/sim/tactics.js)
+                    else if (isHA(u)) haAI(u, b, bd, dt);   // jazdecký lukostrelec krúži a strieľa
                     else if ((u.k === 'a' || u.k === 'e')) {
                         if (bd > 150) {
                             u.x += (b.x - u.x) / bd * u.sp * dt;
@@ -605,6 +608,7 @@ function updBattle(dt) {
             }
         }
         sepUnits(dt);   // telesná kolízia: vojaci sa neprekrývajú (js/sim/warband.js)
+        tacUpdate(dt);   // taktika nepriateľského veliteľa (js/sim/tactics.js)
         cmbMorale(dt);
         reinforce(dt);   // posily vo vlnách zo záloh
         if (U[0].hp <= 0 && !CMB.down) heroFell();

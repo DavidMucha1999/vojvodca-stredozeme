@@ -426,6 +426,16 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
 
+## Taktická AI (verzia 110)
+
+Nový súbor `js/sim/tactics.js` (po `mastery.js`): veliteľ nepriateľa plánuje každých 40 snímok (`tacUpdate`) – os postupu, líniu pešiakov a pomer síl.
+
+- **Postup v línii** (`tacMove`): kým je súper ďalej než 300 jednotiek, pešiak, ktorý vybehol pred ostatných, spomalí (najviac na 40 %), takže armáda prichádza spolu.
+- **Lukostrelci za líniou**: neposúvajú sa pred prednú tretinu pešiakov (minus 70 jednotiek), strieľajú spoza nej; keď sa k nim súper priblíži, stiahnu sa ako doteraz.
+- **Obchvat jazdou**: každý jazdec dostane stranu (striedavo ±), obíde bojisko za krídlo súpera a potom (`tacTarget`) cieli na najbližšieho lukostrelca do 600 jednotiek. Obchvat sa preruší, ak narazí na súpera alebo trvá viac než 2400 snímok.
+- **Ústup**: pri pomere síl pod 0,3, morálke pod 55 a bez zálohy zatrúbi veliteľ na ústup – vojaci mimo boja (okrem nebojácnych) utekajú.
+- Neplatí v aréne, v súboji a pri obliehaní. Test: lukostrelci sú v priemere za pešiakmi a jazda dostane obchvat.
+
 ## Tempo a bojisko (verzia 109)
 
 - **Väčšie bojisko** (`setField` v `js/core/setup.js`, volá ho `startBattle`): poľná bitka má 2200×1500 jednotiek (predtým 1440×960), hradby, aréna a súboje ostávajú malé. `BW`/`BH` sú teraz premenné; armády štartujú ďalej od seba, takže pochod trvá približne 17 s a je priestor na obchvat.
