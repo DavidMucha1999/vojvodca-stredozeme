@@ -148,15 +148,15 @@ function fireArrow(u, yaw, pitch, sp, o) {
 }
 /** Výstrel vojaka AI na cieľ b. Presnosť klesá so vzdialenosťou, s behom cieľa a pri streľbe z koňa; elfovia a zručnejší strieľajú presnejšie.
  *  Vedenie pred cieľ je nepresné (strelec odhaduje, kam sa cieľ pohne), takže bežiaceho hrdinu nezasiahne každý šíp. */
-function aiShoot(u, b, sp = 7) {
+function aiShoot(u, b, sp = 7, o2 = null) {
     const d = Math.hypot(b.x - u.x, b.y - u.y), z0 = elevSim(u.x, u.y) + seatH(u) + bodyH(u) * .72, zt = elevSim(b.x, b.y) + seatH(b) + bodyH(b) * .6;
     const lead = d / sp * (.3 + Math.random() * .55), tx = b.x + (b.vx3 || 0) * lead, ty = b.y + (b.vy3 || 0) * lead;
     const yaw = Math.atan2(ty - u.y, tx - u.x), sk = typeof aiSkill === 'function' ? aiSkill(u) : .3, mvN = Math.min(2, Math.hypot(b.vx3 || 0, b.vy3 || 0));
     const sig = (u.k === 'e' ? .03 : .058 + .045 * (1 - sk)) * (.7 + d / 110) * (1 + mvN * .3) * (onMount(u) ? 1.8 : 1);   // rozptyl (rad)
     const g = () => (Math.random() + Math.random() + Math.random() - 1.5) / .75;   // ≈ normálne rozdelenie v rozsahu -2 … 2
     const p = ballistic(Math.hypot(tx - u.x, ty - u.y), zt - z0, sp);
-    fireArrow(u, yaw + g() * sig, p + g() * sig * .45, sp, { d: u.k === 'e' ? 7 : 4.5 });
-    snd('ar');
+    fireArrow(u, yaw + g() * sig, p + g() * sig * .45, sp, o2 || { d: u.k === 'e' ? 7 : 4.5 });
+    snd(o2 ? 'sw' : 'ar');
 }
 /** Dosah zbrane vojaka v útoku (kopija ďalej, sekera bližšie) a vzdialenosť, na ktorej sa pri chôdzi zastaví. */
 const aiLen = u => { const w = aiWpn(u); return w === 'spear' ? 1.3 : w === 'axe' ? .95 : 1; };
@@ -199,6 +199,33 @@ function sepUnits(dt) {
     for (const u of L) { u.x += Math.max(-2.5, Math.min(2.5, u._sx)); u.y += Math.max(-2.5, Math.min(2.5, u._sy)); }
 }
 /** Lukostrelec AI: najprv mieri (napína asi pol sekundy, hrdina to vidí v ukazovateli útokov), potom vystrelí a dlhšie dobíja. */
+/** Vrhacie oštepy vojakov AI (ako vo Warbande): pešiak (ork, veterán, Rohirim, časť pešiakov) má 1 – 2 oštepy, ktoré hodí pri pochode na súpera
+ *  zo vzdialenosti 55 – 150, kým nie je v boji. Presnosť a dráha ako pri šípoch (aiShoot), oštep zraní viac než šíp. */
+const JAV_P = { i: .35, o: .5, v: .6, r: .4 };
+function aiThrow(u, b, bd, dt) {
+    if (u.jv === undefined) u.jv = !u.h && !u.boss && !u.cp && !heavy(u) && !onMount(u) && Math.random() < (JAV_P[u.k] || 0) ? 1 + (Math.random() < .4 ? 1 : 0) : 0;
+    if (!(u.jv > 0) || u.as || u.wu > 0 || u.c > 0 || bd < 55 || bd > 150 || (SGB && u.t === (SGB.att ?? 0))) { u.jaim = 0; return false; }
+    if (!(u.jaim > 0)) { u.jaim = 26 + Math.random() * 14; u.jt = b; return true; }
+    u.f = dirTo(u, b); u.jaim -= dt; if (u.jaim > 0) return true;
+    u.jaim = 0; u.jv--; u.c = 90; aiShoot(u, u.jt && u.jt.hp > 0 ? u.jt : b, 6.5, { d: 7, jav: 1, l: 300 });
+    return true;
+}
+/** Náraz jazdy AI (ako horseBump hrdinu): jazdec v rýchlom pohybe zrazí pešiaka v ceste; kopijník v šíku koňa zastaví. */
+function aiTrample(u) {
+    if (!onMount(u) || u.h || u.boss || u.rout || u.hp <= 0 || u.stun > 0) return;
+    const sp = Math.hypot(u.vx3 || 0, u.vy3 || 0), top = Math.max(.5, u.bs || u.sp); if (sp < top * .45) return;
+    const mv = Math.atan2(u.vy3, u.vx3), now = (U[0] && U[0].tt) || 0;
+    for (const v of U) {
+        if (v.t === u.t || v.hp <= 0 || v.fled || v.boss || heavy(v) || mounted(v) || (v.bmpT || 0) > now) continue;
+        const d = Math.hypot(v.x - u.x, v.y - u.y); if (d > (u.r || 8) + (v.r || 6) + 3 || angD(mv, dirTo(u, v)) > .7) continue;
+        v.bmpT = now + 40;
+        if (braced(v, u)) { hit(u, v.d * 2, v); u.stun = 35; u.rear = 45; return; }
+        const k = Math.min(1.3, sp / top);
+        hitZ(v, 3 + 8 * k, u, { zone: 'torso', type: 'b', noWp: 1 });
+        if (v.hp > 0) { v.x += Math.cos(mv) * 9; v.y += Math.sin(mv) * 9; v.stun = Math.max(v.stun || 0, 24); v.wu = 0; v.as = null; }
+        return;
+    }
+}
 function aiBow(u, b, sp, dt = 1) {
     if (!(u.aim > 0)) { u.aim = u.aim0 = 30 + Math.random() * 20; u.at = b; return; }
     u.aim -= dt; if (u.aim > 0) return;

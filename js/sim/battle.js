@@ -546,7 +546,7 @@ function updBattle(dt) {
                 cmbHero(u, dt, mv);   // mierenie, kryt, sek, bod, luk, pokrik, nápor (js/sim/combat.js)
             }
             else {
-                if (u.ride > 0) { u.ride -= dt; u.f = u.hd = u.rideA; u.x += Math.cos(u.rideA) * u.sp * dt; u.y += Math.sin(u.rideA) * u.sp * dt; continue; }   // jazda po nápore prejde cez nepriateľa a otočí sa (ako vo Warbande)
+                if (u.ride > 0) { u.ride -= dt; u.f = u.hd = u.rideA; u.x += Math.cos(u.rideA) * u.sp * dt; u.y += Math.sin(u.rideA) * u.sp * dt; aiTrample(u); continue; }   // jazda po nápore prejde cez nepriateľa a otočí sa (ako vo Warbande)
                 let b = null, bd = 1e9;
                 if (U.length > 150 && u.tg && u.tg.hp > 0 && (u.tgT -= dt) > 0) { b = u.tg; bd = Math.hypot(b.x - u.x, b.y - u.y); }   // veľká bitka: najbližší nepriateľ sa hľadá len občas
                 else {
@@ -597,13 +597,14 @@ function updBattle(dt) {
                         }
                         if (u.c <= 0 && bd < WX.r) aiBow(u, b, 7); else u.aim = 0;
                     }
+                    else if (aiThrow(u, b, bd, dt)) { }   // hod oštepu pri pochode na súpera (js/sim/warband.js)
                     else if (aiMelee(u, b, bd, dt)) { }   // nápriah a úder, nápor jazdy (js/sim/combat.js)
                     else if (bd > aiStop(u)) {
                         u.x += (b.x - u.x) / bd * u.sp * dt;
                         u.y += (b.y - u.y) / bd * u.sp * dt;
                     }
                     else aiSpacing(u, b, bd, dt);   // odstup kopijníkov a úkroky zručných vojakov (js/sim/warband.js)
-                    if (onMount(u)) horseAI(u, hx0, hy0, dt);   // kôň ide dopredu a zatáča oblúkom
+                    if (onMount(u)) { horseAI(u, hx0, hy0, dt); aiTrample(u); }   // kôň ide dopredu a zatáča oblúkom
                 }
             }
         }

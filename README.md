@@ -426,6 +426,13 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
 
+## Výzbroj a detaily (verzia 112)
+
+- **Vrhacie oštepy vojakov AI** (`aiThrow`, `JAV_P` v `js/sim/warband.js`): pešiak má s pravdepodobnosťou podľa druhu (ork 50 %, veterán 60 %, Rohirim 40 %, pešiak 35 %) 1 – 2 oštepy. Pri pochode na súpera ich hodí zo vzdialenosti 55 – 150, kým nie je v boji (krátke zamierenie, potom hod; presnosť a dráha ako pri šípoch, zranenie 7). Padnutý oštep ostáva na zemi.
+- **Náraz jazdy AI** (`aiTrample`): jazdec v rýchlom pohybe (aspoň 45 % najvyššej rýchlosti), aj počas preletu po nápore, zrazí pešiaka v ceste – tupé zranenie podľa rýchlosti, pešiak sa zapotáca a odletí; kopijník v šíku koňa zastaví (jazdec sa zapotáca a schytá zranenie). Každý pešiak môže byť zrazený najviac raz za 40 snímok.
+- Test: pešiak hodí oštep a ubudne mu, jazdec zrazí pešiaka.
+- Nie je zatiaľ: štyri zbraňové sloty hrdinu, hod zbraní hrdinom pri chôdzi, ladenie krytov (parry), animácia hodu pre AI (stojí a hodí).
+
 ## Terén a prekážky (verzia 111)
 
 - **Prekážky** (`obsSet`, `obsAdd`, `obsUnits` v `js/sim/field.js`): kmene stromov a balvany [x, y, polomer, výška] v mriežke 40 jednotiek. Vojaci a hrdina sa do nich nedostanú, vytlačia sa na okraj a kĺžu popri nich. Miesta preberá simulácia z 3D scény (`js/engine/b3d.js`), takže sedia na viditeľné stromy a skaly; bez 3D sa vygenerujú z lesných zhlukov.
