@@ -61,3 +61,22 @@ function tacMove(u, b, bd, dt) {
     }
     return false;
 }
+/** Rozkazy hráča z klávesnice (ako vo Warbande): vpred / vzad o 10 krokov (120 jednotiek k nepriateľovi alebo od neho) pre vybranú skupinu,
+ *  palba na povel / držať palbu pre lukostrelcov. Vpred a vzad nastavia skupine rozkaz Držať na nových miestach (každý vojak o 120 ďalej). */
+const PACES10 = 120;
+function tacOrder(act) {
+    if (!U || mode !== 'battle') return;
+    if (act === 'o_hf') { CMB.hf = !CMB.hf; TS = { s: CMB.hf ? 'Lukostrelci: držte palbu!' : 'Lukostrelci: palba na povel – strieľajte!', l: 120 }; return; }
+    const gs = CMB.sel === 'all' ? ['p', 'l', 'j'] : [CMB.sel], foes = U.filter(u => u.t && u.hp > 0 && !u.fled);
+    if (!foes.length) return;
+    const ec = { x: foes.reduce((s, u) => s + u.x, 0) / foes.length, y: foes.reduce((s, u) => s + u.y, 0) / foes.length }, k = act === 'o_adv' ? 1 : -1;
+    let n = 0;
+    for (const u of U) {
+        if (u.t || u.ally || u.h || u.hp <= 0 || u.rout || !gs.includes(grpOf(u))) continue;
+        const a = dirTo(u, ec);
+        u.hx = Math.max(30, Math.min(BW - 30, u.x + Math.cos(a) * PACES10 * k)); u.hy = Math.max(40, Math.min(BH - 30, u.y + Math.sin(a) * PACES10 * k)); n++;
+    }
+    gs.forEach(g => { CMB.og[g] = 'h'; if (CMB.at) delete CMB.at[g]; });
+    ORD = 'h'; odSync();
+    TS = { s: GRP_N[CMB.sel] + ': ' + (k > 0 ? 'vpred o 10 krokov' : 'vzad o 10 krokov') + (n ? '' : ' (nikto)') + '!', l: 100 };
+}

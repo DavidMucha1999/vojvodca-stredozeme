@@ -26,8 +26,8 @@ const fx3 = o => { if (FX3.length < 60) FX3.push(o); };
 const CMB = { km: 0, blk: 0, blkT: 99, gb: 0, st: 100, shp: 0, shMax: 0, run: 0, lastA: null, chg: 0, charging: 0, ammo: 0, ammo0: 0, bowC: 0, cry: 0, swing: null,
     sel: 'all', og: { p: 'a', l: 'a', j: 'a' }, M: [60, 60], M0: [60, 60], n0: [1, 1], endT: 0, noRout: 0, lmb: 0, rmb: 0, said: {} };
 /** Klávesy akcií (dajú sa zmeniť v Nastaveniach → Ovládanie; OPT.keys) a stav ovládača (GP, js/sim/combat.js pollPad). */
-const KEYS_DEF = { atk: ' ', thrust: 'e', block: 'Shift', shoot: 'q', cry: 'v', wall: 'b', fm: 'x', kick: 'y', cam: 'Tab', o_a: 't', o_h: 'h', o_f: 'f', o_l: 'g', o_r: 'r' };
-const KEY_N = { atk: 'Sek (útok)', thrust: 'Bod', block: 'Kryt', shoot: 'Výstrel / hod', cry: 'Bojový pokrik', wall: 'Na hradbách: rebrík, olej, kameň', fm: 'Útvar (riadky, štítový val, voľný)', kick: 'Kopnutie', cam: 'Kamera: prvá / tretia osoba (3D)', o_a: 'Rozkaz Útok', o_h: 'Rozkaz Držať', o_f: 'Rozkaz Za mnou', o_l: 'Rozkaz Šík', o_r: 'Rozkaz Ústup' };
+const KEYS_DEF = { atk: ' ', thrust: 'e', block: 'Shift', shoot: 'q', cry: 'v', wall: 'b', fm: 'x', kick: 'y', cam: 'Tab', o_a: 't', o_h: 'h', o_f: 'f', o_l: 'g', o_r: 'r', o_adv: 'c', o_bk: 'z', o_hf: 'j' };
+const KEY_N = { atk: 'Sek (útok)', thrust: 'Bod', block: 'Kryt', shoot: 'Výstrel / hod', cry: 'Bojový pokrik', wall: 'Na hradbách: rebrík, olej, kameň', fm: 'Útvar (riadky, štítový val, voľný)', kick: 'Kopnutie', cam: 'Kamera: prvá / tretia osoba (3D)', o_a: 'Rozkaz Útok', o_h: 'Rozkaz Držať', o_f: 'Rozkaz Za mnou', o_l: 'Rozkaz Šík', o_r: 'Rozkaz Ústup', o_adv: 'Rozkaz Vpred (10 krokov)', o_bk: 'Rozkaz Vzad (10 krokov)', o_hf: 'Lukostrelci: palba na povel / držať palbu' };
 const KB = () => Object.assign({}, KEYS_DEF, (typeof OPT !== 'undefined' && OPT.keys) || {});
 let GP = null;
 const kd = a => !!keys[KB()[a]] || !!(GP && GP[a]);
@@ -78,7 +78,7 @@ const cmbSay = (id, s, l = 180) => { if (CMB.said[id]) return; CMB.said[id] = 1;
 /** Začiatok bitky: morálka podľa síl, veliteľ nepriateľa, výdrž, štít a šípy hrdinu. */
 function cmbStart(en) {
     const C = CMB;
-    Object.assign(C, { lanceN: 0, lanceBr: 0, blk: 0, blkT: 99, gb: 0, st: 100, run: 0, lastA: null, chg: 0, charging: 0, bowC: 0, cry: 0, swing: null, rd: null, draw: 0, aim: null, couch: 0, wpn: 'm', msgs: [], kick: 0, kickT: 0, rear: 0, mvA: null, mvS: 0, aim3: null, fm: { p: 'line', l: 'line', j: 'line' }, at: {}, place: null, prev: null, mkT: 0, hist: [], bd: 't', mdx: 0, mdy: 0, px: null, py: null, vx: 0, vy: 0, sel: 'all', endT: 0, lmb: 0, rmb: 0, said: {}, noRout: en && en.ar ? 1 : 0 });
+    Object.assign(C, { hf: false, lanceN: 0, lanceBr: 0, blk: 0, blkT: 99, gb: 0, st: 100, run: 0, lastA: null, chg: 0, charging: 0, bowC: 0, cry: 0, swing: null, rd: null, draw: 0, aim: null, couch: 0, wpn: 'm', msgs: [], kick: 0, kickT: 0, rear: 0, mvA: null, mvS: 0, aim3: null, fm: { p: 'line', l: 'line', j: 'line' }, at: {}, place: null, prev: null, mkT: 0, hist: [], bd: 't', mdx: 0, mdy: 0, px: null, py: null, vx: 0, vy: 0, sel: 'all', endT: 0, lmb: 0, rmb: 0, said: {}, noRout: en && en.ar ? 1 : 0 });
     const mine = U.filter(u => !u.t), foe = U.filter(u => u.t), pw = s => s.reduce((a, u) => a + u.mh * (u.d || 5), 0) + 1, r = pw(mine) / pw(foe);
     const cl = v => Math.max(-18, Math.min(18, v));
     const m0 = 62 + cl((r - 1) * 12) + Math.min(12, G.lv || 1) + (G.king ? 5 : 0) + Math.min(6, (G.ren || 0) / 3) + ((G.pm ?? 60) - 50) * .3 + (perk('vodca') ? 8 : 0) + (hasRole('velitel') ? 6 : 0);   // morálka družiny, Charizma, spoločník veliteľ
@@ -593,6 +593,7 @@ if (typeof addEventListener === 'function') {
         if (e.repeat) return;
         if (k >= '1' && k <= '4' && typeof selGroup === 'function') selGroup(['all', 'p', 'l', 'j'][+k - 1]);
         const act = Object.entries(KB()).find(([a, key]) => key === k && /^o_/.test(a));   // rozkazy podľa nastavených kláves
+        if (act && (act[0] === 'o_adv' || act[0] === 'o_bk' || act[0] === 'o_hf')) { tacOrder(act[0]); return; }   // posun o 10 krokov, palba na povel (js/sim/tactics.js)
         if (act && typeof setOrd === 'function') { const ok = { o_a: 'a', o_h: 'h', o_f: 'f', o_l: 'l', o_r: 'r' }[act[0]]; setOrd(ok); if (CMB.at) (CMB.sel === 'all' ? ['p', 'l', 'j'] : [CMB.sel]).forEach(g => { delete CMB.at[g]; }); if (ok === 'h' || ok === 'l') CMB.place = { k: ok, key: k, t0: performance.now(), gs: CMB.sel === 'all' ? ['p', 'l', 'j'] : [CMB.sel] }; }
         if (KB().fm === k) cycleFormation();
     });

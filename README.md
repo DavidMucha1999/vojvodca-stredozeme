@@ -26,7 +26,7 @@ Netreba nič inštalovať. Hra je určená pre počítač s klávesnicou a myšo
 
 - **Mapa:** klikni, kam má družina ísť; klikni na armádu a začne bitka, na hrad a vojdeš doň. Q / E alebo pravé tlačidlo myši otáča kameru. V hrade nájdeš trh, kováča, krčmu, rozhovory a úlohy; **Družina** a **Schopnosti** sú v menu. Jedlo treba dopĺňať (bez neho klesá morálka a vojaci zbehnú).
 - **Bitka (3D):** WASD pohyb, myš mieri a určuje smer úderu, **medzerník** udrie, **Shift** kryje (včas a v správnom smere = dokonalý kryt), **Q** strieľa, **Y** kopne, koliesko mení zbraň, **V** bojový pokrik (vráti utekajúcich), **Tab** mení pohľad.
-- **Rozkazy vojsku:** **1 – 4** vyberú skupinu (všetci, pechota, lukostrelci, jazda); **T** útok, **H** držať, **F** za mnou, **G** šík, **R** ústup, **X** zmení útvar (rady, štítový val, voľný).
+- **Rozkazy vojsku:** **1 – 4** vyberú skupinu (všetci, pechota, lukostrelci, jazda); **T** útok, **H** držať, **F** za mnou, **G** šík, **R** ústup, **C** / **Z** o 10 krokov vpred / vzad, **J** palba na povel alebo držať palbu, **X** zmení útvar (rady, štítový val, voľný).
 - **Poľná bitka** je veľká (2200×1500), nepriateľ postupuje v línii, lukostrelci stoja za pešiakmi a jazda obchádza krídlo. Stromy a balvany kryjú pred šípmi. Keď padne hrdina, bitka pokračuje a kamera sleduje tvojich mužov.
 - Klávesy sa dajú zmeniť v Nastaveniach, kde nájdeš aj veľkosť bitky, kvalitu grafiky a počítadlo FPS.
 
@@ -441,6 +441,14 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Pohyb v zblíženom boji** (`aiSpacing`): vojak po údere s pravdepodobnosťou 35 % + zručnosť krok späť, pri dobíjaní krúži okolo súpera po oblúku (zručnejší rýchlejšie, smer sa mení každých 70 – 160 snímok) a drží odstup. Slabý vojak už nestojí, len krúži pomalšie.
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
+
+## Rozkazy ako vo Warbande (verzia 114)
+
+- **Vpred / Vzad o 10 krokov** (`tacOrder` v `js/sim/tactics.js`, klávesy **C** a **Z**): vybraná skupina dostane rozkaz Držať a každý vojak nové miesto 120 jednotiek k nepriateľovi (alebo od neho).
+- **Palba na povel / držať palbu** (kláves **J**, `CMB.hf`): lukostrelci tvojej strany prestanú strieľať a opäť začnú. `aiBow` rešpektuje rozkaz, hrdinu sa netýka.
+- Nové klávesy sú v Nastaveniach medzi ovládaním a dajú sa zmeniť; bitka ich resetuje na predvolené (`hf` sa vypína v `cmbStart`).
+- Test: posun vpred a vzad, palba na povel.
+- Nie je zatiaľ: zosadnutie jazdy (3D model by potreboval živé zosadnutie jazdca), tlačidlá týchto rozkazov v dolnej lište.
 
 ## Počítadlo FPS na mape aj v bitke (verzia 113)
 

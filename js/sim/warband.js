@@ -227,6 +227,7 @@ function aiTrample(u) {
     }
 }
 function aiBow(u, b, sp, dt = 1) {
+    if (!u.t && !u.ally && CMB.hf) { u.aim = 0; return; }   // rozkaz „držať palbu“ (js/sim/tactics.js)
     if (!(u.aim > 0)) { u.aim = u.aim0 = 30 + Math.random() * 20; u.at = b; return; }
     u.aim -= dt; if (u.aim > 0) return;
     u.aim = 0; u.c = 80 + Math.random() * 40; aiShoot(u, u.at && u.at.hp > 0 ? u.at : b, sp);
