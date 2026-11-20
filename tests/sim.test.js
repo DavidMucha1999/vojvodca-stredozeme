@@ -347,7 +347,8 @@ try {
         var R0 = Math.random; Math.random = () => .999;
         CMB.mdx = 30; keys[" "] = true; tick(1); var rdOk = CMB.rd && CMB.rd.d === "r"; tick(3); keys[" "] = false; tick(40); var hp1 = e.hp, quick = 9999 - hp1;
         h.c = 0; CMB.st = 100; CMB.mdx = 30; keys[" "] = true; tick(55); keys[" "] = false; tick(30); var strong = hp1 - e.hp;
-        h.c = 0; CMB.st = 100; keys[" "] = true; tick(5); CMB.blk = 0; keys.Shift = true; tick(1); keys.Shift = false; keys[" "] = false; var feint = !CMB.rd; tick(2);`);
+        h.c = 0; CMB.st = 100; keys[" "] = true; tick(5); CMB.blk = 0; keys.Shift = true; tick(1); keys.Shift = false; keys[" "] = false; var feint = !CMB.rd; tick(2);
+        CMB.rd = null; CMB.blk = 0; h.c = 0; CMB.st = 100; keys.Shift = false; CMB.mdx = 30; CMB.mdy = 0; keys[" "] = true; tick(1); var dr1 = CMB.rd && CMB.rd.d; CMB.mdx = -30; tick(2); var dr2 = CMB.rd && CMB.rd.d, drN = CMB.rd ? CMB.rd.dh.length : 0; keys[" "] = false; CMB.rd = null; CMB.mdx = 0; var dirChg = dr1 === "r" && dr2 === "l" && drN === 2;`);
     check('Smer úderu z pohybu myši, držaný nápriah je silnejší, kryt počas nápriahu je klam', run('dL === "l" && dU === "u" && dT === "t" && rdOk && quick > 0 && strong > quick * 1.3 && feint'), run('[dL, dU, dT, rdOk, quick, strong, feint].join(" ")'));
     // boj ako Warband: čepeľ v pohybe, štatistiky zbraní, brnenie odráta pevnú hodnotu, bez výdrže
     run(`h.c = 0; e.hp = e.mh = 9999; e.x = h.x + 18; e.y = h.y; CMB.mdx = 30; CMB.sw = null; CMB.rd = { d: "r", t: 99, key: "atk", ready: 9, rel: 1 }; cmbHero(h, 1, null); var swAct = !!CMB.sw, hpA = e.hp; tick(1); var late = e.hp === hpA ? 0 : 1; tick(24); var swHit = e.hp < hpA && !CMB.sw;
@@ -369,11 +370,14 @@ try {
         Math.random = S0; var spdOk = speedK(2, false) > speedK(0, false) && speedK(0, false) > speedK(-2, false) && speedK(2, true) > speedK(2, false);
         sh.x = 300; sa.x = 314; sa.y = 300; sa.f = Math.PI; sh.f = 0; sa.stun = 0; sa.wu = 0; sa.as = null; sa.hp = 9999; CMB.hist = []; CMB.sw = { hit: [] }; sh.c = 0;
         Math.random = () => 0; var blocked = meleeHit(sh, sa, 10, "swing", { d: "l", pow: 1, vis: 2 }) === false; Math.random = S0; var bounced = blocked && CMB.sw.hit.length >= 99 && sh.c >= 8; CMB.sw = null;
+        Math.random = () => .2; CMB.hist = []; CMB.sw = { hit: [] }; sa.hp = 9999; var fA = meleeHit(sh, sa, 10, "swing", { d: "l", pow: 1, vis: 30, dh: [[0, "l"]] }) === false;
+        CMB.hist = []; CMB.sw = { hit: [] }; var fB = meleeHit(sh, sa, 10, "swing", { d: "l", pow: 1, vis: 30, dh: [[0, "r"], [28, "l"]] }) === false; Math.random = S0; CMB.sw = null; var dirFeint = fA && !fB;
         var ia = shOf("a").findIndex(w => /plát/i.test(w.n)), im = shOf("a").findIndex(w => /Mithril/.test(w.n)), s0 = [G.eq.a, G.eq.s, G.eq.h, G.eq.m, G.s.ob];
         G.eq.m = 0; G.s.ob = 0; G.eq.a = 0; G.eq.s = 0; G.eq.h = 0; var l0 = heroLoad();
         G.eq.a = ia; G.eq.s = shOf("s").length - 1; G.eq.h = shOf("h").length - 1; var lH = heroLoad(), spH = loadSpeed(), swH = loadSwing();
         G.eq.a = im; G.eq.s = 0; G.eq.h = 0; var lM = heroLoad(); G.eq.a = ia; G.s.ob = 4; var lOb = heroLoad();
         G.eq.a = s0[0]; G.eq.s = s0[1]; G.eq.h = s0[2]; G.eq.m = s0[3]; G.s.ob = s0[4];`);
+    check('Smer úderu sa dá zmeniť počas nápriahu; klam smerom zmýli vojaka, ktorý kryl starý smer', run('dirChg && dirFeint'), run('[dr1, dr2, drN, fA, fB].join()'));
     check('Duel ako vo Warbande: úder AI zasiahne až čepeľou v pohybe a dá sa mu uskočiť; rýchlosť oboch strán; úder zachytený krytom odskočí; ťažká výbava spomalí (mithril nie)', run('atRel && landed && dodged && spdOk && bounced && l0 === 0 && lH > .5 && spH < .9 && swH > 1.07 && lM < lH * .5 && lOb < lH'), run('[atRel, landed, dodged, spdOk, bounced, l0, lH, spH, swH, lM, lOb].join(" ")'));
     // etapa 2 (bitka ako vo Warbande): zálohy a posily vo vlnách, bitka po páde hrdinu, zásahy vlastných, počty strán pre morálku
     run(closeMenus + '; mode = "map"; ov.classList.add("hide");');

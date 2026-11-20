@@ -442,6 +442,14 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
 
+## Klam smerom v súboji (verzia 120)
+
+Smerový boj (4 smery úderu, kryt do smeru myšou, klam krytom, zručnosť vojakov) už existoval; táto verzia ho dopĺňa o to, čo robí Warband Warbandom:
+
+- **Smer sa určuje do uvoľnenia úderu** (`heroDirectional` v `js/sim/combat.js`): počas držaného nápriahu môžeš pohybom myši smer zmeniť (nie pri kopiji). História smeru sa ukladá (`R.dh`).
+- **Vojak číta smer s reakčným oneskorením** (`meleeHit`): kryje smer, ktorý videl pred svojím reakčným časom (zručnejší reaguje rýchlejšie). Ak si smer v poslednej chvíli zmenil, jeho šanca na kryt klesne približne na štvrtinu – „Klam smerom! Súper kryl zlý smer.“
+- Test: zmena smeru počas nápriahu a rozdiel medzi krytom bez klamu a s klamom.
+
 ## Zvláštne vlny noci (verzia 119)
 
 - **Dve zvláštne vlny** pri obrane hradu (`HOLD_WAVE`, `holdWave` v `js/sim/tactics.js`): pri 30 % a 65 % noci prídu čerstvé jednotky zľava. Helmov žľab: výbuch pod múrom (8 Uruk-haiov, brána −45) a vlna rebríkov (10); Minas Tirith: Mûmakil a Nazgûl; Edoras: svorky vargov; Erebor: trollovia s baranom (brána −30). Ostatné hrady dostanú obyčajné vlny 8 Uruk-haiov.
