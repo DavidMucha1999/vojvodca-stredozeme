@@ -252,6 +252,7 @@ function startBattle(en, al) {
     cmbStart(en);   // morálka, veliteľ, výdrž, štít a šípy hrdinu (js/sim/combat.js)
 }
 function endBattle(win) {
+    if (G && LB && !LB.ar && !LB.duel) G.tut = 1;   // prvá bitka je za nami, tipy sa už nezobrazujú
     compAfterBattle();
     SGB = null;
     const L = LB;
@@ -610,6 +611,7 @@ function updBattle(dt) {
         }
         obsUnits();   // kmene stromov a balvany (js/sim/field.js)
         sepUnits(dt);   // telesná kolízia: vojaci sa neprekrývajú (js/sim/warband.js)
+        tutTick();   // tipy v prvej bitke (js/sim/tactics.js)
         tacUpdate(dt);   // taktika nepriateľského veliteľa (js/sim/tactics.js)
         cmbMorale(dt);
         reinforce(dt);   // posily vo vlnách zo záloh

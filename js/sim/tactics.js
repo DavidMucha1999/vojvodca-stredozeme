@@ -80,3 +80,10 @@ function tacOrder(act) {
     ORD = 'h'; odSync();
     TS = { s: GRP_N[CMB.sel] + ': ' + (k > 0 ? 'vpred o 10 krokov' : 'vzad o 10 krokov') + (n ? '' : ' (nikto)') + '!', l: 100 };
 }
+/** Tipy počas prvej bitky (G.tut): postupne ukážu pohyb, útok, kryt a rozkazy; po prvej bitke sa už nezobrazujú. */
+const TUT = [[90, 'Pohyb: W A S D. Myš mieri a určuje smer úderu.'], [520, 'Medzerník udrie, Shift kryje – kryt do smeru úderu je dokonalý.'], [1000, 'Rozkazy vojsku: 1 – 4 vyberú skupinu, T útok, H držať, F za mnou, G šík.'], [1700, 'C / Z posunú skupinu o 10 krokov vpred / vzad, J drží palbu lukostrelcov.'], [2500, 'Keď tvoji muži utekajú, bojový pokrik (V) ich vráti.']];
+function tutTick() {
+    if (!G || G.tut || !U || !U[0] || LB && (LB.ar || LB.duel)) return;
+    const tt = U[0].tt || 0, C = CMB;
+    for (let i = 0; i < TUT.length; i++) if (tt >= TUT[i][0] && !C['tut' + i]) { C['tut' + i] = 1; TS = { s: TUT[i][1], l: 300 }; break; }
+}

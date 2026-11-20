@@ -442,6 +442,13 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
 
+## Úvod a prvé minúty hry (verzia 115)
+
+- **Cieľ na mape** (`goalText` v `js/sim/story.js`, riadok v `UIScene.drawOverlay`): hore uprostred vždy stojí aktuálny cieľ. V úvodných krokoch aj so vzdialenosťou a svetovou stranou („poraž lupičov z Kraja – 41 míľ na severovýchod“, potom Bree), neskôr prvá veta aktuálnej kapitoly príbehu.
+- **Tlačidlá nových rozkazov** v lište bitky (tretí rad nad skupinami): Vpred, Vzad (10 krokov) a Držať palbu / Palba, s aktuálnymi klávesmi.
+- **Tipy v prvej bitke** (`tutTick`, `TUT` v `js/sim/tactics.js`): postupne pohyb a mierenie, útok a kryt, rozkazy vojsku, posun o 10 krokov a bojový pokrik. Po prvej bitke (okrem arény a súbojov) sa už nezobrazujú (`G.tut`).
+- Nie je zatiaľ: ukazovateľ cieľa šípkou na okraji obrazovky, vlastný interaktívny tutoriál.
+
 ## Rozkazy ako vo Warbande (verzia 114)
 
 - **Vpred / Vzad o 10 krokov** (`tacOrder` v `js/sim/tactics.js`, klávesy **C** a **Z**): vybraná skupina dostane rozkaz Držať a každý vojak nové miesto 120 jednotiek k nepriateľovi (alebo od neho).

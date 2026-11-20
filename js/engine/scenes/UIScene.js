@@ -72,6 +72,7 @@ class UIScene extends Phaser.Scene {
         if (TS && TS.l > 0 && G) { TS.l -= dt; this.toast.setVisible(!this.dlg).setText(TS.s).setAlpha(Math.min(1, TS.l / 40)).setY(scene === 'battle' ? (typeof bossAlive === 'function' && bossAlive() ? 104 : 84) : 70); }
         else this.toast.setVisible(false);
         this.pause.setVisible(scene === 'map' && mode === 'map' && !!PAUSE && !this.dlg && !this.menu && !this.big);
+        { const gt = scene === 'map' && mode === 'map' && G && !this.dlg && !this.menu && !this.big ? goalText() : ''; if (!this.goal) this.goal = this.add.text(W / 2, 40, '', txtStyle(11, '#ffe9a8', { backgroundColor: 'rgba(18,14,12,.72)', padding: { x: 10, y: 3 } })).setOrigin(.5, 0).setDepth(6); this.goal.setVisible(!!gt); if (gt && this.goal.text !== gt) this.goal.setText(gt); }   // cieľ na mape (js/sim/story.js)
         if (scene === 'map') {
             const se = G ? season() : 0;
             if (se === 2) g.fillStyle(0xc86e1e, .1).fillRect(0, 0, W, H);
@@ -413,8 +414,9 @@ class UIScene extends Phaser.Scene {
         }
         if (vis(od)) {   // dolný rad rozkazy, nad ním skupiny vojska
             const all = [...od.children], rowOf = (bs, w, y, sz) => { const x0 = W / 2 - (bs.length * (w + 4)) / 2; bs.forEach((b, i) => { const ic = Icons.forButton(b.textContent.replace(/^\S+ /, '')); this.barLayer.add(this.button(x0 + i * (w + 4), y, w, b === bs[0] && sz ? BH - 4 : BH - (sz ? 4 : 0), b.textContent, () => b.click(), { size: sz || 11, sel: +(b.style.opacity || 1) === 1, icon: ic ? Icons.tex(this, ic) : null })); }); };
-            rowOf(all.filter(b => !b.dataset.g), 92, H - BH - 4);
+            rowOf(all.filter(b => !b.dataset.g && !b.dataset.x), 92, H - BH - 4);
             rowOf(all.filter(b => b.dataset.g), 96, H - 2 * BH - 6, 10);
+            rowOf(all.filter(b => b.dataset.x), 92, H - 3 * BH - 8, 10);   // posun o 10 krokov, palba
         }
     }
 

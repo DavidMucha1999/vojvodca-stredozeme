@@ -6,6 +6,15 @@ const INTRO_Q = [
     { t: 'Pri ceste z Kraja číha tlupa lupičov. Poraž ju, kým dorazí k dedinám.', k: 'k', a: 9, r: 40 },
     { t: 'Cesta je voľná. Zastav sa v Bree a povedz, že lupiči sú preč.', k: 'v', a: 'Bree', r: 30 }
 ];
+const COMPASS = ['východ', 'juhovýchod', 'juh', 'juhozápad', 'západ', 'severozápad', 'sever', 'severovýchod'];
+/** Aktuálny cieľ pre hráča (riadok na mape): úvodné kroky ukážu vzdialenosť a svetovú stranu cieľa, ďalej prvá veta kapitoly príbehu. */
+function goalText() {
+    const at = o => { const dx = o.x - G.x, dy = o.y - G.y, d = Math.round(Math.hypot(dx, dy) / K), a = Math.round(Math.atan2(dy, dx) / (Math.PI / 4) + 8) % 8; return d < 12 ? ' – už je blízko' : ' – ' + d + ' míľ na ' + COMPASS[a]; };
+    if (G.intro === 0) { const b = E.find(e => e.kind === 'bandit' && !e.dead && e.nm === 'Lupiči z Kraja'); return 'Cieľ: poraž lupičov z Kraja' + (b ? at(b) : ''); }
+    if (G.intro === 1) { const t = TW.find(x => x.n === 'Bree'); return 'Cieľ: zastav sa v Bree' + (t ? at(t) : ''); }
+    const q = QS[G.q]; if (!q || !q.t) return '';
+    const s = q.t.split(/(?<=[.!?])\s/)[0]; return 'Cieľ: ' + (s.length > 78 ? s.slice(0, 75) + '…' : s);
+}
 function qShow() {
     if (G && (G.intro === 0 || G.intro === 1)) {
         mode = 'town';
