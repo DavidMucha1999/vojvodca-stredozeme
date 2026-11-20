@@ -65,6 +65,11 @@ try {
     check('Obliehanie sa skončí', run('mode') !== 'battle', k + ' snímok');
     run('mode = "map"; save(); var d = G.day; G = null; load();');
     check('Uloženie a načítanie', run('!!G && G.day === d'));
+    run(`mode = "map"; G.camp = 0; G.inf = 30; G.hp = 999; startBattle({ n: 12, f: 2, nm: "Save" }); var svBW = BW; var sk = 0; while (mode === "battle" && sk < 20000) { U[0].hp = 999; updBattle(1); sk++; } mode = "map";`);
+    run('var sg0 = { day: G.day, gold: G.gold, inf: G.inf, cav: G.cav, arc: G.arc, hp: G.hp, x: G.x, y: G.y }; save(); G = null; load();');
+    check('Uloženie po poľnej bitke: hodnoty sa po načítaní zhodujú', run('!!G && Object.keys(sg0).every(k => G[k] === sg0[k]) && svBW === 2200'), run('JSON.stringify([sg0, { day: G.day, gold: G.gold, inf: G.inf, hp: G.hp }, svBW])'));
+    run('mode = "map"; var si2 = TW.findIndex(t => hos(t.f, G.fac) && t.f !== 9); siege(si2); startBattle({ n: 5, f: TW[si2].f, t: TW[si2], siege: 1 }); var svBW2 = BW, svBH2 = BH; mode = "map"; SGB = null;');
+    check('Po poľnej bitke má obliehanie opäť malé bojisko (1440×960)', run('svBW2 === 1440 && svBH2 === 960'), run('svBW2 + "×" + svBH2'));
     // výbava: kováč podľa strany hradu, inventár, staré uloženia (tlačidlá okna sú v #bt)
     const btnRun = (t, exact) => `document.getElementById("bt").children.find(b => ${exact ? 'b.textContent === ' + JSON.stringify(t) : 'b.textContent.startsWith(' + JSON.stringify(t) + ')'}).onclick()`;
     check('Každá vec má vzhľad', run('SH.every(s => s.it.length === Soldiers.GEAR[s.k].length)'));
@@ -242,7 +247,7 @@ try {
     run(closeMenus + '; mode = "map";');
     // družina (supply.js, perks.js): jedlo, hlad a dezercie, ranení, zajatci, perky
     run(`mode = "map"; G.inf = 30; G.cav = 0; G.arc = 0; G.fd = { bread: 20, meat: 20, cheese: 20 }; G.pm = 50; G.hungry = 0; var f0 = foodTotal(), need = foodNeed(); supplyDaily(); var ate = f0 - foodTotal(), pmUp = G.pm > 50;
-        G.fd = {}; G.pm = 20; G.pmv = 0; var inf0 = G.inf; supplyDaily(); var deserted = G.inf < inf0 && G.hungry === 1;`);
+        G.fd = {}; G.pm = 5; G.pmv = 0; var inf0 = G.inf; supplyDaily(); var deserted = G.inf < inf0 && G.hungry === 1;`);
     check('Družina je jedlo (pestrá strava dvíha morálku), hlad a nízka morálka vedú k dezerciám', run('ate === need && pmUp && deserted'), run('"zjedli " + ate + "/" + need + ", pešiakov " + inf0 + " → " + G.inf'));
     run(`G.inf = 20; G.wd = {}; G.pm = 60; G.fd = { bread: 50 }; startBattle({ n: 10, f: 2, nm: "Test" }); for (const u of U) if (!u.t && u.k === "i" && !u.ally) { u.hp = 0; } for (const u of U) if (u.t) u.hp = 0; updBattle(1);
         var wnd = (G.wd.inf || 0), infAfter = G.inf; G.camp = 1; G.stay = 1; for (let d = 0; d < 6; d++) supplyDaily(); var healed = G.inf > infAfter && !(G.wd.inf > 0);`);

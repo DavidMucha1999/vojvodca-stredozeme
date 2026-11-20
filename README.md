@@ -14,6 +14,14 @@ Netreba nič inštalovať. Hra je určená pre počítač s klávesnicou a myšo
 - **Bitky v 3D** ako v Mount & Blade: Warband (smerový boj, kôň, lukostrelci, obliehanie hradieb).
 - **Strategická vrstva:** družina a spoločníci, vojská, frakcie, diplomacia, ekonomika hradov, úlohy a príbeh.
 
+## Ako sa hrá (rýchly návod)
+
+- **Mapa:** klikni, kam má družina ísť; klikni na armádu a začne bitka, na hrad a vojdeš doň. Q / E alebo pravé tlačidlo myši otáča kameru. V hrade nájdeš trh, kováča, krčmu, rozhovory a úlohy; **Družina** a **Schopnosti** sú v menu. Jedlo treba dopĺňať (bez neho klesá morálka a vojaci zbehnú).
+- **Bitka (3D):** WASD pohyb, myš mieri a určuje smer úderu, **medzerník** udrie, **Shift** kryje (včas a v správnom smere = dokonalý kryt), **Q** strieľa, **Y** kopne, koliesko mení zbraň, **V** bojový pokrik (vráti utekajúcich), **Tab** mení pohľad.
+- **Rozkazy vojsku:** **1 – 4** vyberú skupinu (všetci, pechota, lukostrelci, jazda); **T** útok, **H** držať, **F** za mnou, **G** šík, **R** ústup, **X** zmení útvar (rady, štítový val, voľný).
+- **Poľná bitka** je veľká (2200×1500), nepriateľ postupuje v línii, lukostrelci stoja za pešiakmi a jazda obchádza krídlo. Stromy a balvany kryjú pred šípmi. Keď padne hrdina, bitka pokračuje a kamera sleduje tvojich mužov.
+- Klávesy sa dajú zmeniť v Nastaveniach, kde nájdeš aj veľkosť bitky, kvalitu grafiky a počítadlo FPS.
+
 ## Technické údaje
 
 - Čistý JavaScript bez zostavovacieho kroku: **Phaser 3** (mapa a rozhranie), **Three.js** (3D bitka a 3D mapa), simulácia hry oddelená od vykresľovania (`js/sim`, testovateľná bez prehliadača: `npm test`).
