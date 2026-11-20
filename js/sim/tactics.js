@@ -87,3 +87,19 @@ function tutTick() {
     const tt = U[0].tt || 0, C = CMB;
     for (let i = 0; i < TUT.length; i++) if (tt >= TUT[i][0] && !C['tut' + i]) { C['tut' + i] = 1; TS = { s: TUT[i][1], l: 300 }; break; }
 }
+/** Cieľ obrany hradu (ako pri Helmovom žľabe): vydržať do úsvitu. Čas v snímkach (60 = sekunda); slávne hrady majú dlhšiu noc, ostatné 7000. */
+const HOLD_T = { 'Helmov žľab': 10000, 'Minas Tirith': 9500, 'Edoras': 8500, 'Erebor': 9000, 'Rivendell': 8000, 'Minas Morgul': 8000 };
+/** Zostávajúce sekundy do úsvitu pri obrane hradu, inak null (zobrazuje ich UIScene). */
+const holdLeft = () => LB && LB.hold && SGB && SGB.att === 1 && U && U[0] ? Math.max(0, Math.ceil((LB.hold - (U[0].tt || 0)) / 60)) : null;
+/** Obrana hradu: správy o postupe noci a za úsvitu stiahnutie nepriateľa (víťazstvo). Vráti true, ak bitka skončila. */
+function holdDawn() {
+    if (!LB || !LB.hold || !SGB || SGB.att !== 1 || mode !== 'battle') return false;
+    const tt = U[0].tt || 0, C = CMB, left = holdLeft(), mm = Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0');
+    if (tt >= 60 && !C.hd0) { C.hd0 = 1; TS = { s: 'Drž hradby do úsvitu – ešte ' + mm + '.', l: 300 }; }
+    else if (tt >= LB.hold * .5 && !C.hd1) { C.hd1 = 1; TS = { s: 'Noc sa prelamuje – vydrž, do úsvitu ešte ' + mm + '.', l: 260 }; }
+    else if (tt >= LB.hold * .85 && !C.hd2) { C.hd2 = 1; TS = { s: 'Na východe sa rozednieva! Ešte chvíľu…', l: 260 }; }
+    if (tt < LB.hold) return false;
+    for (const u of U) if (u.t && u.hp > 0) { u.fled = 1; u.hp = 0; }
+    BRES[1] = []; LB.dawn = 1; endBattle(true);
+    return true;
+}

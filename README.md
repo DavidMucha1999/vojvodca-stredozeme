@@ -442,6 +442,14 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
 
+## Obrana do úsvitu (verzia 118)
+
+- **Cieľ obrany hradu** (`HOLD_T`, `holdDawn`, `holdLeft` v `js/sim/tactics.js`): pri obrane hradu (hráč stojí na hradbách) musíš vydržať do úsvitu. Slávne hrady majú dlhšiu noc: Helmov žľab ~2:50, Minas Tirith ~2:35, Erebor ~2:30, Edoras ~2:20, Rivendell a Minas Morgul ~2:15, ostatné ~1:55 (čas v snímkach, 60 = sekunda). Keď čas vyprší, nepriateľ sa stiahne a bitka je vyhraná, hoci ešte žije.
+- **Časovač** vpravo hore („Do úsvitu: 2:42“) a správy o priebehu noci (na začiatku, v polovici a pred koncom); v tabuľke bitky riadok „Za úsvitu sa nepriateľ stiahol – hrad obstál“.
+- Limit dlhej bitky pri obrane hradu je teraz max(9000, čas úsvitu + 600).
+- Test: obrana nastaví čas, po jeho uplynutí sa bitka vyhrá.
+- Nie je zatiaľ: ďalšie príbehové ciele (zničiť obliehacie veže, doručiť správu, chrániť osobu), jedinečné bitky ako Pelennorské polia.
+
 ## Zima a mor (verzia 117)
 
 - **Zimný pochod** (`winterDaily` v `js/sim/supply.js`, volá `supplyDaily`): v zime mimo osád (ďalej než 18 míľ od hradu alebo dediny) družina mrzne – morálka klesá o 3 a s 25 % šancou (v tábore 10 %) zamrzne jeden muž. Pri hradoch a dedinách sa ukryje. Na mape sa objaví správa.

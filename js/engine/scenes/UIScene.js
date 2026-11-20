@@ -72,6 +72,7 @@ class UIScene extends Phaser.Scene {
         if (TS && TS.l > 0 && G) { TS.l -= dt; this.toast.setVisible(!this.dlg).setText(TS.s).setAlpha(Math.min(1, TS.l / 40)).setY(scene === 'battle' ? (typeof bossAlive === 'function' && bossAlive() ? 104 : 84) : 70); }
         else this.toast.setVisible(false);
         this.pause.setVisible(scene === 'map' && mode === 'map' && !!PAUSE && !this.dlg && !this.menu && !this.big);
+        { const hl = scene === 'battle' && mode === 'battle' && !this.dlg ? holdLeft() : null; if (!this.holdT) this.holdT = this.add.text(W - 12, 62, '', txtStyle(11, '#ffe9a8', { backgroundColor: 'rgba(18,14,12,.72)', padding: { x: 8, y: 3 } })).setOrigin(1, 0).setDepth(6); this.holdT.setVisible(hl != null); if (hl != null) this.holdT.setText('Do úsvitu: ' + Math.floor(hl / 60) + ':' + String(hl % 60).padStart(2, '0')); }   // časovač obrany hradu (js/sim/tactics.js)
         { const gt = scene === 'map' && mode === 'map' && G && !this.dlg && !this.menu && !this.big ? goalText() : ''; if (!this.goal) this.goal = this.add.text(W / 2, 40, '', txtStyle(11, '#ffe9a8', { backgroundColor: 'rgba(18,14,12,.72)', padding: { x: 10, y: 3 } })).setOrigin(.5, 0).setDepth(6); this.goal.setVisible(!!gt); if (gt && this.goal.text !== gt) this.goal.setText(gt); }   // cieľ na mape (js/sim/story.js)
         if (scene === 'map') {
             const se = G ? season() : 0;

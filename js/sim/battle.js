@@ -171,6 +171,7 @@ function battleReport(win) {
     line('Výsledok: ' + (win ? 'víťazstvo' : 'porážka') + ' – ' + (win ? 'tvoja strana' : (LB && LB.nm ? LB.nm : 'nepriateľ')) + ' ovládla bojisko.', '#ffd24a');
     if (G.injMsg) line(G.injMsg, '#ff9a80');
     if (G.lootMsg) line(G.lootMsg, '#9fe08a');
+    if (LB && LB.dawn) line('Za úsvitu sa nepriateľ stiahol – hrad obstál.', '#ffd24a');
     line('Tvoje straty (' + mine.filter(fallen).length + '/' + mine.length + '): ' + tally(0));
     line('Straty nepriateľa (' + their.filter(fallen).length + '/' + their.length + '): ' + tally(1));
     const fl = side => U.filter(u => u.t === side && u.fled).length;
@@ -243,6 +244,7 @@ function startBattle(en, al) {
     else if (en.def != null && TW[en.def] && TW[en.def].sg) {   // obrana hradu: ty a posádka na hradbách, nepriateľ útočí zľava
         const t = TW[en.def], sg = t.sg;
         SGB = { gate: 60 + (t.wl || 0) * 30, mg: 60 + (t.wl || 0) * 30, lad: sg.lad || (!sg.ram && !sg.tow ? 1 : 0), ram: sg.ram, tow: sg.tow, att: 1 };
+        en.hold = HOLD_T[t.n] || 7000;   // cieľ obrany: vydržať do úsvitu (js/sim/tactics.js)
         for (const u of U) u.x = BW - u.x;   // strany sa vymenia: obrancovia vpravo za hradbami
         let wi = 0; for (const u of U) if (!u.t && (u.k === 'a' || u.k === 'e')) { u.x = 1018 + (wi % 2) * 14; u.y = 120 + (wi * 47) % (BH - 240); u.hx = u.x; u.hy = u.y; wi++; }   // lukostrelci na hradby
         U[0].x = 1080; U[0].y = BH / 2; U[0].f = Math.PI;
@@ -622,7 +624,8 @@ function updBattle(dt) {
         if (U[0].hp <= 0 && !CMB.down) heroFell();
         U[0].tt = (U[0].tt || 0) + dt;
         const mineUp = U.some(u => !u.t && u.hp > 0) || (BRES[0].length > 0 && CMB.M[0] >= 15);   // záloha na úteku už nepríde
-        if (U[0].tt > (SGB ? 9000 : 16000)) {
+        if (holdDawn()) { }   // obrana hradu: za úsvitu sa nepriateľ stiahne (js/sim/tactics.js)
+        else if (U[0].tt > (SGB ? Math.max(9000, (LB.hold || 0) + 600) : 16000)) {
             const s = t => U.filter(u => u.t === t && u.hp > 0).reduce((a, u) => a + u.hp, 0);
             endBattle(s(0) >= s(1));   // dlhá bitka: rozhodne zostávajúce zdravie
         }
