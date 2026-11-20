@@ -68,6 +68,15 @@ function blockChance(u) {
     if (!u.t && u.hx != null && fmOf(u) === 'wall' && grpOf(u) === 'p') return Math.min(.8, blockChance0(u) * 1.6 + .15);   // štítový val
     return blockChance0(u);
 }
+/** Súdržnosť línie 0 – 1: pešiak so štítom, vedľa ktorého stoja (do ~26) spolubojovníci s podobným smerom pohľadu, sa kryje štítmi o rameno
+ *  (až 3 susedia = plná línia). Štítový val ju zosilní. Spredu údery slabnú a lepšie sa kryjú, zboku a zozadu ho línia nechráni a pád susedov ju rozbije. */
+function cohesion(u) {
+    if (u.h || u.rout || u.stun > 0 || !(blockChance0(u) > 0)) return 0;
+    let n = 0;
+    for (const v of U) if (v !== u && v.t === u.t && v.hp > 0 && !v.fled && !v.h && !v.rout && Math.abs(v.x - u.x) < 26 && Math.abs(v.y - u.y) < 26 && Math.hypot(v.x - u.x, v.y - u.y) < 26 && angD(u.f, v.f) < .8 && blockChance0(v) > 0) n++;
+    const wall = !u.t && u.hx != null && fmOf(u) === 'wall';
+    return Math.min(1, n / 3 * (wall ? 1.5 : 1));
+}
 function blockChance0(u) {
     if (u.cp) return .4;
     if (u.uk && FU[u.uk] && FU[u.uk].b) { const F = FU[u.uk]; return F.b === 'i' && F.wp !== 'ax' ? .35 : F.b === 'c' ? .2 : 0; }
@@ -336,7 +345,8 @@ function meleeHit(att, def, d, kind, info) {
             return false;
         }
     }
-    let bc0 = blockChance(def);
+    let bc0 = blockChance(def); const coh = def.h ? 0 : cohesion(def);
+    if (bc0 > 0 && rel < 1.1) bc0 = Math.min(.9, bc0 + .25 * coh);   // línia štítov kryje spredu
     if (info && att.h && bc0 > 0) {   // vojaci sa učia: rovnaký smer stále dookola kryjú ľahšie, zmena smeru ich zaskočí; silný obojručný úder kryt prerazí
         const H = (C.hist || []).slice(0, -1), same = H.filter(x => x === info.d).length;
         bc0 *= same >= 2 ? 1.6 : same === 0 ? .7 : 1;
@@ -358,7 +368,8 @@ function meleeHit(att, def, d, kind, info) {
         } else att.c = (att.c || 0) + 8;
         return false;
     }
-    const mult = rel > 2.1 ? 1.5 : rel > 1.2 ? 1.25 : 1;
+    let mult = rel > 2.1 ? 1.5 : rel > 1.2 ? 1.25 : 1;
+    if (coh) { mult *= rel < 1.1 ? 1 - .2 * coh : 1 + .2 * coh; if (att.h && rel > 1.2 && coh > .3) cmbSay('lineflank', 'Úder do boku línie štítov – tu ju nič nekryje!', 160); }
     if (info || kind === 'ai') {   // miesto zásahu a typ poškodenia (js/sim/warband.js)
         const dir = info ? info.d : att.lwd ? ({ l: 'r', r: 'l', u: 'u', t: 't' })[att.lwd] : 'r';
         hitZ(def, d * mult, att, { zone: meleeZone(att, def, dir, info ? info.pitch : null), type: dmgType(att, kind, dir), pow: info ? info.pow : 1 });

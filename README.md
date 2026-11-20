@@ -442,6 +442,13 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
 
+## Línia štítov (verzia 121)
+
+- **Súdržnosť línie** (`cohesion` v `js/sim/combat.js`): pešiak so štítom, vedľa ktorého stoja do ~26 jednotiek spolubojovníci s podobným smerom pohľadu (až 3 susedia = plná línia), sa kryje štítmi o rameno. Platí pre obe strany; štítový val hráča (rozkaz formácie) ju zosilní ×1,5.
+- Spredu: šanca na kryt +25 % a poškodenie až −20 %. Zboku a zozadu línia nechráni: poškodenie až +20 % navyše k bonusu za bok/chrbát. Pri údere do boku línie sa zobrazí tip.
+- Praktický dôsledok: čelný útok na zovretú líniu je drahý, obchvat jazdy alebo vlastné údery zboku sa oplatia viac.
+- Test: súdržná línia (4 vojaci) dostane spredu menej a zozadu viac než osamelý vojak.
+
 ## Klam smerom v súboji (verzia 120)
 
 Smerový boj (4 smery úderu, kryt do smeru myšou, klam krytom, zručnosť vojakov) už existoval; táto verzia ho dopĺňa o to, čo robí Warband Warbandom:

@@ -378,6 +378,15 @@ try {
         G.eq.a = im; G.eq.s = 0; G.eq.h = 0; var lM = heroLoad(); G.eq.a = ia; G.s.ob = 4; var lOb = heroLoad();
         G.eq.a = s0[0]; G.eq.s = s0[1]; G.eq.h = s0[2]; G.eq.m = s0[3]; G.s.ob = s0[4];`);
     check('Smer úderu sa dá zmeniť počas nápriahu; klam smerom zmýli vojaka, ktorý kryl starý smer', run('dirChg && dirFeint'), run('[dr1, dr2, drN, fA, fB].join()'));
+    run(`mode = "map"; startBattle({ n: 6, f: 9, nm: "Línia" }); var LH = U[0]; for (const u of U) if (u !== LH) { u.x = 3000 + u.x; u.stun = 999; }
+        var mkL = (x, y) => { const u = mk(1, "i", 9); u.x = x; u.y = y; u.f = Math.PI; u.hp = u.mh = 9999; u.stun = 0; U.push(u); return u; };
+        var ld = mkL(500, 500); mkL(500, 512); mkL(500, 488); mkL(512, 500); var lone = mkL(900, 900);
+        var cL = cohesion(ld), cA = cohesion(lone);
+        var atk = mk(0, "i", 9); atk.x = 488; atk.y = 500; atk.f = 0; U.push(atk); var atk2 = mk(0, "i", 9); atk2.x = 888; atk2.y = 900; atk2.f = 0; U.push(atk2);
+        var R9 = Math.random; Math.random = () => .999;
+        ld.hp = lone.hp = 9999; meleeHit(atk, ld, 100, "swing"); meleeHit(atk2, lone, 100, "swing"); var dFront = 9999 - ld.hp, dLone = 9999 - lone.hp;
+        atk.x = 488; atk.f = 0; atk.y = 500; ld.f = 0; ld.hp = 9999; lone.f = 0; lone.hp = 9999; atk2.x = 888; atk2.f = 0; atk2.y = 900; ld.x = 500; U.forEach(u => { if (u.t === 1 && u !== ld && u !== lone) u.f = 0; }); meleeHit(atk, ld, 100, "swing"); meleeHit(atk2, lone, 100, "swing"); var dBack = 9999 - ld.hp, dBackLone = 9999 - lone.hp; Math.random = R9;`);
+    check('Línia štítov: súdržná línia dostane menej spredu, zozadu viac než osamelý vojak', run('cL > .9 && cA === 0 && dFront < dLone && dBack > dBackLone'), run('[cL, cA, dFront, dLone, dBack, dBackLone].join()'));
     check('Duel ako vo Warbande: úder AI zasiahne až čepeľou v pohybe a dá sa mu uskočiť; rýchlosť oboch strán; úder zachytený krytom odskočí; ťažká výbava spomalí (mithril nie)', run('atRel && landed && dodged && spdOk && bounced && l0 === 0 && lH > .5 && spH < .9 && swH > 1.07 && lM < lH * .5 && lOb < lH'), run('[atRel, landed, dodged, spdOk, bounced, l0, lH, spH, swH, lM, lOb].join(" ")'));
     // etapa 2 (bitka ako vo Warbande): zálohy a posily vo vlnách, bitka po páde hrdinu, zásahy vlastných, počty strán pre morálku
     run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
