@@ -169,6 +169,7 @@ function battleReport(win) {
     const tally = side => { const m = {}; U.filter(u => u.t === side && fallen(u)).forEach(u => { const n = unitName(u); m[n] = (m[n] || 0) + 1; }); return Object.entries(m).map(([n, c]) => c + '× ' + n).join(', ') || 'nikto'; };
     const mine = U.filter(u => !u.t), their = U.filter(u => u.t);
     line('Výsledok: ' + (win ? 'víťazstvo' : 'porážka') + ' – ' + (win ? 'tvoja strana' : (LB && LB.nm ? LB.nm : 'nepriateľ')) + ' ovládla bojisko.', '#ffd24a');
+    if (G.injMsg) line(G.injMsg, '#ff9a80');
     line('Tvoje straty (' + mine.filter(fallen).length + '/' + mine.length + '): ' + tally(0));
     line('Straty nepriateľa (' + their.filter(fallen).length + '/' + their.length + '): ' + tally(1));
     const fl = side => U.filter(u => u.t === side && u.fled).length;
@@ -258,6 +259,7 @@ function endBattle(win) {
     const L = LB;
     if (!L.ar) { sideLosses(win, L); if (!win) siegeLost(L); }
     horseAfter();   // padnutý kôň sa nemusí vrátiť
+    if (!L.ar && !L.duel) injuryAfterBattle();   // rany a jazvy hrdinu (js/sim/supply.js)
     if (L.duel) { compAfterBattle(); return duelEnd(win, L); }   // súboj veliteľov (js/sim/bosses.js)
     if (L.ar) {   // turnaj v aréne
         mode = 'over';

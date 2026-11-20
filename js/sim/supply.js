@@ -43,6 +43,7 @@ function buyFood(o, k) {
 /** Denná spotreba jedla, morálka družiny, dezercie a hojenie ranených (volá daily2). */
 function supplyDaily() {
     G.fd = G.fd || {}; G.wd = G.wd || {};
+    if (G.inj > 0) { G.inj -= G.camp && G.stay ? 2 : 1; if (G.inj <= 0) { G.inj = 0; lg('Tvoje rany sa zahojili.'); } G.hp = Math.min(G.hp, mh()); }   // rany hrdinu (injuryAfterBattle)
     G.maxArmy = Math.max(G.maxArmy || 0, men());
     if (G.pm == null) G.pm = 60;
     let need = foodNeed();
@@ -92,4 +93,18 @@ function recruitPrisoners() {
     G.cap -= n; G.inf += n;
     if (n) G.pm = Math.max(0, G.pm - Math.floor(n / 5));   // noví muži, ktorým starí neveria
     return n;
+}
+
+/** Rany hrdinu po bitke: padol alebo skončil pod 40 % zdravia → G.inj dní má o 20 % nižšie najvyššie zdravie (v tábore sa hoja rýchlejšie);
+ *  pád niekedy zanechá jazvu (G.scars, +1 strach). Vráti text pre tabuľku bitky (alebo ''). */
+function injuryAfterBattle() {
+    G.injMsg = '';
+    const h = U && U[0]; if (!G || !h || !h.h) return '';
+    const frac = Math.max(0, h.hp) / mh(), fell = !!(CMB && CMB.down);
+    if (frac >= .4 && !fell) return '';
+    const d = Math.max(2, Math.round((3 + (1 - Math.min(1, frac)) * 6) * (perk('ranhojic') ? .7 : 1) * (hasRole('ranhojic') ? .85 : 1)));
+    G.inj = Math.max(G.inj || 0, d);
+    let t = 'Si zranený: ' + d + ' dní máš o 20 % nižšie zdravie (v tábore sa hojíš rýchlejšie).';
+    if (fell && Math.random() < .5) { G.scars = (G.scars || 0) + 1; G.fear = (G.fear || 0) + 1; t += ' Zostala ti jazva – strach +1.'; }
+    lg(t); G.injMsg = t; return t;
 }

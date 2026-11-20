@@ -400,7 +400,7 @@ try {
         G.wp = null; G.cs = null; G.bk = null; G.lv = 5; wpInit(); var initOk = G.wp.one === 40 && G.wp.bow === 40 && G.bk === 4;
         G.eq.w = 0; G.eq.m = 0; G.eq.a = 0; G.eq.s = 0; G.eq.h = 0; var d0 = heroMeleeDmg(), t0 = wpnTimes().ready; G.wp.one = 300; var d1 = heroMeleeDmg(), t1 = wpnTimes().ready; var profOk = d1 > d0 * 1.25 && t1 < t0 * .85;
         G.wp.one = 40; startBattle({ n: 3, f: 9, nm: "T" }); var gv = U.find(u => u.t); gv.hp = gv.mh = 9999; var w0 = G.wp.one; hitZ(gv, 30, U[0], { zone: "torso", type: "c" }); var grow = G.wp.one > w0; var wk = G.wp.one; hitZ(gv, 2, U[0], { zone: "torso", type: "b", noWp: 1 }); var noKick = G.wp.one === wk;
-        var bk0 = G.bk, ps0 = heroMeleeDmg(), mh0 = mh(); var took = csTake("ps") && csTake("ir") && G.bk === bk0 - 2; var csOk = took && heroMeleeDmg() > ps0 * 1.07 && mh() === mh0 + 8; G.cs.ps = 5; var capOk = !csTake("ps");
+        G.inj = 0; var bk0 = G.bk, ps0 = heroMeleeDmg(), mh0 = mh(); var took = csTake("ps") && csTake("ir") && G.bk === bk0 - 2; var csOk = took && heroMeleeDmg() > ps0 * 1.07 && mh() === mh0 + 8; G.cs.ps = 5; var capOk = !csTake("ps");
         G.cs.at = 5; var spAt = heroSpeedK(); G.cs.at = 0; var spOk = spAt > heroSpeedK() * 1.15;
         var lvB = G.bk; G.xp = 9999; G.lv = 5; endBattle(true); var lvUp = G.bk > lvB;`);
     run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
@@ -431,6 +431,8 @@ try {
     run(`G.inf = 12; G.arc = 6; startBattle({ n: 12, f: 0, nm: "Ord" }); obsSet([]); CMB.sel = "p"; var oi = U.find(u => !u.t && !u.h && u.k === "i"); var ox0 = oi.x; for (const u of U) if (u.t) { u.x = 1400; u.y = oi.y; } tacOrder("o_adv"); var advOk = oi.hx > ox0 + 100 && CMB.og.p === "h"; tacOrder("o_bk"); var bkOk = oi.hx < oi.x - 100 + 5;
         CMB.sel = "l"; tacOrder("o_hf"); var hfOn = CMB.hf === true; var oa = U.find(u => !u.t && u.k === "a" && !u.h); if (oa) { oa.aim = 5; oa.c = 0; aiBow(oa, U.find(u => u.t), 7); } var hfHold = !oa || oa.aim === 0; tacOrder("o_hf"); var hfOff = CMB.hf === false;`);
     check('Rozkazy: vpred a vzad o 10 krokov nastavia miesta, držať palbu zastaví lukostrelcov', run('advOk && bkOk && hfOn && hfHold && hfOff'), run('[advOk, bkOk, hfOn, hfHold, hfOff].join(" ")'));
+    run(`mode = "map"; G.inj = 0; G.scars = 0; G.hp = mh(); startBattle({ n: 6, f: 2, nm: "Rana" }); var mh0 = mh(); U[0].hp = 10; var injT = injuryAfterBattle(); var mh1 = mh(), inj0 = G.inj; G.camp = 0; G.stay = null; var h0 = G.inj; supplyDaily(); var healD = G.inj === h0 - 1; G.inj = 1; supplyDaily(); var healed = G.inj === 0 && mh() === mh0; mode = "map";`);
+    check('Rany hrdinu: po ťažkej bitke nižšie najvyššie zdravie, hoja sa po dňoch', run('injT && mh1 === Math.round(mh0 * .8) && inj0 >= 2 && healD && healed'), run('[injT, mh0, mh1, inj0, healD, healed].join(" ")'));
     check('Terén: vojak sa o kmeň neprekrýva, šíp sa zastaví o kmeň, ale preletí nad ním', run('obsPush && aLow && stopLow && overHigh'), run('[obsPush, aLow, stopLow, overHigh].join(" ")'));
     check('Taktická AI: nepriateľskí lukostrelci držia za líniou pešiakov a jazda dostane obchvat', run('tcN > 3 && tcOk >= tcN - 1 && tcF > 0'), run('[tcN, tcOk, tcF].join(" ")'));
     check('Warband: kopijník pri malom odstupe cúva, zručný vojak pri dobíjaní krúži rýchlejšie ako slabý', run('spOk && back && side && still && stopOk'), run('[spOk, back, side, still, stopOk].join(" ")'));

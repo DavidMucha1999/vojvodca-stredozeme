@@ -442,6 +442,14 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
 
+## Následky bitiek: rany a jazvy (verzia 116)
+
+- **Rany hrdinu** (`injuryAfterBattle` v `js/sim/supply.js`, volá `endBattle`): ak hrdina padol alebo skončil pod 40 % zdravia, `G.inj` dní má o 20 % nižšie najvyššie zdravie (`mh()` v `js/sim/hero.js`). Trvanie 2 – 9 dní podľa zdravia, perk a spoločník ranhojič ho skracujú, v tábore sa hojí dvakrát rýchlejšie (`supplyDaily` ho znižuje každý deň). Platí pre poľné bitky, obliehanie aj obranu hradu, nie pre arénu a súboj.
+- **Jazvy**: pád v bitke s 50 % šancou zanechá jazvu (`G.scars`, strach +1). Stav sa ukazuje na obrazovke hrdinu („Zranený 5 d“, „Jazvy 2“) a v tabuľke bitky.
+- Už predtým platilo: ranení vojaci sa vracajú po vyliečení, padnutý kôň sa niekedy nevráti, zajatci a výkupné, trofeje.
+- Test: po ťažkej bitke je najvyššie zdravie nižšie o 20 % a rany sa hoja po dňoch.
+- Nie je zatiaľ: zranenie koňa, korisť výstroje po bitke, povesť podľa spôsobu víťazstva.
+
 ## Úvod a prvé minúty hry (verzia 115)
 
 - **Cieľ na mape** (`goalText` v `js/sim/story.js`, riadok v `UIScene.drawOverlay`): hore uprostred vždy stojí aktuálny cieľ. V úvodných krokoch aj so vzdialenosťou a svetovou stranou („poraž lupičov z Kraja – 41 míľ na severovýchod“, potom Bree), neskôr prvá veta aktuálnej kapitoly príbehu.

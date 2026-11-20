@@ -213,7 +213,7 @@ Object.assign(UIScene.prototype, {
                 ry += 38;
             }
             ry += 4; this.rSec(root, rx, ry, rw, 'Povesť'); ry += 16;
-            root.add(this.rT(rx, ry, 'Sláva ' + (G.ren || 0) + '   ·   Česť ' + (G.hon || 0) + '   ·   Strach ' + (G.fear || 0) + '   ·   Rasa: ' + (typeof raceName === 'function' ? raceName() : '') + ', povaha: ' + (typeof traitName === 'function' ? traitName() : ''), 10, '#e0caa0', { wrap: rw }));
+            root.add(this.rT(rx, ry, 'Sláva ' + (G.ren || 0) + '   ·   Česť ' + (G.hon || 0) + '   ·   Strach ' + (G.fear || 0) + (G.inj > 0 ? '   ·   Zranený ' + G.inj + ' d' : '') + (G.scars ? '   ·   Jazvy ' + G.scars : '') + '   ·   Rasa: ' + (typeof raceName === 'function' ? raceName() : '') + ', povaha: ' + (typeof traitName === 'function' ? traitName() : ''), 10, '#e0caa0', { wrap: rw }));
         } else if (RICH.tab === 'perk') {
             root.add(this.rT(rx, ry, 'Voľné body perkov: ' + (G.pp || 0) + '. Vyšší perk vo vetve potrebuje predošlý a úroveň 2, 4 alebo 6.', 9.5, '#bfae8c', { italic: true, wrap: rw })); ry += 22;
             PERKS.forEach(([, bn, ic, list], bi) => {
