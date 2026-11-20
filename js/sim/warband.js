@@ -214,6 +214,7 @@ function stepArrows(dt) {
         const ev = elevSim(a.x, a.y);
         if (SGB && ev > 0 && elevSim(px, py) === 0 && a.z < 48) { a.l = 0; a.wall = 1; continue; }   // do múru
         if (a.z <= ev) { a.l = 0; a.land = 1; if (GA.length < 400) { a.ga = { x: a.x, y: a.y, k: a.jav ? 'jav' : a.bolt ? 'bolt' : 'arrow' }; GA.push(a.ga); } continue; }
+        if (obsArrow(a, px, py)) { a.l = 0; a.land = 1; a.tree = 1; if (GA.length < 400) { a.ga = { x: a.x, y: a.y, k: a.jav ? 'jav' : a.bolt ? 'bolt' : 'arrow' }; GA.push(a.ga); } continue; }   // kmeň alebo balvan kryje
         for (const v of U) {
             if (v.hp <= 0 || v.fled || v === a.by) continue;
             const fr = v.t === a.t;   // vlastný vojak v ceste (zásahy vlastných, Nastavenia)

@@ -607,6 +607,7 @@ function updBattle(dt) {
                 }
             }
         }
+        obsUnits();   // kmene stromov a balvany (js/sim/field.js)
         sepUnits(dt);   // telesná kolízia: vojaci sa neprekrývajú (js/sim/warband.js)
         tacUpdate(dt);   // taktika nepriateľského veliteľa (js/sim/tactics.js)
         cmbMorale(dt);
@@ -614,7 +615,7 @@ function updBattle(dt) {
         if (U[0].hp <= 0 && !CMB.down) heroFell();
         U[0].tt = (U[0].tt || 0) + dt;
         const mineUp = U.some(u => !u.t && u.hp > 0) || (BRES[0].length > 0 && CMB.M[0] >= 15);   // záloha na úteku už nepríde
-        if (U[0].tt > 16000) {
+        if (U[0].tt > (SGB ? 9000 : 16000)) {
             const s = t => U.filter(u => u.t === t && u.hp > 0).reduce((a, u) => a + u.hp, 0);
             endBattle(s(0) >= s(1));   // dlhá bitka: rozhodne zostávajúce zdravie
         }

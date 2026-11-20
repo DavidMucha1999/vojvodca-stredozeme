@@ -426,6 +426,14 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
 
+## Terén a prekážky (verzia 111)
+
+- **Prekážky** (`obsSet`, `obsAdd`, `obsUnits` v `js/sim/field.js`): kmene stromov a balvany [x, y, polomer, výška] v mriežke 40 jednotiek. Vojaci a hrdina sa do nich nedostanú, vytlačia sa na okraj a kĺžu popri nich. Miesta preberá simulácia z 3D scény (`js/engine/b3d.js`), takže sedia na viditeľné stromy a skaly; bez 3D sa vygenerujú z lesných zhlukov.
+- **Kryt pred šípmi** (`obsArrow`, volá `stepArrows`): šíp pod výškou kmeňa (26) alebo balvana sa zastaví, nad nimi preletí. Strelec si neprekáža vlastným kmeňom do 9 jednotiek.
+- **Svah kopca** (`fieldSlow`): do kopca sa ide pomalšie (až o 25 %), z kopca o 12 % rýchlejšie.
+- Pri obliehaní sú prekážky vypnuté. Limit dlhej bitky je pri obliehaní stále 9000 snímok (v poli 16000).
+- Nie je zatiaľ: rieka s brodom je pevne pri x ≈ 720, AI nehľadá cestu cez brod.
+
 ## Taktická AI (verzia 110)
 
 Nový súbor `js/sim/tactics.js` (po `mastery.js`): veliteľ nepriateľa plánuje každých 40 snímok (`tacUpdate`) – os postupu, líniu pešiakov a pomer síl.

@@ -523,6 +523,7 @@ const B3 = (() => {
         // stromy (najprv miesta, aby terén pod nimi stmavol)
         let seed = 11 + Math.floor((FIELD && FIELD.forest || 0) * 97); const rnd = () => (seed = seed * 16807 % 2147483647) / 2147483647;
         const spots = treeSpots(rnd, roadD);
+        obsSet(spots.map(q => [q[0], q[1], 2.4 * q[2], 26 * q[2]]));   // simulácia: kmene presne tam, kde stoja stromy (js/sim/field.js)
         // terén: mriežka s výškou a farbami vrcholov (kraj, škvrny, cesta, breh, zatienenie pod stromami)
         const NX = 144, NY = 96, pos = [], col = [], idx = [];
         const cell = new Map(); for (const s of spots) { const k = Math.floor(s[0] / 40) + ',' + Math.floor(s[1] / 40); (cell.get(k) || cell.set(k, []).get(k)).push(s); }
@@ -756,6 +757,7 @@ const B3 = (() => {
         inst(bush(), extra, ([x, y, sc]) => at(x, y, sc));
         // balvany: mach alebo sneh navrchu
         const rocksL = []; for (let i = 0; i < 34 + (F.hill ? 18 : 0); i++) { const x = rnd() * BW, y = rnd() * BH; if ((!F.river || x < 660 || x > 780) && !(SGB && x > 960)) rocksL.push([x, y, .6 + rnd() * 1.3]); }
+        obsAdd(rocksL.map(r => [r[0], r[1], 4 * r[2], 5.5 * r[2]]));   // balvany sú prekážky aj kryt pred šípmi
         const rg = Part().add('sph', B.rock, [0, 1.2, 0], [0, 0, 0], [8, 5.6, 7]).add('sph0', sh(B.rock, .9), [2.6, .6, 1.8], [.4, .3, 0], [4.6, 3.6, 4]).build();
         const top = C(snow ? '#eef2f4' : BI === 'g' ? '#5a7a30' : BI === 'd' ? '#c0a878' : B.rock), cA = rg.attributes.color, nA = rg.attributes.normal;
         for (let i = 0; i < cA.count; i++) { const k = Math.max(0, (nA.getY(i) - .45) / .55); if (k > 0) { const c = C('#000').setRGB(cA.getX(i), cA.getY(i), cA.getZ(i)).lerp(top, k * .85); cA.setXYZ(i, c.r, c.g, c.b); } }
