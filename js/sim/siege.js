@@ -55,6 +55,7 @@ function siegeDaily() {
             s.w[k] = (s.w[k] || 0) + men;
             if (s.w[k] >= SIEGE_WORK[k]) { s[k] = 1; if (s.lead === 'G' || me) TS = { s: 'Pri ' + t.n + ' je hotová technika: ' + SIEGE_NAME[k] + '.', l: 320 }; if (s.lead === 'G') { s.build = !s.lad ? 'lad' : !s.ram ? 'ram' : !s.tow ? 'tow' : null; } }
         }
+        siegeDisease(i, s, me, bs);   // mor v dlhom tábore
         // zásoby posádky a hlad
         s.food--;
         if (s.food <= 0) { const lost = Math.max(1, Math.ceil(t.g * .12)); t.g = Math.max(2, t.g - lost); if (me) TS = { s: 'V ' + t.n + ' došli zásoby: posádka hladuje (−' + lost + ' mužov).', l: 300 }; }
@@ -74,6 +75,20 @@ function siegeDaily() {
         // príliš slabé obliehanie sa rozpadne
         if (t.sg && s.lead !== 'G' && A < D * .45) { lg(FN[s.f] + ' zrušil obliehanie hradu ' + t.n + ' – obrancovia sú príliš silní.'); t.sg = null; if (CP[s.f] === i) CP[s.f] = null; if (G.besiege === i) G.besiege = -1; }
     });
+}
+/** Mor v dlhom obliehacom tábore: po 10 dňoch denne 10 % šanca, že choroba zoslabí obliehateľov. Hráčova družina príde o 1 – 3 mužov a morálku
+ *  (ranhojič šancu zníži na polovicu), armády AI o 6 % mužov (po 14 dňoch, 8 %). Vráti true, ak vypukla choroba. */
+function siegeDisease(i, s, me, bs) {
+    const days = G.day - s.d0; if (days <= 10 && !(days > 14)) return false;
+    if (me && s.lead === 'G') {
+        if (Math.random() >= .1 * (perk('ranhojic') || hasRole('ranhojic') ? .5 : 1) || men() < 6) return false;
+        let n = 1 + Math.floor(Math.random() * 3), lost = 0;
+        for (const k of ['inf', 'arc', 'cav', 'vet', 'roh', 'elf']) while (n > 0 && G[k] > 0) { G[k]--; n--; lost++; }
+        G.pmv = (G.pmv || 0) - 5; G.pm = Math.max(0, (G.pm ?? 60) - 4);
+        const t = 'V obliehacom tábore pri ' + TW[i].n + ' vypukla choroba: ' + lost + ' mužov zomrelo, morálka klesá.'; lg(t); TS = { s: t, l: 320 }; return true;
+    }
+    if (days > 14 && Math.random() < .08 && bs.length) { bs.forEach(e => { e.n = Math.max(2, Math.round(e.n * .94)); }); return true; }
+    return false;
 }
 /** Udalosť obliehania, ktorá čaká na okno hráča (útok, obrana, výpad); spracuje ju updMap, keď je mapa voľná. */
 let SIEGE_EVENT = null;

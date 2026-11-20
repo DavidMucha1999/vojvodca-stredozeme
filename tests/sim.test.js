@@ -75,6 +75,7 @@ try {
     check('Každá vec má vzhľad', run('SH.every(s => s.it.length === Soldiers.GEAR[s.k].length)'));
     run('mode = "map"; G.gold = 5000; var gi = TW.findIndex(t => !bloc(t.f) && t.f !== 9 && t.f !== 6), ei = TW.findIndex(t => bloc(t.f)); smithy(gi, "w"); var gw = document.getElementById("bt").children.map(b => b.textContent);');
     check('Hrad dobra predáva len výbavu dobra', run('gw.some(t => t.startsWith("Andúril")) && !gw.some(t => t.startsWith("Sauronov"))'));
+    run('for (const k of ["w", "a", "s", "h", "m"]) G.own[k] = G.own[k].filter(i => !shOf(k)[i].p || G.eq[k] === i);');   // korisť z predošlých bitiek by zmenila počet vecí
     run('smithy(ei, "w"); var ew = document.getElementById("bt").children.map(b => b.textContent);');
     check('Hrad zla predáva len temnú výbavu', run('ew.some(t => t.startsWith("Sauronov")) && !ew.some(t => t.startsWith("Andúril"))'));
     run(btnRun('Orkská šabľa'));
@@ -436,6 +437,9 @@ try {
     run(`mode = "map"; G.lv = 5; startBattle({ n: 60, f: 2, nm: "Korisť" }); LB.n0 = 60; var rn0 = Math.random; Math.random = () => 0; var own0 = JSON.stringify(G.own), lootT = lootGear(); Math.random = rn0; var lootChanged = JSON.stringify(G.own) !== own0; var lootItem = lootT && SH.some(s => shOf(s.k).some(x => lootT.includes(x.n) && x.z === 1 && x.p <= 150 + 5 * 70));
         for (const u of U) if (u.t) u.hp = 0; var fl0 = G.fear || 0; var fameT = fameAfterBattle(); var fameOk = !!fameT && G.fear === fl0 + 1; mode = "map";`);
     check('Korisť a povesť: veľké víťazstvo nad zlom zanechá výstroj zla do ceny podľa úrovne a zvýši strach', run('lootT && lootChanged && lootItem && fameOk'), run('[lootT, lootChanged, lootItem, fameT].join(" | ")'));
+    run(`G.camp = 0; G.inf = 30; G.pmv = 0; var rn1 = Math.random; Math.random = () => 0; var wDay = G.day; G.day = 33; var shelter = TW[0]; G.x = shelter.x; G.y = shelter.y; var wSafe = winterDaily() === ""; G.x = 20; G.y = 20; var wTxt = winterDaily(); var wLost = G.inf === 29 && G.pmv === -3; G.day = 5; var wSum = winterDaily() === ""; Math.random = rn1; G.day = wDay; G.pmv = 0;
+        var sT = TW[si2 >= 0 ? si2 : 0]; var sS = { d0: G.day - 20, lead: "G", f: 0 }; G.inf = 30; Math.random = () => 0; var sIn = G.inf, dz = siegeDisease(TW.indexOf(sT), sS, true, []); Math.random = rn1; var sLost = dz && G.inf < sIn; var sEarly = siegeDisease(0, { d0: G.day - 3, lead: "G", f: 0 }, true, []) === false; G.pmv = 0;`);
+    check('Zima a mor: pri osade sa družina ukryje, mimo nej mrzne; dlhé obliehanie zasiahne choroba', run('wSafe && wTxt && wLost && wSum && sLost && sEarly'), run('[wSafe, wTxt, wLost, wSum, sLost, sEarly].join(" ")'));
     check('Terén: vojak sa o kmeň neprekrýva, šíp sa zastaví o kmeň, ale preletí nad ním', run('obsPush && aLow && stopLow && overHigh'), run('[obsPush, aLow, stopLow, overHigh].join(" ")'));
     check('Taktická AI: nepriateľskí lukostrelci držia za líniou pešiakov a jazda dostane obchvat', run('tcN > 3 && tcOk >= tcN - 1 && tcF > 0'), run('[tcN, tcOk, tcF].join(" ")'));
     check('Warband: kopijník pri malom odstupe cúva, zručný vojak pri dobíjaní krúži rýchlejšie ako slabý', run('spOk && back && side && still && stopOk'), run('[spOk, back, side, still, stopOk].join(" ")'));

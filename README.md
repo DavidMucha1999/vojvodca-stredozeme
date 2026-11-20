@@ -442,6 +442,13 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
 
+## Zima a mor (verzia 117)
+
+- **Zimný pochod** (`winterDaily` v `js/sim/supply.js`, volá `supplyDaily`): v zime mimo osád (ďalej než 18 míľ od hradu alebo dediny) družina mrzne – morálka klesá o 3 a s 25 % šancou (v tábore 10 %) zamrzne jeden muž. Pri hradoch a dedinách sa ukryje. Na mape sa objaví správa.
+- **Mor v obliehacom tábore** (`siegeDisease` v `js/sim/siege.js`): po 10 dňoch obliehania má hráč denne 10 % šancu na chorobu (1 – 3 mŕtvi, morálka klesá; ranhojič šancu zníži na polovicu). Armády AI strácajú po 14 dňoch s 8 % šancou 6 % mužov. Hlad posádky v hrade platil už predtým.
+- Test: zima pri hrade a mimo neho, leto bez účinku, mor v dlhom a krátkom obliehaní.
+- Nie je zatiaľ: posily z hradov, vizualizácia plánov lordov na mape, nové diplomatické voľby (sobáše, aliancie).
+
 ## Následky bitiek: rany a jazvy (verzia 116)
 
 - **Rany hrdinu** (`injuryAfterBattle` v `js/sim/supply.js`, volá `endBattle`): ak hrdina padol alebo skončil pod 40 % zdravia, `G.inj` dní má o 20 % nižšie najvyššie zdravie (`mh()` v `js/sim/hero.js`). Trvanie 2 – 9 dní podľa zdravia, perk a spoločník ranhojič ho skracujú, v tábore sa hojí dvakrát rýchlejšie (`supplyDaily` ho znižuje každý deň). Platí pre poľné bitky, obliehanie aj obranu hradu, nie pre arénu a súboj.

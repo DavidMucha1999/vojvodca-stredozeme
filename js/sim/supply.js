@@ -43,6 +43,7 @@ function buyFood(o, k) {
 /** Denná spotreba jedla, morálka družiny, dezercie a hojenie ranených (volá daily2). */
 function supplyDaily() {
     G.fd = G.fd || {}; G.wd = G.wd || {};
+    winterDaily();   // zimný pochod mimo osád
     if (G.inj > 0) { G.inj -= G.camp && G.stay ? 2 : 1; if (G.inj <= 0) { G.inj = 0; lg('Tvoje rany sa zahojili.'); } G.hp = Math.min(G.hp, mh()); }   // rany hrdinu (injuryAfterBattle)
     G.maxArmy = Math.max(G.maxArmy || 0, men());
     if (G.pm == null) G.pm = 60;
@@ -130,4 +131,18 @@ function fameAfterBattle() {
     G.fear = (G.fear || 0) + 1;
     const t = 'Rozhodujúce víťazstvo: padlo ' + foe + ' nepriateľov a len ' + lost + ' tvojich – po kraji sa šíri strach z tvojho mena (+1).';
     lg(t); G.lootMsg = (G.lootMsg ? G.lootMsg + ' ' : '') + t; return t;
+}
+
+/** Zimný pochod: v zime (štvrté ročné obdobie) mimo osád (do 18 míľ od hradu alebo dediny) družina mrzne – morálka klesá a s malou šancou
+ *  (25 %, v tábore 10 %) zamrzne jeden muž. Pri hradoch a dedinách sa družina ukryje. Vráti text alebo ''. */
+function winterDaily() {
+    if (!G || season() !== 3 || men() < 4) return '';
+    if (TW.some(p => Math.hypot(p.x - G.x, p.y - G.y) < 18 * K) || VL.some(p => Math.hypot(p.x - G.x, p.y - G.y) < 18 * K)) return '';
+    G.pmv = (G.pmv || 0) - 3;
+    let t = 'Zima: družina mrzne mimo osád – morálka klesá.';
+    if (Math.random() < (G.camp ? .1 : .25)) {
+        const k = ['inf', 'arc', 'cav', 'vet', 'roh', 'elf'].find(x => G[x] > 0);
+        if (k) { G[k]--; t += ' V mraze zamrzol jeden muž.'; }
+    }
+    TS = { s: t, l: 220 }; lg(t); return t;
 }
