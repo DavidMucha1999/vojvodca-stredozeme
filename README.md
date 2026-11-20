@@ -426,6 +426,11 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
 
+## Počítadlo FPS na mape aj v bitke (verzia 113)
+
+- Nastavenia → **Počítadlo FPS** (`fpsBox` v `js/engine/scenes/BattleScene.js`) teraz funguje aj na 3D mape (volá ho `MapScene.update`). Ukazuje aktuálne FPS, priemer a najhorší 1 % snímok za posledných ~10 s, v bitke počet vojakov a stupeň automatického zníženia kvality.
+- Skúška bitky v prehliadači (50 orkov proti 66 mojim, vrátane 24 s oštepmi): bojisko 2200×1500, armády sa stretli po ~1000 snímkach, bitka bežala ~90 s a nebola ešte rozhodnutá (26 mojich a 18 nepriateľov, 7 na úteku). Tempo sedí s cieľom 2 – 4 minúty.
+
 ## Výzbroj a detaily (verzia 112)
 
 - **Vrhacie oštepy vojakov AI** (`aiThrow`, `JAV_P` v `js/sim/warband.js`): pešiak má s pravdepodobnosťou podľa druhu (ork 50 %, veterán 60 %, Rohirim 40 %, pešiak 35 %) 1 – 2 oštepy. Pri pochode na súpera ich hodí zo vzdialenosti 55 – 150, kým nie je v boji (krátke zamierenie, potom hod; presnosť a dráha ako pri šípoch, zranenie 7). Padnutý oštep ostáva na zemi.

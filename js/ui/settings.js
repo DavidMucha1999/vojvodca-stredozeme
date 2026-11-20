@@ -56,7 +56,7 @@ function optGroups() {
             { l: 'Krúžok pod cieľom', v: () => yn(OPT.tgMark !== false), fn: () => set('tgMark', OPT.tgMark === false), tip: 'Súper pod zameriavačom má pod nohami červený krúžok.' }
         ] },
         { t: 'Obraz', items: [
-            { l: 'Počítadlo FPS', v: () => yn(OPT.fps), fn: () => set('fps', !OPT.fps), tip: 'Zobrazí počet snímok za sekundu.' },
+            { l: 'Počítadlo FPS', v: () => yn(OPT.fps), fn: () => set('fps', !OPT.fps), tip: 'Zobrazí počet snímok za sekundu (aktuálny, priemer a najhorší 1 %) na mape aj v bitke.' },
             { l: 'Rozmazanie', v: () => yn(OPT.mblur), fn: () => set('mblur', !OPT.mblur), tip: 'Jemné rozmazanie rýchlych pohybov.' },
             { l: 'Hĺbka ostrosti', v: () => yn(OPT.dof !== false), fn: () => set('dof', OPT.dof === false), tip: 'Rozostrenie pozadia vo foto režime a pri spomalení.' },
             { l: 'Vyhladenie (TAA)', v: () => OPT.taa === true ? 'áno' : OPT.taa === false ? 'nie' : 'len ultra', fn: () => set('taa', OPT.taa === true ? false : OPT.taa === false ? null : true), tip: 'Časové vyhladenie hrán obrazu.' },

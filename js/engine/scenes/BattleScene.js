@@ -409,14 +409,16 @@ class BattleScene extends Phaser.Scene {
         }
     }
 }
-/** Počítadlo snímok v bitke (Nastavenia → Počítadlo snímok): FPS, počet vojakov na bojisku, zníženie kvality automatikou. */
+/** Počítadlo snímok v bitke aj na mape (Nastavenia → Počítadlo FPS): FPS, priemer a najhorší 1 % za ~10 s, počet vojakov, zníženie kvality automatikou. */
 function fpsBox(fps) {
     let el = document.getElementById('fpsBox');
     if (fps == null || !OPT.fps) { if (el) el.style.display = 'none'; return; }
     if (!el) { el = document.createElement('div'); el.id = 'fpsBox'; el.style.cssText = 'position:absolute;right:8px;top:6px;z-index:30;font:12px monospace;color:#e8e0c8;background:rgba(0,0,0,.45);padding:2px 6px;border-radius:3px;pointer-events:none'; (document.getElementById('game') || document.body).appendChild(el); }
     el.style.display = 'block';
+    const H = fpsBox.h = fpsBox.h || []; H.push(fps); if (H.length > 600) H.shift();   // posledných ~10 s: priemer a najhorší 1 % snímok
     const now = performance.now(); if (fpsBox.t && now - fpsBox.t < 400) return; fpsBox.t = now;
-    const alive = U.filter(u => u.hp > 0 && !u.fled).length, aq = typeof B3 !== 'undefined' && B3.isOn() ? B3.aq : 0;
-    el.textContent = Math.round(fps) + ' FPS · ' + alive + ' vojakov' + (aq ? ' · auto −' + aq : '');
+    const bt = typeof mode !== 'undefined' && mode === 'battle', alive = bt ? U.filter(u => u.hp > 0 && !u.fled).length : 0, aq = bt && typeof B3 !== 'undefined' && B3.isOn() ? B3.aq : 0;
+    const S = H.slice().sort((p, q) => p - q), low = S[Math.floor(S.length * .01)] || fps, avg = H.reduce((s, v) => s + v, 0) / H.length;
+    el.textContent = Math.round(fps) + ' FPS (ø ' + Math.round(avg) + ', min ' + Math.round(low) + ')' + (bt ? ' · ' + alive + ' vojakov' : ' · mapa') + (aq ? ' · auto −' + aq : '');
 }
 

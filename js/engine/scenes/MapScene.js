@@ -526,6 +526,7 @@ class MapScene extends Phaser.Scene {
             if (!M3.on) this.drawFx();
             if (this.clouds && !M3.on) { const on = !lowFx(); this.clouds.setVisible(on); if (on) { this.clouds.tilePositionX -= delta * .0022 * timeMul(); this.clouds.tilePositionY -= delta * .0009 * timeMul(); this.clouds.setAlpha(1 - nightness() * .8); } }   // oblaky plávajú od západu, v noci ich tieň zmizne
             if (this.haze) this.haze.setAlpha(.85 + .15 * Math.sin(time / 1400));
+            if (typeof fpsBox === 'function') fpsBox(this.game.loop.actualFps);
             M3.frame(this, delta);   // 3D mapa: skryje 2D vrstvy a vykreslí krajinu, hrady a postavy (js/engine/m3d.js)
         } catch (e) {
             if (!this.drawErr) { this.drawErr = 1; console.error('Mapa', e); }
