@@ -8,6 +8,14 @@ Autor a vývojár hry: **Dávid Mucha**
 
 Netreba nič inštalovať. Hra je určená pre počítač s klávesnicou a myšou (Chrome, Edge alebo Firefox); prvé načítanie trvá pár sekúnd. Postup hry sa ukladá len v prehliadači hráča.
 
+## Ukážky
+
+| | |
+|---|---|
+| ![3D mapa Stredozeme](docs/screens/mapa.jpg) **3D mapa** – hrdina s družinou, hrad Hobitov, mini mapa | ![Menu hradu Minas Tirith](docs/screens/hrad.jpg) **Menu hradu** – nádvorie, kasárne, kováč, trh, krčma, aréna |
+| ![Bitka z pohľadu hrdinu](docs/screens/bitka.jpg) **Bitka** (prvá osoba) – smerový boj, rozkazy vojsku, kompas | ![Bitka z tretej osoby](docs/screens/bitka3.jpg) **Bitka** (tretia osoba) – šík proti orkom na veľkom bojisku |
+| ![Karta udalosti](docs/screens/udalost.jpg) **Udalosť** – filmová karta s voľbami | |
+
 ## Čo v hre je
 
 - **Mapa Stredozeme** (v 3D aj 2D) s horami, riekami, jazerami, mostmi, hradmi podľa kníh, obliehaním a počasím; hrdina a velitelia sú 3D postavy s výbavou.
