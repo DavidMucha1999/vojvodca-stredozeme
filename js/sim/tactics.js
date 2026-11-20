@@ -89,6 +89,14 @@ function tutTick() {
 }
 /** Cieľ obrany hradu (ako pri Helmovom žľabe): vydržať do úsvitu. Čas v snímkach (60 = sekunda); slávne hrady majú dlhšiu noc, ostatné 7000. */
 const HOLD_T = { 'Helmov žľab': 10000, 'Minas Tirith': 9500, 'Edoras': 8500, 'Erebor': 9000, 'Rivendell': 8000, 'Minas Morgul': 8000 };
+/** Zvláštne vlny nepriateľa pri obrane slávnych hradov (pri 30 % a 65 % noci): [druh, počet, správa, poškodenie brány]. */
+const HOLD_WAVE = {
+    'Helmov žľab': [['i', 8, 'Výbuch pod múrom! Uruk-hai sa valia cez trhlinu.', 45], ['i', 10, 'Dosky na rebríky – nová vlna Uruk-haiov!', 0]],
+    'Minas Tirith': [['x', 2, 'Mûmakil sa blížia – zem sa chveje!', 0], ['z', 1, 'Nazgûl krúži nad hradbami!', 0]],
+    'Edoras': [['w', 8, 'Vargovia vyskakujú z tmy!', 0], ['w', 8, 'Ďalšie vlčie svorky obkľučujú mesto!', 0]],
+    'Erebor': [['t', 3, 'Trollovia ťahajú baran k bráne!', 30], ['t', 2, 'Posledná vlna trolov!', 0]],
+};
+const holdWave = (t, i) => HOLD_WAVE[t.n] ? HOLD_WAVE[t.n][i] : i ? ['i', 8, 'Nepriateľ vysiela ďalšiu vlnu!', 0] : null;
 /** Zostávajúce sekundy do úsvitu pri obrane hradu, inak null (zobrazuje ich UIScene). */
 const holdLeft = () => LB && LB.hold && SGB && SGB.att === 1 && U && U[0] ? Math.max(0, Math.ceil((LB.hold - (U[0].tt || 0)) / 60)) : null;
 /** Obrana hradu: správy o postupe noci a za úsvitu stiahnutie nepriateľa (víťazstvo). Vráti true, ak bitka skončila. */
@@ -98,6 +106,14 @@ function holdDawn() {
     if (tt >= 60 && !C.hd0) { C.hd0 = 1; TS = { s: 'Drž hradby do úsvitu – ešte ' + mm + '.', l: 300 }; }
     else if (tt >= LB.hold * .5 && !C.hd1) { C.hd1 = 1; TS = { s: 'Noc sa prelamuje – vydrž, do úsvitu ešte ' + mm + '.', l: 260 }; }
     else if (tt >= LB.hold * .85 && !C.hd2) { C.hd2 = 1; TS = { s: 'Na východe sa rozednieva! Ešte chvíľu…', l: 260 }; }
+    for (const [i, f] of [[0, .3], [1, .65]]) if (tt >= LB.hold * f && !C['hw' + i]) {
+        C['hw' + i] = 1;
+        const w = holdWave(TW[LB.def], i); if (!w) continue;
+        const [k, n, msg, gd] = w;
+        for (let j = 0; j < n; j++) { const u = mk(1, k, LB.f); u.x = 30 + Math.random() * 40; u.y = 140 + Math.random() * (BH - 280); u.f = 0; u.rf = 1; U.push(u); }
+        CMB.n0[1] += n; if (gd && SGB) SGB.gate = Math.max(0, SGB.gate - gd);
+        TS = { s: msg, l: 300 }; wbMsg(msg, '#ff9a80'); snd('horn');
+    }
     if (tt < LB.hold) return false;
     for (const u of U) if (u.t && u.hp > 0) { u.fled = 1; u.hp = 0; }
     BRES[1] = []; LB.dawn = 1; endBattle(true);

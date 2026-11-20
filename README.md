@@ -442,6 +442,12 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
 
+## Zvláštne vlny noci (verzia 119)
+
+- **Dve zvláštne vlny** pri obrane hradu (`HOLD_WAVE`, `holdWave` v `js/sim/tactics.js`): pri 30 % a 65 % noci prídu čerstvé jednotky zľava. Helmov žľab: výbuch pod múrom (8 Uruk-haiov, brána −45) a vlna rebríkov (10); Minas Tirith: Mûmakil a Nazgûl; Edoras: svorky vargov; Erebor: trollovia s baranom (brána −30). Ostatné hrady dostanú obyčajné vlny 8 Uruk-haiov.
+- Oprava: `cmbStart` maže príznaky správ a vĺn z predošlej bitky (`hd*`, `hw*`, `tut*`), inak by sa v ďalšej bitke nespustili.
+- Test: Helmov žľab – pri 31 % noci +8 nepriateľov a poškodená brána, pri 66 % ďalších +10.
+
 ## Obrana do úsvitu (verzia 118)
 
 - **Cieľ obrany hradu** (`HOLD_T`, `holdDawn`, `holdLeft` v `js/sim/tactics.js`): pri obrane hradu (hráč stojí na hradbách) musíš vydržať do úsvitu. Slávne hrady majú dlhšiu noc: Helmov žľab ~2:50, Minas Tirith ~2:35, Erebor ~2:30, Edoras ~2:20, Rivendell a Minas Morgul ~2:15, ostatné ~1:55 (čas v snímkach, 60 = sekunda). Keď čas vyprší, nepriateľ sa stiahne a bitka je vyhraná, hoci ešte žije.
