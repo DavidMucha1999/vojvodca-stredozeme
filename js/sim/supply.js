@@ -98,7 +98,7 @@ function recruitPrisoners() {
 /** Rany hrdinu po bitke: padol alebo skončil pod 40 % zdravia → G.inj dní má o 20 % nižšie najvyššie zdravie (v tábore sa hoja rýchlejšie);
  *  pád niekedy zanechá jazvu (G.scars, +1 strach). Vráti text pre tabuľku bitky (alebo ''). */
 function injuryAfterBattle() {
-    G.injMsg = '';
+    G.injMsg = ''; G.lootMsg = '';
     const h = U && U[0]; if (!G || !h || !h.h) return '';
     const frac = Math.max(0, h.hp) / mh(), fell = !!(CMB && CMB.down);
     if (frac >= .4 && !fell) return '';
@@ -107,4 +107,27 @@ function injuryAfterBattle() {
     let t = 'Si zranený: ' + d + ' dní máš o 20 % nižšie zdravie (v tábore sa hojíš rýchlejšie).';
     if (fell && Math.random() < .5) { G.scars = (G.scars || 0) + 1; G.fear = (G.fear || 0) + 1; t += ' Zostala ti jazva – strach +1.'; }
     lg(t); G.injMsg = t; return t;
+}
+
+/** Korisť výstroje po víťazstve: väčšia armáda, obliehanie alebo boss môžu zanechať kus výbavy strany nepriateľa (orkská šabľa, uruk-haiský meč…),
+ *  ktorý ešte nemáš; cena do 150 + 70 × úroveň (boss +600, obliehanie +200). Pridá sa do inventára (G.own). Vráti text alebo ''. */
+function lootGear() {
+    const L = LB; if (!L || L.ar || L.duel || L.vil && !L.boss) return '';
+    const n = L.n0 || L.n || 0; if (n < 8 && !L.siege && !L.boss) return '';
+    if (Math.random() >= Math.min(.6, .12 + n / 150 + (L.siege ? .3 : 0) + (L.boss ? .3 : 0))) return '';
+    const z = L.f === 9 ? 0 : bloc(L.f), maxP = 150 + G.lv * 70 + (L.boss ? 600 : 0) + (L.siege ? 200 : 0), cand = [];
+    for (const k of ['w', 'a', 's', 'h', 'm']) shOf(k).forEach((x, i) => { if (x.p >= 40 && x.p <= maxP && !x.z === !z && !(G.own[k] || []).includes(i)) cand.push([k, i, x]); });
+    if (!cand.length) return '';
+    const [k, i, x] = cand[Math.floor(Math.random() * cand.length)];
+    G.own[k] = G.own[k] || []; G.own[k].push(i); G.own[k].sort((a, b) => a - b);
+    const t = 'Korisť z bojiska: ' + x.n + ' (' + SH.find(s => s.k === k).l.toLowerCase() + ') – nájdeš ju v inventári.';
+    lg(t); G.lootMsg = t; return t;
+}
+/** Povesť po rozhodujúcom víťazstve (proti aspoň 15 nepriateľom, vlastné straty do 15 % ich strát): strach +1. Vráti text alebo ''. */
+function fameAfterBattle() {
+    const foe = U.filter(u => u.t && fallen(u)).length, lost = U.filter(u => !u.t && !u.h && !u.ally && !u.cp && fallen(u)).length;
+    if (foe < 15 || lost > foe * .15) return '';
+    G.fear = (G.fear || 0) + 1;
+    const t = 'Rozhodujúce víťazstvo: padlo ' + foe + ' nepriateľov a len ' + lost + ' tvojich – po kraji sa šíri strach z tvojho mena (+1).';
+    lg(t); G.lootMsg = (G.lootMsg ? G.lootMsg + ' ' : '') + t; return t;
 }

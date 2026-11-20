@@ -448,7 +448,9 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Jazvy**: pád v bitke s 50 % šancou zanechá jazvu (`G.scars`, strach +1). Stav sa ukazuje na obrazovke hrdinu („Zranený 5 d“, „Jazvy 2“) a v tabuľke bitky.
 - Už predtým platilo: ranení vojaci sa vracajú po vyliečení, padnutý kôň sa niekedy nevráti, zajatci a výkupné, trofeje.
 - Test: po ťažkej bitke je najvyššie zdravie nižšie o 20 % a rany sa hoja po dňoch.
-- Nie je zatiaľ: zranenie koňa, korisť výstroje po bitke, povesť podľa spôsobu víťazstva.
+- **Korisť výstroje** (`lootGear` v `js/sim/supply.js`): po víťazstve nad armádou aspoň 8 mužov, pri obliehaní alebo bossovi môže zostať kus výbavy strany nepriateľa (orkská šabľa, uruk-haiský meč…), ktorý ešte nemáš. Šanca 12 % + počet nepriateľov / 150 (obliehanie a boss +30 %, najviac 60 %); cena do 150 + 70 × úroveň (boss +600, obliehanie +200). Lúpežníci nechávajú výbavu dobra. Vec je v inventári a v tabuľke bitky.
+- **Povesť** (`fameAfterBattle`): rozhodujúce víťazstvo (aspoň 15 padlých nepriateľov a tvoje straty do 15 % ich strát) zvýši strach o 1.
+- Nie je zatiaľ: zranenie koňa, povesť v jednotlivých frakciách podľa spôsobu víťazstva.
 
 ## Úvod a prvé minúty hry (verzia 115)
 

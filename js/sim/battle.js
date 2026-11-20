@@ -170,6 +170,7 @@ function battleReport(win) {
     const mine = U.filter(u => !u.t), their = U.filter(u => u.t);
     line('Výsledok: ' + (win ? 'víťazstvo' : 'porážka') + ' – ' + (win ? 'tvoja strana' : (LB && LB.nm ? LB.nm : 'nepriateľ')) + ' ovládla bojisko.', '#ffd24a');
     if (G.injMsg) line(G.injMsg, '#ff9a80');
+    if (G.lootMsg) line(G.lootMsg, '#9fe08a');
     line('Tvoje straty (' + mine.filter(fallen).length + '/' + mine.length + '): ' + tally(0));
     line('Straty nepriateľa (' + their.filter(fallen).length + '/' + their.length + '): ' + tally(1));
     const fl = side => U.filter(u => u.t === side && u.fled).length;
@@ -377,6 +378,7 @@ function endBattle(win) {
                 G.cav = Math.max(0, G.cav - dC);
                 if (G.ent) G.ent = Math.max(0, G.ent - U.filter(u => !u.t && u.k === 'n' && fallen(u)).length);
                 G.gold += loot;
+                lootGear(); fameAfterBattle();   // korisť výstroje a povesť (js/sim/supply.js)
                 G.ren++;
                 G.xp += Math.round(LB.n * 5 * (G.twise ? 1.1 : 1));
                 G.hp = Math.max(20, U[0].hp);
