@@ -442,6 +442,13 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
 
+## Zotrvačnosť pohybu (verzia 126)
+
+- **Hrdina pešo** (`updBattle` v `js/sim/battle.js`): rozbeh – plná rýchlosť až po ~8 snímkoch (začína na 35 %) – a dobeh: po pustení klávesu sa postava ešte kúsok zošmykne a spomalí. Kôň mal zotrvačnosť už predtým.
+- **Vojaci AI** sa otáčajú postupne (pešiaci ~0,2 rad/snímok, jazda 0,3), otočka o 180° trvá okolo 0,4 s – obchvat zboku a zozadu je tak o niečo účinnejší, lebo vojak nezareaguje okamžite.
+- Rýchlosť podľa terénu (svah, kopec) už platila.
+- Test: rozbeh, dobeh a postupné otáčanie.
+
 ## Prepnutie zbrane (verzia 125)
 
 - **Kláves N** (`wpnCycle` v `js/sim/warband.js`, premenovateľný v Nastaveniach): v bitke prepne na ďalšiu zbraň na blízko, ktorú vlastníš (napr. dlhá kopija ↔ meč so štítom ↔ obojručná zbraň). Prepnutie trvá chvíľu a nejde počas úderu.

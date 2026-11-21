@@ -548,9 +548,15 @@ function updBattle(dt) {
                     const m = Math.hypot(mx, my), k = CMB.blk && !heroMounted() ? .6 : 1;   // v kryte pešo pomalšie
                     mv = Math.atan2(my, mx);
                     if (!CMB.km) u.f = mv;
-                    u.x = Math.max(8, Math.min(BW - 8, u.x + mx / m * u.sp * k * dt));
-                    u.y = Math.max(20, Math.min(BH - 8, u.y + my / m * u.sp * k * dt));
+                    CMB.hv = Math.min(1, Math.max(.35, CMB.hv || 0) + .08 * dt); CMB.pdx = mx / m; CMB.pdy = my / m;   // rozbeh: plná rýchlosť až po ~8 snímkoch
+                    u.x = Math.max(8, Math.min(BW - 8, u.x + mx / m * u.sp * k * CMB.hv * dt));
+                    u.y = Math.max(20, Math.min(BH - 8, u.y + my / m * u.sp * k * CMB.hv * dt));
                 }
+                else if ((CMB.hv || 0) > .08) {   // dobeh: po pustení klávesu sa postava ešte kúsok zošmykne a spomalí
+                    CMB.hv *= Math.pow(.72, dt);
+                    u.x = Math.max(8, Math.min(BW - 8, u.x + CMB.pdx * u.sp * .6 * CMB.hv * dt)); u.y = Math.max(20, Math.min(BH - 8, u.y + CMB.pdy * u.sp * .6 * CMB.hv * dt));
+                }
+                else CMB.hv = 0;
                 cmbHero(u, dt, mv);   // mierenie, kryt, sek, bod, luk, pokrik, nápor (js/sim/combat.js)
             }
             else {
@@ -591,7 +597,7 @@ function updBattle(dt) {
                 }
                 if (b) {
                     const hx0 = u.x, hy0 = u.y;
-                    u.f = Math.atan2(b.y - u.y, b.x - u.x);
+                    { const a0 = Math.atan2(b.y - u.y, b.x - u.x), df = Math.atan2(Math.sin(a0 - u.f), Math.cos(a0 - u.f)), tr = (mounted(u) ? .3 : .2) * dt; u.f = Math.abs(df) <= tr ? a0 : u.f + Math.sign(df) * tr; }   // otáča sa postupne (do ~.4 s na otočku o 180°), nie skokom
                     if (aiWounded(u, b, bd, dt)) { }   // ranený vojak ustúpi (js/sim/warband.js)
                     else if (tacMove(u, b, bd, dt)) { }   // taktika: obchvat, lukostrelci za líniou, spoločný postup (js/sim/tactics.js)
                     else if (isHA(u)) haAI(u, b, bd, dt);   // jazdecký lukostrelec krúži a strieľa
