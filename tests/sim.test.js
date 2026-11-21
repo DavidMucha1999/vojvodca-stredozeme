@@ -387,6 +387,13 @@ try {
         ld.hp = lone.hp = 9999; meleeHit(atk, ld, 100, "swing"); meleeHit(atk2, lone, 100, "swing"); var dFront = 9999 - ld.hp, dLone = 9999 - lone.hp;
         atk.x = 488; atk.f = 0; atk.y = 500; ld.f = 0; ld.hp = 9999; lone.f = 0; lone.hp = 9999; atk2.x = 888; atk2.f = 0; atk2.y = 900; ld.x = 500; U.forEach(u => { if (u.t === 1 && u !== ld && u !== lone) u.f = 0; }); meleeHit(atk, ld, 100, "swing"); meleeHit(atk2, lone, 100, "swing"); var dBack = 9999 - ld.hp, dBackLone = 9999 - lone.hp; Math.random = R9;`);
     check('Línia štítov: súdržná línia dostane menej spredu, zozadu viac než osamelý vojak', run('cL > .9 && cA === 0 && dFront < dLone && dBack > dBackLone'), run('[cL, cA, dFront, dLone, dBack, dBackLone].join()'));
+    run(`mode = "map"; var gm0 = G.eq.m; G.eq.m = 1; startBattle({ n: 6, f: 9, nm: "Jazda" }); var JH = U[0]; for (const u of U) if (u !== JH) { u.x = 3000 + u.x; u.stun = 999; }
+        var jc = mk(1, "c", 9); jc.x = 600; jc.y = 600; jc.f = Math.PI; jc.hp = jc.mh = 9999; jc.stun = 0; U.push(jc); var ja = mk(0, "i", 9); ja.x = 585; ja.y = 600; ja.f = 0; U.push(ja);
+        var JR = Math.random; Math.random = () => .999; var aw0 = aiWpn;
+        aiWpn = () => "sword"; jc.hp = 9999; meleeHit(ja, jc, 100, "ai"); var dSw = 9999 - jc.hp;
+        aiWpn = () => "spear"; jc.hp = 9999; meleeHit(ja, jc, 100, "ai"); var dSp = 9999 - jc.hp; aiWpn = aw0; Math.random = JR;
+        var m0 = heroMounted(); unseat(JH); var unseated = m0 && !heroMounted() && JH.stun > 0; G.eq.m = gm0; JH.dis = 0;`);
+    check('Jazda: kopija proti jazdcovi dáva viac, hrdinu možno vyraziť zo sedla', run('dSp > dSw * 1.2 && unseated'), run('[dSw, dSp, unseated].join()'));
     check('Duel ako vo Warbande: úder AI zasiahne až čepeľou v pohybe a dá sa mu uskočiť; rýchlosť oboch strán; úder zachytený krytom odskočí; ťažká výbava spomalí (mithril nie)', run('atRel && landed && dodged && spdOk && bounced && l0 === 0 && lH > .5 && spH < .9 && swH > 1.07 && lM < lH * .5 && lOb < lH'), run('[atRel, landed, dodged, spdOk, bounced, l0, lH, spH, swH, lM, lOb].join(" ")'));
     // etapa 2 (bitka ako vo Warbande): zálohy a posily vo vlnách, bitka po páde hrdinu, zásahy vlastných, počty strán pre morálku
     run(closeMenus + '; mode = "map"; ov.classList.add("hide");');

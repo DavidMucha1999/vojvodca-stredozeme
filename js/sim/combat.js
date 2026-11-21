@@ -369,11 +369,14 @@ function meleeHit(att, def, d, kind, info) {
         return false;
     }
     let mult = rel > 2.1 ? 1.5 : rel > 1.2 ? 1.25 : 1;
+    const spearAtt = att.h ? kind === 'thrust' && !!(it('w') || {}).r : kind === 'ai' && aiWpn(att) === 'spear';
+    if (!def.h && mounted(def) && spearAtt) { mult *= 1.4; if (att.h) cmbSay('anticav', 'Kopija proti jazdcovi: +40 % zranenia – kopijníci sú postrachom jazdy.', 160); }   // kopija proti jazde
     if (coh) { mult *= rel < 1.1 ? 1 - .2 * coh : 1 + .2 * coh; if (att.h && rel > 1.2 && coh > .3) cmbSay('lineflank', 'Úder do boku línie štítov – tu ju nič nekryje!', 160); }
     if (info || kind === 'ai') {   // miesto zásahu a typ poškodenia (js/sim/warband.js)
         const dir = info ? info.d : att.lwd ? ({ l: 'r', r: 'l', u: 'u', t: 't' })[att.lwd] : 'r';
         hitZ(def, d * mult, att, { zone: meleeZone(att, def, dir, info ? info.pitch : null), type: dmgType(att, kind, dir), pow: info ? info.pow : 1 });
     } else hit(def, d * mult, att);
+    if (def.h && !def.dis && heroMounted() && (kind === 'charge' || (kind === 'ai' && aiWpn(att) === 'spear')) && Math.random() < (kind === 'charge' ? .2 : .1)) unseat(def);   // nápor alebo kopijník vyrazí hrdinu zo sedla
     if (kind === 'charge') fx3({ k: 'charge', x: def.x, y: def.y, u: def, by: att, a: dirTo(att, def) });   // náraz jazdy (3D: odhodenie, triesky z kopije)
     if (mult > 1 && att.h) cmbSay('flank', rel > 2.1 ? 'Úder zozadu: +50 % zranenia.' : 'Úder zboku: +25 % zranenia.', 120);
     return true;
@@ -390,6 +393,12 @@ function braced(def, att) {
     if (def.h || def.boss || def.rout || def.stun > 0 || angD(def.f, dirTo(def, att)) > 1) return false;
     if (def.uk && FU[def.uk] && FU[def.uk].wp === 'sp') return true;
     return !def.t && def.hx != null && (def.k === 'i' || def.k === 'v') && CMB.og[grpOf(def)] === 'l';
+}
+/** Hrdinu vyrazili zo sedla (nápor jazdy, kopijník): spadne, chvíľu je omráčený a bojuje pešo; kôň zvyčajne uteká (po bitke sa môže vrátiť). */
+function unseat(u) {
+    u.dis = 1; u.bs = u.sp = 1.2 * 1.9 * (1 + .08 * G.s.ob); CMB.run = 0; CMB.chg = 0; u.stun = 40; hit(u, 6, null); SHAKE = Math.max(SHAKE, 3);
+    for (let i = 0; i < 8; i++) PT.push({ x: u.x, y: u.y + 4, vx: Math.random() * 3 - 1.5, vy: -Math.random() * 2, g: .08, l: 24, c: '#c8b48c' });
+    TS = { s: 'Vyrazili ťa zo sedla! Kôň uteká – bojuj pešo.', l: 200 }; wbMsg('Vyrazený zo sedla!', '#ff9a80');
 }
 /** Kôň hrdinu padol: hrdina bojuje pešo. */
 function horseDown(u) {
@@ -458,7 +467,7 @@ function aiMelee(u, b, bd, dt) {
     if (u.c > 0 || wallBlocked(u, b)) return false;
     if (mounted(u) && u.run > 40) {   // jazda v plnom cvale: nápor
         const a = dirTo(u, b);
-        if (meleeHit(u, b, u.d * 2.2, 'charge') && b.hp > 0) { b.x += Math.cos(a) * 12; b.y += Math.sin(a) * 12; if (!b.h) b.stun = 20; }
+        if (meleeHit(u, b, u.d * (1.1 + 1.4 * Math.min(1, (u.run || 0) / 90)), 'charge') && b.hp > 0) { b.x += Math.cos(a) * 12; b.y += Math.sin(a) * 12; if (!b.h) b.stun = 20; }
         if (b.h) SHAKE = Math.max(SHAKE, 1.5);
         u.run = 0; u.c = 45; { u.ride = 55 + Math.random() * 25; u.rideA = a + (Math.random() - .5) * .5; }
         return true;

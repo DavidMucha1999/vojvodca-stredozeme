@@ -442,6 +442,14 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
 
+## Fyzika jazdy (verzia 122)
+
+- **Nápor AI jazdy podľa rozbehu** (`aiMelee`): poškodenie rastie s dĺžkou rovného cvalu (od ~1,7× po 2,5× sily); krátky rozbeh udrie slabšie než dlhý.
+- **Kopija proti jazde** (`meleeHit`): kopijník (alebo hrdina bodom kopije) zasiahne jazdca o 40 % silnejšie – jazda sa pred kopijami musí obchádzať.
+- **Zhodenie zo sedla** (`unseat`): nápor nepriateľskej jazdy (20 %) alebo bod kopijníka (10 %) môže hrdinu vyraziť z koňa: spadne, je krátko omráčený a bojuje pešo (kôň po bitke môže zmiznúť).
+- Už predtým: kôň hrdinu má zdravie a padne, šík kopijníkov zastaví nápor, sklopená kopija, lámanie kopije.
+- Test: kopija dáva viac proti jazdcovi, zhodenie zo sedla.
+
 ## Línia štítov (verzia 121)
 
 - **Súdržnosť línie** (`cohesion` v `js/sim/combat.js`): pešiak so štítom, vedľa ktorého stoja do ~26 jednotiek spolubojovníci s podobným smerom pohľadu (až 3 susedia = plná línia), sa kryje štítmi o rameno. Platí pre obe strany; štítový val hráča (rozkaz formácie) ju zosilní ×1,5.
