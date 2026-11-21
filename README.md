@@ -442,6 +442,14 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
 
+## Prepnutie zbrane (verzia 125)
+
+- **Kláves N** (`wpnCycle` v `js/sim/warband.js`, premenovateľný v Nastaveniach): v bitke prepne na ďalšiu zbraň na blízko, ktorú vlastníš (napr. dlhá kopija ↔ meč so štítom ↔ obojručná zbraň). Prepnutie trvá chvíľu a nejde počas úderu.
+- Obojručná zbraň odloží štít (po prepnutí späť sa vráti s rovnakou výdržou); po bitke sa vráti pôvodná zbraň. Štít zo zeme sa pri obojručnej zbrani nezdvíha.
+- Zbrane majú rozdielny dosah a tempo (kopija zasiahne prvá, obojručná sekne široko), takže prepnutie podľa vzdialenosti a súpera dáva zmysel.
+- Zatiaľ len 2+ zbrane z vlastníctva cyklicky (nie pevné 4 sloty); zlomený štít sa dá nahradiť štítom zo zeme.
+- Test: prepnutie, odloženie a návrat štítu, obnovenie zbrane po bitke, bez druhej zbrane sa nič nezmení.
+
 ## Ústup ranených (verzia 124)
 
 - **Ranený vojak ustúpi** (`aiWounded` v `js/sim/warband.js`, volá `updBattle`): keď mu zostane menej než 30 % zdravia a súper je do ~70 jednotiek, s istou šancou (30 % + zručnosť do 80 %) ustúpi na 2 – 3,5 s pred súperom a potom sa vráti do boja (alebo skôr, ak ho súper dobehne). Každý vojak ustupuje najviac raz. Netýka sa veliteľov, obrov, jazdy, lukostrelcov ani obliehania.

@@ -256,6 +256,7 @@ function startBattle(en, al) {
     cmbStart(en);   // morálka, veliteľ, výdrž, štít a šípy hrdinu (js/sim/combat.js)
 }
 function endBattle(win) {
+    if (CMB.w0 != null && G) { G.eq.w = CMB.w0; CMB.w0 = null; }   // po bitke sa vráti pôvodná zbraň (kláves prepnutia zbrane)
     if (G && LB && !LB.ar && !LB.duel) G.tut = 1;   // prvá bitka je za nami, tipy sa už nezobrazujú
     compAfterBattle();
     SGB = null;

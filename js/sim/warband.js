@@ -318,12 +318,25 @@ function wpnSwitch() {
     if (!C.ammo) { wbMsg('Došli ti strely.', '#ff9a80'); return; }
     C.wpn = 'r'; C.rd = null; const RW = rangedW(); wbMsg(RW ? RW.n : 'Lovecký luk', '#e8d8a8');
 }
+/** Kláves N: prepne na ďalšiu zbraň na blízko, ktorú vlastníš (dlhá kopija ↔ meč so štítom ↔ obojručná zbraň). Prepnutie chvíľu trvá;
+ *  obojručná zbraň odloží štít (po prepnutí späť sa vráti), po bitke sa vráti pôvodná zbraň. */
+function wpnCycle() {
+    const C = CMB, u = U && U[0]; if (mode !== 'battle' || !u || u.hp <= 0 || C.wpn === 'r') return;
+    const own = [...new Set(G.own.w || [])].filter(i => i >= 0).sort((a, b) => a - b);
+    if (own.length < 2) { cmbSay('swap', 'Nemáš druhú zbraň na blízko – kúp ju u kováča.', 200); return; }
+    if (u.c > 0 || C.rd || C.sw) return;   // nie počas úderu
+    if (C.w0 == null) C.w0 = G.eq.w;
+    const was2 = twoHand(); G.eq.w = own[(own.indexOf(G.eq.w) + 1) % own.length];
+    if (twoHand() && C.shp > 0) { C.shpSave = C.shp; C.shp = 0; }
+    else if (!twoHand() && was2 && C.shpSave != null) { C.shp = C.shpSave; C.shpSave = null; }
+    C.blk = 0; u.c = 25; C.chN = 0; wbMsg((it('w') || {}).n || 'Zbraň', '#e8d8a8'); snd('sh');
+}
 /** Zbieranie šípov a štítu zo zeme prechodom. */
 function pickups(u) {
     const C = CMB, RW = rangedW(), want = RW ? (RW.rt === 'xbow' ? 'bolt' : RW.rt === 'jav' ? 'jav' : 'arrow') : 'arrow';
     for (let i = GA.length - 1; i >= 0; i--) {
         const g = GA[i]; if (Math.hypot(g.x - u.x, g.y - u.y) > 8) continue;
-        if (g.k === 'shield' && C.shMax && C.shp <= 0) { C.shp = C.shMax * .6; g.picked = 1; GA.splice(i, 1); wbMsg('Zdvihol si štít zo zeme.', '#9fe08a'); continue; }
+        if (g.k === 'shield' && C.shMax && C.shp <= 0 && C.shpSave == null && !twoHand()) { C.shp = C.shMax * .6; g.picked = 1; GA.splice(i, 1); wbMsg('Zdvihol si štít zo zeme.', '#9fe08a'); continue; }
         if (g.k === want && C.ammo0 && C.ammo < C.ammo0) { C.ammo++; g.picked = 1; GA.splice(i, 1); if (!C.pkMsg || C.pkMsg < tm) { C.pkMsg = tm + 120; wbMsg('Zbieraš strely zo zeme.', '#9fe08a'); } }
     }
 }

@@ -402,6 +402,11 @@ try {
         var WQ = Math.random; Math.random = () => .1; var w1 = aiWounded(wu, wb, 15, 1), wx1 = wu.x; aiWounded(wu, wb, 15, 1); var wMoved = wu.x > wx1 && wx1 > 700; var wg = 0; while (aiWounded(wu, wb, 100, 1) && wg++ < 400); var wEnds = !aiWounded(wu, wb, 100, 1) && wg > 100;
         var wh = mk(1, "i", 9); wh.x = 800; wh.y = 700; wh.stun = 0; wh.hp = wh.mh; var wNo = !aiWounded(wh, wb, 15, 1); Math.random = WQ;`);
     check('AI v súbojoch: ranený vojak ustúpi a po chvíli sa vráti, zdravý nie', run('w1 && wMoved && wEnds && wNo'), run('[w1, wMoved, wEnds, wNo, wg].join()'));
+    run(`mode = "map"; var sw0 = [G.eq.w, G.own.w.slice(), G.eq.s]; var iA = shOf("w").findIndex(w => w.n === "Železný meč"), iB = shOf("w").findIndex(w => w.n === "Gondorský obojručný meč"); G.own.w = [iA, iB]; G.eq.w = iA; startBattle({ n: 6, f: 9, nm: "Zbraň" }); var SU = U[0]; for (const u of U) if (!u.h) { u.x = 3000 + u.x; u.stun = 999; }
+        CMB.shMax = 100; CMB.shp = 60; CMB.rd = null; CMB.sw = null; SU.c = 0; wpnCycle(); var c1w = G.eq.w === iB && twoHand() && CMB.shp === 0 && CMB.w0 === iA && SU.c > 0;
+        SU.c = 0; wpnCycle(); var c2w = G.eq.w === iA && !twoHand() && CMB.shp === 60; SU.c = 0; wpnCycle(); CMB.w0 = iA; endBattle(true); var restored = G.eq.w === iA && CMB.w0 == null;
+        G.eq.w = sw0[0]; G.own.w = sw0[1]; mode = "map"; var oneW = (G.own.w = [iA], startBattle({ n: 6, f: 9, nm: "Zbraň" }), SU = U[0], SU.c = 0, CMB.w0 = null, wpnCycle(), G.eq.w === iA); G.own.w = sw0[1]; G.eq.w = sw0[0];`);
+    check('Prepnutie zbrane (N): druhá zbraň na blízko, obojručná odloží štít, po bitke sa vráti pôvodná', run('c1w && c2w && restored && oneW'), run('[c1w, c2w, restored, oneW].join()'));
     check('Duel ako vo Warbande: úder AI zasiahne až čepeľou v pohybe a dá sa mu uskočiť; rýchlosť oboch strán; úder zachytený krytom odskočí; ťažká výbava spomalí (mithril nie)', run('atRel && landed && dodged && spdOk && bounced && l0 === 0 && lH > .5 && spH < .9 && swH > 1.07 && lM < lH * .5 && lOb < lH'), run('[atRel, landed, dodged, spdOk, bounced, l0, lH, spH, swH, lM, lOb].join(" ")'));
     // etapa 2 (bitka ako vo Warbande): zálohy a posily vo vlnách, bitka po páde hrdinu, zásahy vlastných, počty strán pre morálku
     run(closeMenus + '; mode = "map"; ov.classList.add("hide");');

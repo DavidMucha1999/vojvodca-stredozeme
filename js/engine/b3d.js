@@ -1386,7 +1386,7 @@ const B3 = (() => {
         return { sm, B: bones };
     }
     /** Model jednotky zo šablóny: kostrová sieť jazdca a koňa, alebo skupina dielov (bossovia, olifanty, enti). */
-    const heroKey = u => { const C = typeof CMB !== 'undefined' ? CMB : {}; return [C.wpn, C.shMax && C.shp <= 0 ? 1 : 0, u.dis ? 1 : 0].join(); };
+    const heroKey = u => { const C = typeof CMB !== 'undefined' ? CMB : {}; return [C.wpn, C.shMax && C.shp <= 0 ? 1 : 0, u.dis ? 1 : 0, G && G.eq ? G.eq.w : 0].join(); };
     function rig(u) {
         const t = T(), s = specOf(u), tp = template(s), root = new t.Group(), o = { root, s, tp, ph: Math.random() * 6, mph: Math.random(), atk: 0, lc: u.c, px: u.x, py: u.y, dead: 0, sp: 0, hit: 0, hp0: u.hp, bl: 0, id: units.size, hk: u.h ? heroKey(u) : null };
         const vr = u.vr ?? (u.vr = Math.random()), tj = u.h ? 0 : (vr - .5) * .16;   // odtieň a veľkosť sa u vojakov mierne líšia
