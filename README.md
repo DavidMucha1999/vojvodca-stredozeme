@@ -442,6 +442,12 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
 
+## Séria úderov a riposta (verzia 123)
+
+- **Únava zo série** (`heroStrike` v `js/sim/combat.js`): každý ďalší úder v rade (bez ~2-sekundovej pauzy) predĺži zotavenie o 10 % a zvýši spotrebu výdrže o 12 % (až štyri stupne). Pauza alebo dokonalý kryt sériu vynuluje. Vojaci AI sa unavujú podobne (`aiChain`, +8 % zotavenia na stupeň).
+- **Riposta:** po dokonalom kryte máš ~1,2 s na úder, ktorý je o 30 % silnejší a zotavenie je o 30 % kratšie.
+- Test: zotavenie rastie v sérii a po riposte klesá.
+
 ## Fyzika jazdy (verzia 122)
 
 - **Nápor AI jazdy podľa rozbehu** (`aiMelee`): poškodenie rastie s dĺžkou rovného cvalu (od ~1,7× po 2,5× sily); krátky rozbeh udrie slabšie než dlhý.

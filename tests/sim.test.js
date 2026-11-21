@@ -348,7 +348,9 @@ try {
         CMB.mdx = 30; keys[" "] = true; tick(1); var rdOk = CMB.rd && CMB.rd.d === "r"; tick(3); keys[" "] = false; tick(40); var hp1 = e.hp, quick = 9999 - hp1;
         h.c = 0; CMB.st = 100; CMB.mdx = 30; keys[" "] = true; tick(55); keys[" "] = false; tick(30); var strong = hp1 - e.hp;
         h.c = 0; CMB.st = 100; keys[" "] = true; tick(5); CMB.blk = 0; keys.Shift = true; tick(1); keys.Shift = false; keys[" "] = false; var feint = !CMB.rd; tick(2);
-        CMB.rd = null; CMB.blk = 0; h.c = 0; CMB.st = 100; keys.Shift = false; CMB.mdx = 30; CMB.mdy = 0; keys[" "] = true; tick(1); var dr1 = CMB.rd && CMB.rd.d; CMB.mdx = -30; tick(2); var dr2 = CMB.rd && CMB.rd.d, drN = CMB.rd ? CMB.rd.dh.length : 0; keys[" "] = false; CMB.rd = null; CMB.mdx = 0; var dirChg = dr1 === "r" && dr2 === "l" && drN === 2;`);
+        CMB.rd = null; CMB.blk = 0; h.c = 0; CMB.st = 100; keys.Shift = false; CMB.mdx = 30; CMB.mdy = 0; keys[" "] = true; tick(1); var dr1 = CMB.rd && CMB.rd.d; CMB.mdx = -30; tick(2); var dr2 = CMB.rd && CMB.rd.d, drN = CMB.rd ? CMB.rd.dh.length : 0; keys[" "] = false; CMB.rd = null; CMB.mdx = 0; var dirChg = dr1 === "r" && dr2 === "l" && drN === 2;
+        var strk = () => { CMB.sw = null; CMB.rd = { d: "r", t: 99, key: "atk", ready: 9, rel: 1, dh: [[0, "r"]] }; h.c = 0; cmbHero(h, 0, null); return h.c; };
+        CMB.chN = 0; CMB.chT = 0; CMB.rip = 0; CMB.st = 100; CMB.mdx = 0; var c1 = strk(), st1 = CMB.st; var c2 = strk(), c3 = strk(); CMB.chT = 0; CMB.chN = 0; CMB.rip = 60; var c4 = strk(); var tireOk = c2 > c1 * 1.05 && c3 > c2 && c4 < c1; CMB.rip = 0; CMB.chN = 0; CMB.chT = 0; h.c = 0;`);
     check('Smer úderu z pohybu myši, držaný nápriah je silnejší, kryt počas nápriahu je klam', run('dL === "l" && dU === "u" && dT === "t" && rdOk && quick > 0 && strong > quick * 1.3 && feint'), run('[dL, dU, dT, rdOk, quick, strong, feint].join(" ")'));
     // boj ako Warband: čepeľ v pohybe, štatistiky zbraní, brnenie odráta pevnú hodnotu, bez výdrže
     run(`h.c = 0; e.hp = e.mh = 9999; e.x = h.x + 18; e.y = h.y; CMB.mdx = 30; CMB.sw = null; CMB.rd = { d: "r", t: 99, key: "atk", ready: 9, rel: 1 }; cmbHero(h, 1, null); var swAct = !!CMB.sw, hpA = e.hp; tick(1); var late = e.hp === hpA ? 0 : 1; tick(24); var swHit = e.hp < hpA && !CMB.sw;
@@ -377,6 +379,7 @@ try {
         G.eq.a = ia; G.eq.s = shOf("s").length - 1; G.eq.h = shOf("h").length - 1; var lH = heroLoad(), spH = loadSpeed(), swH = loadSwing();
         G.eq.a = im; G.eq.s = 0; G.eq.h = 0; var lM = heroLoad(); G.eq.a = ia; G.s.ob = 4; var lOb = heroLoad();
         G.eq.a = s0[0]; G.eq.s = s0[1]; G.eq.h = s0[2]; G.eq.m = s0[3]; G.s.ob = s0[4];`);
+    check('Séria úderov unavuje (dlhšie zotavenie) a riposta po dokonalom kryte je rýchlejšia', run('tireOk'), run('[c1, c2, c3, c4].join()'));
     check('Smer úderu sa dá zmeniť počas nápriahu; klam smerom zmýli vojaka, ktorý kryl starý smer', run('dirChg && dirFeint'), run('[dr1, dr2, drN, fA, fB].join()'));
     run(`mode = "map"; startBattle({ n: 6, f: 9, nm: "Línia" }); var LH = U[0]; for (const u of U) if (u !== LH) { u.x = 3000 + u.x; u.stun = 999; }
         var mkL = (x, y) => { const u = mk(1, "i", 9); u.x = x; u.y = y; u.f = Math.PI; u.hp = u.mh = 9999; u.stun = 0; U.push(u); return u; };
