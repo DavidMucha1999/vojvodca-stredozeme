@@ -14,9 +14,15 @@ od.style.flexWrap = 'wrap'; od.style.justifyContent = 'center'; od.style.maxWidt
 /** Vybraná skupina vojska pre rozkazy. */
 function selGroup(g) { CMB.sel = g; odSync(); }
 /** Rozkaz vybranej skupine (alebo všetkým). */
+const ORD_SHOUT = { a: 'Do útoku!', h: 'Držte pozície!', f: 'Za mnou!', l: 'Do šíku!', r: 'Ústup!' };
 function setOrd(k) {
     ORD = k;
     const gs = CMB.sel === 'all' ? ['p', 'l', 'j'] : [CMB.sel];
+    // hlasový povel: vojaci začnú rozkaz plniť s malým oneskorením (0,1 – 0,6 s), kým ho nepočuli, držia predošlý
+    if (U && mode === 'battle' && gs.some(g => CMB.og[g] !== k)) {
+        for (const u of U) if (!u.t && !u.ally && !u.h && u.hp > 0 && gs.includes(grpOf(u)) && CMB.og[grpOf(u)] !== k) { u.ogOld = CMB.og[grpOf(u)]; u.ordWait = 8 + Math.random() * 28; }
+        wbMsg((GRP_N[CMB.sel] || 'Vojsko') + ': ' + (ORD_SHOUT[k] || ''), '#ffd24a'); if (k === 'a' || k === 'r') snd('horn');
+    }
     gs.forEach(g => { CMB.og[g] = k; });
     ordPlace(gs, k);
     odSync();

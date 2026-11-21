@@ -419,6 +419,8 @@ try {
         ru.x = rxx + 20; ru.y = 100; ru.stun = 0; var rSlow = fieldSlow(ru) < .6; ru.y = BH / 2; var rFord = fieldSlow(ru) > .9;
         var rSame = !fordGuide(ru, { x: ru.x + 200, y: ru.y }, 200, 1); FIELD = RF0; var rCenter = riverX() === BW / 2 && Math.abs((rfy[0] + rfy[1]) / 2 - BH / 2) < 1;`);
     check('Rieka: stred poľa, brod v strede, hlboká voda spomaľuje, vojak ide k brodu a cez neho', run('rToward && rCross && rSlow && rFord && rSame && rCenter'), run('[rToward, rCross, rSlow, rFord, rSame, rCenter, ru.x, ru.y].join()'));
+    run(`mode = "map"; startBattle({ n: 12, f: 9, nm: "Povel" }); CMB.sel = "all"; CMB.og = { p: "a", l: "a", j: "a" }; CMB.msgs = []; var po = U.filter(u => !u.t && !u.ally && !u.h && grpOf(u) === "p")[0]; setOrd("h"); var pWait = po && po.ordWait > 0 && po.ogOld === "a" && CMB.og.p === "h"; var pMsg = CMB.msgs.some(m => /Držte pozície/.test(m.s)); setOrd("h"); var pNoRe = CMB.msgs.length === 1; CMB.og = { p: "a", l: "a", j: "a" }; mode = "map";`);
+    check('Hlasový povel: správa s rozkazom a oneskorené plnenie', run('pWait && pMsg && pNoRe'), run('[pWait, pMsg, pNoRe].join()'));
     check('Duel ako vo Warbande: úder AI zasiahne až čepeľou v pohybe a dá sa mu uskočiť; rýchlosť oboch strán; úder zachytený krytom odskočí; ťažká výbava spomalí (mithril nie)', run('atRel && landed && dodged && spdOk && bounced && l0 === 0 && lH > .5 && spH < .9 && swH > 1.07 && lM < lH * .5 && lOb < lH'), run('[atRel, landed, dodged, spdOk, bounced, l0, lH, spH, swH, lM, lOb].join(" ")'));
     // etapa 2 (bitka ako vo Warbande): zálohy a posily vo vlnách, bitka po páde hrdinu, zásahy vlastných, počty strán pre morálku
     run(closeMenus + '; mode = "map"; ov.classList.add("hide");');

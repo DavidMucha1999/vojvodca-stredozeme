@@ -442,6 +442,13 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
 
+## Hlasové povely a zoom luku (verzia 128)
+
+- **Hlasový povel** (`setOrd` v `js/ui/toolbar.js`): každý rozkaz skupine (T, H, F, G, R) sa ozve ako výkrik vo výpise vľavo dole („Pechota: Držte pozície!“), pri útoku a ústupe aj rohom. Vojaci ho začnú plniť s oneskorením 0,1 – 0,6 s (`ordWait`), dovtedy držia predošlý rozkaz – armáda nereaguje na zlomok sekundy.
+- **Zoom luku:** pri napnutom luku sa záber približuje aj v tretej osobe (predtým len v prvej).
+- Už predtým: tretia/prvá osoba (Tab), voľné mierenie s pádom šípu, rozšírenie záberu v cvale, trasenie kamery pri ťažkých úderoch.
+- Test: povel pošle správu a nastaví oneskorenie; opakovaný ten istý rozkaz sa nehlási.
+
 ## Rieka a brod na poľnom bojisku (verzia 127)
 
 - **Rieka vedie stredom veľkého poľa** (`riverX`, `fordY` v `js/sim/field.js`): predtým bola pevne na x = 720 (stred starého bojiska 1440 × 960), teraz je na polovici šírky a brod je v strede výšky (80 jednotiek). Upravená 3D vrstva (`js/engine/b3d.js`: koryto, voda, tráva, kamene, stopy) aj 2D scéna.

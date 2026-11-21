@@ -2089,7 +2089,7 @@ const B3 = (() => {
             if (k >= 1) { intro = null; try { if (typeof snd === 'function') snd('horn'); if (typeof roar === 'function') roar(1); } catch (e) { } }   // roh a bojový pokrik: útok
         } else { cam.position.lerp(want, Math.min(1, .18 * dt)); tgt.lerp(look, Math.min(1, .25 * dt)); cam.lookAt(tgt); }
         if (SHAKE > 0) { cam.position.x += (Math.random() - .5) * SHAKE * 1.2; cam.position.y += (Math.random() - .5) * SHAKE * 1.2; }
-        const C2 = typeof CMB !== 'undefined' ? CMB : {}, fov = 52 + (C2.charging || C2.couch ? 9 : 0) + Math.min(5, Math.max(0, (Math.hypot(C2.vx || 0, C2.vy || 0) - 2.5) * 3));   // rozšírenie záberu v cvale a pri nápore
+        const C2 = typeof CMB !== 'undefined' ? CMB : {}, fov = 52 + (C2.charging || C2.couch ? 9 : 0) + Math.min(5, Math.max(0, (Math.hypot(C2.vx || 0, C2.vy || 0) - 2.5) * 3)) - (C2.draw > 20 ? 5 : 0);   // rozšírenie záberu v cvale a pri nápore
         if (Math.abs(cam.fov - fov) > .05) { cam.fov += (fov - cam.fov) * Math.min(1, .08 * dt); cam.updateProjectionMatrix(); }
         lightsFollow(h.x, h.y, dt);
     }
@@ -2112,7 +2112,7 @@ const B3 = (() => {
         }
         const look = cam.position.clone().addScaledVector(F, 200); cam.lookAt(look); tgt = look;
         if (SHAKE > 0) { cam.position.x += (Math.random() - .5) * SHAKE * .8; cam.position.y += (Math.random() - .5) * SHAKE * .8; }
-        const C2 = typeof CMB !== 'undefined' ? CMB : {}, fov = (fpv ? FPC.fov : 54) + (C2.charging || C2.couch ? 8 : 0) + Math.min(5, Math.max(0, (Math.hypot(C2.vx || 0, C2.vy || 0) - 2.5) * 3)) - (C2.draw > 20 && fpv ? 8 : 0);
+        const C2 = typeof CMB !== 'undefined' ? CMB : {}, fov = (fpv ? FPC.fov : 54) + (C2.charging || C2.couch ? 8 : 0) + Math.min(5, Math.max(0, (Math.hypot(C2.vx || 0, C2.vy || 0) - 2.5) * 3)) - (C2.draw > 20 ? (fpv ? 8 : 5) : 0);   // pri napnutom luku sa záber priblíži (aj v tretej osobe)
         if (Math.abs(cam.fov - fov) > .05) { cam.fov += (fov - cam.fov) * Math.min(1, .1 * dt); cam.updateProjectionMatrix(); }
         lightsFollow(h.x, h.y, dt);
     }

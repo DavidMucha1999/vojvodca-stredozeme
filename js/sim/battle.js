@@ -577,7 +577,8 @@ function updBattle(dt) {
                 if (u.t && TAC.on) { const nb = tacTarget(u, b); if (nb !== b) { b = nb; bd = Math.hypot(b.x - u.x, b.y - u.y); } }   // jazda po obchvate cieli na lukostrelcov
                 u.bd = bd;   // vzdialenosť k nepriateľovi (3D: nečinní vojaci búchajú do štítov a pokrikujú)
                 if (!u.t && !u.ally && b) {
-                    const ORD = CMB.og[grpOf(u)] || 'a';   // rozkaz skupiny vojaka (pechota, lukostrelci, jazda)
+                    if (u.ordWait > 0) u.ordWait -= dt;
+                    const ORD = (u.ordWait > 0 ? u.ogOld : CMB.og[grpOf(u)]) || 'a';   // rozkaz skupiny vojaka (pechota, lukostrelci, jazda)
                     if (ORD === 'r') {
                         u.f = Math.PI;
                         u.x = Math.max(20, u.x - u.sp * 1.15 * dt);
