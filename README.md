@@ -6,6 +6,8 @@ Autor a vývojár hry: **Dávid Mucha**
 
 **▶ [Spustiť hru v prehliadači](https://davidmucha1999.github.io/vojvodca-stredozeme/)**
 
+*English summary:* a browser strategy game (JavaScript, Phaser 3, Three.js) inspired by Mount & Blade: Warband, set in Middle-earth. It has 3D battles with directional melee and army AI, a world map, economy and story, and automated simulation tests (`npm test`). Play it in a desktop browser with keyboard and mouse using the link above. Resume notes are in [docs/zivotopis.md](docs/zivotopis.md).
+
 Netreba nič inštalovať. Hra je určená pre počítač s klávesnicou a myšou (Chrome, Edge alebo Firefox); prvé načítanie trvá pár sekúnd. Postup hry sa ukladá len v prehliadači hráča.
 
 ## Ukážky
