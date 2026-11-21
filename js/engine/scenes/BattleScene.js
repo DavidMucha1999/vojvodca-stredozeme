@@ -152,9 +152,10 @@ class BattleScene extends Phaser.Scene {
         }
         if (F.river) {
             const bank = this.add.graphics().setDepth(-9);
-            bank.fillStyle(0x2a3a22, .55).fillRect(684, 0, 72, BH);
-            this.water = this.add.tileSprite(690, 0, 60, BH, 'water').setOrigin(0).setTileScale(.5).setDepth(-9);
-            bank.fillStyle(0x9a8558, 1).fillRect(686, 440, 68, 80).fillStyle(0x000000, .12).fillRect(686, 440, 68, 4).fillRect(686, 516, 68, 4);
+            const rx = riverX(), fy = fordY()[0];
+            bank.fillStyle(0x2a3a22, .55).fillRect(rx - 36, 0, 72, BH);
+            this.water = this.add.tileSprite(rx - 30, 0, 60, BH, 'water').setOrigin(0).setTileScale(.5).setDepth(-9);
+            bank.fillStyle(0x9a8558, 1).fillRect(rx - 34, fy, 68, 80).fillStyle(0x000000, .12).fillRect(rx - 34, fy, 68, 4).fillRect(rx - 34, fy + 76, 68, 4);
         }
         const tree = b === 'a' ? ['deadtree'] : b === 'd' ? [] : ['tree_0', 'tree_1', 'tree_2'];
         const place = (x, y) => {

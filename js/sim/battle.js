@@ -599,6 +599,7 @@ function updBattle(dt) {
                     const hx0 = u.x, hy0 = u.y;
                     { const a0 = Math.atan2(b.y - u.y, b.x - u.x), df = Math.atan2(Math.sin(a0 - u.f), Math.cos(a0 - u.f)), tr = (mounted(u) ? .3 : .2) * dt; u.f = Math.abs(df) <= tr ? a0 : u.f + Math.sign(df) * tr; }   // otáča sa postupne (do ~.4 s na otočku o 180°), nie skokom
                     if (aiWounded(u, b, bd, dt)) { }   // ranený vojak ustúpi (js/sim/warband.js)
+                    else if (fordGuide(u, b, bd, dt)) { }   // cez rieku cez brod (js/sim/field.js)
                     else if (tacMove(u, b, bd, dt)) { }   // taktika: obchvat, lukostrelci za líniou, spoločný postup (js/sim/tactics.js)
                     else if (isHA(u)) haAI(u, b, bd, dt);   // jazdecký lukostrelec krúži a strieľa
                     else if ((u.k === 'a' || u.k === 'e')) {

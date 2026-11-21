@@ -442,6 +442,13 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
 
+## Rieka a brod na poľnom bojisku (verzia 127)
+
+- **Rieka vedie stredom veľkého poľa** (`riverX`, `fordY` v `js/sim/field.js`): predtým bola pevne na x = 720 (stred starého bojiska 1440 × 960), teraz je na polovici šírky a brod je v strede výšky (80 jednotiek). Upravená 3D vrstva (`js/engine/b3d.js`: koryto, voda, tráva, kamene, stopy) aj 2D scéna.
+- **Hlboká voda mimo brodu** spomaľuje o 50 %; v brode sa ide normálne.
+- **Hľadanie cesty cez rieku** (`fordGuide`): vojak AI s nepriateľom na druhom brehu (do ~320 jednotiek od rieky) ide najprv k brodu a cez neho. Pri brode sa tvorí húf. Netýka sa hrdinu, lukostrelcov ani vojakov blízko súpera (do 70).
+- Test: stred poľa, brod, spomalenie, cesta k brodu a cez neho. Vizuálne som overil len polohu koryta a vodnej plochy, nie celý vzhľad v hre.
+
 ## Zotrvačnosť pohybu (verzia 126)
 
 - **Hrdina pešo** (`updBattle` v `js/sim/battle.js`): rozbeh – plná rýchlosť až po ~8 snímkoch (začína na 35 %) – a dobeh: po pustení klávesu sa postava ešte kúsok zošmykne a spomalí. Kôň mal zotrvačnosť už predtým.

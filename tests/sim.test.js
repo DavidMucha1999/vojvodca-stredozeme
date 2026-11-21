@@ -412,6 +412,13 @@ try {
         keys.d = false; zx = ZH.x; updBattle(1); var zslide = ZH.x - zx; for (let i = 0; i < 40; i++) updBattle(1); zx = ZH.x; updBattle(1); var zstop = ZH.x - zx; G.eq.m = gm1;
         var zta = mk(1, "i", 9); zta.x = 900; zta.y = 900; zta.f = Math.PI; zta.stun = 0; U.push(zta); var ztb = mk(0, "i", 9); ztb.x = 1000; ztb.y = 900; ztb.stun = 999; U.push(ztb); ZH.x = 100; ZH.y = 100; var tf0 = zta.f; updBattle(1); var tdf = Math.abs(Math.atan2(Math.sin(zta.f - tf0), Math.cos(zta.f - tf0))); CMB.km = 1;`);
     check('Pohyb: hrdina sa rozbieha a zošmykne, vojaci sa otáčajú postupne', run('zd1 > 0 && zd12 > zd1 * 1.8 && zslide > 0 && zslide < zd12 && zstop < .05 && tdf > 0 && tdf < .25'), run('[zd1, zd12, zslide, zstop, tdf].join()'));
+    run(`mode = "map"; startBattle({ n: 6, f: 9, nm: "Rieka" }); var RF0 = FIELD; FIELD = { forest: 0, river: true, hill: null, trees: [], reg: "g" }; var rxx = riverX(), rfy = fordY(); for (const u of U) if (!u.h) { u.x = 3000 + u.x; u.y = 3000; u.stun = 999; }
+        var ru = mk(1, "i", 9); ru.x = rxx + 150; ru.y = 300; ru.stun = 0; U.push(ru); var rb = mk(0, "i", 9); rb.x = rxx - 300; rb.y = 300; rb.stun = 999; U.push(rb);
+        var rOk0 = fordGuide(ru, rb, 450, 1), ry0 = ru.y; for (let i = 0; i < 60; i++) fordGuide(ru, rb, 450, 1); var rToward = rOk0 && ru.y > ry0 + 30;
+        ru.x = rxx + 20; ru.y = BH / 2; var rCross = fordGuide(ru, rb, 300, 1) && ru.x < rxx + 20;
+        ru.x = rxx + 20; ru.y = 100; ru.stun = 0; var rSlow = fieldSlow(ru) < .6; ru.y = BH / 2; var rFord = fieldSlow(ru) > .9;
+        var rSame = !fordGuide(ru, { x: ru.x + 200, y: ru.y }, 200, 1); FIELD = RF0; var rCenter = riverX() === BW / 2 && Math.abs((rfy[0] + rfy[1]) / 2 - BH / 2) < 1;`);
+    check('Rieka: stred poľa, brod v strede, hlboká voda spomaľuje, vojak ide k brodu a cez neho', run('rToward && rCross && rSlow && rFord && rSame && rCenter'), run('[rToward, rCross, rSlow, rFord, rSame, rCenter, ru.x, ru.y].join()'));
     check('Duel ako vo Warbande: úder AI zasiahne až čepeľou v pohybe a dá sa mu uskočiť; rýchlosť oboch strán; úder zachytený krytom odskočí; ťažká výbava spomalí (mithril nie)', run('atRel && landed && dodged && spdOk && bounced && l0 === 0 && lH > .5 && spH < .9 && swH > 1.07 && lM < lH * .5 && lOb < lH'), run('[atRel, landed, dodged, spdOk, bounced, l0, lH, spH, swH, lM, lOb].join(" ")'));
     // etapa 2 (bitka ako vo Warbande): zálohy a posily vo vlnách, bitka po páde hrdinu, zásahy vlastných, počty strán pre morálku
     run(closeMenus + '; mode = "map"; ov.classList.add("hide");');

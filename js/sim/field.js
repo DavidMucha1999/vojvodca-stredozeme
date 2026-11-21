@@ -9,6 +9,8 @@ const riverPoints = (() => { let pts = null; return () => {
     pts = typeof GEO !== 'undefined' ? GEO.RIVERS.flatMap(R => R.pts.map(([x, y]) => [x * K, y * K])) : [];
     return pts;
 }; })();
+/** Rieka na poľnom bojisku: vedie stredom (x) a má jeden brod v strede výšky (y medzi fordY()[0] a fordY()[1]). */
+const riverX = () => BW / 2, fordY = () => [BH / 2 - 40, BH / 2 + 40];
 function battleTerrain(x, y) {
     const T = typeof MAPDATA !== 'undefined' && MAPDATA.terrain, reg = regionAt(x, y);
     let forest = 0, hill = null, river = false;
@@ -24,13 +26,25 @@ function battleTerrain(x, y) {
     // stromy: zhluky podľa hustoty lesa (0 až 1), deterministicky podľa polohy
     let seed = Math.floor(x / 7 + y / 11) + 13; const rnd = () => (seed = seed * 16807 % 2147483647) / 2147483647;
     const trees = [], groves = Math.round(2 + forest * 14);
-    for (let i = 0; i < groves; i++) { const cx = 100 + rnd() * (BFW - 200), cy = 50 + rnd() * (BFH - 100), r = 40 + rnd() * 50 + forest * 40; if (river && cx > 660 && cx < 780) continue; if (Math.abs(cy - BFH / 2) < 160 && cx > 400 && cx < BFW - 400) continue; trees.push({ x: cx, y: cy, r }); }
+    for (let i = 0; i < groves; i++) { const cx = 100 + rnd() * (BFW - 200), cy = 50 + rnd() * (BFH - 100), r = 40 + rnd() * 50 + forest * 40; if (river && Math.abs(cx - riverX()) < 60) continue; if (Math.abs(cy - BFH / 2) < 160 && cx > 400 && cx < BFW - 400) continue; trees.push({ x: cx, y: cy, r }); }
     const F = { forest, river, hill, trees, reg, mountain: hill && hill.kind === 'mountain' };
     // kmene stromov ako prekážky (3D vrstva ich neskôr nahradí presnými miestami z obrazu – obsSet)
     const dens = .6 + forest * 1.4, ob = [];
     for (const tr of trees) { const n = Math.round(tr.r * tr.r / 420 * dens); for (let j = 0; j < n; j++) { const a = rnd() * 6.283, d = Math.sqrt(rnd()) * tr.r; ob.push([tr.x + Math.cos(a) * d, tr.y + Math.sin(a) * d * .8, 2.6, 26]); } }
     obsSet(ob);
     return F;
+}
+/** Hľadanie cesty cez rieku: vojak, ktorý má súpera na druhom brehu, nejde priamo cez hlbokú vodu (−50 %), ale k brodu v strede (ľahká
+ *  chôdza) a cez neho. Pri brode sa tvorí húf – ako vo Warbande. Netýka sa hrdinu, lukostrelcov ani vojakov blízko súpera. Vráti true, ak sa pohol. */
+function fordGuide(u, b, bd, dt) {
+    if (!FIELD.river || SGB || u.h || u.k === 'a' || u.k === 'e' || bd < 70 || u.wu > 0 || u.as || u.stun > 0) return false;
+    const rx = riverX(), [f0, f1] = fordY(), du = u.x - rx, db = b.x - rx;
+    if (du * db >= 0 || Math.abs(du) > 320) return false;   // súper je na tom istom brehu alebo je rieka ešte ďaleko
+    const inBand = u.y > f0 - 6 && u.y < f1 + 6, near = Math.abs(du) < 80;
+    if (u.fo == null) u.fo = (Math.random() - .5) * 50;
+    const sg = Math.sign(du), tx = inBand && near ? rx - sg * 70 : rx + sg * 50, ty = BH / 2 + u.fo, dx = tx - u.x, dy = ty - u.y, d = Math.hypot(dx, dy);
+    if (d < 4) return false;
+    const st = Math.min(d, u.sp * dt); u.x += dx / d * st; u.y += dy / d * st; return true;
 }
 /** Prekážky na bojisku: kmene stromov a balvany [x, y, polomer, výška] v mriežke 40 jednotiek. Vojaci sa o ne neprekrývajú a šípy sa o ne zastavia. */
 let OBS = [], OBG = new Map();
@@ -67,7 +81,7 @@ function obsArrow(a, px, py) {
 /** Spomalenie jednotky podľa terénu (les, voda) a bonus z kopca. */
 function fieldSlow(u) {
     let s = 1;
-    if (FIELD.river && u.x > 690 && u.x < 750 && (u.y < 440 || u.y > 520)) s *= .5;
+    if (FIELD.river && Math.abs(u.x - riverX()) < 30 && (u.y < fordY()[0] || u.y > fordY()[1])) s *= .5;   // hlboká voda mimo brodu
     if (FIELD.trees.length) for (const t of FIELD.trees) if (Math.hypot(t.x - u.x, t.y - u.y) < t.r) { s *= .72; break; }
     if (FIELD.reg === 's' || FIELD.reg === 'd') s *= .92;   // sneh a piesok
     if (FIELD.hill && (u.vx3 || u.vy3)) {   // svah kopca: do kopca sa ide pomalšie (najviac o 25 % v strede), z kopca rýchlejšie

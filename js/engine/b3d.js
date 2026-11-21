@@ -436,7 +436,7 @@ const B3 = (() => {
         const F = FIELD || {};
         let h = Math.sin(x * .011) * 2.2 + Math.cos(y * .013 + x * .004) * 2 + Math.sin((x + y) * .027) * .8;
         if (F.hill) h += 46 * Math.exp(-Math.pow((x - BW * .62) / 170, 2) - Math.pow((y - BH * .5) / 120, 2)) * (F.mountain ? 1.3 : 1);
-        if (F.river) { const d = Math.abs(x - 720); if (d < 46) h -= (y > 440 && y < 520 ? 4 : 11) * Math.cos(d / 46 * Math.PI / 2); }
+        if (F.river) { const d = Math.abs(x - riverX()); if (d < 46) h -= (y > fordY()[0] && y < fordY()[1] ? 4 : 11) * Math.cos(d / 46 * Math.PI / 2); }
         if (!SGB || x < 900) h += (Math.abs(Math.sin(x * .029 + Math.sin(y * .017) * 2.1)) - .55) * 1.6 + (Math.abs(Math.sin(y * .041 - x * .013)) - .5) * .9;   // ryhy a zvlnenie (erózia)
         if (CREEK) { const d = Math.abs(x - creekX(y)); if (d < 22) h = h + (-8 - Math.cos(d / 22 * Math.PI / 2) * 1.2 - h) * Math.pow(Math.cos(d / 22 * Math.PI / 2), .7); }   // koryto potoka
         if (SGB) {
@@ -538,7 +538,7 @@ const B3 = (() => {
                 else c.multiplyScalar(.94 + .12 * n1); }
             const rd = roadD(x, y); if (rd < 16) c.lerp(C(B.dirt), (1 - rd / 16) * .85);
             if (SGB && x > 1000) c = C('#8a8478').multiplyScalar(.85 + rnd() * .2);
-            if (FIELD && FIELD.river && Math.abs(x - 720) < 54) c.lerp(C(B.dirt).multiplyScalar(.8), Math.min(1, (54 - Math.abs(x - 720)) / 14) * .7);
+            if (FIELD && FIELD.river && Math.abs(x - riverX()) < 54) c.lerp(C(B.dirt).multiplyScalar(.8), Math.min(1, (54 - Math.abs(x - riverX())) / 14) * .7);
             c.multiplyScalar(1 - near(x, y) * .35);   // zatienenie pod korunami
             if (SGB && x > 980 && x < 1000) c.multiplyScalar(.75);
             col.push(c.r, c.g, c.b);
@@ -552,7 +552,7 @@ const B3 = (() => {
             const x = i * 5, y = j * 5, k = (j * 289 + i) * 4, rd = roadD(x, y);
             HD[k] = heightAt(x, y, 1);
             let gd = B.gd * Math.min(1, Math.max(0, (rd - 12) / 8));
-            if (FIELD && FIELD.river && Math.abs(x - 720) < 60) gd = 0;
+            if (FIELD && FIELD.river && Math.abs(x - riverX()) < 60) gd = 0;
             if (creekD(x, y) < 16) gd = 0;
             if (SGB && x > 940) gd = 0;
             if (HD[k] > 25) gd *= .3;
@@ -563,12 +563,12 @@ const B3 = (() => {
         const fs = new t.Shape([new t.Vector2(-2500, -2500), new t.Vector2(BW + 2500, -2500), new t.Vector2(BW + 2500, BH + 2500), new t.Vector2(-2500, BH + 2500)]); fs.holes.push(new t.Path([new t.Vector2(4, 4), new t.Vector2(4, BH - 4), new t.Vector2(BW - 4, BH - 4), new t.Vector2(BW - 4, 4)]));
         const far = new t.Mesh(new t.ShapeGeometry(fs).rotateX(Math.PI / 2), new t.MeshLambertMaterial({ color: C(B.g1).multiplyScalar(.85), side: t.DoubleSide })); far.position.y = -1; scene.add(far);   // okolie bojiska až po hmlu (s otvorom pre terén)
         if (CREEK) { creekM = B3G.water(hTex, 180, 760, -6.6, { hor: hor.getStyle(), zen: zen.getStyle(), deep: '#3a5a52' }); creekM.material.uniforms.uSunDir.value.copy(DL.dir); creekM.material.uniforms.uSunC.value.copy(sunC); scene.add(creekM); } else creekM = null;
-        if (FIELD && FIELD.river) { waterM = B3G.water(hTex, 660, 780, -4.5, { hor: hor.getStyle(), zen: zen.getStyle() }); waterM.material.uniforms.uSunDir.value.copy(DL.dir); waterM.material.uniforms.uSunC.value.copy(sunC); scene.add(waterM); }
+        if (FIELD && FIELD.river) { waterM = B3G.water(hTex, riverX() - 60, riverX() + 60, -4.5, { hor: hor.getStyle(), zen: zen.getStyle() }); waterM.material.uniforms.uSunDir.value.copy(DL.dir); waterM.material.uniforms.uSunC.value.copy(sunC); scene.add(waterM); }
         if (q >= 1 && B.gd > 0) { grassM = B3G.grass(hTex, B, [0, 9000, 20000, 42000][q]); grassM.material.uniforms.uSunC.value.copy(sunC).multiplyScalar(night ? .35 : .9); grassM.material.uniforms.uAmb.value.copy(hemi.color).multiplyScalar(night ? .3 : .55); grassM.userData.n0 = grassM.geometry.instanceCount; grassM.material.uniforms.tTr.value = trTex; scene.add(grassM); }
         buildFlora(rnd, B, spots, road, roadD); buildProps(rnd, B, roadD);
         if (SGB) buildSiege();
         // kaluže: v daždi sa naplnia (odraz oblohy, krúžky od kvapiek), v suchu sú neviditeľné
-        if (q >= 1 && !['s', 'd', 'a'].includes(BI)) { const pm = puddleM = B3G.puddleMat({ hor: hor0.getStyle(), zen: zen0.getStyle() }); for (let i = 0; i < 26; i++) { const x = rnd() * (SGB ? 960 : BW), y = rnd() * BH; if (FIELD && FIELD.river && Math.abs(x - 720) < 70) continue; const p = new t.Mesh(new t.CircleGeometry(6 + rnd() * 10, 16), pm); p.rotation.x = -Math.PI / 2; p.scale.y = .5 + rnd() * .6; p.position.set(x, heightAt(x, y) + .35, y); p.renderOrder = 2; scene.add(p); } }
+        if (q >= 1 && !['s', 'd', 'a'].includes(BI)) { const pm = puddleM = B3G.puddleMat({ hor: hor0.getStyle(), zen: zen0.getStyle() }); for (let i = 0; i < 26; i++) { const x = rnd() * (SGB ? 960 : BW), y = rnd() * BH; if (FIELD && FIELD.river && Math.abs(x - riverX()) < 70) continue; const p = new t.Mesh(new t.CircleGeometry(6 + rnd() * 10, 16), pm); p.rotation.x = -Math.PI / 2; p.scale.y = .5 + rnd() * .6; p.position.set(x, heightAt(x, y) + .35, y); p.renderOrder = 2; scene.add(p); } }
         buildPanorama(B, fogC, night); buildPrints(B); buildBirds(); buildAtmo(rnd, B, DL, night, storm, fog, sunC, fogC);
         // počasie: dážď (čiarky, hustota podľa meniaceho sa počasia), sneh, popol okolo kamery
         wx = null; rainN = 0; if (!['snow', 'ash'].includes(WX.n)) makeRain();
@@ -607,7 +607,7 @@ const B3 = (() => {
         const base = night ? .22 : fog ? .0 : storm ? .12 : .1 + DL.low * .22, n = fog ? 0 : q >= 2 ? 16 : 8;
         for (let i = 0; i < n; i++) {
             let x = 120 + rnd() * (BW - 240), y = 60 + rnd() * (BH - 120);
-            if (i % 3 === 0) { if (CREEK) { y = 60 + rnd() * (BH - 120); x = creekX(y) + (rnd() - .5) * 30; } else if (FIELD && FIELD.river) x = 720 + (rnd() - .5) * 120; }
+            if (i % 3 === 0) { if (CREEK) { y = 60 + rnd() * (BH - 120); x = creekX(y) + (rnd() - .5) * 30; } else if (FIELD && FIELD.river) x = riverX() + (rnd() - .5) * 120; }
             if (SGB && x > 930) continue;
             const m = new t.Mesh(new t.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new t.MeshBasicMaterial({ map: mt, color: fogC.clone().lerp(C('#ffffff'), .3), transparent: true, opacity: base * (.6 + rnd() * .6), depthWrite: false, fog: false }));
             const w = 160 + rnd() * 220; m.scale.set(w, 1, w * (.4 + rnd() * .3)); m.rotation.y = rnd() * 6.28; m.position.set(x, heightAt(x, y) + 3 + rnd() * 5, y); m.renderOrder = 4; m.frustumCulled = false; scene.add(m); mistL.push({ m, v: (rnd() - .5) * .05, o: m.material.opacity, ph: rnd() * 6 });
@@ -617,7 +617,7 @@ const B3 = (() => {
             const st = mk(32, 128, (x, w, h) => { const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(255,240,200,0)'); g.addColorStop(.3, 'rgba(255,240,200,.8)'); g.addColorStop(1, 'rgba(255,240,200,0)'); x.fillStyle = g; x.fillRect(0, 0, w, h); const gx = x.createLinearGradient(0, 0, w, 0); gx.addColorStop(0, 'rgba(0,0,0,1)'); gx.addColorStop(.5, 'rgba(0,0,0,0)'); gx.addColorStop(1, 'rgba(0,0,0,1)'); x.globalCompositeOperation = 'destination-out'; x.fillStyle = gx; x.fillRect(0, 0, w, h); });
             const up = new t.Vector3(0, 1, 0), dir = DL.dir.clone().normalize();
             for (let i = 0; i < 9; i++) {
-                const x = 150 + rnd() * (BW - 300), y = 80 + rnd() * (BH - 160); if ((FIELD && FIELD.river && Math.abs(x - 720) < 60) || (SGB && x > 900)) continue;
+                const x = 150 + rnd() * (BW - 300), y = 80 + rnd() * (BH - 160); if ((FIELD && FIELD.river && Math.abs(x - riverX()) < 60) || (SGB && x > 900)) continue;
                 const g = new t.Group(), L = 150 + rnd() * 90; for (const a of [0, Math.PI / 2]) { const pl = new t.Mesh(new t.PlaneGeometry(14 + rnd() * 10, L), new t.MeshBasicMaterial({ map: st, color: sunC, transparent: true, opacity: .09 + rnd() * .05, blending: t.AdditiveBlending, depthWrite: false, side: t.DoubleSide, fog: false })); pl.rotation.y = a; g.add(pl); }
                 g.quaternion.setFromUnitVectors(up, dir); g.position.set(x, heightAt(x, y) + L * .5 * dir.y, y).addScaledVector(dir, 0); g.renderOrder = 4; g.frustumCulled = false; scene.add(g); shaftL.push({ g, o: g.children.map(c => c.material.opacity), ph: rnd() * 6 });
             }
@@ -641,7 +641,7 @@ const B3 = (() => {
     function buildProps(rnd, B, roadD) {
         props = []; campF = [];
         const t = T(), F = FIELD || {}, wood = '#6a4a2c', dark = '#3a2a1a', cloth = BI === 'a' ? '#4a3a32' : '#c8b898';
-        const ok = (x, y, r = 20) => x > 10 && x < BW - 10 && y > 10 && y < BH - 10 && !(F.river && Math.abs(x - 720) < 70 + r) && !(SGB && x > 940) && roadD(x, y) > 18 + r * .4;
+        const ok = (x, y, r = 20) => x > 10 && x < BW - 10 && y > 10 && y < BH - 10 && !(F.river && Math.abs(x - riverX()) < 70 + r) && !(SGB && x > 940) && roadD(x, y) > 18 + r * .4;
         const put = (geo, x, y, a, kind, r, o) => { const m = mesh(geo); m.position.set(x, heightAt(x, y), y); m.rotation.y = a; scene.add(m); props.push({ m, x, y, r, kind, ...(o || {}) }); return m; };
         // tábory za líniami: stany s vlajočkou, ohniská, vozy so sudmi
         const tent = c => Part().add('cone6', c, [0, 9, 0], [0, Math.PI / 6, 0], [24, 18, 20]).add('cyl6', dark, [0, 13, 0], [0, 0, 0], [.6, 26, .6]).add('box', '#2a1a10', [10.5, 4, 0], [0, 0, -.35], [.3, 8, 5]).build();
@@ -707,7 +707,7 @@ const B3 = (() => {
     /** Miesta stromov a kríkov (zhluky lesa z FIELD.trees, okraje bojiska). */
     function treeSpots(rnd, roadD) {
         const F = FIELD || { trees: [] }, spots = [];
-        const place = (x, y, k) => { if (F.river && x > 660 && x < 780) return; if (SGB && x > 800) return; if (x < 0 || x > BW || y < 0 || y > BH) return; if (roadD(x, y) < 20) return; spots.push([x, y, k || .75 + rnd() * .6, rnd()]); };
+        const place = (x, y, k) => { if (F.river && Math.abs(x - riverX()) < 60) return; if (SGB && x > 800) return; if (x < 0 || x > BW || y < 0 || y > BH) return; if (roadD(x, y) < 20) return; spots.push([x, y, k || .75 + rnd() * .6, rnd()]); };
         const dens = .6 + (F.forest || 0) * 1.4;
         for (const tr of F.trees || []) { const n = Math.round(tr.r * tr.r / 420 * dens); for (let j = 0; j < n; j++) { const a = rnd() * 6.283, d = Math.sqrt(rnd()) * tr.r; place(tr.x + Math.cos(a) * d, tr.y + Math.sin(a) * d * .8); } }
         for (let i = 0; i < 40; i++) { place(rnd() * BW, 20 + rnd() * 50); place(rnd() * BW, BH - 6 - rnd() * 40); }
@@ -753,10 +753,10 @@ const B3 = (() => {
             inst(fg2, ferns.slice(0, 900), ([x, y, k]) => at(x, y, k));
         }
         // kríky navyše po bojisku
-        const extra = []; if (BI !== 'a') for (let i = 0; i < 40; i++) { const x = rnd() * BW, y = rnd() * BH; if (Math.abs(x - BW * .5) < 300 && Math.abs(y - BH * .5) < 260) continue; if ((F.river && Math.abs(x - 720) < 70) || (SGB && x > 800) || roadD(x, y) < 20) continue; extra.push([x, y, .6 + rnd() * .5]); }
+        const extra = []; if (BI !== 'a') for (let i = 0; i < 40; i++) { const x = rnd() * BW, y = rnd() * BH; if (Math.abs(x - BW * .5) < 300 && Math.abs(y - BH * .5) < 260) continue; if ((F.river && Math.abs(x - riverX()) < 70) || (SGB && x > 800) || roadD(x, y) < 20) continue; extra.push([x, y, .6 + rnd() * .5]); }
         inst(bush(), extra, ([x, y, sc]) => at(x, y, sc));
         // balvany: mach alebo sneh navrchu
-        const rocksL = []; for (let i = 0; i < 34 + (F.hill ? 18 : 0); i++) { const x = rnd() * BW, y = rnd() * BH; if ((!F.river || x < 660 || x > 780) && !(SGB && x > 960)) rocksL.push([x, y, .6 + rnd() * 1.3]); }
+        const rocksL = []; for (let i = 0; i < 34 + (F.hill ? 18 : 0); i++) { const x = rnd() * BW, y = rnd() * BH; if ((!F.river || Math.abs(x - riverX()) > 60) && !(SGB && x > 960)) rocksL.push([x, y, .6 + rnd() * 1.3]); }
         obsAdd(rocksL.map(r => [r[0], r[1], 4 * r[2], 5.5 * r[2]]));   // balvany sú prekážky aj kryt pred šípmi
         const rg = Part().add('sph', B.rock, [0, 1.2, 0], [0, 0, 0], [8, 5.6, 7]).add('sph0', sh(B.rock, .9), [2.6, .6, 1.8], [.4, .3, 0], [4.6, 3.6, 4]).build();
         const top = C(snow ? '#eef2f4' : BI === 'g' ? '#5a7a30' : BI === 'd' ? '#c0a878' : B.rock), cA = rg.attributes.color, nA = rg.attributes.normal;
@@ -767,23 +767,23 @@ const B3 = (() => {
             const fl = seas() === 2 ? ['#d89a28', '#c8742a', '#e8d8a0'] : seas() === 0 ? ['#f4f0e8', '#f0c8d8', '#e8d050', '#c8a0e0'] : ['#f2d040', '#f4f0e8', '#d86a8a', '#7a9ae0'], fp = Part();
             for (let i = 0; i < 6; i++) { const a = i * 1.05, d = 1.5 + (i % 3) * .9; fp.add('cyl6', '#4a7a30', [Math.cos(a) * d, 1.3, Math.sin(a) * d], [0, 0, 0], [.14, 2.6, .14]).add('sph', fl[i % fl.length], [Math.cos(a) * d, 2.8, Math.sin(a) * d], [0, 0, 0], [.9, .6, .9]); }
             const fg3 = fp.build(), pts = [];
-            for (let i = 0; i < 90; i++) { const cx = rnd() * BW, cy = rnd() * BH; if ((F.river && Math.abs(cx - 720) < 70) || (SGB && cx > 900) || roadD(cx, cy) < 16 || creekD(cx, cy) < 12) continue; const n = 4 + (rnd() * 6 | 0); for (let j = 0; j < n; j++) pts.push([cx + (rnd() - .5) * 26, cy + (rnd() - .5) * 26, 1.5 + rnd() * .9]); }
+            for (let i = 0; i < 90; i++) { const cx = rnd() * BW, cy = rnd() * BH; if ((F.river && Math.abs(cx - riverX()) < 70) || (SGB && cx > 900) || roadD(cx, cy) < 16 || creekD(cx, cy) < 12) continue; const n = 4 + (rnd() * 6 | 0); for (let j = 0; j < n; j++) pts.push([cx + (rnd() - .5) * 26, cy + (rnd() - .5) * 26, 1.5 + rnd() * .9]); }
             inst(fg3, pts.filter(([x, y]) => x > 0 && y > 0 && x < BW && y < BH), ([x, y, k]) => at(x, y, k));
         }
         if (q >= 1 && BI !== 'd' && BI !== 'a') {   // trstina a rôpa pri brehu potoka a rieky
             const rp = Part(); for (let i = 0; i < 7; i++) { const a = i * .9, d = .5 + (i % 3) * .7; rp.add('cyl6', snow ? '#d8d0b0' : '#6a8a3a', [Math.cos(a) * d, 5, Math.sin(a) * d], [Math.sin(a) * .1, 0, Math.cos(a) * .1], [.22, 10 + (i % 3) * 2.5, .22]).add('cyl6', '#5a3a22', [Math.cos(a) * d, 10.5 + (i % 3) * 2.5, Math.sin(a) * d], [0, 0, 0], [.5, 2, .5]); }
             const rg2 = rp.build(), rl = [];
-            for (let i = 0; i < 400 && rl.length < 160; i++) { const x = rnd() * BW, y = rnd() * BH, cd = creekD(x, y), rv = F.river ? Math.abs(Math.abs(x - 720) - 62) : 99; if (!((cd > 11 && cd < 22) || rv < 7)) continue; if (SGB && x > 900) continue; rl.push([x, y, 1 + rnd() * .8]); }
+            for (let i = 0; i < 400 && rl.length < 160; i++) { const x = rnd() * BW, y = rnd() * BH, cd = creekD(x, y), rv = F.river ? Math.abs(Math.abs(x - riverX()) - 62) : 99; if (!((cd > 11 && cd < 22) || rv < 7)) continue; if (SGB && x > 900) continue; rl.push([x, y, 1 + rnd() * .8]); }
             inst(rg2, rl, ([x, y, k]) => at(x, y, k));
         }
         if (BI !== 'a') {   // pne so sekerou, kopy kameňov a stojaci kameň
             const stump = Part().add('cyl12', '#5a4028', [0, 1.6, 0], [0, 0, 0], [3.4, 3.2, 3.4]).add('cyl12', '#c8a878', [0, 3.25, 0], [0, 0, 0], [3, .15, 3]).add('cone6', '#5a4028', [2.4, .6, 0], [0, 0, 1.2], [.9, 2.4, .9]).build(), st = [];
-            for (let i = 0; i < 26; i++) { const x = rnd() * BW, y = rnd() * BH; if (roadD(x, y) > 22 && creekD(x, y) > 16 && !(F.river && Math.abs(x - 720) < 70) && !(SGB && x > 900)) st.push([x, y, .8 + rnd() * .5]); }
+            for (let i = 0; i < 26; i++) { const x = rnd() * BW, y = rnd() * BH; if (roadD(x, y) > 22 && creekD(x, y) > 16 && !(F.river && Math.abs(x - riverX()) < 70) && !(SGB && x > 900)) st.push([x, y, .8 + rnd() * .5]); }
             inst(stump, st, ([x, y, k]) => { M.compose(v.set(x, heightAt(x, y) - .3, y), q.setFromEuler(e.set(0, rnd() * 6, 0)), s.set(k, k, k)); }, mat('v'));
             const cairn = Part(); for (let i = 0; i < 6; i++) cairn.add('sph0', sh(B.rock, .85 + (i % 3) * .1), [Math.cos(i * 1.4) * (3 - i * .35), .9 + (i > 3 ? 2.2 : i > 1 ? 1.4 : 0), Math.sin(i * 1.4) * (3 - i * .35)], [i, i * .6, 0], [3.2 - i * .2, 2.2, 3]);
-            const ca = cairn.build(), cl = []; for (let i = 0; i < 9; i++) { const x = rnd() * BW, y = rnd() * BH; if (roadD(x, y) > 24 && creekD(x, y) > 18 && !(F.river && Math.abs(x - 720) < 70) && !(SGB && x > 900)) cl.push([x, y, .8 + rnd() * .6]); }
+            const ca = cairn.build(), cl = []; for (let i = 0; i < 9; i++) { const x = rnd() * BW, y = rnd() * BH; if (roadD(x, y) > 24 && creekD(x, y) > 18 && !(F.river && Math.abs(x - riverX()) < 70) && !(SGB && x > 900)) cl.push([x, y, .8 + rnd() * .6]); }
             inst(ca, cl, ([x, y, k]) => { M.compose(v.set(x, heightAt(x, y) - .4, y), q.setFromEuler(e.set(0, rnd() * 6, 0)), s.set(k, k, k)); }, mat('v'));
-            if (!SGB && rnd() < .8) { const mx = 200 + rnd() * 900, my = 60 + rnd() * (BH - 120); if (roadD(mx, my) > 30 && !(F.river && Math.abs(mx - 720) < 90) && creekD(mx, my) > 24) { const sg = Part(); for (let i = 0; i < 5; i++) { const a = i * 1.257; sg.add('box', sh(B.rock, .9 + (i % 2) * .15), [Math.cos(a) * 10, 7, Math.sin(a) * 10], [.05, a, .04], [3.2, 14 + (i % 3) * 3, 5.4]); } sg.add('box', sh(B.rock, .8), [0, 15, 8], [0, 0, 0], [3, 2.6, 18]); const m2 = mesh(sg.build()); m2.position.set(mx, heightAt(mx, my) - .8, my); scene.add(m2); if (QN() >= 1) m2.material = B3G.stoneMat(); } }   // kruh stojacich kameňov
+            if (!SGB && rnd() < .8) { const mx = 200 + rnd() * 900, my = 60 + rnd() * (BH - 120); if (roadD(mx, my) > 30 && !(F.river && Math.abs(mx - riverX()) < 90) && creekD(mx, my) > 24) { const sg = Part(); for (let i = 0; i < 5; i++) { const a = i * 1.257; sg.add('box', sh(B.rock, .9 + (i % 2) * .15), [Math.cos(a) * 10, 7, Math.sin(a) * 10], [.05, a, .04], [3.2, 14 + (i % 3) * 3, 5.4]); } sg.add('box', sh(B.rock, .8), [0, 15, 8], [0, 0, 0], [3, 2.6, 18]); const m2 = mesh(sg.build()); m2.position.set(mx, heightAt(mx, my) - .8, my); scene.add(m2); if (QN() >= 1) m2.material = B3G.stoneMat(); } }   // kruh stojacich kameňov
         }
         // plot pri ceste
         const fence = []; for (let i = 2; i < road.length - 2; i++) { if (i % 9 > 4) continue; const [ax, ay] = road[i], [bx, by] = road[i + 1], a = Math.atan2(by - ay, bx - ax), nx = -Math.sin(a) * 19, ny = Math.cos(a) * 19; fence.push([ax + nx, ay + ny, a, Math.hypot(bx - ax, by - ay)]); }
@@ -1840,12 +1840,12 @@ const B3 = (() => {
                 o.arN = (o.arN || 0) + 1;
                 m.position.y = heightAt(tu.x, tu.y) + (a.hz || 14) * (o.scaleH || 1); m.position.x = tu.x - fw.x * 3; m.position.z = tu.y - fw.z * 3;
                 const par = a.shield && o.B && o.B.shd ? o.B.shd : o.root; par.updateWorldMatrix(true, false); m.updateMatrixWorld(); par.attach(m);
-                if (FIELD && FIELD.river && Math.abs(tu.x - 720) < 44) splash(tu.x, tu.y, 2);
+                if (FIELD && FIELD.river && Math.abs(tu.x - riverX()) < 44) splash(tu.x, tu.y, 2);
             } else if (a.land || a.wall) {   // do zeme alebo do múru: ostane zapichnutý, šípy zo zeme sa dajú zdvihnúť
                 m.position.addScaledVector(fw, 3); if (a.land) m.position.y = heightAt(a.x, a.y) + 2.5;
                 m.userData.ga = a.ga; stuck.push(m);
                 if (stuck.length > 320) scene.remove(stuck.shift());
-                if (FIELD && FIELD.river && Math.abs(a.x - 720) < 44) splash(a.x, a.y, 4);
+                if (FIELD && FIELD.river && Math.abs(a.x - riverX()) < 44) splash(a.x, a.y, 4);
             } else scene.remove(m);
         }
         if (frameN % 20 === 0) stuck = stuck.filter(m => { if (m.userData.ga && m.userData.ga.picked) { scene.remove(m); return false; } return true; });
@@ -2011,7 +2011,7 @@ const B3 = (() => {
                 continue;
             }
             if (u.hp <= 0) continue;
-            const dc = Math.hypot(u.x - cx, u.y - cz), mov = o.sp > .4, inRiver = FIELD && FIELD.river && Math.abs(u.x - 720) < 44 || creekD(u.x, u.y) < 9;
+            const dc = Math.hypot(u.x - cx, u.y - cz), mov = o.sp > .4, inRiver = FIELD && FIELD.river && Math.abs(u.x - riverX()) < 44 || creekD(u.x, u.y) < 9;
             if (mov && (frameN + o.id) % 6 === 0) trample(u.x, u.y, o.mount ? 6 : 3.5, o.mount ? 16 : 6);
             else if (u.c > 0 && (frameN + o.id) % 20 === 0) trample(u.x, u.y, 4, 5);
             if (dc > 520) continue;
@@ -2257,7 +2257,7 @@ const B3 = (() => {
         prints = { f: mk(0), h: mk(1), M: new t.Matrix4(), q: new t.Quaternion(), e: new t.Euler(), v: new t.Vector3(), s: new t.Vector3() };
     }
     function addPrint(x, y, a, hoof, k) {
-        const P = prints, S = hoof ? P.h : P.f; if (SGB && x > 990) return; if (FIELD && FIELD.river && Math.abs(x - 720) < 46) return;
+        const P = prints, S = hoof ? P.h : P.f; if (SGB && x > 990) return; if (FIELD && FIELD.river && Math.abs(x - riverX()) < 46) return;
         P.M.compose(P.v.set(x, heightAt(x, y) + .3, y), P.q.setFromEuler(P.e.set(0, a, 0)), P.s.set(hoof ? 2.6 * k : 3.6 * k, 1, hoof ? 2.6 * k : 1.9 * k));
         S.im.setMatrixAt(S.i, P.M); S.i = (S.i + 1) % 700; S.n = Math.min(700, S.n + 1); S.im.count = S.n; S.im.instanceMatrix.needsUpdate = true;
     }
@@ -2556,7 +2556,7 @@ const B3 = (() => {
         }
         for (const b of FAR.values()) { b.im.count = b.n; b.im.instanceMatrix.needsUpdate = true; if (b.an) b.an.needsUpdate = true; }
         B3G.U_DIRT.value = dN ? dSum / dN * DIRT_K : 0;
-        if (waterM || creekM) { let n = 0; const F = (waterM || creekM).material.uniforms.uFoam.value; for (const u of U) { if (n >= 8 || u.hp <= 0 || u.fled) continue; const o = units.get(u); if (!o || !o.inS) continue; if (!(FIELD && FIELD.river && Math.abs(u.x - 720) < 44) && creekD(u.x, u.y) > 9) continue; F[n++].set(u.x, u.y, (o.mount ? 6 : 3.4) * (o.sp > .3 ? 1.3 : .8)); } for (let i = n; i < 8; i++) F[i].set(-999, -999, 0); if (waterM && creekM) creekM.material.uniforms.uFoam.value = F; }   // pena okolo brodiacich sa
+        if (waterM || creekM) { let n = 0; const F = (waterM || creekM).material.uniforms.uFoam.value; for (const u of U) { if (n >= 8 || u.hp <= 0 || u.fled) continue; const o = units.get(u); if (!o || !o.inS) continue; if (!(FIELD && FIELD.river && Math.abs(u.x - riverX()) < 44) && creekD(u.x, u.y) > 9) continue; F[n++].set(u.x, u.y, (o.mount ? 6 : 3.4) * (o.sp > .3 ? 1.3 : .8)); } for (let i = n; i < 8; i++) F[i].set(-999, -999, 0); if (waterM && creekM) creekM.material.uniforms.uFoam.value = F; }   // pena okolo brodiacich sa
         updSiege(); stepRegiments(); if (!photo) stepProps(sdt); syncArrows(); syncParticles(); if (!photo) { runFx(sdt); stepWeather(sdt); stepPanorama(sdt); stepLeaves(sdt); stepRoofs(sdt); stepOrders(); } stepBirds(); stepArrowTrails(); stepTgMark(); drawOverlay(); camUpdate(dt); computeAim(); stepBlobs(); stepSmokeShade(); stepEnv(); stepFireLight();
         // filmová kamera: v spomalení a pri nástupe jemné chvenie z ruky a širokouhlé pásy
         const cine = !photo && (intro || (slow && slow.u)) ? 1 : 0; CINE += (cine - CINE) * Math.min(1, .08 * dt);
