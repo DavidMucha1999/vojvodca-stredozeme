@@ -178,6 +178,20 @@ function aiSpacing(u, b, bd, dt) {
         u.x += -Math.sin(a) * u.sd * k + Math.cos(a) * rad; u.y += Math.cos(a) * u.sd * k + Math.sin(a) * rad;
     }
 }
+/** Ranený vojak ustúpi (ako vo Warbande): keď mu zostane menej než 30 % zdravia a súper je pri ňom, ústupom o kúsok sa vyhne ďalšiemu úderu
+ *  a po chvíli (alebo keď ho súper dobehne) sa vráti do boja. Skúsenejší ustupujú častejšie; velitelia, obri, jazda, lukostrelci a obliehanie sa ho netýkajú. Vráti true, ak ustupuje. */
+function aiWounded(u, b, bd, dt) {
+    if (SGB || u.h || u.cp || u.cmd || fearless(u) || u.rout || u.stun > 0 || mounted(u) || u.k === 'a' || u.k === 'e' || u.wu > 0 || u.as) return false;
+    if (u.wrT > 0) { u.wrT -= dt; if (bd < 9) u.wrT = 0; }
+    else if (!u.wrDone && u.hp > 0 && u.hp < u.mh * .3 && bd < 70) {
+        u.wrDone = 1;
+        if (Math.random() < .3 + aiSkill(u) * .5) u.wrT = 120 + Math.random() * 90; else return false;
+    }
+    if (!(u.wrT > 0)) return false;
+    const a = dirTo(u, b);
+    u.x = Math.max(8, Math.min(BW - 8, u.x - Math.cos(a) * u.sp * .95 * dt)); u.y = Math.max(20, Math.min(BH - 8, u.y - Math.sin(a) * u.sp * .95 * dt));
+    return true;
+}
 /** Telesná kolízia (ako vo Warbande): vojaci sa neprekrývajú – dvojica bližšie než súčet polomerov (× .72) sa odtlačí; ťažší (kôň, obri, boss, hrdina)
  *  ustupujú menej. Mriežka 26 jednotiek, pri obliehaní slabšie (rebríky a brána). Volá updBattle raz za snímok. */
 function sepUnits(dt) {

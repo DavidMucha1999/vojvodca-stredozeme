@@ -442,6 +442,12 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
 
+## Ústup ranených (verzia 124)
+
+- **Ranený vojak ustúpi** (`aiWounded` v `js/sim/warband.js`, volá `updBattle`): keď mu zostane menej než 30 % zdravia a súper je do ~70 jednotiek, s istou šancou (30 % + zručnosť do 80 %) ustúpi na 2 – 3,5 s pred súperom a potom sa vráti do boja (alebo skôr, ak ho súper dobehne). Každý vojak ustupuje najviac raz. Netýka sa veliteľov, obrov, jazdy, lukostrelcov ani obliehania.
+- Už predtým: krok späť po údere, krúženie okolo súpera pri dobíjaní, odstup kopijníkov, klamy zručných vojakov.
+- Test: ranený ustúpi a po čase sa vráti, zdravý nie.
+
 ## Séria úderov a riposta (verzia 123)
 
 - **Únava zo série** (`heroStrike` v `js/sim/combat.js`): každý ďalší úder v rade (bez ~2-sekundovej pauzy) predĺži zotavenie o 10 % a zvýši spotrebu výdrže o 12 % (až štyri stupne). Pauza alebo dokonalý kryt sériu vynuluje. Vojaci AI sa unavujú podobne (`aiChain`, +8 % zotavenia na stupeň).

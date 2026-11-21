@@ -397,6 +397,11 @@ try {
         aiWpn = () => "spear"; jc.hp = 9999; meleeHit(ja, jc, 100, "ai"); var dSp = 9999 - jc.hp; aiWpn = aw0; Math.random = JR;
         var m0 = heroMounted(); unseat(JH); var unseated = m0 && !heroMounted() && JH.stun > 0; G.eq.m = gm0; JH.dis = 0;`);
     check('Jazda: kopija proti jazdcovi dáva viac, hrdinu možno vyraziť zo sedla', run('dSp > dSw * 1.2 && unseated'), run('[dSw, dSp, unseated].join()'));
+    run(`mode = "map"; startBattle({ n: 6, f: 9, nm: "Ústup" }); for (const u of U) if (!u.h) { u.x = 3000 + u.x; u.stun = 999; }
+        var wu = mk(1, "i", 9); wu.x = 700; wu.y = 700; wu.stun = 0; wu.hp = wu.mh * .2; U.push(wu); var wb = mk(0, "i", 9); wb.x = 685; wb.y = 700; wb.stun = 999; U.push(wb);
+        var WQ = Math.random; Math.random = () => .1; var w1 = aiWounded(wu, wb, 15, 1), wx1 = wu.x; aiWounded(wu, wb, 15, 1); var wMoved = wu.x > wx1 && wx1 > 700; var wg = 0; while (aiWounded(wu, wb, 100, 1) && wg++ < 400); var wEnds = !aiWounded(wu, wb, 100, 1) && wg > 100;
+        var wh = mk(1, "i", 9); wh.x = 800; wh.y = 700; wh.stun = 0; wh.hp = wh.mh; var wNo = !aiWounded(wh, wb, 15, 1); Math.random = WQ;`);
+    check('AI v súbojoch: ranený vojak ustúpi a po chvíli sa vráti, zdravý nie', run('w1 && wMoved && wEnds && wNo'), run('[w1, wMoved, wEnds, wNo, wg].join()'));
     check('Duel ako vo Warbande: úder AI zasiahne až čepeľou v pohybe a dá sa mu uskočiť; rýchlosť oboch strán; úder zachytený krytom odskočí; ťažká výbava spomalí (mithril nie)', run('atRel && landed && dodged && spdOk && bounced && l0 === 0 && lH > .5 && spH < .9 && swH > 1.07 && lM < lH * .5 && lOb < lH'), run('[atRel, landed, dodged, spdOk, bounced, l0, lH, spH, swH, lM, lOb].join(" ")'));
     // etapa 2 (bitka ako vo Warbande): zálohy a posily vo vlnách, bitka po páde hrdinu, zásahy vlastných, počty strán pre morálku
     run(closeMenus + '; mode = "map"; ov.classList.add("hide");');
