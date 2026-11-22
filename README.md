@@ -444,6 +444,16 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
 
+## Krčma, nádvorie a sieň hradu v 3D (verzia 134)
+
+Interiéry už nie sú izometrické obrázky, ale 3D miestnosti na rovnakom vykresľovači Three.js ako bitka a mapa. Izometrická verzia sa nahradila, bez záložnej (miestnosti sa bez WebGL neotvoria).
+
+- **`Room3Scene`** (`js/engine/scenes/Room3Scene.js`): spoločný základ. Miestnosť sa skladá z podlahy, stien, stropu, kvádrov, valcov, okien s oblohou podľa dennej doby, plameňov so svetlom a postáv. Rozloženie má rovnaké súradnice ako predtým (jednotky podlahy × 0,65), takže polohy stolov, dverí a kolízie sa prevzali.
+- **Postavy** sú rovnaké 3D telá ako v bitke (`B3.kit.rig`, nová vetva `u.npc` v `specOf`): krčmár, spoločníci, kováč, kupec, veliteľ, pán hradu aj hrdina majú výbavu a tvár ako inde; stoja, dýchajú, žmurkajú a pri priblížení sa otočia k hrdinovi. Hrdina chodí s nohami a rukami z bitky.
+- **Ovládanie**: tretia osoba, WASD, myš (klik zachytí myš) alebo šípky otáčajú kameru, koliesko mení vzdialenosť, Tab = pohľad z prvej osoby, E alebo medzerník = rozhovor či akcia, Shift = rýchlejšie, Esc = odísť. Kamera je v interiéri držaná v miestnosti, na nádvorí smie za hradby.
+- **`TavernScene`**: krčma s krbom, výčapom, policami, sudmi, stolmi so sviečkami a zástavou, šesť tém (ľudia, hobiti, elfovia, trpaslíci, brloh zla, juh). **`CastleScene`**: nádvorie (hradby s cimburím, veža, brána, vyhňa, stánok, studňa, panák, stajňa, chrám, trhovisko) a sieň (stĺpy, trón, koberec, koše s ohňom, zástavy, okná), vzhľad podľa frakcie.
+- Dialógy, obchody a prechody (`js/ui/castle.js`, `tavern.js`, `rooms.js`) ostali nezmenené. Dediny a pamätihodnosti (`VillageScene`, `PlaceScene`) sú zatiaľ izometrické.
+
 ## Zvuk: stereo a hlasitosť od 3D kamery (verzia 133)
 
 Pred zmenou som prešiel zvuk (`js/engine/audio.js`, `js/audio/sound.js`): zvuky boja sú súbory s náhodnými variantmi a zmenou výšky tónu, druh zásahu sa volí podľa materiálu (telo, štít, kov), hlasitosť klesá so vzdialenosťou. Chyba bola v polohe: stereo a hlasitosť sa rátali od stredu 2D kamery a podľa svetových osí, nie od 3D kamery, takže zvuk spred hráča mohol znieť sprava.
