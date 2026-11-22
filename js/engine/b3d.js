@@ -1510,6 +1510,7 @@ const B3 = (() => {
         if (o.MB && !u.h && Math.random() < .35) o.spook = 40;   // kôň sa pri zásahu splaší
         if (typeof OPT !== 'undefined' && !OPT.blood || !DUST) return;
         const orc = u.t && typeof bloc === 'function' && bloc(u.fc), col = orc ? '#1e1410' : '#7a0e0a', y = heightAt(u.x, u.y) + 16 * (o.scaleH || 1) + (o.mount ? 14 : 0);
+        if (dmg > 4 && Math.random() < .5) { const ka = u.lhA != null ? u.lhA : Math.random() * 6.283, dd = 4 + Math.random() * 8; decal(u.x + Math.cos(ka) * dd, u.y + Math.sin(ka) * dd, col, 1.2 + Math.random() * 1.8, true); }   // škvrny krvi na zemi pri zásahu (v smere úderu)
         for (let i = 0; i < 8; i++) { const a = Math.random() * 6.283; DUST.add({ x: u.x, y, z: u.y, vx: Math.cos(a) * (.4 + Math.random()), vy: .6 + Math.random() * 1.2, vz: Math.sin(a) * (.4 + Math.random()), g: .09, l: 22 + Math.random() * 12, c: col, s0: 2.4, s1: 1.4, a0: .9 }); }
         if (false) { o.bl++; const t = T(), m = new t.Mesh(prims().sph, MAT.blood || (MAT.blood = new t.MeshStandardMaterial({ color: C('#4a0806'), roughness: .3 }))); const sd = Math.random() < .5 ? 1 : -1; m.position.set(sd * ((o.H.hipY ? 2.3 : 2.3)), 2 + Math.random() * 6, (Math.random() - .5) * 5); m.scale.set(.4, 1.6 + Math.random() * 1.6, 1.4 + Math.random()); o.B.ch.add(m); }
     }
@@ -1523,7 +1524,7 @@ const B3 = (() => {
             o.rel = u.lz === 'legs' ? (Math.random() - .5) * .8 : away - u.f; o.kneel = u.lz === 'legs' ? .45 : u.lz === 'head' ? .05 : .2;   // zásah do nohy: najprv na koleno; do hlavy: hneď dozadu
             o.ang = 0; o.av = .01 + Math.random() * .012 + o.hit * .02; o.ox = o.oz = 0; o.sl = { vx: 0, vz: 0 }; o.slT = 0; o.limb = 0; o.lv = 0; o.rs = Math.random() - .5;
             o.dirt = Math.min(1, (o.dirt || 0) + .3); o.own.dirt.value = o.dirt * DIRT_K;
-            if (typeof OPT !== 'undefined' && OPT.blood) decal(u.x, u.y, u.t && bloc(u.fc) ? '#2a1a14' : '#5a100c', 7 + Math.random() * 4);
+            if (typeof OPT !== 'undefined' && OPT.blood) decal(u.x, u.y, u.t && bloc(u.fc) ? '#2a1a14' : '#5a100c', 7 + Math.random() * 4, true);
             if ((u.boss || u.cmd) && !slow) { slow = { t: 100, k: .3, u }; }
             dropGear(o, u);
             // rôzne pády: dozadu, tvárou dopredu, zrútenie na kolená, s otočkou, na bok; jazdec často spadne z koňa a kôň odbehne
@@ -1812,10 +1813,23 @@ const B3 = (() => {
         }
         const g = overlay.geometry; g.setDrawRange(0, ovN); g.attributes.position.needsUpdate = g.attributes.color.needsUpdate = true;
     }
-    function decal(x, y, c, r) {
+    function decal(x, y, c, r, grow) {
         const t = T(); if (decals.length > 260) { const d = decals.shift(); scene.remove(d); }
         const m = new t.Mesh(new t.CircleGeometry(r, 12), new t.MeshStandardMaterial({ color: C(c), transparent: true, opacity: .78, depthWrite: false, roughness: .35 }));
         m.rotation.x = -Math.PI / 2; m.rotation.z = Math.random() * 6; m.scale.y = .6 + Math.random() * .5; m.position.set(x + (Math.random() - .5) * 4, heightAt(x, y) + .5, y + (Math.random() - .5) * 4); m.renderOrder = 2; scene.add(m); decals.push(m);
+        if (grow) { m.userData.age = 0; m.userData.sy = m.scale.y; m.userData.c0 = C(c); m.scale.set(.25, .25 * m.userData.sy, 1); }   // kaluž sa rozlieva a zasychá (stepDecals)
+    }
+    /** Kaluže krvi: za pár sekúnd sa rozlejú na plnú veľkosť a za pol minúty stmavnú a zaschnú. Volá sa raz za snímok. */
+    const BLOOD_DRY = C => C.clone().multiplyScalar(.45);
+    function stepDecals(dt) {
+        for (const m of decals) {
+            const d = m.userData; if (d.age == null || d.age > 2200) continue;
+            d.age += dt;
+            const g = Math.min(1, d.age / 240), e = 1 - (1 - g) * (1 - g);   // rozliatie ~4 s, spočiatku rýchlo
+            m.scale.set(.25 + .75 * e, (.25 + .75 * e) * d.sy, 1);
+            const k = Math.min(1, Math.max(0, (d.age - 300) / 1800));   // zasychanie: po 5 s do 35 s
+            if (g >= 1 || k > 0) { m.material.color.copy(d.c0).lerp(BLOOD_DRY(d.c0), k); m.material.opacity = .78 - .2 * k; m.material.roughness = .35 + .5 * k; }
+        }
     }
 
     // ---------- šípy a častice ----------
@@ -2561,7 +2575,7 @@ const B3 = (() => {
         for (const b of FAR.values()) { b.im.count = b.n; b.im.instanceMatrix.needsUpdate = true; if (b.an) b.an.needsUpdate = true; }
         B3G.U_DIRT.value = dN ? dSum / dN * DIRT_K : 0;
         if (waterM || creekM) { let n = 0; const F = (waterM || creekM).material.uniforms.uFoam.value; for (const u of U) { if (n >= 8 || u.hp <= 0 || u.fled) continue; const o = units.get(u); if (!o || !o.inS) continue; if (!(FIELD && FIELD.river && Math.abs(u.x - riverX()) < 44) && creekD(u.x, u.y) > 9) continue; F[n++].set(u.x, u.y, (o.mount ? 6 : 3.4) * (o.sp > .3 ? 1.3 : .8)); } for (let i = n; i < 8; i++) F[i].set(-999, -999, 0); if (waterM && creekM) creekM.material.uniforms.uFoam.value = F; }   // pena okolo brodiacich sa
-        updSiege(); stepRegiments(); if (!photo) stepProps(sdt); syncArrows(); syncParticles(); if (!photo) { runFx(sdt); stepWeather(sdt); stepPanorama(sdt); stepLeaves(sdt); stepRoofs(sdt); stepOrders(); } stepBirds(); stepArrowTrails(); stepTgMark(); drawOverlay(); camUpdate(dt); computeAim(); stepBlobs(); stepSmokeShade(); stepEnv(); stepFireLight();
+        updSiege(); stepRegiments(); if (!photo) stepProps(sdt); syncArrows(); stepDecals(sdt); syncParticles(); if (!photo) { runFx(sdt); stepWeather(sdt); stepPanorama(sdt); stepLeaves(sdt); stepRoofs(sdt); stepOrders(); } stepBirds(); stepArrowTrails(); stepTgMark(); drawOverlay(); camUpdate(dt); computeAim(); stepBlobs(); stepSmokeShade(); stepEnv(); stepFireLight();
         // filmová kamera: v spomalení a pri nástupe jemné chvenie z ruky a širokouhlé pásy
         const cine = !photo && (intro || (slow && slow.u)) ? 1 : 0; CINE += (cine - CINE) * Math.min(1, .08 * dt);
         if (CINE > .01 && cam) { const hh = CINE * (intro ? .5 : 1); cam.position.x += Math.sin(clock * 1.7) * .5 * hh + Math.sin(clock * 4.3) * .15 * hh; cam.position.y += Math.sin(clock * 2.3 + 1) * .35 * hh; cam.rotation.z += Math.sin(clock * 1.1) * .006 * hh; }

@@ -444,6 +444,14 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
 
+## Telá a krv: rozlievajúce sa a zasychajúce kaluže (verzia 131)
+
+Pred zmenou som prešiel kód: padlí vojaci už zostávajú na poli ako fyzikálne telá (handrová bábka), šípy sa zapichujú do tiel a štítov (najviac 6 na telo) aj do zeme a zbrane a štíty padajú na zem. Doplnil som len krv, a to len keď je v Nastaveniach zapnutá (predvolene je vypnutá):
+
+- **Kaluž pod padlým** sa za asi 4 s rozleje z štvrtiny na plnú veľkosť, po 5 s začne tmavnúť a za pol minúty zaschne (tmavšia, matnejšia, priesvitnejšia) – `stepDecals` v `js/engine/b3d.js`.
+- **Škvrny na zemi** pri zásahu (silnejšom ako 4 životy, s pravdepodobnosťou 50 %) v smere úderu.
+- **Overenie v hre:** rozliatie z 0,36 na 1 za 5 s; po približne 26 s farba z `#5a100c` na `#460a07` a krytie 0,64. Vizuálne som to v hre nepotvrdil (kamera fotorežimu sa mi nepodarila nasmerovať).
+
 ## Animácie vojakov: hybnosť pri páde (verzia 130)
 
 Pred zmenou som prešiel animácie v `js/engine/b3d.js`: už mali plynulé prechody medzi pózami (`o.pa`), kľúčové pózy úderov podľa zbrane a smeru, reakcie podľa miesta zásahu (hlava, ruka, nohy), šesť druhov pádov, handrovú bábku a chodidlá na svahu. Chýbala len hybnosť.
