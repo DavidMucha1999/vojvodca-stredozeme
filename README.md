@@ -444,6 +444,13 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
 
+## Zvuk: stereo a hlasitosť od 3D kamery (verzia 133)
+
+Pred zmenou som prešiel zvuk (`js/engine/audio.js`, `js/audio/sound.js`): zvuky boja sú súbory s náhodnými variantmi a zmenou výšky tónu, druh zásahu sa volí podľa materiálu (telo, štít, kov), hlasitosť klesá so vzdialenosťou. Chyba bola v polohe: stereo a hlasitosť sa rátali od stredu 2D kamery a podľa svetových osí, nie od 3D kamery, takže zvuk spred hráča mohol znieť sprava.
+
+- **`B3.earPan(x, y)`** (`js/engine/b3d.js`) vráti vzdialenosť od 3D kamery a stereo (−1 až +1) podľa smeru jej pohľadu; `SoundFX.play` ho používa, keď beží 3D, inak ostáva pôvodný výpočet.
+- **Overenie v hre:** pri pohľade v smere +x dostal bod priamo pred kamerou stereo −0,03 (predtým +0,28), bod vpravo +0,26 a vľavo −0,30. Samotný zvuk som nepočúval.
+
 ## Kamera: záber na posledného padlého (verzia 132)
 
 Kamera už mala spomalenie pri zásahu do hlavy, páde veliteľa a nárazu jazdy, filmové pásy a mierne trasenie. Chýbala chvíľa víťazstva: keď padol posledný nepriateľ, bitka skončila okamžite a jasot vojakov, ktorý hra má, nikto nevidel.

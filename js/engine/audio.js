@@ -36,9 +36,9 @@ const SoundFX = {
         sfxLast[k] = now;
         let vol = 1, pan = 0;
         if (SNDPOS && mode === 'battle') {
-            const cx = bc.x + W / 2, cy = bc.y + H / 2, d = Math.hypot(SNDPOS.x - cx, SNDPOS.y - cy);
-            vol = Math.max(.15, 1 - d / 700);
-            pan = Math.max(-1, Math.min(1, (SNDPOS.x - cx) / 360));
+            const ear = typeof B3 !== 'undefined' && B3.isOn() ? B3.earPan(SNDPOS.x, SNDPOS.y) : null;   // v 3D od kamery a podľa jej smeru
+            if (ear) { vol = Math.max(.15, 1 - ear.d / 700); pan = ear.pan; }
+            else { const cx = bc.x + W / 2, cy = bc.y + H / 2, d = Math.hypot(SNDPOS.x - cx, SNDPOS.y - cy); vol = Math.max(.15, 1 - d / 700); pan = Math.max(-1, Math.min(1, (SNDPOS.x - cx) / 360)); }
         }
         const s = sfxScene.sound.add(list[Math.random() * list.length | 0]);
         if (s.setPan) s.setPan(pan * .8);
