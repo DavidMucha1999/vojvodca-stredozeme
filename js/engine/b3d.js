@@ -2554,7 +2554,11 @@ const B3 = (() => {
         fit(); stepAQ();
         if (sun && sun.castShadow) { const ev = AQ.lvl >= 3 ? 3 : U.length > 120 ? 2 : 1; sun.shadow.autoUpdate = ev === 1; if (ev > 1 && frameN % ev === 0) sun.shadow.needsUpdate = true; }   // veľká bitka: tiene sa prepočítajú každú druhú snímku
         // stav bitky pre zástup: víťazný jasot, šípy vo vzduchu (štíty nad hlavu)
-        FRX.win0 = !U.some(v => v.t && v.hp > 0 && !v.rout && !v.fled); FRX.win1 = (U[0].hp <= 0 && !(typeof CMB !== 'undefined' && CMB.down)) || !U.some(v => !v.t && v.hp > 0 && !v.fled);
+        FRX.win0 = !U.some(v => v.t && v.hp > 0 && !v.rout && !v.fled);
+        if (FRX.win0 && FRX.winCam !== LB && !slow && !photo && !intro) {   // posledný nepriateľ padol: záber na neho v spomalení
+            FRX.winCam = LB; let near = null, nd = 1e9; for (const v of U) if (v.t && !v.fled) { const d = Math.hypot(v.x - U[0].x, v.y - U[0].y); if (d < nd) { nd = d; near = v; } }
+            if (near) slow = { t: 100, t0: 100, k: .4, u: near };
+        } FRX.win1 = (U[0].hp <= 0 && !(typeof CMB !== 'undefined' && CMB.down)) || !U.some(v => !v.t && v.hp > 0 && !v.fled);
         const fly = AR.filter(a => a.l > 0 && !a.land);
         const cx = cam ? cam.position.x : U[0].x, cz = cam ? cam.position.z : U[0].y, LD = lodD(); let dSum = 0, dN = 0;
         for (const b of FAR.values()) b.n = 0;

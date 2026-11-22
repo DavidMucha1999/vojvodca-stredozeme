@@ -641,8 +641,10 @@ function updBattle(dt) {
         }
         else if (U[0].hp <= 0 && (!CMB.down || !mineUp))   // hrdina padol a niet, kto by bojoval ďalej
             endBattle(false);
-        else if (!U.some(u => u.t && u.hp > 0) && (!BRES[1].length || CMB.M[1] < 15))
-            endBattle(true);
+        else if (!U.some(u => u.t && u.hp > 0) && (!BRES[1].length || CMB.M[1] < 15)) {
+            if (!(typeof B3 !== 'undefined' && B3.isOn()) || (CMB.winT = (CMB.winT || 0) + dt) > 70)   // krátka chvíľa víťazstva (len v 3D): kamera zostane na poslednom padlom, vojaci jasajú (js/engine/b3d.js)
+                endBattle(true);
+        }
         else if (U.some(u => u.t && u.hp > 0) && !U.some(u => u.t && u.hp > 0 && !u.rout) && (CMB.endT += dt) > 150) {   // všetci nepriatelia utekajú: bojisko je tvoje (aj ich zálohy sa stiahnu)
             for (const u of U) if (u.t && u.hp > 0) { u.fled = 1; u.hp = 0; }
             BRES[1] = [];

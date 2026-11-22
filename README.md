@@ -444,6 +444,14 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
 
+## Kamera: záber na posledného padlého (verzia 132)
+
+Kamera už mala spomalenie pri zásahu do hlavy, páde veliteľa a nárazu jazdy, filmové pásy a mierne trasenie. Chýbala chvíľa víťazstva: keď padol posledný nepriateľ, bitka skončila okamžite a jasot vojakov, ktorý hra má, nikto nevidel.
+
+- **Záber na posledného padlého:** pri víťazstve v 3D kamera na ~1,7 s spomalí (rýchlosť 0,4) a pozrie na najbližšieho nepriateľa; filmové pásy sa zapnú rovnako ako pri páde veliteľa (`js/engine/b3d.js`).
+- **Krátka pauza pred výsledkom** (`js/sim/battle.js`, `CMB.winT`, 70 krokov simulácie): vojaci jasajú. Platí len keď beží 3D; bez neho (a v testoch) bitka končí hneď ako doteraz. Ústup nepriateľa mal pauzu už predtým.
+- **Overenie v hre:** po zabití všetkých nepriateľov bitka skončila po 3,3 s, z toho asi 1,6 s v spomalení; všetky testy simulácie prešli.
+
 ## Telá a krv: rozlievajúce sa a zasychajúce kaluže (verzia 131)
 
 Pred zmenou som prešiel kód: padlí vojaci už zostávajú na poli ako fyzikálne telá (handrová bábka), šípy sa zapichujú do tiel a štítov (najviac 6 na telo) aj do zeme a zbrane a štíty padajú na zem. Doplnil som len krv, a to len keď je v Nastaveniach zapnutá (predvolene je vypnutá):

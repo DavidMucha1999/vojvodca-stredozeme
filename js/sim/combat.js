@@ -97,7 +97,7 @@ function cmbStart(en) {
     if (G.duel && en && en.id === G.duel.id && !en.duel) { if (G.duel.win) C.M[1] = Math.max(10, C.M[1] - 30); else C.M[0] = Math.max(10, C.M[0] - 25); G.duel = null; }   // výsledok súboja veliteľov
     C.M0 = C.M.slice(); C.n0 = [mine.length, foe.length];
     C.fc = [mine.filter(u => !u.h && !u.ally && !u.src && !u.garrison && !u.cp).length, foe.filter(u => !u.src && !u.boss).length];   // vlastné vojsko strán na bojisku (limit pre posily)
-    C.down = 0; C.camU = null; C.rfT = 0; C.endT0 = 0;
+    C.down = 0; C.camU = null; C.rfT = 0; C.endT0 = 0; C.winT = 0;
     wpInit(); C.horseLow = 0;
     C.shMax = heroShield() ? Math.round((70 + it('s').v * 500) * (perk('stit') ? 1.6 : 1) * (1 + .1 * csLv('sh'))) : 0;   // schopnosť Štít C.shp = C.shMax;
     const RW = rangedW();   // strelná výbava (luk, kuša, oštepy), inak lovecký luk podľa lukostreľby
