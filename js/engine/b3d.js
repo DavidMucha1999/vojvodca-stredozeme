@@ -59,12 +59,14 @@ const B3 = (() => {
         return {
             add(shape, color, p = [0, 0, 0], r = [0, 0, 0], s = [1, 1, 1], o) {
                 const m = new t.Matrix4().compose(new t.Vector3(...p), new t.Quaternion().setFromEuler(new t.Euler(...r)), new t.Vector3(...s));
-                items.push([typeof shape === 'string' ? prims()[shape] : shape, C(color), m, o || {}]); return this;
+                items.push([typeof shape === 'string' ? prims()[shape] : shape, C(color), m, o || {}, typeof shape === 'string' ? shape : null]); return this;
             },
             get n() { return items.length; },
             build(BN, mdef = 4, lod = false) {
                 const metalLast = items.filter(i => !i[3].m && !i[3].tex).concat(items.filter(i => i[3].m && !i[3].tex)).concat(items.filter(i => i[3].tex));
-                let n = 0; const gs = metalLast.map(([g0, c, m, o]) => { const g = lod && o.lod ? o.lod : g0, ng = (g.index ? g.toNonIndexed() : g.clone()); ng.applyMatrix4(m); n += ng.attributes.position.count; return [ng, c, o]; });
+                // zjednodušená verzia pre vzdialený zástup: hrubšie telo a hlava (o.lod) a lacnejšie primitíva (guľa, valec, zaoblený kváder)
+                const LOWP = { sph2: 'sph', sph: 'sph0', cyl12: 'cyl6', cyl: 'cyl6', disc: 'cyl6', rbox: 'box' };
+                let n = 0; const gs = metalLast.map(([g0, c, m, o, nm]) => { const g = lod && o.lod ? o.lod : lod && nm && LOWP[nm] ? prims()[LOWP[nm]] : g0, ng = (g.index ? g.toNonIndexed() : g.clone()); ng.applyMatrix4(m); n += ng.attributes.position.count; return [ng, c, o]; });
                 const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3), cl = new Float32Array(n), mt = new Float32Array(n), si = BN ? new Uint16Array(n * 4) : null, sw = BN ? new Float32Array(n * 4) : null;
                 const hasUV = gs.some(([g]) => g.attributes.uv), uv = hasUV ? new Float32Array(n * 2) : null; let nt = 0;   // textúrované diely (telo z modelu s textúrou) idú na koniec do tretej skupiny
                 // reťaze končatín pre animáciu vzdialeného zástupu na grafickej karte: [reťaz, článok]; kĺby z pokojovej kostry
@@ -340,8 +342,8 @@ const B3 = (() => {
     }
     const SDFC = new Map();
     /** Ľudské (elfské, orkské, trolie…) telo zo SDF v pokojovej póze; vrátené z vyrovnávacej pamäte podľa rasy. */
-    function bodySDF(race, rc, BN, key) {
-        key = key || race; if (SDFC.has(key)) return SDFC.get(key);
+    function bodySDF(race, rc, BN, key, low) {
+        key = (key || race) + (low ? ':lo' : ''); if (SDFC.has(key)) return SDFC.get(key);
         const { W, D, H, lt, ls, a1, a2 } = rc, bk = { orc: 1.12, uruk: 1.14, troll: 1.28, dwarf: 1.14, elf: .88, hobbit: .95, wraith: .9 }[race] || 1;
         const J = b => { const e = BN.rest[b].elements; return [e[12], e[13], e[14]]; }, add = (a, d) => [a[0] + d[0], a[1] + d[1], a[2] + d[2]];
         const hip = J('hip'), ch = J('ch'), segs = [], ex = [];
@@ -360,13 +362,13 @@ const B3 = (() => {
             ex.push([kn, add(K, [-.35, -ls * .32, 0]), [1.0 * bk, ls * .3, .95 * bk], .5]);   // lýtko
             ex.push([lg, add(L, [.3, -lt * .42, 0]), [1.2 * bk, lt * .32, 1.1 * bk], .6], [el, add(E, [.15, -a2 * .3, 0]), [.82 * bk, a2 * .27, .8 * bk], .4]);   // stehenný sval a predlaktie
         }
-        const R = Math.max(D, W) * .8 + 3.2, M = sdfMesh(segs, ex, [-R, 0, -R], [R, hip[1] + .8 + H + 1.4, R], .42, BN);
+        const R = Math.max(D, W) * .8 + 3.2, M = sdfMesh(segs, ex, [-R, 0, -R], [R, hip[1] + .8 + H + 1.4, R], low ? .9 : .42, BN);   // low: hrubšie telo pre vzdialený zástup
         SDFC.set(key, M); return M;
     }
     /** Hlava zo SDF: lebka, stredná časť tváre, sánka, brada, lícne kosti, obočnicové oblúky a ušné chrupavky – hladko zliate, s variantom podľa fv a rasy. */
     const HEADC = new Map();
-    function headSDF(race, rc, BN, fv, hs, HX, HY) {
-        const key = race + ':' + fv + ':' + hs + ':' + HX.toFixed(2) + ':' + HY.toFixed(2); if (HEADC.has(key)) return HEADC.get(key);
+    function headSDF(race, rc, BN, fv, hs, HX, HY, low) {
+        const key = race + ':' + fv + ':' + hs + ':' + HX.toFixed(2) + ':' + HY.toFixed(2) + (low ? ':lo' : ''); if (HEADC.has(key)) return HEADC.get(key);
         const jw = [1, 1.1, .9, 1.22, 1, .9, 1.16, 1.05][fv], cb = [1, 1.1, .95, 1, 1.15, .9, 1, 1.05][fv], brow = [1, 1.15, .9, 1.3, 1, .9, 1.2, 1.1][fv];
         const orc = race === 'orc' || race === 'uruk' || race === 'troll', dw = race === 'dwarf', el = race === 'elf';
         const k = hs, ex = [];
@@ -385,7 +387,7 @@ const B3 = (() => {
         if (!el && !orc) for (const z of [-1, 1]) ex.push(['hdc', [HX - .15, HY - .05 * k, z * 2.0 * k], [.45 * k, .85 * k, .28 * k], .25], ['hdc', [HX - .35, HY + .2 * k, z * 2.1 * k], [.3 * k, .5 * k, .2 * k], .2]);   // ušnica s chrupavkou
         const sub = []; for (const z of [-1, 1]) sub.push(['hdc', [HX + 2.4 * k, HY + .38 * k, z * .85 * k], [.55 * k, .45 * k, .55 * k], .25]);   // očné jamky: oko je zapustené, nad ním tieň viečka
         const segs = [['hdc', [HX - .2, HY, 0], [HX - .2, HY + .1, 0], 1, 1, 1]];
-        const R = 3.4 * k, M = sdfMesh(segs, ex, [HX - R - .2, HY - 3.1 * k, -R], [HX + R + .4, HY + 3 * k, R], .27, BN, sub);   // krok .27: ~50 ms na hlavu, výsledok sa ukladá
+        const R = 3.4 * k, M = sdfMesh(segs, ex, [HX - R - .2, HY - 3.1 * k, -R], [HX + R + .4, HY + 3 * k, R], low ? .6 : .27, BN, sub);   // krok .27: ~50 ms na hlavu, výsledok sa ukladá
         HEADC.set(key, M); return M;
     }
     /** Telo koňa zo SDF: trup, hruď, zadok, krk, hlava s nozdrami, nohy s kĺbmi. */
@@ -989,14 +991,14 @@ const B3 = (() => {
             const mix = (bn, y) => { const r = regionOf(bn, y); return r[0] === skin ? ['#ffffff', 0, false, 1] : r; }, lo = sdfGeos(modelBody(BN, rc, true), regionOf);
             sdfGeos(modelBody(BN, rc, false), mix).forEach(([g, metal, tx]) => P.add(g, '#ffffff', [0, 0, 0], [0, 0, 0], [1, 1, 1], { pre: 1, m: metal, tex: tx ? 1 : 0, lod: tx ? null : (lo.find(x => x[1] === metal) || [])[0] }));
         } else if (MM) { const lo = sdfGeos(modelBody(BN, rc, true), regionOf); sdfGeos(modelBody(BN, rc, false), regionOf).forEach(([g, metal], i) => P.add(g, '#ffffff', [0, 0, 0], [0, 0, 0], [1, 1, 1], { pre: 1, m: metal, lod: (lo.find(x => x[1] === metal) || [])[0] })); }   // telo z modelu (Meshy)
-        else for (const [g, metal] of sdfGeos(bodySDF(s.race || 'human', rc, BN, (s.race || 'human') + ':' + (rc.fvk || 0)), regionOf)) P.add(g, '#ffffff', [0, 0, 0], [0, 0, 0], [1, 1, 1], { pre: 1, m: metal });
+        else { const bk0 = (s.race || 'human') + ':' + (rc.fvk || 0), lo = sdfGeos(bodySDF(s.race || 'human', rc, BN, bk0, true), regionOf); for (const [g, metal] of sdfGeos(bodySDF(s.race || 'human', rc, BN, bk0), regionOf)) P.add(g, '#ffffff', [0, 0, 0], [0, 0, 0], [1, 1, 1], { pre: 1, m: metal, lod: (lo.find(x => x[1] === metal) || [])[0] }); }
         const GA = MM && !fullTex && armorModel(s.am) ? s.am : null;   // brnenie z modelu (Meshy) nasadené na telo
         if (GA) { const hi = garmentGeos(GA, BN, rc), lo = garmentGeos(GA, BN, rc, true); hi.forEach((g, metal) => { if (g) P.add(g, '#ffffff', [0, 0, 0], [0, 0, 0], [1, 1, 1], { pre: 1, m: metal, lod: lo[metal] || g }); }); }
         const noTab = (fullTex && s.race !== 'orc') || !!GA;   // trollovia, Nazgûl a uruci bez kabátca a opasku (majú vlastný vzhľad); brnenie z modelu má vlastný opasok a šosy
         if (!noTab) P.add('rbox', team, [D * .56, H * .44, 0], [0, 0, 0], [.5, H * .82, W * .44], bt('ch', 2)).add('rbox', team, [-D * .56, H * .44, 0], [0, 0, 0], [.5, H * .82, W * .44], bt('ch', 2))
             .add('cyl12', leather, [0, .35, 0], [0, 0, 0], [D * .98, 1.2, W * .8], bt('ch', 3)).add('box', '#c8a040', [D * .49, .35, 0], [0, 0, 0], [.35, 1, 1], bm('ch', 1))
             .add('sph2', rim, [-.1, H - 1.6, W / 2 - .2], [0, 0, -.1], [D * .95, 2.8, 3.4], bm('ch', mR)).add('sph2', rim, [-.1, H - 1.6, -W / 2 + .2], [0, 0, -.1], [D * .95, 2.8, 3.4], bm('ch', mR));
-        if (!MM && !rc.noFace) for (const [g, metal] of sdfGeos(headSDF(s.race || 'human', rc, BN, s.fv || 0, hs, HX, HY + chY), () => [skin, 0, false])) P.add(g, '#ffffff', [0, 0, 0], [0, 0, 0], [1, 1, 1], { pre: 1, m: metal });   // hlava zo SDF
+        if (!MM && !rc.noFace) { const lo = sdfGeos(headSDF(s.race || 'human', rc, BN, s.fv || 0, hs, HX, HY + chY, true), () => [skin, 0, false]); for (const [g, metal] of sdfGeos(headSDF(s.race || 'human', rc, BN, s.fv || 0, hs, HX, HY + chY), () => [skin, 0, false])) P.add(g, '#ffffff', [0, 0, 0], [0, 0, 0], [1, 1, 1], { pre: 1, m: metal, lod: (lo.find(x => x[1] === metal) || [])[0] }); }   // hlava zo SDF
         else if (!MM) P.add('sph2', skin, hc, [0, 0, 0], [4.1 * hs, 4.9 * hs, 3.9 * hs], b('hdc'));
         if (fullTex && mA && !noTab) P.add('taperU', armor, [.3, (H - .8) / 2 + .3, 0], [0, 0, 0], [D * 1.05, H - 1.2, W * 1.02], bt('ch', fab(armor), mA));   // textúrovaný ork v plátovej zbroji: kyrys navrch
         if (!noTab) P.add('taper', mA ? sh(armor, .85) : sh(armor, .8), [0, -1.4, 0], [0, 0, 0], [MM ? D * 1.3 : D * 1.12, 3.4, MM ? Math.max(W * .9, rc.hipW * 1.06) : W * .9], bt('hip', fab(armor), mA));
@@ -1224,7 +1226,7 @@ const B3 = (() => {
             }
             if (greave) P.add('sph2', greave, [.7, 0, 0], [0, 0, 0], [1.6, 1.6, 1.6], bm(kn, 1)).add('box', greave, [.85, -ls * .4, 0], [0, 0, 0], [.4, ls * .55, 1.8], bm(kn, 1));
         }
-        const geo = P.build(BN, mdef), geoLow = MM ? P.build(BN, mdef, true) : null;
+        const geo = P.build(BN, mdef), geoLow = P.build(BN, mdef, true);
         return { geoLow, lens: { lt, ls, a1, a2 }, two: !shape && (wt === 'spear' || !!(Wg && Wg.t === 'broad')), twoY: wt === 'spear' ? 7 : 1.3, tabX: D * .56 + .27, tabY: H * .5, geo, BN, wGeo: W2.n ? W2.build(null, mdef) : null, sGeo: S2.n ? S2.build(null, mdef) : null, lz: W * .2, hipY, scale: s.scale || 1, race: s.race, bow: wt === 'bow' || wt === 'xbow', spear: wt === 'spear', hunch: rc.hunch, shield: shape, tipY, fac: s.fac, emblem: !!shape && !(SG && SG.plain) };
     }
     /** Kôň, varg alebo čierny kôň ako kostrová sieť: telo, krk, hlava, chvost, nohy s kĺbmi (koleno vpredu, hlezno vzadu). */

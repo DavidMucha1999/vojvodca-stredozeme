@@ -444,6 +444,14 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
 
+## Výkon veľkých bitiek: zjednodušený zástup (verzia 129)
+
+Zmeranie v prehliadači (AMD Radeon 840M, obrovská bitka, 307 jednotiek, Auto kvalita vypnutá): jeden záber mal **6,2 milióna trojuholníkov** a hra bežala len okolo 17 – 29 snímok za sekundu, pričom zníženie rozlíšenia nepomohlo, takže brzdila geometria. Príčina: vzdialení vojaci sa kreslili tým istým telom a hlavou ako blízki (asi 20 000 trojuholníkov na vojaka), pretože zjednodušená verzia existovala len pre staré modely Meshy, ktoré sme odstránili.
+
+- **Hrubšie telo a hlava (`js/engine/b3d.js`):** `bodySDF` a `headSDF` majú variant `low` s krokom 0,9 (telo) a 0,6 (hlava) namiesto 0,42 a 0,27. Vzdialený vojak má asi 6 000 trojuholníkov.
+- **Lacnejšie primitíva:** pri zjednodušenej verzii `Part.build` nahradí guľu, valec a zaoblený kváder jednoduchšími tvarmi.
+- **Výsledok:** pri rovnakej bitke asi 2,4 milióna trojuholníkov na záber a približne **59 snímok za sekundu**; blízki vojaci (do `lodD()`) majú plnú kvalitu a vzdialený šík je naďalej čitateľný (tváre, helmy, zástavy).
+
 ## Hlasové povely a zoom luku (verzia 128)
 
 - **Hlasový povel** (`setOrd` v `js/ui/toolbar.js`): každý rozkaz skupine (T, H, F, G, R) sa ozve ako výkrik vo výpise vľavo dole („Pechota: Držte pozície!“), pri útoku a ústupe aj rohom. Vojaci ho začnú plniť s oneskorením 0,1 – 0,6 s (`ordWait`), dovtedy držia predošlý rozkaz – armáda nereaguje na zlomok sekundy.
