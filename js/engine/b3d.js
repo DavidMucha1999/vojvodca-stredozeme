@@ -1718,7 +1718,9 @@ const B3 = (() => {
         const t = T(), B = o.B, L = o.H.lens, k = o.scaleH || 1; o.root.updateMatrixWorld(true);
         const w = (b, y = 0) => b.localToWorld(new t.Vector3(0, y, 0)), P = { Lp: w(B.lgL), Rp: w(B.lgR), Ls: w(B.shL), Rs: w(B.shR), Hd: w(B.hd), Lk: w(B.knL), Rk: w(B.knR), Lf: w(B.knL, -L.ls), Rf: w(B.knR, -L.ls), Le: w(B.elL), Re: w(B.elR), Lh: w(B.hL), Rh: w(B.hR) };
         const ka = u.lhA != null ? u.lhA : -o.root.rotation.y + Math.PI, kv = .35 + o.hit * .5 + (o.kbx || o.kbz ? .4 : 0), V = {};
-        for (const n in P) { const up = n === 'Hd' || n[1] === 's' || n[1] === 'e' || n[1] === 'h' ? 1 : .35; V[n] = P[n].clone().sub(new t.Vector3(Math.cos(ka) * kv * up, .15 * up, Math.sin(ka) * kv * up)); }
+        // hybnosť behu: zasiahnutý v behu sa pretočí a šmykne dopredu v smere pohybu (nie len od útočníka); pri cúvaní dozadu
+        const mom = Math.min(1.3, Math.max(0, o.sp - .4) * .4) * Math.sign(o.mf || 0), mx = Math.cos(o.root.rotation.y) * mom, mz = -Math.sin(o.root.rotation.y) * mom;   // smer pohľadu: rotation.y = -u.f, vpred = (cos f, sin f)
+        for (const n in P) { const up = n === 'Hd' || n[1] === 's' || n[1] === 'e' || n[1] === 'h' ? 1 : .35; V[n] = P[n].clone().sub(new t.Vector3(Math.cos(ka) * kv * up + mx * (up > .5 ? 1 : .55), .15 * up, Math.sin(ka) * kv * up + mz * (up > .5 ? 1 : .55))); }
         const pairs = [['Lp', 'Rp'], ['Ls', 'Rs'], ['Lp', 'Ls'], ['Rp', 'Rs'], ['Lp', 'Rs'], ['Rp', 'Ls'], ['Hd', 'Ls'], ['Hd', 'Rs'], ['Hd', 'Lp'], ['Hd', 'Rp'], ['Lp', 'Lk'], ['Lk', 'Lf'], ['Rp', 'Rk'], ['Rk', 'Rf'], ['Ls', 'Le'], ['Le', 'Lh'], ['Rs', 'Re'], ['Re', 'Rh']];
         const C2 = pairs.map(([a, b]) => [a, b, P[a].distanceTo(P[b]), 0]); C2.push(['Lp', 'Lf', (L.lt + L.ls) * k * .55, 1], ['Rp', 'Rf', (L.lt + L.ls) * k * .55, 1], ['Ls', 'Lh', (L.a1 + L.a2) * k * .4, 1], ['Rs', 'Rh', (L.a1 + L.a2) * k * .4, 1]);
         o.rag = { P, V, C: C2, still: 0, done: 0, sm0: o.sm.position.clone(), k, hipY: o.H.hipY }; RAGS.push(o); if (RAGS.length > 40) { const i = RAGS.findIndex(r => r.rag.done); RAGS.splice(i >= 0 ? i : 0, 1); }

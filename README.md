@@ -444,6 +444,13 @@ Posúvateľné obrazovky používajú `rScroll`/`rScrollEnd` (koliesko, ťahanie
 - **Animácie** (`pose`, `poseHuman` v `js/engine/b3d.js`): smer pohybu voči pohľadu (`o.mf` dopredu, `o.ms` do strany) – pri cúvaní beží chôdza naopak a trup sa mierne zakláňa, pri úkroku do strany sa nohy rozkračujú (rotácia okolo osi dopredu) namiesto chôdze dopredu. Platí pre vojakov aj hrdinu.
 - Testy: nový test telesnej kolízie, test pohybu v boji upravený (slabý vojak krúži pomalšie, nie stojí).
 
+## Animácie vojakov: hybnosť pri páde (verzia 130)
+
+Pred zmenou som prešiel animácie v `js/engine/b3d.js`: už mali plynulé prechody medzi pózami (`o.pa`), kľúčové pózy úderov podľa zbrane a smeru, reakcie podľa miesta zásahu (hlava, ruka, nohy), šesť druhov pádov, handrovú bábku a chodidlá na svahu. Chýbala len hybnosť.
+
+- **Hybnosť behu:** vojak zasiahnutý v behu sa pri páde (`ragStart`) šmykne a pretočí dopredu v smere pohybu, pri cúvaní dozadu, nie len od útočníka. Sila rastie s rýchlosťou (najviac 1,3 jednotky na krok); stojaci vojak padá ako doteraz.
+- **Overenie v hre:** pri rovnakom zabití sa bežiaci vojak (rýchlosť 2,6) skončil o približne 16 jednotiek ďalej dopredu než stojaci.
+
 ## Výkon veľkých bitiek: zjednodušený zástup (verzia 129)
 
 Zmeranie v prehliadači (AMD Radeon 840M, obrovská bitka, 307 jednotiek, Auto kvalita vypnutá): jeden záber mal **6,2 milióna trojuholníkov** a hra bežala len okolo 17 – 29 snímok za sekundu, pričom zníženie rozlíšenia nepomohlo, takže brzdila geometria. Príčina: vzdialení vojaci sa kreslili tým istým telom a hlavou ako blízki (asi 20 000 trojuholníkov na vojaka), pretože zjednodušená verzia existovala len pre staré modely Meshy, ktoré sme odstránili.
