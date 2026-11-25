@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="sk"><head><meta charset="utf-8"><title>Návrhy načítavacej obrazovky</title>
+<style>
+body{margin:0;background:#0b0806;color:#d8c8a0;font:15px Georgia,serif;padding:24px}
+h1{font-weight:400;color:#e8c060;margin:0 0 4px}p.s{margin:0 0 20px;color:#9a8a68}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(560px,1fr));gap:22px}
+.c{background:#120d09;border:1px solid #3a2a14;border-radius:8px;padding:12px}
+.c canvas{width:100%;display:block;border-radius:4px;background:#000}
+.c h2{font-weight:400;font-size:18px;margin:10px 0 4px;color:#e8c060}.c p{margin:0;color:#b8a880;font-size:14px;line-height:1.5}
+</style></head><body>
+<h1>Návrhy načítavacej obrazovky</h1><p class="s">Živé ukážky (každá sa opakuje po 9 s). Vznikli v tom istom Three.js ako hra, takže sa dajú preniesť priamo.</p>
+<div class="g">
+<div class="c"><canvas id="a" width="960" height="600"></canvas><h2>A · Zlatý prsteň v 3D</h2><p>Skutočný lesklý prsteň (torus s odrazmi), pomaly sa točí. Ohnivý nápis na ňom sa rozsvecuje podľa percent načítania. Iskry a teplá žiara okolo.</p></div>
+<div class="c"><canvas id="b" width="960" height="600"></canvas><h2>B · Oko nad prsteňom</h2><p>Za prsteňom horí zvislé ohnivé oko, ktoré sa otvára, ako sa hra načítava. Zrnitosť, tlejúci popol a červenooranžové svetlo na zlate.</p></div>
+<div class="c"><canvas id="c" width="960" height="600"></canvas><h2>C · Cesta po mape</h2><p>Pergamenová mapa Stredozeme, po nej sa kreslí cesta z Kraja až k Hore osudu. Malý prsteň putuje po trase a ukazuje postup. Bez 3D, preto najľahšia.</p></div>
+</div>
+<script src="../vendor/three.min.js"></script>
+<script>
+const LOOP=9;
+const prog=t=>{const p=(t%LOOP)/(LOOP-.8);return Math.min(1,p*p*(3-2*p))};
+function runes(w,h,seed){const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.fillStyle='#000';x.fillRect(0,0,w,h);x.strokeStyle='#fff';x.lineWidth=h*.07;x.lineCap='round';let s=seed;const r=()=>{s=(s*16807)%2147483647;return s/2147483647};
+for(let i=0;i<46;i++){const bx=i*w/46+w/92,by=h/2,hh=h*.2;x.beginPath();x.moveTo(bx,by-hh);x.lineTo(bx,by+hh);x.stroke();const n=1+Math.floor(r()*2);for(let k=0;k<n;k++){const y=by-hh+r()*hh*1.6;x.beginPath();x.arc(bx+(r()>.5?1:-1)*h*.05,y,h*.05+r()*h*.06,0,6.28*(r()*.6+.4));x.stroke()}}
+const t=new THREE.CanvasTexture(c);t.wrapS=THREE.RepeatWrapping;return t}
+function env(R){const s=new THREE.Scene();s.background=new THREE.Color(0x120a04);const m=(c,i)=>new THREE.MeshBasicMaterial({color:new THREE.Color(c).multiplyScalar(i)});
+for(const [x,y,z,c,i,w,h] of [[0,6,0,0xffd8a0,6,8,8],[6,1,2,0xff8a30,5,3,6],[-6,1,-1,0xffe0b0,3,2,7],[0,-1,6,0xc86a20,2,10,2],[0,2,-7,0xffb060,3,8,3]]){const p=new THREE.Mesh(new THREE.PlaneGeometry(w,h),m(c,i));p.position.set(x,y,z);p.lookAt(0,0,0);s.add(p)}
+const g=new THREE.PMREMGenerator(R);const t=g.fromScene(s,.04).texture;g.dispose();return t}
+function embers(n,w,h){const p=[];for(let i=0;i<n;i++)p.push({x:Math.random(),y:Math.random(),s:.3+Math.random(),v:.04+Math.random()*.08,ph:Math.random()*6});return{p,draw(ctx,t,w,h,col){for(const e of p){const y=((e.y-t*e.v)%1+1)%1,x=e.x+Math.sin(t*.7+e.ph)*.02,a=Math.sin(y*3.14)*.8;ctx.fillStyle=`rgba(${col},${a})`;ctx.beginPath();ctx.arc(x*w,y*h,e.s*2.2,0,6.28);ctx.fill()}}}}
+function ui(ctx,w,h,pr,title,sub,step){ctx.textAlign='center';ctx.fillStyle='#e8c060';ctx.font='56px "Uncial Antiqua",Georgia,serif';ctx.shadowColor='#000';ctx.shadowBlur=14;ctx.fillText(title,w/2,78);ctx.shadowBlur=0;ctx.fillStyle='#b8a070';ctx.font='italic 22px Georgia';ctx.fillText(sub,w/2,112);
+const bw=560,bx=(w-bw)/2,by=h-88;ctx.fillStyle='#120c06';ctx.fillRect(bx-3,by-3,bw+6,20);ctx.strokeStyle='#6a4a18';ctx.lineWidth=2;ctx.strokeRect(bx-3,by-3,bw+6,20);
+const gr=ctx.createLinearGradient(bx,0,bx+bw*pr,0);gr.addColorStop(0,'#8a5a14');gr.addColorStop(1,'#ffd070');ctx.fillStyle=gr;ctx.fillRect(bx,by,bw*pr,14);ctx.fillStyle='rgba(255,240,180,.45)';ctx.fillRect(bx,by,bw*pr,5);
+const hx=bx+bw*pr;const rg=ctx.createRadialGradient(hx,by+7,0,hx,by+7,18);rg.addColorStop(0,'rgba(255,170,60,.9)');rg.addColorStop(1,'rgba(255,120,20,0)');ctx.fillStyle=rg;ctx.fillRect(hx-20,by-14,40,40);
+ctx.fillStyle='#d9a441';ctx.font='20px Georgia';ctx.fillText(step+'  '+Math.round(pr*100)+' %',w/2,by+44)}
+const STEPS=['Kreslím mapu Stredozeme…','Staviam hrady a dediny…','Ladím rohy a bubny…','Maľujem erby a zástavy…','Brána sa otvára…'];
+const stepOf=p=>STEPS[Math.min(4,Math.floor(p*4.99))];
+
+function ring3(cv,mode){
+ const R=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:false});R.setSize(960,600,false);R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=1.15;
+ const S=new THREE.Scene();S.background=new THREE.Color(0x0b0806);S.environment=env(R);
+ const cam=new THREE.PerspectiveCamera(34,1.6,.1,50);cam.position.set(0,.2,6.6);
+ const tex=runes(2048,128,7);tex.repeat.set(2,1);
+ const ringM=new THREE.MeshStandardMaterial({color:0xe2b04a,metalness:1,roughness:.22,emissive:0xff6a10,emissiveMap:tex,emissiveIntensity:0,envMapIntensity:1.5});
+ const tor=new THREE.Mesh(new THREE.TorusGeometry(1.35,.34,48,160),ringM);
+ // plochý profil: zploštenie tubusu na pásik
+ tor.scale.set(1,1,.62);
+ const grp=new THREE.Group();grp.add(tor);grp.rotation.x=1.05;S.add(grp);
+ const key=new THREE.PointLight(0xffb060,mode==='b'?40:30,20);key.position.set(2.5,2.5,3);S.add(key);
+ const rim=new THREE.PointLight(0xff5a10,mode==='b'?60:18,20);rim.position.set(-3,-.5,-2);S.add(rim);
+ let eye=null;
+ if(mode==='b'){const ec=document.createElement('canvas');ec.width=512;ec.height=512;const ex=ec.getContext('2d');
+  const g=ex.createRadialGradient(256,256,10,256,256,250);g.addColorStop(0,'rgba(255,230,120,1)');g.addColorStop(.25,'rgba(255,120,20,.9)');g.addColorStop(.6,'rgba(160,30,0,.35)');g.addColorStop(1,'rgba(0,0,0,0)');ex.fillStyle=g;ex.fillRect(0,0,512,512);
+  ex.globalCompositeOperation='destination-out';ex.fillStyle='#000';ex.beginPath();ex.ellipse(256,256,9,150,0,0,6.28);ex.fill();
+  const et=new THREE.CanvasTexture(ec);eye=new THREE.Mesh(new THREE.PlaneGeometry(9,9),new THREE.MeshBasicMaterial({map:et,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));eye.position.set(0,.3,-3);S.add(eye);
+  const pup=new THREE.Mesh(new THREE.PlaneGeometry(.35,3.4),new THREE.MeshBasicMaterial({color:0x050202}));pup.position.set(0,.3,-2.99);S.add(pup);eye.userData.pup=pup}
+ const ov=document.createElement('canvas');ov.width=960;ov.height=600;const o=ov.getContext('2d');const E=embers(70);
+ const out=cv.getContext?null:null;
+ const wrap=cv.parentNode;const c2=document.createElement('canvas');c2.width=960;c2.height=600;c2.style.cssText='position:absolute;pointer-events:none;background:transparent';
+ // vykreslíme UI do samostatného plátna a skladáme cez druhý canvas nad prvým
+ cv.style.position='relative';wrap.style.position='relative';c2.style.left='12px';c2.style.top='12px';c2.style.width='calc(100% - 24px)';c2.style.height='auto';c2.style.aspectRatio='960/600';wrap.insertBefore(c2,cv.nextSibling);
+ const x2=c2.getContext('2d');
+ function f(ms){const t=ms/1000,pr=prog(t);
+  grp.rotation.z=t*.5;grp.rotation.x=1.05+Math.sin(t*.4)*.12;grp.position.y=Math.sin(t*1.1)*.08;
+  tex.offset.x=-t*.03;ringM.emissiveIntensity=.15+pr*(2.2+Math.sin(t*5)*.25);
+  key.intensity=(mode==='b'?40:30)*(.92+.08*Math.sin(t*7));
+  if(eye){const op=Math.max(.05,pr);eye.material.opacity=1;eye.scale.set(.5+op*.6,.4+op*.8,1);eye.userData.pup.scale.set(1,.3+op*.7,1);eye.material.color.setScalar(.35+.65*(.85+.15*Math.sin(t*9)))}
+  R.render(S,cam);
+  x2.clearRect(0,0,960,600);
+  const v=x2.createRadialGradient(480,300,200,480,300,620);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,'rgba(0,0,0,.75)');x2.fillStyle=v;x2.fillRect(0,0,960,600);
+  E.draw(x2,t,960,600,mode==='b'?'255,120,40':'255,190,90');
+  ui(x2,960,600,pr,'Vojvodca Stredozeme','Vojna o Stredozem v duchu Pána prsteňov',stepOf(pr));
+  requestAnimationFrame(f)}
+ requestAnimationFrame(f)}
+ring3(document.getElementById('a'),'a');ring3(document.getElementById('b'),'b');
+
+(function(){const cv=document.getElementById('c'),x=cv.getContext('2d'),W=960,H=600;
+ const pts=[[110,420],[190,370],[250,410],[330,350],[400,300],[470,330],[560,280],[640,230],[720,260],[800,200],[850,150]];
+ function pos(u){const n=pts.length-1,i=Math.min(n-1,Math.floor(u*n)),f=u*n-i,a=pts[i],b=pts[i+1],m=(p,q)=>p+(q-p)*f;return[m(a[0],b[0]),m(a[1],b[1])]}
+ const bg=document.createElement('canvas');bg.width=W;bg.height=H;const b=bg.getContext('2d');
+ const pg=b.createRadialGradient(480,300,80,480,300,620);pg.addColorStop(0,'#d8bf8a');pg.addColorStop(1,'#8a6a38');b.fillStyle=pg;b.fillRect(0,0,W,H);
+ for(let i=0;i<2200;i++){b.fillStyle='rgba(80,50,20,'+Math.random()*.06+')';b.fillRect(Math.random()*W,Math.random()*H,Math.random()*3,Math.random()*3)}
+ b.strokeStyle='rgba(70,45,20,.55)';b.lineWidth=1.4;b.fillStyle='rgba(70,45,20,.35)';
+ for(let k=0;k<7;k++){const mx=600+k*38,my=190-k%2*22;b.beginPath();b.moveTo(mx-24,my+30);b.lineTo(mx,my-14);b.lineTo(mx+24,my+30);b.stroke()}
+ for(let k=0;k<30;k++){const tx=150+k*22%300+Math.random()*30,ty=250+Math.random()*110;b.beginPath();b.arc(tx,ty,5+Math.random()*3,0,6.28);b.fill()}
+ b.strokeStyle='rgba(40,70,110,.55)';b.lineWidth=5;b.beginPath();b.moveTo(0,300);b.bezierCurveTo(200,260,300,470,520,440);b.bezierCurveTo(700,420,820,520,960,500);b.stroke();
+ b.font='italic 17px Georgia';b.fillStyle='rgba(60,35,15,.8)';b.textAlign='center';b.fillText('Kraj',110,452);b.fillText('Hora osudu',850,128);b.fillText('Mordor',700,300);b.fillText('Gondor',470,372);
+ b.strokeStyle='rgba(60,35,15,.7)';b.lineWidth=5;b.strokeRect(14,14,W-28,H-28);b.lineWidth=1.5;b.strokeRect(26,26,W-52,H-52);
+ const E=embers(40);
+ function f(ms){const t=ms/1000,pr=prog(t);x.drawImage(bg,0,0);
+  x.setLineDash([10,9]);x.strokeStyle='rgba(60,35,15,.45)';x.lineWidth=3;x.beginPath();pts.forEach((p,i)=>i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1]));x.stroke();x.setLineDash([]);
+  x.strokeStyle='#a0341a';x.lineWidth=5;x.lineCap='round';x.beginPath();const N=Math.floor(pr*160);for(let i=0;i<=N;i++){const q=pos(i/160);i?x.lineTo(q[0],q[1]):x.moveTo(q[0],q[1])}x.stroke();
+  const q=pos(pr),g=x.createRadialGradient(q[0],q[1],0,q[0],q[1],30);g.addColorStop(0,'rgba(255,190,70,.9)');g.addColorStop(1,'rgba(255,120,20,0)');x.fillStyle=g;x.fillRect(q[0]-32,q[1]-32,64,64);
+  x.strokeStyle='#8a5a10';x.lineWidth=9;x.beginPath();x.arc(q[0],q[1],9,0,6.28);x.stroke();x.strokeStyle='#ffd070';x.lineWidth=5;x.beginPath();x.arc(q[0],q[1],9,0,6.28);x.stroke();
+  const v=x.createRadialGradient(480,300,260,480,300,640);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,'rgba(20,8,0,.65)');x.fillStyle=v;x.fillRect(0,0,W,H);
+  E.draw(x,t,W,H,'255,170,60');
+  x.textAlign='center';x.fillStyle='#3a2208';x.font='56px "Uncial Antiqua",Georgia,serif';x.fillText('Vojvodca Stredozeme',W/2,92);x.fillStyle='#5a3a14';x.font='italic 22px Georgia';x.fillText('Vojna o Stredozem v duchu Pána prsteňov',W/2,126);
+  const bw=560,bx=(W-bw)/2,by=H-84;x.fillStyle='rgba(30,16,4,.85)';x.fillRect(bx-3,by-3,bw+6,20);const gr=x.createLinearGradient(bx,0,bx+bw,0);gr.addColorStop(0,'#8a2a10');gr.addColorStop(1,'#e8a030');x.fillStyle=gr;x.fillRect(bx,by,bw*pr,14);
+  x.fillStyle='#f0dca8';x.font='20px Georgia';x.fillText(stepOf(pr)+'  '+Math.round(pr*100)+' %',W/2,by+42);
+  requestAnimationFrame(f)}
+ requestAnimationFrame(f)})();
+</script></body></html>

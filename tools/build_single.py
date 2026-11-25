@@ -27,6 +27,8 @@ def inline_icon(m):
 html = re.sub(r'<link rel="icon" type="image/png" href="(assets/[^"]+)">', inline_icon, html)
 html = re.sub(r'<link rel="stylesheet" href="(css/[^"]+)">', inline_css, html)
 html = re.sub(r'<script src="((?:js|assets|vendor)/[^"]+)"></script>', inline_js, html)
+for f in ('nacitanie', 'menu'):
+    html = html.replace('assets/%s.webp' % f, 'data:image/webp;base64,' + base64.b64encode(open(os.path.join(ROOT, 'assets/%s.webp' % f), 'rb').read()).decode())
 os.makedirs(os.path.join(ROOT, 'dist'), exist_ok=True)
 out = os.path.join(ROOT, 'dist', 'vojvodca-single-lite.html' if LITE else 'vojvodca-single.html')
 open(out, 'w', encoding='utf-8').write(html)

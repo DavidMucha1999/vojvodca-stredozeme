@@ -6,7 +6,7 @@
 class BootScene extends Phaser.Scene {
     constructor() { super('Boot'); }
     /** Najkratšie trvanie načítavacej obrazovky (ms): pri prvom spustení aspoň chvíľa na Prsteň, pri návrate do menu bez čakania. */
-    static get MIN_LOAD() { return BootScene.again ? 0 : 1800; }
+    static get MIN_LOAD() { return BootScene.again ? 0 : 4000; }
 
     create() {
         ov.classList.add('intro'); ov.classList.add('hide');   // úvodný formulár sa ukáže až po načítaní
@@ -66,6 +66,32 @@ class BootScene extends Phaser.Scene {
         this.stepTxt = this.add.text(cx, cy + 170 * S, '', { fontFamily: '"IM Fell English", Georgia, serif', fontSize: 11 * S + 'px', color: '#d9a441' }).setOrigin(.5);
         this.add.text(cx, H * S - 14 * S, 'Autor a vývojár hry: Dávid Mucha', { fontFamily: 'Georgia, serif', fontSize: 10 * S + 'px', color: '#8a7a5a' }).setOrigin(.5);
         this.t = 0;
+        // ilustrácia (assets/nacitanie.webp) namiesto prsteňa; kým sa nenačíta (alebo ak zlyhá), ostáva pôvodná 2D obrazovka s prsteňom
+        this.barY = 0; this.pic = null;
+        const img = new Image();
+        img.onload = () => {
+            if (!this.scene.isActive()) return;
+            this.textures.addImage('nacitanie', img);
+            const sc = Math.max(W * S / img.width, H * S / img.height);
+            const pic = this.add.image(W * S / 2, H * S / 2, 'nacitanie').setScale(sc).setDepth(-2);
+            const sh = this.add.graphics().setDepth(-1);   // tmavý prechod dole, aby bol text čitateľný
+            for (let k = 0; k < 40; k++) sh.fillStyle(0x050302, .022 + k * .0016).fillRect(0, (H - 150 + k * 3.75) * S, W * S, 3.75 * S);
+            sh.fillStyle(0x050302, .6).fillRect(0, (H - 26) * S, W * S, 26 * S);
+            bg.setVisible(false); this.ring.setVisible(false); this.title.setVisible(false); this.sub.setVisible(false);
+            this.quote.setPosition(cx, (H - 78) * S); this.stepTxt.setPosition(cx, (H - 42) * S); this.barY = H - 58;
+            this.pic = pic;
+        };
+        img.src = 'assets/nacitanie.webp';
+    }
+
+    /** Tenká zlatá lišta pod názvom (pri 3D prsteni). */
+    drawBar3() {
+        const S = RES, cx = W * S / 2, t = this.t, b = this.bar; b.clear();
+        const bw = 380 * S, bh = 4 * S, bx = cx - bw / 2, by = this.barY * S, pw = Math.max(4 * S, bw * this.prog);
+        b.fillStyle(0x120c06, .85).fillRect(bx - 2 * S, by - 2 * S, bw + 4 * S, bh + 4 * S); b.lineStyle(1 * S, 0x6a4a18, 1).strokeRect(bx - 2 * S, by - 2 * S, bw + 4 * S, bh + 4 * S);
+        b.fillStyle(0xd9a441, 1).fillRect(bx, by, pw, bh); b.fillStyle(0xffe6a0, .55).fillRect(bx, by, pw, bh * .4);
+        b.fillStyle(0xff9a30, .35 + .2 * Math.sin(t * 6)).fillCircle(bx + pw, by + bh / 2, 8 * S); b.fillStyle(0xffd070, .9).fillCircle(bx + pw, by + bh / 2, 2.5 * S);
+        this.stepTxt.setText(this.step + '  ' + Math.round(this.prog * 100) + ' %');
     }
 
     update(time, delta) {
@@ -74,6 +100,7 @@ class BootScene extends Phaser.Scene {
         this.prog += (Math.min(this.target, cap) - this.prog) * .3;   // po snímkach, nie podľa času – na pomalom stroji Phaser skracuje delta
         const S = RES, cx = W * S / 2, cy = H * S / 2 - 30 * S, t = this.t;
         // Prsteň: vznáša sa, pomaly sa natáča okolo zvislej osi (mení sa šírka elipsy), ohnivé písmo beží po obvode
+        if (this.pic) { this.drawBar3(); return; }
         const g = this.ring; g.clear();
         const bob = Math.sin(t * 1.15) * 6 * S, ry0 = cy + bob, spin = Math.cos(t * .55), R0 = 78 * S, th = 15 * S;
         const rx = R0 * (.78 + .22 * Math.abs(spin)), ry = R0 * .65 * (1 + .04 * Math.sin(t * .8)), tilt = Math.sin(t * .4) * 3 * S;
