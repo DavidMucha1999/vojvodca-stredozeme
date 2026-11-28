@@ -98,16 +98,17 @@ const B3G = (() => {
     const NOISE3 = `float hh3(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
         float n3(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
             return mix(mix(mix(hh3(i), hh3(i + vec3(1, 0, 0)), f.x), mix(hh3(i + vec3(0, 1, 0)), hh3(i + vec3(1, 1, 0)), f.x), f.y), mix(mix(hh3(i + vec3(0, 0, 1)), hh3(i + vec3(1, 0, 1)), f.x), mix(hh3(i + vec3(0, 1, 1)), hh3(i + vec3(1, 1, 1)), f.x), f.y), f.z); }`;
-    function chrPatch(sh, own) {
+    function chrPatch(sh, own, m) {
         clothPatch(sh);
         if (!U_TINT.value) { U_TINT.value = new (T().Color)(1, 1, 1); U_MUD.value = new (T().Color)('#3e3020'); }
         sh.uniforms.uFlash = own && own.flash ? own.flash : U_FLASH; sh.uniforms.uDirt = own ? own.dirt : U_DIRT; sh.uniforms.uTint = own ? own.tint : U_TINT; sh.uniforms.uMud = U_MUD; sh.uniforms.uWet = U_WET; sh.uniforms.uSnow = U_SNOW;
         sh.vertexShader = 'attribute float aMat;\nvarying float vMat;\nvarying vec3 vOP;\nvarying vec3 vON;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vMat = aMat; vOP = position; vON = normal;');
-        sh.fragmentShader = 'uniform float uFlash; uniform float uDirt; uniform vec3 uTint; uniform vec3 uMud; uniform float uWet; uniform float uSnow; varying float vMat; varying vec3 vOP; varying vec3 vON;\n' + NOISE3 + '\n' + sh.fragmentShader
+        sh.fragmentShader = '#define CHR_M ' + (m === 'm' ? 1 : 0) + '\nuniform float uFlash; uniform float uDirt; uniform vec3 uTint; uniform vec3 uMud; uniform float uWet; uniform float uSnow; varying float vMat; varying vec3 vOP; varying vec3 vON;\n' + NOISE3 + '\n' + sh.fragmentShader
             .replace('#include <color_fragment>', `#include <color_fragment>
                 float fwd = length(fwidth(vOP)); float dk = 1.0 - smoothstep(0.3, 1.2, fwd); float dkM = 1.0 - smoothstep(0.05, 0.17, fwd); float dkC = 1.0 - smoothstep(0.03, 0.12, fwd);   // jemné vzory (krúžky, šupiny) miznú skôr, aby z diaľky nezrnili
                 int mt = int(vMat + 0.5); float mR = 1.0, mM = 1.0, bh = 0.0; vec3 dc = diffuseColor.rgb;
-                if (mt == 0) { float sn = n3(vOP * 1.8) * 0.7 + n3(vOP * 7.0) * 0.3 * dkC; float fl = smoothstep(0.55, 0.9, n3(vOP * 0.7 + 11.0)); dc *= (0.93 + 0.14 * sn) * mix(vec3(1.0), vec3(1.05, 0.93, 0.9), fl * 0.5); mR = 0.72 + 0.2 * sn; bh = (sn - 0.5) * 0.06 * dkC; }   // koža: jemné póry, začervenanie a lesk
+                if (mt == 0 && CHR_M == 1) { float st = n3(vOP * 2.2) * 0.65 + n3(vOP * 7.0) * 0.35 * dkC; float ng = smoothstep(0.82, 0.95, n3(vOP * 5.0 + 4.0)) * dkC; dc *= (0.93 + 0.14 * st) * (1.0 - ng * 0.25); mR = 0.5 + 0.45 * st + ng * 0.4; bh = (st - 0.5) * 0.02 * dkC - ng * 0.05; }   // zbraň: kov s jemnou patinou a drobnými zárezmi
+                else if (mt == 0) { float sn = n3(vOP * 1.8) * 0.7 + n3(vOP * 7.0) * 0.3 * dkC; float fl = smoothstep(0.55, 0.9, n3(vOP * 0.7 + 11.0)); dc *= (0.93 + 0.14 * sn) * mix(vec3(1.0), vec3(1.05, 0.93, 0.9), fl * 0.5); mR = 0.72 + 0.2 * sn; bh = (sn - 0.5) * 0.06 * dkC; }   // koža: jemné póry, začervenanie a lesk
                 else if (mt == 1) { vec2 g = vec2((vOP.x + vOP.z) * 2.4, vOP.y * 2.4); g.x += step(0.5, fract(g.y * 0.5)) * 0.5;
                     float rg = 1.0 - smoothstep(0.06, 0.16, abs(length(fract(g) - 0.5) - 0.3)); float rv = n3(vec3(floor(g), vOP.y * 0.2)); float sh2 = 0.5 + 0.5 * sin(vOP.y * 1.3 + vOP.z * 0.8); dc *= mix(0.97, (0.9 + 0.12 * rg) * (0.975 + 0.05 * rv) * (0.94 + 0.12 * sh2), dkM); mR = mix(1.0, mix(1.0, 0.85, rg), dkM); bh = rg * 0.07 * dkM; }   // krúžky s rôznou patinou a zvlneným leskom
                 else if (mt == 2) { float tw = sin((vOP.x + vOP.z) * 11.0 + vOP.y * 11.0) * 0.5 + 0.5; float w = sin((vOP.x + vOP.z) * 9.0) * sin(vOP.y * 9.0); float fold = n3(vec3(vOP.x * 0.5, vOP.y * 0.9, vOP.z * 0.5)); float wear = smoothstep(0.62, 0.9, n3(vOP * 0.8 + 3.0)); dc *= (1.0 + (0.05 * tw - 0.05 * n3(vOP * 3.0)) * dkC) * (0.88 + 0.22 * fold) * (1.0 + wear * 0.14); mR = 1.05 + wear * 0.2; bh = w * 0.06 * dkC + (fold - 0.5) * 0.7 * dk; }   // keper, záhyby a ošúchané miesta
@@ -150,7 +151,7 @@ const B3G = (() => {
         const mt = low ? new t.MeshLambertMaterial({ vertexColors: !tex, flatShading: !tex, map })
             : new t.MeshStandardMaterial({ vertexColors: !tex, map, roughness: m === 'm' ? .3 : tex ? .9 : .82, metalness: m === 'm' ? .82 : 0, envMapIntensity: m === 'm' ? 1.4 : .6 });
         if (low) { mt.onBeforeCompile = clothPatch; mt.customProgramCacheKey = () => 'chr' + m; }
-        else { mt.onBeforeCompile = sh => chrPatch(sh, own); mt.customProgramCacheKey = () => 'chrP' + m; mt.extensions = { derivatives: true }; }
+        else { mt.onBeforeCompile = sh => chrPatch(sh, own, m); mt.customProgramCacheKey = () => 'chrP' + m; mt.extensions = { derivatives: true }; }
         return own ? mt : (MATS[k] = mt);
     }
     /** Látka s obrázkom (zástava s erbom). */
