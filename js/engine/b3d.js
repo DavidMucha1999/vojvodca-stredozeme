@@ -2079,10 +2079,10 @@ const B3 = (() => {
             if (u.fled) continue; const o = units.get(u); if (!o || o.tp.boss) continue;
             const r = (u.r || 6) * (o.mount ? 2.4 : 1.7) * (u.hp <= 0 ? 1.5 : 1);
             if (blobs && n < 700) { M.makeScale(r, 1, r * (o.mount && u.hp > 0 ? 1.6 : 1)); M.premultiply(Ry.makeRotationY(o.root.rotation.y)); M.setPosition(u.x, heightAt(u.x, u.y) + .45, u.y); blobs.setMatrixAt(n++, M); }
-            if (u.hp > 0) near.push([Math.hypot(u.x - cx, u.y - cz), u, o.mount ? 9 : 5]);
+            if (u.hp > 0) near.push([Math.hypot(u.x - cx, u.y - cz), u, o.mount ? 12 : 7.5]);
         }
         if (blobs) { blobs.count = n; blobs.instanceMatrix.needsUpdate = true; }
-        if (grassM) { near.sort((a, b) => a[0] - b[0]); const P = grassM.material.uniforms.uPush.value; for (let i = 0; i < 12; i++) { const e = near[i]; if (e) P[i].set(e[1].x, e[1].y, e[2]); else P[i].set(-999, -999, 0); } const fw = new t.Vector3(); cam.getWorldDirection(fw); fw.y = 0; fw.normalize(); grassM.material.uniforms.uCam.value.set(cx + fw.x * 120, cz + fw.z * 120); }
+        if (grassM) { near.sort((a, b) => a[0] - b[0]); const P = grassM.material.uniforms.uPush.value; for (let i = 0; i < 20; i++) { const e = near[i]; if (e) P[i].set(e[1].x, e[1].y, e[2]); else P[i].set(-999, -999, 0); } const fw = new t.Vector3(); cam.getWorldDirection(fw); fw.y = 0; fw.normalize(); grassM.material.uniforms.uCam.value.set(cx + fw.x * 120, cz + fw.z * 120); }
     }
 
     // ---------- kamera a vstup ----------

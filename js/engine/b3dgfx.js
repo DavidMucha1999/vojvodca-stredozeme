@@ -239,8 +239,8 @@ const B3G = (() => {
         geo.setAttribute('aOff', new t.InstancedBufferAttribute(off, 4)); geo.setAttribute('aCol', new t.InstancedBufferAttribute(col, 4)); geo.instanceCount = count;
         const mt = new t.ShaderMaterial({
             side: t.DoubleSide, fog: true,
-            uniforms: t.UniformsUtils.merge([t.UniformsLib.fog, { hTex: { value: hTex }, uCam: { value: new t.Vector2() }, uS: { value: S }, uSize: { value: new t.Vector2(BW, BH) }, tTr: { value: null }, uPush: { value: Array.from({ length: 12 }, () => new t.Vector3(-999, -999, 0)) }, uSunC: { value: new t.Color(1, 1, 1) }, uAmb: { value: new t.Color(.4, .45, .5) }, uTip: { value: new t.Color(biome.tip) } }]),
-            vertexShader: `uniform sampler2D hTex; uniform sampler2D tTr; uniform vec2 uCam; uniform float uS; uniform vec2 uSize; uniform vec3 uPush[12]; uniform float uTime;
+            uniforms: t.UniformsUtils.merge([t.UniformsLib.fog, { hTex: { value: hTex }, uCam: { value: new t.Vector2() }, uS: { value: S }, uSize: { value: new t.Vector2(BW, BH) }, tTr: { value: null }, uPush: { value: Array.from({ length: 20 }, () => new t.Vector3(-999, -999, 0)) }, uSunC: { value: new t.Color(1, 1, 1) }, uAmb: { value: new t.Color(.4, .45, .5) }, uTip: { value: new t.Color(biome.tip) } }]),
+            vertexShader: `uniform sampler2D hTex; uniform sampler2D tTr; uniform vec2 uCam; uniform float uS; uniform vec2 uSize; uniform vec3 uPush[20]; uniform float uTime;
                 attribute vec4 aOff; attribute vec4 aCol; attribute float aH; varying vec3 vC; varying float vH; varying float vFl; varying vec3 vFlC; varying float vTr;
                 #include <fog_pars_vertex>
                 vec4 hs(vec2 p) { vec2 uv = p / uSize * vec2(${'288.0'}, ${'192.0'}); vec2 f = fract(uv); vec2 b = (floor(uv) + 0.5) / vec2(289.0, 193.0); vec2 e = 1.0 / vec2(289.0, 193.0);
@@ -254,7 +254,7 @@ const B3G = (() => {
                     vec3 lp = vec3(c * position.x - s * position.z, position.y, s * position.x + c * position.z) * sc;
                     float w = sin(uTime * 1.7 + p.x * 0.05 + p.y * 0.07) * 0.6 + sin(uTime * 3.1 + p.x * 0.13 - p.y * 0.05) * 0.25;
                     lp.x += w * aH * 1.3 * sc; lp.z += w * aH * 0.5 * sc;
-                    for (int i = 0; i < 12; i++) { vec2 d = p - uPush[i].xy; float L = length(d); float k = (1.0 - smoothstep(0.0, uPush[i].z, L)) * step(0.01, uPush[i].z); lp.xz += (d / max(L, 0.01)) * k * aH * 3.4 * sc; lp.y *= 1.0 - k * 0.65 * aH; }
+                    for (int i = 0; i < 20; i++) { vec2 d = p - uPush[i].xy; float L = length(d); float k = (1.0 - smoothstep(0.0, uPush[i].z, L)) * step(0.01, uPush[i].z); lp.xz += (d / max(L, 0.01)) * k * aH * 3.4 * sc; lp.y *= 1.0 - k * 0.8 * aH; }
                     vec4 trm = texture2D(tTr, p / uSize); float flt = clamp(trm.r * 1.4 + trm.g * 1.6, 0.0, 1.0); lp.y *= 1.0 - flt * 0.78; lp.xz *= 1.0 + flt * 0.7; vTr = flt;   // pošliapaná a spálená tráva ostane ležať
                     vec3 wp = vec3(p.x, H.r - 0.3, p.y) + lp;
                     vC = aCol.rgb; vH = aH; vFl = aCol.a; vFlC = vec3(floor(aCol.a / 256.0), mod(floor(aCol.a / 16.0), 16.0), mod(aCol.a - 1.0, 16.0)) / 15.0;
