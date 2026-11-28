@@ -8,7 +8,7 @@ const game = new Phaser.Game({
     parent: 'game',
     width: W * RES,
     height: H * RES,
-    backgroundColor: '#120e0c', transparent: true,   // pod Phaserom môže ležať 3D bojisko (js/engine/b3d.js)
+    backgroundColor: '#120e0c', transparent: true,   // pod Phaserom môže ležať 3D bojisko (js/engine/3d/b3d.js)
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     render: { antialias: true, roundPixels: false },
     input: { mouse: { preventDefaultWheel: true } },

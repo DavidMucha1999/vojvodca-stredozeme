@@ -164,7 +164,7 @@ class UIScene extends Phaser.Scene {
             if (!this.tgSig || (this.tgT = (this.tgT || 0) + 1) % 3 === 0) {
                 const ya = C.km && C.aim3 ? C.aim3.yaw : h.f; let best = null, bs = 1e9;
                 for (const u of U) if (u.t && u.hp > 0 && !u.fled) { const dx = u.x - h.x, dy = u.y - h.y, d = Math.hypot(dx, dy); if (d > 160 || d < 1) continue; const da = angD(ya, Math.atan2(dy, dx)); if (da > .1 + 12 / d) continue; const sc = d + da * 220; if (sc < bs) { bs = sc; best = u; } }
-                this.tgSig = 1; this.tgU = best; C.tgU = best;   // 3D: krúžok pod cieľom (js/engine/b3d.js)
+                this.tgSig = 1; this.tgU = best; C.tgU = best;   // 3D: krúžok pod cieľom (js/engine/3d/b3d.js)
             }
             const u = this.tgU;
             if (u && u.hp > 0) { const ty = H / 2 + 36; g.fillStyle(0x000000, .6).fillRect(W / 2 - 41, ty + 13, 82, 6); g.fillStyle(0xc0392b, 1).fillRect(W / 2 - 40, ty + 14, 80 * Math.max(0, u.hp) / u.mh, 4); tx(6, unitName(u), 10, '#f4e8d0', .5, 0).setPosition(W / 2, ty); }

@@ -8,7 +8,7 @@ const fs = require('fs'), path = require('path'), vm = require('vm');
 const ROOT = path.join(__dirname, '..');
 // skripty hry z hlavného súboru; Phaser, jeho scény a zbalené obrázky sa bez prehliadača nenačítavajú (ikony áno – kreslia sa na plátno)
 const scripts = [...fs.readFileSync(path.join(ROOT, 'Vojvodca Stredozeme.html'), 'utf8').matchAll(/<script src="([^"]+)"><\/script>/g)].map(m => m[1])
-    .filter(s => !/^(https?:|vendor\/)/.test(s) && (!/^js\/engine\//.test(s) || /icons\.js$/.test(s)));
+    .filter(s => !/^(https?:|vendor\/)/.test(s) && (!/^js\/engine\//.test(s) || /icons\.js$/.test(s)) && !/^js\/(audio\/engine|data\/assets)\.js$/.test(s));
 
 const noop = () => { };
 const grad = { addColorStop: noop };

@@ -1,16 +1,10 @@
 /*
- * Kreslenie vojakov a výbavy (pohľad zhora, vojak hľadí doprava).
- *
- * Používa ho:
- *   - tools/generate_art.py: vykreslí pásy snímok bežných vojakov do assets/textures/unit_*.png,
- *   - hra: hrdinu kreslí priamo podľa výbavy (každá zbraň, brnenie, štít, prilba a kôň vyzerá inak)
- *     a ikonky výbavy u kováča.
- *
- * Vrstva 'base' = všetko okrem tímových farieb, 'team' = biele časti, ktoré hra zafarbí farbou frakcie.
- * Pás snímok: 0 státie | 1–4 chôdza | 5–7 útok | 8–11 pád, jedna snímka 192 × 192 px (96 jednotiek sveta).
+ * Dáta vojakov a výbavy (UNITS, GEAR – zbrane, brnenia, štíty, prilby a kone podľa poradia vecí u kováča) a ich kreslenie
+ * pohľadom zhora do plátna: ikonky výbavy a vojakov v rozhraní. Bojisko kreslí 3D vrstva (js/engine/3d/b3d.js), ktorá z týchto dát len číta.
+ * Vrstva 'base' = všetko okrem tímových farieb, 'team' = biele časti, ktoré sa zafarbia farbou frakcie.
  */
 const Soldiers = (() => {
-    const S = 2, FRAME = 192, FRAMES = 12;
+    const S = 2;
 
     /* ---------- pomocné ---------- */
     const mkCanvas = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
@@ -597,7 +591,7 @@ const Soldiers = (() => {
         if (Hm.kind === 'elf') { c.fillStyle = Hm.crest; c.beginPath(); c.moveTo(hr * .7, 0); c.quadraticCurveTo(-hr * .2, -hr * .35, -hr * 1.7, 0); c.quadraticCurveTo(-hr * .2, hr * .35, hr * .7, 0); c.fill(); line(c, hr * .6, 0, -hr * 1.5, 0, '#a08030', .6); }
     }
 
-    /* ---------- jedna snímka a pás snímok ---------- */
+    /* ---------- jedna snímka ---------- */
     /** Jeden snímok vojaka do kontextu c (stred = poloha jednotky). key = druh z UNITS alebo hotový popis (heroSpec). */
     function drawUnit(c, key, frame12, layer) {
         // 12 snímok hry -> vnútorné číslovanie: 0–3 chôdza, 4–6 útok, 7–9 pád, 10 státie
@@ -687,19 +681,6 @@ const Soldiers = (() => {
         }
     }
 
-    /** Pás 12 snímok vedľa seba (192 px na snímku). */
-    function sheet(key, layer) {
-        const cv = mkCanvas(FRAME * FRAMES, FRAME), c = cv.getContext('2d');
-        for (let k = 0; k < FRAMES; k++) {
-            c.save(); c.translate(k * FRAME + FRAME / 2, FRAME / 2); c.scale(S, S);
-            drawUnit(c, key, k, layer);
-            c.restore();
-            if (k >= 8 && layer === 'base') {   // stmavenie padlých
-                c.save(); c.globalCompositeOperation = 'source-atop'; c.fillStyle = 'rgba(20,10,10,' + (.12 + (k - 8) * .1) + ')'; c.fillRect(k * FRAME, 0, FRAME, FRAME); c.restore();
-            }
-        }
-        return layer === 'base' ? outlined(cv) : cv;
-    }
     /** Tmavý obrys okolo celej postavy (čitateľnosť na tráve) a mäkký vrhnutý tieň pod ňou. */
     function outlined(src) {
         const out = mkCanvas(src.width, src.height), c = out.getContext('2d');
@@ -853,5 +834,5 @@ const Soldiers = (() => {
         }
     }
 
-    return { S, FRAME, FRAMES, UNITS, GEAR, gear, heroSpec, drawUnit, sheet, icon, unitIcon, shade, ell, mkCanvas };
+    return { S, UNITS, GEAR, gear, heroSpec, drawUnit, icon, unitIcon, shade, ell, mkCanvas };
 })();

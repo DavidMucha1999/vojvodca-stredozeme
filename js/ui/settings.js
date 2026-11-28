@@ -38,11 +38,7 @@ function optGroups() {
             { l: 'Zásahy vlastných', v: () => yn(OPT.ff !== false), fn: () => set('ff', OPT.ff === false), tip: 'Ako vo Warbande: šípy aj tvoje údery zhora a body môžu zraniť vlastných vojakov v ceste.' },
             { l: 'Pauza pri údere', v: () => OPT.hitstop ? 'áno' : 'nie', fn: () => set('hitstop', !OPT.hitstop), tip: 'Krátke zastavenie obrazu pri ťažkom údere. Vypnuté = plynulejší boj.' }
         ] },
-        { t: 'Mapa 3D', items: [
-            { l: 'Zobrazenie mapy', v: () => OPT.map3d === false ? '2D zhora' : '3D', fn: () => set('map3d', OPT.map3d === false), tip: '3D krajina, hrady a postavy, alebo klasická 2D mapa zhora (rýchlejšia na slabšom počítači). Otáčanie kamery: Q a E alebo pravé tlačidlo myši.' }
-        ] },
-        { t: 'Bitka 3D', items: [
-            { l: 'Zobrazenie', v: () => OPT.b3d === false ? '2D zhora' : '3D', fn: () => set('b3d', OPT.b3d === false), tip: '3D pohľad za hrdinom alebo klasický 2D pohľad zhora.' },
+        { t: 'Bitka', items: [
             { l: 'Grafika', v: () => ({ low: 'nízka', med: 'stredná', high: 'vysoká', ultra: 'ultra' }[OPT.gfx] || 'vysoká'), fn: () => set('gfx', { low: 'med', med: 'high', high: 'ultra', ultra: 'low' }[OPT.gfx] || 'ultra'), tip: 'Nízka je najrýchlejšia, ultra potrebuje silný počítač.' },
             { l: 'Pohľad v bitke', v: () => OPT.view === 'tp' ? 'z tretej osoby' : 'z prvej osoby', fn: () => set('view', OPT.view === 'tp' ? 'fp' : 'tp'), tip: 'Bitka začne v pohľade z prvej osoby (ako Warband). Pohľad môžeš počas boja prepnúť klávesom kamery.' },
             { l: 'Zameriavač', v: () => ({ s: 'malý', n: 'normálny', off: 'vypnutý' }[OPT.xhair] || 'normálny'), fn: () => set('xhair', { s: 'n', n: 'off', off: 's' }[OPT.xhair] || 'off'), tip: 'Bodka v strede obrazovky. Pri kopiji zčervenie, keď je nepriateľ v dosahu.' },
@@ -66,7 +62,6 @@ function optGroups() {
     ];
 }
 /** Plochý zoznam položiek (text + zmena), napr. pre testy. */
-function optItems() { return optGroups().flatMap(g => g.items.map(i => [() => i.l + ': ' + i.v(), i.fn])); }
 /** Ovládanie: priradenie kláves k akciám (klik → stlač nový kláves). */
 function ctlItems() { const K = KB(); return Object.keys(KEYS_DEF).map(a => [() => KEY_N[a] + ': ' + keyName(K[a]) + (CAPTURE && CAPTURE.a === a ? ' … stlač kláves (Esc zruší)' : ''), a]); }
 const PAD_TXT = 'Ovládač: ľavá páčka pohyb (aj na mape), pravá mierenie, A alebo RT sek, X bod, RB alebo LT kryt, Y výstrel, B pokrik, LB hradby; kríž: hore Útok, dole Ústup, vľavo Držať, vpravo Šík; Select Za mnou, Start ďalšia skupina.';

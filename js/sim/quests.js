@@ -9,7 +9,6 @@ const MAX_QUESTS = 3;
 const qText = (q, s) => s.replace(/\{L\}/g, q.lord).replace(/\{T\}/g, q.t).replace(/\{Y\}/g, G.name);
 const qDef = q => QUESTS.find(d => d.id === q.id);
 const qStep = q => qDef(q).steps[q.step];
-const qLordKing = q => E.some(e => e.nm === q.lord && e.kr);
 
 /** Úloha, ktorú by pán e mohol ponúknuť (podľa strany a povahy), alebo null. */
 function questFor(e) {

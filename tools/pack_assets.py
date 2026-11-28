@@ -1,9 +1,8 @@
 """
 Zbalí súbory hry tak, aby fungovala aj po otvorení dvojklikom (bez servera):
   assets/maps/stredozem.json  ->  js/data/map.js        (hrady, dediny, cesty, terén, lesy a hory z editora Tiled)
-  assets/textures/*.png       ->  js/engine/assets.js   (terén, hory, vojaci, bojisko – z tools/generate_art.py)
-  assets/sprites/*.png        ->  js/engine/assets.js   (vlastné obrázky namiesto kreslených)
-  assets/audio/*.wav|ogg|mp3  ->  js/engine/assets.js   (zvuky; music_*.ogg nahradí syntetickú hudbu)
+  assets/textures/*.png       ->  js/data/assets.js   (obrázky hradov v rozhraní)
+  assets/audio/*.wav|ogg|mp3  ->  js/data/assets.js   (zvuky; music_*.ogg nahradí syntetickú hudbu)
 Spustenie: python tools/pack_assets.py   (nepotrebuje nič navyše)
 """
 import os, json, base64, glob
@@ -50,14 +49,12 @@ def pack(folder, exts):
         if e in exts:
             out[os.path.splitext(os.path.basename(f))[0]] = 'data:' + MIME[e] + ';base64,' + base64.b64encode(open(f, 'rb').read()).decode()
     return out
-sprites, textures, audio = pack('sprites', ('.png',)), pack('textures', ('.png',)), pack('audio', ('.wav', '.ogg', '.mp3'))
-with open(A('js', 'engine', 'assets.js'), 'w', encoding='utf-8') as f:
+textures, audio = pack('textures', ('.png',)), pack('audio', ('.wav', '.ogg', '.mp3'))
+with open(A('js', 'data', 'assets.js'), 'w', encoding='utf-8') as f:
     f.write('/*\n * Zbalené obrázky a zvuky z priečinka assets/ (vytvára tools/pack_assets.py). Neupravuj ručne.\n */\n')
-    f.write('const ASSETS = {\n  sprites: {\n')
-    f.write(',\n'.join('    ' + json.dumps(k) + ': "' + v + '"' for k, v in sprites.items()))
-    f.write('\n  },\n  textures: {\n')
+    f.write('const ASSETS = {\n  textures: {\n')
     f.write(',\n'.join('    ' + json.dumps(k) + ': "' + v + '"' for k, v in textures.items()))
     f.write('\n  },\n  audio: {\n')
     f.write(',\n'.join('    ' + json.dumps(k) + ': "' + v + '"' for k, v in audio.items()))
     f.write('\n  }\n};\n')
-print('obrázky:', len(sprites), ' textúry:', len(textures), ' zvuky:', len(audio), ' veľkosť assets.js:', os.path.getsize(A('js', 'engine', 'assets.js')) // 1024, 'kB')
+print('textúry:', len(textures), ' zvuky:', len(audio), ' veľkosť assets.js:', os.path.getsize(A('js', 'data', 'assets.js')) // 1024, 'kB')

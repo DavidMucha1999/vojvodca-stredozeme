@@ -6,7 +6,7 @@ Bežne ho netreba spúšťať: mapu uprav v Tiled a potom spusti tools/pack_asse
 import os, json, base64
 from playwright.sync_api import sync_playwright
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-scripts = ['js/core/setup.js', 'js/data/factions.js', 'js/data/castles.js', 'js/render/terrain.js']
+scripts = ['js/core/setup.js', 'js/data/factions.js', 'js/data/castles.js', 'tools/terrain.js']
 code = '\n'.join(open(os.path.join(ROOT, s), encoding='utf-8').read() for s in scripts)
 with sync_playwright() as p:
     br = p.chromium.launch(); pg = br.new_page()

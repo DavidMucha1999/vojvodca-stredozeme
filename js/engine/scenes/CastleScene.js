@@ -6,7 +6,6 @@
  * postavené budovy (stajňa, chrám, trhovisko). Sieň: stĺpy, trón na pódiu, koberec, stoly, koše s ohňom, zástavy, okná.
  * Postavy a rozhovory: js/ui/castle.js (kováč, kupec, veliteľ, správca, pán hradu). Rozloženie je rovnaké ako v pôvodnej izometrii.
  */
-const BFhex = f => Phaser.Display.Color.HexStringToColor(BF[f] || '#4a3a2a').color;
 class CastleScene extends Room3Scene {
     constructor() { super('Castle'); }
     init(d) { this.ti = d.i; this.roomKind = d.room || 'yard'; }

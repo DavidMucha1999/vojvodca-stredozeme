@@ -50,7 +50,6 @@ function pollPad() {
 const heroMounted = () => !!(G && G.eq.m > 0 && !(U && U[0] && U[0].dis));
 const rangedW = () => (G && G.eq.r > 0 ? it('r') : null);
 const GRP_N = { all: 'Všetci', p: 'Pechota', l: 'Lukostrelci', j: 'Jazda' };
-const ORD_KEYS = { t: 'a', h: 'h', f: 'f', g: 'l', r: 'r' };
 /** Uhol medzi dvoma smermi (0 až π). */
 const angD = (a, b) => { let d = Math.abs(a - b) % 6.2832; return d > Math.PI ? 6.2832 - d : d; };
 const dirTo = (a, b) => Math.atan2(b.y - a.y, b.x - a.x);
