@@ -118,7 +118,7 @@ const B3G = (() => {
                 else if (mt == 6) { float f = 1.0 - smoothstep(0.0, 0.2, abs(sin(vOP.y * 3.0 + sin((vOP.x + vOP.z) * 4.0) * 1.6))); dc *= 1.0 + f * 0.5 * dk; mR = 0.6 - f * 0.3; bh = f * 0.5 * dk; }
                 else if (mt == 8) { vec2 sp = vec2((vOP.x + vOP.z) * 1.6, vOP.y * 1.9); sp.x += step(0.5, fract(sp.y * 0.5)) * 0.5; vec2 f2 = fract(sp) - 0.5; float sc2 = smoothstep(0.5, 0.15, length(vec2(f2.x, f2.y * 0.8 - 0.1))); float edge = smoothstep(0.0, 0.25, sc2); dc *= mix(1.0, 0.7 + 0.35 * edge, dkM); mR = mix(1.0, 0.6 + 0.4 * (1.0 - edge), dkM); bh = (edge - 0.5) * 0.45 * dkM; }   // šupinové (lamelové) brnenie
                 else if (mt == 7) { float pl = abs(fract(vOP.z * 0.42 + 0.5) - 0.5), seam = 1.0 - smoothstep(0.0, 0.05, pl); vec2 sg = fract(vec2(vOP.y * 0.32, vOP.z * 0.42 + 0.5)) - 0.5; float nail = 1.0 - smoothstep(0.08, 0.12, length(sg * vec2(1.0, 1.0)));
-                    float gr = n3(vec3(vOP.y * 0.4, vOP.z * 6.0, vOP.x)); dc *= (0.82 + 0.3 * gr) * (1.0 - seam * 0.45 * dk); dc = mix(dc, vec3(0.32, 0.32, 0.34), nail * dk); mR = mix(0.9, 0.35, nail); mM = mix(1.0, 4.0, nail * dk); bh = gr * 0.3 - seam * 0.6 + nail * 0.8; }   // štít z dosiek s kovanými klincami
+                    float gr = n3(vec3(vOP.y * 0.4, vOP.z * 6.0, vOP.x)); float scr = smoothstep(0.9, 0.97, n3(vec3(vOP.x * 0.6, vOP.y * 8.0, vOP.z * 3.0))) * dkC; dc *= (0.82 + 0.3 * gr) * (1.0 - seam * 0.45 * dk) * (1.0 - scr * 0.4); dc = mix(dc, vec3(0.32, 0.32, 0.34), nail * dk); mR = mix(0.9, 0.35, nail); mM = mix(1.0, 4.0, nail * dk); bh = gr * 0.3 - seam * 0.6 + nail * 0.8; }   // štít z dosiek s kovanými klincami
                 #ifndef USE_MAP
                 dc *= 0.8 + 0.2 * smoothstep(-0.9, 0.7, normalize(vON).y);   // pod rukami, pod hruďou a pod okrajmi je tmavšie (ambient occlusion)
                 #endif
@@ -163,7 +163,11 @@ const B3G = (() => {
     /** Erb na štíte (priehľadný obrázok nad farbou štítu). */
     function emblemMat(f) {
         const k = 'emb' + f; if (MATS[k]) return MATS[k];
-        const t = T(); return (MATS[k] = new t.MeshStandardMaterial({ map: emblemTex(f), transparent: true, alphaTest: .35, roughness: .6, polygonOffset: true, polygonOffsetFactor: -2 }));
+        const t = T(), mt = new t.MeshStandardMaterial({ map: emblemTex(f), transparent: true, alphaTest: .35, roughness: .75, polygonOffset: true, polygonOffsetFactor: -2 });
+        mt.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+            { vec2 q = vMapUv; float w1 = fract(sin(dot(floor(q * 38.0), vec2(12.9898, 78.233))) * 43758.5453), w2 = fract(sin(dot(floor(q * 9.0), vec2(39.3, 17.7))) * 9758.1);
+              diffuseColor.rgb *= 0.74 + 0.2 * w2; diffuseColor.a *= step(0.1, w1 * (0.35 + w2)); }`); };   // erb na štíte: matná, miestami odprýskaná farba
+        mt.customProgramCacheKey = () => 'embW'; return (MATS[k] = mt);
     }
     /** Stromy a kríky: hojdanie vo vetre (podľa výšky vrcholu) a rozplynutie pri kamere. */
     function foliageMat() {
