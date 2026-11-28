@@ -1666,6 +1666,8 @@ const B3 = (() => {
             else B.hd.rotation.y = Math.sin(clock * .6 + o.id) * .45;
         }
         if (!idle || o.sp >= .3) B.hd.rotation.y *= .9;
+        if (!u.h && !o.mount && u.tg && (u.bd ?? 99) < 60 && u.hp > 0) { let ha = Math.atan2(u.tg.y - u.y, u.tg.x - u.x) - u.f; ha = Math.atan2(Math.sin(ha), Math.cos(ha)); B.hd.rotation.y += (Math.max(-.7, Math.min(.7, -ha)) * .8 - B.hd.rotation.y) * .25; }   // hlava sleduje súpera, kým bojuje
+        if (!o.mount && !H.bow && u.wu > 0 && u.wu0) { const k = ease(Math.min(1, (1 - u.wu / u.wu0) * 1.25)); B.hip.position.y -= .55 * k; B.ch.rotation.z += .09 * k; B.knR.rotation.z -= .22 * k; B.knL.rotation.z -= .22 * k; B.lgR.rotation.z += .12 * k; B.lgL.rotation.z -= .12 * k; }   // nápriah: pokrčené kolená a záklon, váha sa nahromadí pred úderom
         if (o.point > 0) { o.point -= dt; if (idle || u.h && !C2.rd && !(C2.swing && C2.swing.t > 0) && !C2.blk && !(C2.draw > 0)) { const k = Math.min(1, o.point / 15); aR = 1.6 * k + aR * (1 - k); eR = .05; aRy = .25; shout = 1; } }   // veliteľ ukazuje mečom smer
         // spätný ráz: zbraň odskočí od krytu
         const rc = (u.rc || 0) > 0 ? u.rc / 14 : 0; if (rc) { aR += .6 * rc; eR += .5 * rc; aRy *= 1 - rc * .5; u.rc -= dt; }
